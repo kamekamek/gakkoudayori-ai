@@ -136,6 +136,11 @@ class _EditorScreenState extends State<EditorScreen>
   }
 
   Widget _buildDesktopLayout() {
+    // プレビューモードの場合はプレビューのみ表示
+    if (_isPreviewMode) {
+      return const PreviewPanel();
+    }
+    
     return Row(
       children: [
         // 左パネル: 音声入力

@@ -624,34 +624,52 @@ if (selection.isCollapsed) {
 
   void _insertAtCursor(String text) {
     final selection = _contentController.selection;
+    
+    // 選択が無効な場合はカーソルを先頭に設定
+    if (!selection.isValid) {
+      _contentController.selection = const TextSelection.collapsed(offset: 0);
+    }
+    
+    final validSelection = _contentController.selection;
     final newText = _contentController.text.replaceRange(
-      selection.start,
-      selection.end,
+      validSelection.start,
+      validSelection.end,
       text,
     );
     
     _contentController.value = TextEditingValue(
       text: newText,
       selection: TextSelection.collapsed(
-        offset: selection.start + text.length,
+        offset: validSelection.start + text.length,
       ),
     );
+    
+    setState(() {}); // UI更新をトリガー
   }
 
   void _replaceSelection(String text) {
     final selection = _contentController.selection;
+    
+    // 選択が無効な場合はカーソルを先頭に設定
+    if (!selection.isValid) {
+      _contentController.selection = const TextSelection.collapsed(offset: 0);
+    }
+    
+    final validSelection = _contentController.selection;
     final newText = _contentController.text.replaceRange(
-      selection.start,
-      selection.end,
+      validSelection.start,
+      validSelection.end,
       text,
     );
     
     _contentController.value = TextEditingValue(
       text: newText,
       selection: TextSelection.collapsed(
-        offset: selection.start + text.length,
+        offset: validSelection.start + text.length,
       ),
     );
+    
+    setState(() {}); // UI更新をトリガー
   }
 
   void _applyColor(Color color) {
@@ -667,5 +685,7 @@ if (selection.isCollapsed) {
       
       _replaceSelection(formattedText);
     }
+    
+    setState(() {}); // UI更新をトリガー
   }
 }

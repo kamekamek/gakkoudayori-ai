@@ -54,12 +54,19 @@ class AppState extends ChangeNotifier {
     }
   }
   
-  // Recording management
+    // Recording management
+  Future<bool> ensureMicPermission() async {
+    // TODO: 実際のマイク権限チェック実装
+    // 現在はモック実装
+    await Future.delayed(const Duration(milliseconds: 100));
+    return true; // 実際はpermission_handlerパッケージなどを使用
+  }
+
   void startRecording() {
     _isRecording = true;
     notifyListeners();
   }
-  
+
   void stopRecording() {
     _isRecording = false;
     notifyListeners();
