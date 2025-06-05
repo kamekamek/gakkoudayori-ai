@@ -396,53 +396,78 @@ class _EditorScreenState extends State<EditorScreen>
     );
   }
 
-  void _triggerAIAutoLayout(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(LucideIcons.sparkles, color: AppTheme.accentColor),
-            SizedBox(width: 8),
-            Text('AI全まかせ機能'),
-          ],
-        ),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(color: AppTheme.accentColor),
-            SizedBox(height: 16),
-            Text('AIが最適なレイアウトを作成しています...'),
-          ],
-        ),
+void _triggerAIAutoLayout(BuildContext context) {
+   showDialog(
+     context: context,
+     barrierDismissible: false,
+     builder: (context) => AlertDialog(
+       title: const Row(
+         children: [
+           Icon(LucideIcons.sparkles, color: AppTheme.accentColor),
+           SizedBox(width: 8),
+           Text('AI全まかせ機能'),
+         ],
+       ),
+       content: const Column(
+         mainAxisSize: MainAxisSize.min,
+         children: [
+           CircularProgressIndicator(color: AppTheme.accentColor),
+           SizedBox(height: 16),
+           Text('AIが最適なレイアウトを作成しています...'),
+         ],
+       ),
+     ),
+   );
+
+  // Call actual AI processing
+  _processAILayout().then((_) {
+     Navigator.of(context).pop();
+     ScaffoldMessenger.of(context).showSnackBar(
+       const SnackBar(
+         content: Text('AI全まかせレイアウトを適用しました！'),
+         backgroundColor: AppTheme.accentColor,
+       ),
+     );
+  }).catchError((error) {
+    Navigator.of(context).pop();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('エラーが発生しました: $error'),
+        backgroundColor: AppTheme.errorColor,
       ),
     );
+   });
+ }
 
-    // TODO: AI処理の実装
-    Future.delayed(const Duration(seconds: 3), () {
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('AI全まかせレイアウトを適用しました！'),
-          backgroundColor: AppTheme.accentColor,
-        ),
-      );
-    });
-  }
+Future<void> _processAILayout() async {
+  // TODO: Implement actual AI processing
+  // This should call your AI service
+  await Future.delayed(const Duration(seconds: 1)); // Placeholder
+}
 
-  void _startRecording(BuildContext context) {
-    final appState = context.read<AppState>();
-    appState.startRecording();
+void _startRecording(BuildContext context) {
+   final appState = context.read<AppState>();
+   
+  try {
+    // TODO: Initialize recording service
+    // await _recordingService.start();
     
-    // TODO: 実際の音声録音処理
+    appState.startRecording();
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('音声録音を開始しました'),
         backgroundColor: AppTheme.primaryColor,
       ),
     );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('録音の開始に失敗しました: $e'),
+        backgroundColor: AppTheme.errorColor,
+      ),
+    );
   }
+ }
 
   void _stopRecording(BuildContext context) {
     final appState = context.read<AppState>();

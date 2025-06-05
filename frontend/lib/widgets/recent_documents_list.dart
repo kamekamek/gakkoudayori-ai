@@ -89,7 +89,7 @@ class RecentDocumentsList extends StatelessWidget {
       );
   }
 
-  Widget _buildDocumentCard(BuildContext context, Map<String, String> document, int index) {
+  Widget _buildDocumentCard(BuildContext context, Document document, int index) {
     final isRecent = index == 0;
     
     return Card(
@@ -117,7 +117,7 @@ class RecentDocumentsList extends StatelessWidget {
                 ),
                 child: Center(
                   child: Text(
-                    document['thumbnail']!,
+                    document['thumbnail'] ?? '',
                     style: const TextStyle(fontSize: 24),
                   ),
                 ),
@@ -182,7 +182,7 @@ class RecentDocumentsList extends StatelessWidget {
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
-                            document['status']!,
+                            document['status'] ?? '',
                             style: const TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w500,

@@ -4,15 +4,15 @@ import uvicorn
 
 # FastAPIアプリケーション初期化
 app = FastAPI(
-    title="ゆとり職員室 API",
-    description="HTMLベースグラレコ風学級通信作成システム",
-    version="1.0.0"
-)
+    title=os.getenv("API_TITLE", "ゆとり職員室 API"),
+    description=os.getenv("API_DESCRIPTION", "HTMLベースグラレコ風学級通信作成システム"),
+    version=os.getenv("API_VERSION", "1.0.0")
+ )
 
 # CORS設定 (フロントエンドからのアクセス許可)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:8080"],  # Flutter Web開発サーバー
+    allow_origins=os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:8080").split(","),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -45,9 +45,9 @@ async def root():
 
 # 開発サーバー起動用
 if __name__ == "__main__":
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True  # 開発時の自動リロード
-    ) 
+     uvicorn.run(
+         "main:app",
+        host=os.getenv("HOST", "0.0.0.0"),
+        port=int(os.getenv("PORT", "8000")),
+        reload=os.getenv("ENVIRONMENT", "development") == "development"
+     )

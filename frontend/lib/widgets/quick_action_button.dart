@@ -64,6 +64,7 @@ class _QuickActionButtonState extends State<QuickActionButton>
                     widget.icon,
                     size: 32,
                     color: Colors.white,
+                   semanticLabel: widget.title,
                   ),
                   const SizedBox(height: 8),
                   Text(

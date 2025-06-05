@@ -555,15 +555,15 @@ class _PreviewPanelState extends State<PreviewPanel> {
     );
   }
 
-  void _exportToPDF() {
-    // TODO: PDF生成の実装
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('PDFをエクスポートしています...'),
-        backgroundColor: AppTheme.primaryColor,
-      ),
-    );
-  }
+void _exportToPDF() {
+   // TODO: PDF生成の実装
+   ScaffoldMessenger.of(context).showSnackBar(
+     const SnackBar(
+      content: Text('PDF エクスポート機能は開発中です'),
+       backgroundColor: AppTheme.primaryColor,
+     ),
+   );
+ }
 
   void _exportToHTML() {
     // TODO: HTML生成の実装

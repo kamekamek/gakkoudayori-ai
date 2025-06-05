@@ -3,7 +3,7 @@ project_id: "yutori-kyoshitsu"  # 実際のプロジェクトIDに変更して�
 
 # 有効化が必要なサービス
 required_services:
-  - cloudsql.googleapis.com        # Cloud SQL (Firestore)
+
   - firestore.googleapis.com       # Firestore
   - storage.googleapis.com         # Cloud Storage
   - run.googleapis.com             # Cloud Run

@@ -29,6 +29,9 @@ class AppState extends ChangeNotifier {
   
   // Season management
   void setSeason(int seasonIndex) {
+    if (seasonIndex < 0 || seasonIndex > 3) {
+      throw ArgumentError('Season index must be between 0 and 3');
+    }
     _currentSeasonIndex = seasonIndex;
     notifyListeners();
   }
