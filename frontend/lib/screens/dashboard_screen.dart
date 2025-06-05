@@ -25,20 +25,85 @@ class DashboardScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildWelcomeSection(context),
-            const SizedBox(height: 24),
-            _buildQuickActions(context),
-            const SizedBox(height: 24),
-            _buildSeasonSelector(context),
-            const SizedBox(height: 24),
-            _buildRecentDocuments(context),
-          ],
-        ),
+      body: CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.all(16),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                _buildWelcomeSection(context),
+                const SizedBox(height: 24),
+                _buildSeasonSelector(context),
+                const SizedBox(height: 24),
+                Text(
+                  'クイックアクション',
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ).animate().fadeIn(
+                  delay: const Duration(milliseconds: 200),
+                  duration: const Duration(milliseconds: 600),
+                ),
+                const SizedBox(height: 16),
+              ]),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: SliverGrid.count(
+              crossAxisCount: 2,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              childAspectRatio: 1.5,
+              children: [
+                QuickActionButton(
+                  icon: LucideIcons.mic,
+                  title: '音声で作成',
+                  subtitle: 'ワンタップ録音',
+                  color: AppTheme.primaryColor,
+                  onTap: () => _startVoiceRecording(context),
+                ).animate().fadeIn(
+                  delay: const Duration(milliseconds: 200),
+                  duration: const Duration(milliseconds: 600),
+                ),
+                QuickActionButton(
+                  icon: LucideIcons.edit,
+                  title: '文字で作成',
+                  subtitle: 'テキスト入力',
+                  color: AppTheme.secondaryColor,
+                  onTap: () => context.push('/editor'),
+                ).animate().fadeIn(
+                  delay: const Duration(milliseconds: 300),
+                  duration: const Duration(milliseconds: 600),
+                ),
+                QuickActionButton(
+                  icon: LucideIcons.image,
+                  title: 'テンプレート',
+                  subtitle: 'デザイン選択',
+                  color: AppTheme.accentColor,
+                  onTap: () => _showTemplateSelector(context),
+                ).animate().fadeIn(
+                  delay: const Duration(milliseconds: 400),
+                  duration: const Duration(milliseconds: 600),
+                ),
+                QuickActionButton(
+                  icon: LucideIcons.history,
+                  title: '履歴から複製',
+                  subtitle: '過去の通信',
+                  color: Colors.purple,
+                  onTap: () => _showDocumentHistory(context),
+                ).animate().fadeIn(
+                  delay: const Duration(milliseconds: 500),
+                  duration: const Duration(milliseconds: 600),
+                ),
+              ],
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.all(16),
+            sliver: SliverToBoxAdapter(
+              child: _buildRecentDocuments(context),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/editor'),
@@ -123,59 +188,7 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickActions(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'クイックアクション',
-          style: Theme.of(context).textTheme.headlineMedium,
-        ),
-        const SizedBox(height: 16),
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          childAspectRatio: 1.5,
-          children: [
-            QuickActionButton(
-              icon: LucideIcons.mic,
-              title: '音声で作成',
-              subtitle: 'ワンタップ録音',
-              color: AppTheme.primaryColor,
-              onTap: () => _startVoiceRecording(context),
-            ),
-            QuickActionButton(
-              icon: LucideIcons.edit,
-              title: '文字で作成',
-              subtitle: 'テキスト入力',
-              color: AppTheme.secondaryColor,
-              onTap: () => context.push('/editor'),
-            ),
-            QuickActionButton(
-              icon: LucideIcons.image,
-              title: 'テンプレート',
-              subtitle: 'デザイン選択',
-              color: AppTheme.accentColor,
-              onTap: () => _showTemplateSelector(context),
-            ),
-            QuickActionButton(
-              icon: LucideIcons.history,
-              title: '履歴から複製',
-              subtitle: '過去の通信',
-              color: Colors.purple,
-              onTap: () => _showDocumentHistory(context),
-            ),
-          ],
-        ),
-      ],
-    ).animate().fadeIn(
-      delay: const Duration(milliseconds: 200),
-      duration: const Duration(milliseconds: 600),
-    );
-  }
+
 
   Widget _buildSeasonSelector(BuildContext context) {
     final appState = context.watch<AppState>();
@@ -255,42 +268,61 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  void _startVoiceRecording(BuildContext context) {
+  void _startVoiceRecording(BuildContext context) async {
     final appState = context.read<AppState>();
+
+    // マイク権限チェック
+    if (!await appState.ensureMicPermission()) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('マイク権限が必要です'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
+
     appState.startRecording();
     
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('音声録音中'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              LucideIcons.mic,
-              size: 48,
-              color: AppTheme.errorColor,
-            ),
-            const SizedBox(height: 16),
-            const Text('録音中です...'),
-            const SizedBox(height: 16),
-            LinearProgressIndicator(
-              backgroundColor: Colors.grey[300],
-              valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+      builder: (context) => WillPopScope(
+        onWillPop: () async {
+          appState.stopRecording();
+          return true;
+        },
+        child: AlertDialog(
+          title: const Text('音声録音中'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                LucideIcons.mic,
+                size: 48,
+                color: AppTheme.errorColor,
+              ),
+              const SizedBox(height: 16),
+              const Text('録音中です...'),
+              const SizedBox(height: 16),
+              LinearProgressIndicator(
+                backgroundColor: Colors.grey[300],
+                valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                appState.stopRecording();
+                Navigator.of(context).pop();
+                context.push('/editor');
+              },
+              child: const Text('停止'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              appState.stopRecording();
-              Navigator.of(context).pop();
-              context.push('/editor');
-            },
-            child: const Text('停止'),
-          ),
-        ],
       ),
     );
   }
