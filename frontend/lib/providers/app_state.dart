@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
+import '../models/document.dart';
 
 class AppState extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.light;
   int _currentSeasonIndex = 0; // 0: spring, 1: summer, 2: autumn, 3: winter
   bool _isRecording = false;
   String _currentTranscription = '';
-  List<String> _recentDocuments = [];
+  List<Document> _recentDocuments = [];
+  bool _isLoadingDocuments = false;
   
   // Getters
   ThemeMode get themeMode => _themeMode;
   int get currentSeasonIndex => _currentSeasonIndex;
   bool get isRecording => _isRecording;
   String get currentTranscription => _currentTranscription;
-  List<String> get recentDocuments => _recentDocuments;
+  List<Document> get recentDocuments => _recentDocuments;
+  bool get isLoadingDocuments => _isLoadingDocuments;
   
   // Theme management
   void toggleTheme() {
@@ -73,8 +76,9 @@ class AppState extends ChangeNotifier {
   }
   
   // Document management
-  void addRecentDocument(String documentId) {
-    _recentDocuments.insert(0, documentId);
+  void addRecentDocument(Document document) {
+    _recentDocuments.removeWhere((d) => d.id == document.id);
+    _recentDocuments.insert(0, document);
     if (_recentDocuments.length > 10) {
       _recentDocuments = _recentDocuments.take(10).toList();
     }
@@ -82,7 +86,66 @@ class AppState extends ChangeNotifier {
   }
   
   void removeRecentDocument(String documentId) {
-    _recentDocuments.remove(documentId);
+    _recentDocuments.removeWhere((d) => d.id == documentId);
     notifyListeners();
+  }
+
+  Future<void> loadRecentDocuments() async {
+    _isLoadingDocuments = true;
+    notifyListeners();
+
+    try {
+      // TODO: 実際はFirestoreから取得
+      // 現在はサンプルデータを使用
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      final now = DateTime.now();
+      _recentDocuments = [
+        Document(
+          id: '1',
+          title: '運動会の振り返り',
+          createdAt: now.subtract(const Duration(days: 2)),
+          updatedAt: now.subtract(const Duration(days: 2)),
+          thumbnail: '🏃‍♂️',
+          status: DocumentStatus.published,
+          content: '今日は運動会でした...',
+          views: 45,
+        ),
+        Document(
+          id: '2',
+          title: '梅雨の過ごし方',
+          createdAt: now.subtract(const Duration(days: 4)),
+          updatedAt: now.subtract(const Duration(days: 4)),
+          thumbnail: '☔',
+          status: DocumentStatus.draft,
+          content: '梅雨の季節がやってきました...',
+          views: 0,
+        ),
+        Document(
+          id: '3',
+          title: '5月の学級だより',
+          createdAt: now.subtract(const Duration(days: 7)),
+          updatedAt: now.subtract(const Duration(days: 7)),
+          thumbnail: '🌸',
+          status: DocumentStatus.published,
+          content: '新学期が始まって1ヶ月...',
+          views: 78,
+        ),
+      ];
+    } catch (e) {
+      // エラーハンドリング
+      _recentDocuments = [];
+    } finally {
+      _isLoadingDocuments = false;
+      notifyListeners();
+    }
+  }
+
+  void updateDocument(Document document) {
+    final index = _recentDocuments.indexWhere((d) => d.id == document.id);
+    if (index != -1) {
+      _recentDocuments[index] = document;
+      notifyListeners();
+    }
   }
 }

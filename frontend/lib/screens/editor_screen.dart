@@ -6,6 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/app_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/voice_input_panel.dart';
+import '../models/template.dart';
 import '../widgets/text_editor_panel.dart';
 import '../widgets/preview_panel.dart';
 
@@ -301,24 +302,165 @@ class _EditorScreenState extends State<EditorScreen>
   }
 
   void _showTemplateDialog(BuildContext context) {
+    final templates = Template.getPredefinedTemplates();
+    Template? selectedTemplate;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('テンプレート選択'),
-        content: const Text('どのテンプレートを適用しますか？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('キャンセル'),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('テンプレート選択'),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 400,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '使用したいテンプレートを選択してください',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: templates.length,
+                    itemBuilder: (context, index) {
+                      final template = templates[index];
+                      final isSelected = selectedTemplate?.id == template.id;
+                      
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        elevation: isSelected ? 3 : 1,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: isSelected
+                              ? BorderSide(color: AppTheme.primaryColor, width: 2)
+                              : BorderSide.none,
+                        ),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                            child: Text(
+                              template.thumbnail,
+                              style: const TextStyle(fontSize: 20),
+                            ),
+                          ),
+                          title: Text(
+                            template.name,
+                            style: TextStyle(
+                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                            ),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(template.description),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.secondaryColor.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      template.category,
+                                      style: const TextStyle(fontSize: 10),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          trailing: isSelected
+                              ? const Icon(
+                                  LucideIcons.check,
+                                  color: AppTheme.primaryColor,
+                                )
+                              : const Icon(LucideIcons.chevronRight),
+                          onTap: () {
+                            setDialogState(() {
+                              selectedTemplate = template;
+                            });
+                          },
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                if (selectedTemplate != null) ...[
+                  const Divider(),
+                  Text(
+                    'プレビュー',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    height: 100,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[50],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: SingleChildScrollView(
+                      child: Text(
+                        selectedTemplate!.content,
+                        style: Theme.of(context).textTheme.bodySmall,
+                        maxLines: 6,
+                        overflow: TextOverflow.fade,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              // TODO: テンプレート適用処理
-            },
-            child: const Text('適用'),
-          ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('キャンセル'),
+            ),
+            ElevatedButton(
+              onPressed: selectedTemplate != null
+                  ? () {
+                      Navigator.of(context).pop();
+                      _applyTemplate(selectedTemplate!);
+                    }
+                  : null,
+              child: const Text('適用'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _applyTemplate(Template template) {
+    // TODO: 実際のエディタにテンプレート内容を挿入する処理
+    // 現在はスナックバーで確認
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('「${template.name}」テンプレートを適用しました'),
+        backgroundColor: AppTheme.primaryColor,
+        action: SnackBarAction(
+          label: '元に戻す',
+          textColor: Colors.white,
+          onPressed: () {
+            // TODO: 元に戻す処理
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('テンプレートの適用を取り消しました'),
+                backgroundColor: AppTheme.secondaryColor,
+              ),
+            );
+          },
+        ),
       ),
     );
   }
