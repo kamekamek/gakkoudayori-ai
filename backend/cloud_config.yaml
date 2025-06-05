@@ -1,5 +1,9 @@
 # Google Cloud サービス設定
-project_id: "yutori-kyoshitsu"  # 実際のプロジェクトIDに変更してください
+# backend/cloud_config.yaml
+
+
++project_id: ${GOOGLE_CLOUD_PROJECT}  # 環境変数から取得
+
 
 # 有効化が必要なサービス
 required_services:

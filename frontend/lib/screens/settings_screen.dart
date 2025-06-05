@@ -14,6 +14,8 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  String _selectedAccuracy = 'balanced'; // デフォルトはバランス設定
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -528,48 +530,88 @@ FutureBuilder<int>(
   }
 
   void _showAccuracySettings(BuildContext context) {
+    // ダイアログ内で使用する一時的な選択状態
+    String tempSelectedAccuracy = _selectedAccuracy;
+    
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('音声認識精度設定'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            RadioListTile<String>(
-              title: const Text('速度重視'),
-              subtitle: const Text('高速だが精度は標準'),
-              value: 'speed',
-              groupValue: 'balanced',
-              onChanged: (value) {
-                // TODO: 設定保存
-              },
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('音声認識精度設定'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              RadioListTile<String>(
+                title: const Text('速度重視'),
+                subtitle: const Text('高速だが精度は標準'),
+                value: 'speed',
+                groupValue: tempSelectedAccuracy,
+                onChanged: (value) {
+                  setDialogState(() {
+                    tempSelectedAccuracy = value!;
+                  });
+                },
+              ),
+              RadioListTile<String>(
+                title: const Text('バランス'),
+                subtitle: const Text('速度と精度のバランス（推奨）'),
+                value: 'balanced',
+                groupValue: tempSelectedAccuracy,
+                onChanged: (value) {
+                  setDialogState(() {
+                    tempSelectedAccuracy = value!;
+                  });
+                },
+              ),
+              RadioListTile<String>(
+                title: const Text('精度重視'),
+                subtitle: const Text('時間をかけて高精度で認識'),
+                value: 'accuracy',
+                groupValue: tempSelectedAccuracy,
+                onChanged: (value) {
+                  setDialogState(() {
+                    tempSelectedAccuracy = value!;
+                  });
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('キャンセル'),
             ),
-            RadioListTile<String>(
-              title: const Text('バランス'),
-              subtitle: const Text('速度と精度のバランス（推奨）'),
-              value: 'balanced',
-              groupValue: 'balanced',
-              onChanged: (value) {
-                // TODO: 設定保存
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _selectedAccuracy = tempSelectedAccuracy;
+                });
+                Navigator.of(context).pop();
+                
+                // 設定保存完了メッセージ
+                String accuracyText;
+                switch (_selectedAccuracy) {
+                  case 'speed':
+                    accuracyText = '速度重視';
+                    break;
+                  case 'accuracy':
+                    accuracyText = '精度重視';
+                    break;
+                  default:
+                    accuracyText = 'バランス';
+                }
+                
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('音声認識精度を「$accuracyText」に設定しました'),
+                    backgroundColor: AppTheme.primaryColor,
+                  ),
+                );
               },
-            ),
-            RadioListTile<String>(
-              title: const Text('精度重視'),
-              subtitle: const Text('時間をかけて高精度で認識'),
-              value: 'accuracy',
-              groupValue: 'balanced',
-              onChanged: (value) {
-                // TODO: 設定保存
-              },
+              child: const Text('保存'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('閉じる'),
-          ),
-        ],
       ),
     );
   }

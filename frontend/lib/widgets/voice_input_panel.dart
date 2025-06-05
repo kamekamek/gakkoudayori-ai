@@ -331,6 +331,7 @@ class _VoiceInputPanelState extends State<VoiceInputPanel>
       
       // サンプルの音声認識結果
       Future.delayed(const Duration(milliseconds: 500), () {
+        if (!mounted) return; // ウィジェットが破棄されている場合は処理をスキップ
         appState.updateTranscription(
           '今日は運動会の練習をしました。子どもたちはとても頑張っていて、'
           'リレーの練習では白熱した競争が繰り広げられました。'
