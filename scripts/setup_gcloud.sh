@@ -43,9 +43,9 @@ echo -e "${GREEN}✅ すべてのAPIが有効化されました${NC}"
 
 # Firestore データベース設定
 echo -e "${YELLOW}🗄️ Firestore データベースを設定中...${NC}"
-if ! gcloud firestore databases describe --location=asia-northeast1 --quiet >/dev/null 2>&1; then
-    echo -e "  📊 Firestore データベースを作成中..."
-    gcloud firestore databases create --location=asia-northeast1 --quiet
+if ! gcloud firestore databases describe --region=asia-northeast1 --quiet >/dev/null 2>&1; then
+@@
+    gcloud firestore databases create --region=asia-northeast1 --quiet
     echo -e "${GREEN}✅ Firestore データベースが作成されました${NC}"
 else
     echo -e "${GREEN}✅ Firestore データベースは既に存在します${NC}"

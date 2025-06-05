@@ -62,9 +62,9 @@ class _TextEditorPanelState extends State<TextEditorPanel> {
           ),
         ),
         const Spacer(),
-        IconButton(
-          icon: const Icon(LucideIcons.undo),
-          onPressed: () => _undo(),
+IconButton(
+  icon: const Icon(LucideIcons.undo),
+  onPressed: _hasHistory ? _undo : null,
           tooltip: '元に戻す',
         ),
         IconButton(
@@ -286,8 +286,15 @@ class _TextEditorPanelState extends State<TextEditorPanel> {
   }
 
   void _formatText(String format) {
-    final selection = _contentController.selection;
-    if (selection.isValid) {
+final selection = _contentController.selection;
+if (!selection.isValid) return;
+if (selection.isCollapsed) {
+  // Expand to a zero-width range at the caret so replaceRange still works.
+  _contentController.selection = selection.copyWith(
+    baseOffset: selection.start,
+    extentOffset: selection.start,
+  );
+}
       final selectedText = _contentController.text.substring(
         selection.start,
         selection.end,

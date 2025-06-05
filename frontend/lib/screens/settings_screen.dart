@@ -102,18 +102,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const Divider(),
             
             // 自動保存
-            SwitchListTile(
-              secondary: const Icon(
-                LucideIcons.save,
-                color: AppTheme.primaryColor,
-              ),
-              title: const Text('自動保存'),
-              subtitle: const Text('編集内容を自動的に保存'),
-              value: true,
-              onChanged: (value) {
-                // TODO: 自動保存設定の実装
-              },
-            ),
+SwitchListTile(
+   secondary: const Icon(
+     LucideIcons.save,
+     color: AppTheme.primaryColor,
+   ),
+   title: const Text('自動保存'),
+   subtitle: const Text('編集内容を自動的に保存'),
+  value: false,
+   onChanged: (value) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('自動保存機能は開発中です'),
+        backgroundColor: AppTheme.primaryColor,
+      ),
+    );
+   },
+  // Disable until implemented
+  enabled: false,
+ ),
           ],
         ),
       ),
@@ -249,32 +256,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const Divider(),
             
             // Google Drive
-            ListTile(
-              leading: Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: Colors.blue,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Icon(
-                  LucideIcons.folderOpen,
-                  color: Colors.white,
-                  size: 18,
-                ),
-              ),
-              title: const Text('Google Drive'),
-              subtitle: const Text('接続済み'),
-              trailing: ElevatedButton(
-                onPressed: () => _configureGoogleDrive(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                ),
-                child: const Text('設定'),
-              ),
-            ),
+ListTile(
+   leading: Container(
+     width: 32,
+     height: 32,
+     decoration: BoxDecoration(
+       color: Colors.blue,
+       borderRadius: BorderRadius.circular(6),
+     ),
+     child: const Icon(
+       LucideIcons.folderOpen,
+       color: Colors.white,
+       size: 18,
+     ),
+   ),
+   title: const Text('Google Drive'),
+  subtitle: Text(_isDriveConnected ? '接続済み' : '未接続'),
+   trailing: ElevatedButton(
+    onPressed: _isDriveConnected ? () => _configureGoogleDrive(context) : null,
+     style: ElevatedButton.styleFrom(
+       backgroundColor: Colors.blue,
+       foregroundColor: Colors.white,
+       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+     ),
+    child: Text(_isDriveConnected ? '設定' : '接続'),
+   ),
+ ),
             
             const Divider(),
             
@@ -359,12 +366,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     size: 20,
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    '登録済み用語: 15件',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.primaryColor,
-                      fontWeight: FontWeight.w500,
-                    ),
+FutureBuilder<int>(
+  future: _getUserDictionaryCount(),
+  builder: (context, snapshot) {
+    return Text(
+      '登録済み用語: ${snapshot.data ?? 0}件',
+       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+         color: AppTheme.primaryColor,
+         fontWeight: FontWeight.w500,
+       ),
+    );
+  },
+),
                   ),
                 ],
               ),
@@ -676,19 +689,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('キャンセル'),
           ),
-          ElevatedButton(
-            onPressed: () {
-              // TODO: 用語登録処理
-              Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('用語を追加しました'),
-                  backgroundColor: AppTheme.accentColor,
-                ),
-              );
-            },
-            child: const Text('追加'),
-          ),
+ElevatedButton(
+   onPressed: () {
+    final word = wordController.text.trim();
+    final reading = readingController.text.trim();
+    
+    if (word.isEmpty || reading.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('用語と読み方を入力してください'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
+    
+    // Validate reading contains only hiragana
+    final hiraganaRegex = RegExp(r'^[ぁ-ん]+$');
+    if (!hiraganaRegex.hasMatch(reading)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('読み方はひらがなで入力してください'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
+    
+     // TODO: 用語登録処理
+     Navigator.of(context).pop();
+     ScaffoldMessenger.of(context).showSnackBar(
+       const SnackBar(
+        content: Text('用語「$word」を追加しました'),
+         backgroundColor: AppTheme.accentColor,
+       ),
+     );
+   },
+   child: const Text('追加'),
+ ),
         ],
       ),
     );

@@ -54,7 +54,10 @@ class CloudConfig:
                 str(credentials_path)
             )
         except Exception as e:
-            print(f"Warning: 認証情報の読み込みに失敗: {e}")
+            import logging
+            logging.warning(f"認証情報の読み込みに失敗: {e}")
+            # Consider raising exception in production environments
+            # raise RuntimeError(f"Failed to load credentials: {e}")
             return None
 
     def get_firestore_client(self) -> firestore.Client:
@@ -92,33 +95,66 @@ class CloudConfig:
 cloud_config = CloudConfig()
 
 
-def test_connections():
-    """接続テスト関数"""
+def test_connections(dry_run: bool = True):
+    """
+    接続テスト関数
+    
+    Args:
+        dry_run (bool): Trueの場合は実際の操作をスキップしてモック操作を実行。
+                       Falseの場合は実際のGoogle Cloudリソースに対して操作を実行。
+    """
     print(f"🔧 Google Cloud 接続テスト開始...")
     print(f"📋 プロジェクトID: {cloud_config.project_id}")
+    
+    if dry_run:
+        print("🔒 DRY RUN モード: 実際のリソース操作はスキップされます")
+    else:
+        print("⚠️  警告: 実際のGoogle Cloudリソースに対して操作を実行します")
+        print("⚠️  これにより実際のリソースの作成・削除が行われます")
+        
+        # ユーザー確認プロンプト
+        try:
+            confirmation = input("続行しますか？ (yes/no): ").lower().strip()
+            if confirmation not in ['yes', 'y']:
+                print("❌ 操作がキャンセルされました")
+                return
+        except (EOFError, KeyboardInterrupt):
+            print("\n❌ 操作がキャンセルされました")
+            return
     
     # Firestore テスト
     try:
         db = cloud_config.get_firestore_client()
-        # テスト用ドキュメント作成
-        test_ref = db.collection('health_check').document('test')
-        test_ref.set({
-            'timestamp': firestore.SERVER_TIMESTAMP,
-            'status': 'success',
-            'message': 'Firestore connection successful'
-        })
         
-        # ドキュメント読み取り
-        doc = test_ref.get()
-        if doc.exists:
-            print("✅ Firestore 接続成功")
-            # テストドキュメント削除
-            test_ref.delete()
+        if dry_run:
+            print("🔍 [DRY RUN] Firestore クライアント初期化チェック")
+            if db:
+                print("✅ [DRY RUN] Firestore 接続設定成功 (実際の操作はスキップ)")
+            else:
+                print("❌ [DRY RUN] Firestore 接続設定失敗")
         else:
-            print("❌ Firestore 接続失敗")
+            # テスト用ドキュメント作成
+            test_ref = db.collection('health_check').document('test')
+            test_ref.set({
+                'timestamp': firestore.SERVER_TIMESTAMP,
+                'status': 'success',
+                'message': 'Firestore connection successful'
+            })
+            
+            # ドキュメント読み取り
+            doc = test_ref.get()
+            if doc.exists:
+                print("✅ Firestore 接続成功")
+                # テストドキュメント削除
+                test_ref.delete()
+            else:
+                print("❌ Firestore 接続失敗")
             
     except Exception as e:
-        print(f"❌ Firestore エラー: {e}")
+        if dry_run:
+            print(f"❌ [DRY RUN] Firestore 設定エラー: {e}")
+        else:
+            print(f"❌ Firestore エラー: {e}")
     
     # Cloud Storage テスト
     try:
@@ -126,30 +162,44 @@ def test_connections():
         bucket_name = cloud_config.get_bucket_name('uploads')
         bucket = storage_client.bucket(bucket_name)
         
-        # バケット存在確認
-        if bucket.exists():
-            print("✅ Cloud Storage 接続成功")
-            
-            # テストファイルアップロード
-            blob = bucket.blob('test/connection_test.txt')
-            blob.upload_from_string('Hello from ゆとり職員室!')
-            
-            # ファイルダウンロードテスト
-            content = blob.download_as_text()
-            if content == 'Hello from ゆとり職員室!':
-                print("✅ Cloud Storage ファイル操作成功")
-            
-            # テストファイル削除
-            blob.delete()
-            
+        if dry_run:
+            print("🔍 [DRY RUN] Cloud Storage クライアント初期化チェック")
+            if storage_client:
+                print("✅ [DRY RUN] Cloud Storage 接続設定成功 (実際の操作はスキップ)")
+                print(f"🔍 [DRY RUN] 対象バケット: {bucket_name}")
+            else:
+                print("❌ [DRY RUN] Cloud Storage 接続設定失敗")
         else:
-            print(f"❌ Cloud Storage バケット '{bucket_name}' が見つかりません")
+            # バケット存在確認
+            if bucket.exists():
+                print("✅ Cloud Storage 接続成功")
+                
+                # テストファイルアップロード
+                blob = bucket.blob('test/connection_test.txt')
+                blob.upload_from_string('Hello from ゆとり職員室!')
+                
+                # ファイルダウンロードテスト
+                content = blob.download_as_text()
+                if content == 'Hello from ゆとり職員室!':
+                    print("✅ Cloud Storage ファイル操作成功")
+                
+                # テストファイル削除
+                blob.delete()
+                
+            else:
+                print(f"❌ Cloud Storage バケット '{bucket_name}' が見つかりません")
             
     except Exception as e:
-        print(f"❌ Cloud Storage エラー: {e}")
+        if dry_run:
+            print(f"❌ [DRY RUN] Cloud Storage 設定エラー: {e}")
+        else:
+            print(f"❌ Cloud Storage エラー: {e}")
     
-    print("🎉 接続テスト完了")
+    mode_str = "[DRY RUN]" if dry_run else ""
+    print(f"🎉 {mode_str} 接続テスト完了")
 
 
 if __name__ == "__main__":
+    # デフォルトはdry_runモードで安全にテスト
+    # 実際のリソース操作を行う場合は test_connections(dry_run=False) を呼び出す
     test_connections() 

@@ -115,7 +115,7 @@ frontend/.metadata
 frontend/pubspec.lock
 
 # ビルド成果物
-frontend/web/build/
+frontend/build/web/
 frontend/android/app/build/
 frontend/ios/build/
 frontend/macos/build/
