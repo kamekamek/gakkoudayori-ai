@@ -1,0 +1,47 @@
+# Google Cloud サービス設定
+project_id: "yutori-kyoshitsu"  # 実際のプロジェクトIDに変更してください
+
+# 有効化が必要なサービス
+required_services:
+  - cloudsql.googleapis.com        # Cloud SQL (Firestore)
+  - firestore.googleapis.com       # Firestore
+  - storage.googleapis.com         # Cloud Storage
+  - run.googleapis.com             # Cloud Run
+  - aiplatform.googleapis.com      # Vertex AI (既に設定済み)
+  - speech.googleapis.com          # Speech-to-Text
+  - texttospeech.googleapis.com    # Text-to-Speech
+  - cloudfunctions.googleapis.com  # Cloud Functions
+  - cloudbuild.googleapis.com      # Cloud Build
+
+# 環境設定
+environments:
+  development:
+    location: "asia-northeast1"  # 東京リージョン
+    firestore_database: "(default)"
+    storage_bucket: "${project_id}-dev-storage"
+    
+  production:
+    location: "asia-northeast1"
+    firestore_database: "production"
+    storage_bucket: "${project_id}-prod-storage"
+
+# Firestore データベース設定
+firestore:
+  collections:
+    - users
+    - documents
+    - templates
+    - user_dictionaries
+    - settings
+
+# Cloud Storage バケット設定
+storage:
+  buckets:
+    - name: "${project_id}-uploads"
+      location: "asia-northeast1"
+      storage_class: "STANDARD"
+      public_access: false
+    - name: "${project_id}-templates"
+      location: "asia-northeast1" 
+      storage_class: "STANDARD"
+      public_access: true  # テンプレートファイル用 
