@@ -1,7 +1,7 @@
-from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi import FastAPI, HTTPException, Depends, Request, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from typing import Dict, Any, Optional
+from fastapi.responses import JSONResponse, StreamingResponse
+from typing import Dict, Any, Optional, List
 import uvicorn
 import os
 import io
@@ -159,6 +159,242 @@ async def delete_document(
         "deleted": True,
         "deleted_by": current_user['uid']
     }
+
+# === Cloud Storage API エンドポイント ===
+
+@app.post("/api/files/upload")
+async def upload_file(
+    file: UploadFile = File(...),
+    user_id: str = Form(...),
+    file_type: str = Form(...),
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    ファイルアップロード
+    
+    Args:
+        file: アップロードファイル
+        user_id: ユーザーID  
+        file_type: ファイルタイプ（audio, pdf, image, template）
+    
+    Returns:
+        dict: アップロード結果
+    """
+    try:
+        # 認証チェック: 自分のファイルのみアップロード可能
+        if user_id != current_user['uid']:
+            raise HTTPException(status_code=403, detail="他のユーザーのファイルはアップロードできません")
+        
+        # ファイル内容読み込み
+        file_content = await file.read()
+        
+        # ファイルサイズチェック（50MB制限）
+        if len(file_content) > 50 * 1024 * 1024:
+            raise HTTPException(status_code=413, detail="ファイルサイズが大きすぎます（50MB以下）")
+        
+        # Cloud Storage サービスをインポート
+        from services.cloud_storage_service import cloud_storage_service
+        
+        # アップロード実行
+        result = cloud_storage_service.upload_file(
+            file_content=file_content,
+            filename=file.filename,
+            user_id=user_id,
+            file_type=file_type,
+            content_type=file.content_type
+        )
+        
+        if result.success:
+            return {
+                "success": True,
+                "file_path": result.file_path,
+                "file_url": result.file_url,
+                "filename": file.filename,
+                "size": len(file_content)
+            }
+        else:
+            raise HTTPException(status_code=500, detail=result.error_message)
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"アップロードに失敗しました: {str(e)}")
+
+@app.get("/api/files/download/{user_id}")
+async def download_file(
+    user_id: str,
+    file_path: str,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    ファイルダウンロード
+    
+    Args:
+        user_id: ユーザーID（権限チェック用）
+        file_path: ファイルパス
+    
+    Returns:
+        StreamingResponse: ファイル内容
+    """
+    try:
+        # 認証チェック: 自分のファイルのみダウンロード可能
+        if user_id != current_user['uid']:
+            raise HTTPException(status_code=403, detail="他のユーザーのファイルはダウンロードできません")
+        
+        # パスが所有者のものかチェック
+        if not file_path.startswith(f"users/{user_id}/"):
+            raise HTTPException(status_code=403, detail="ファイルアクセス権限がありません")
+        
+        # Cloud Storage サービスをインポート
+        from services.cloud_storage_service import cloud_storage_service
+        
+        # ファイル内容取得
+        file_content = cloud_storage_service.download_file(file_path)
+        
+        # メタデータ取得
+        metadata = cloud_storage_service.get_file_metadata(file_path)
+        
+        # ストリーミングレスポンス作成
+        return StreamingResponse(
+            io.BytesIO(file_content),
+            media_type=metadata.content_type if metadata else "application/octet-stream",
+            headers={
+                "Content-Disposition": f"attachment; filename={metadata.filename if metadata else 'download'}"
+            }
+        )
+        
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="ファイルが見つかりません")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"ダウンロードに失敗しました: {str(e)}")
+
+@app.delete("/api/files/{user_id}")
+async def delete_file(
+    user_id: str,
+    file_path: str,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    ファイル削除
+    
+    Args:
+        user_id: ユーザーID（権限チェック用）
+        file_path: ファイルパス
+    
+    Returns:
+        dict: 削除結果
+    """
+    try:
+        # 認証チェック: 自分のファイルのみ削除可能
+        if user_id != current_user['uid']:
+            raise HTTPException(status_code=403, detail="他のユーザーのファイルは削除できません")
+        
+        # パスが所有者のものかチェック
+        if not file_path.startswith(f"users/{user_id}/"):
+            raise HTTPException(status_code=403, detail="ファイルアクセス権限がありません")
+        
+        # Cloud Storage サービスをインポート
+        from services.cloud_storage_service import cloud_storage_service
+        
+        # ファイル削除実行
+        success = cloud_storage_service.delete_file(file_path)
+        
+        if success:
+            return {"success": True, "message": "ファイルを削除しました"}
+        else:
+            raise HTTPException(status_code=404, detail="ファイルが見つかりません")
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"削除に失敗しました: {str(e)}")
+
+@app.get("/api/files/list/{user_id}")
+async def list_user_files(
+    user_id: str,
+    file_type: Optional[str] = None,
+    limit: int = 50,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    ユーザーファイル一覧取得
+    
+    Args:
+        user_id: ユーザーID
+        file_type: ファイルタイプフィルタ（オプション）
+        limit: 取得件数上限
+    
+    Returns:
+        List[dict]: ファイル一覧
+    """
+    try:
+        # 認証チェック: 自分のファイルのみ取得可能
+        if user_id != current_user['uid']:
+            raise HTTPException(status_code=403, detail="他のユーザーのファイルは表示できません")
+        
+        # Cloud Storage サービスをインポート
+        from services.cloud_storage_service import cloud_storage_service
+        
+        files = cloud_storage_service.list_user_files(
+            user_id=user_id,
+            file_type=file_type,
+            limit=limit
+        )
+        
+        return [
+            {
+                "filename": f.filename,
+                "file_path": f.file_path,
+                "size": f.size,
+                "created_at": f.created_at.isoformat(),
+                "content_type": f.content_type,
+                "file_type": f.file_type
+            }
+            for f in files
+        ]
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"一覧取得に失敗しました: {str(e)}")
+
+@app.get("/api/files/signed-url/{user_id}")
+async def get_signed_url(
+    user_id: str,
+    file_path: str,
+    expiration_minutes: int = 60,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    署名付きURL取得
+    
+    Args:
+        user_id: ユーザーID（権限チェック用）
+        file_path: ファイルパス
+        expiration_minutes: 有効期限（分）
+    
+    Returns:
+        dict: 署名付きURL
+    """
+    try:
+        # 認証チェック: 自分のファイルのみアクセス可能
+        if user_id != current_user['uid']:
+            raise HTTPException(status_code=403, detail="他のユーザーのファイルにはアクセスできません")
+        
+        # パスが所有者のものかチェック
+        if not file_path.startswith(f"users/{user_id}/"):
+            raise HTTPException(status_code=403, detail="ファイルアクセス権限がありません")
+        
+        # Cloud Storage サービスをインポート
+        from services.cloud_storage_service import cloud_storage_service
+        
+        # 署名付きURL生成
+        signed_url = cloud_storage_service.get_signed_url(
+            file_path=file_path,
+            expiration_minutes=expiration_minutes
+        )
+        
+        return {
+            "signed_url": signed_url,
+            "expiration_minutes": expiration_minutes
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"URL生成に失敗しました: {str(e)}")
 
 # AI processing endpoints (認証必須)
 @app.post("/ai/speech-to-text")

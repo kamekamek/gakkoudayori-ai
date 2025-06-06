@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
+import 'html_editor_panel.dart';
 
 class TextEditorPanel extends StatefulWidget {
   const TextEditorPanel({super.key});
@@ -18,6 +19,7 @@ class _TextEditorPanelState extends State<TextEditorPanel> {
   final FocusNode _titleFocus = FocusNode();
   final FocusNode _contentFocus = FocusNode();
   bool _hasHistory = false;
+  bool _isHtmlMode = true; // HTMLエディタモードの切り替え
 
   @override
   void dispose() {
@@ -40,7 +42,9 @@ class _TextEditorPanelState extends State<TextEditorPanel> {
           _buildTitleEditor(context),
           const SizedBox(height: 16),
           Expanded(
-            child: _buildContentEditor(context),
+            child: _isHtmlMode 
+                ? const HtmlEditorPanel()
+                : _buildContentEditor(context),
           ),
           const SizedBox(height: 16),
           _buildToolbar(context),
@@ -63,6 +67,41 @@ class _TextEditorPanelState extends State<TextEditorPanel> {
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
+        ),
+        const SizedBox(width: 16),
+        // HTMLモード切り替えスイッチ
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppTheme.primaryColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                _isHtmlMode ? LucideIcons.code : LucideIcons.fileText,
+                size: 16,
+                color: AppTheme.primaryColor,
+              ),
+              const SizedBox(width: 4),
+              Switch(
+                value: _isHtmlMode,
+                onChanged: (value) => setState(() => _isHtmlMode = value),
+                activeColor: AppTheme.primaryColor,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                _isHtmlMode ? 'HTML' : 'TEXT',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.primaryColor,
+                ),
+              ),
+            ],
+          ),
         ),
         const Spacer(),
         IconButton(
