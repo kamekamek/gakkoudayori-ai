@@ -41,13 +41,12 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyDhVBhm6_QZ8YXXkJyYvJ8oWx4dY7WZz9c',
-    appId: '1:123456789012:web:abcdef1234567890',
-    messagingSenderId: '123456789012',
+    apiKey: 'AIzaSyAROJC6oomnN4tl1Sv27fcE5yaB_vIzXxc',
+    appId: '1:309920383305:web:fa0ae9890d4e7bf2355a98',
+    messagingSenderId: '309920383305',
     projectId: 'yutori-kyoshitu',
     authDomain: 'yutori-kyoshitu.firebaseapp.com',
-    storageBucket: 'yutori-kyoshitu.appspot.com',
-    measurementId: 'G-XXXXXXXXXX',
+    storageBucket: 'yutori-kyoshitu.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(

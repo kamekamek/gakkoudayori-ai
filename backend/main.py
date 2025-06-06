@@ -4,6 +4,8 @@ from fastapi.responses import JSONResponse
 from typing import Dict, Any, Optional
 import uvicorn
 import os
+import io
+import time
 from dotenv import load_dotenv
 
 # 環境変数を読み込み
@@ -164,13 +166,203 @@ async def speech_to_text(
     request: Request,
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    """音声をテキストに変換"""
-    # TODO: Speech-to-Text API統合
-    return {
-        "text": "サンプル変換テキスト",
-        "confidence": 0.95,
-        "processed_by": current_user['uid']
-    }
+    """音声をテキストに変換（ノイズ抑制機能込み）"""
+    try:
+        # リクエストボディから音声データとオプションを取得
+        form_data = await request.form()
+        audio_file = form_data.get('audio')
+        custom_words = form_data.get('custom_words', '').split(',') if form_data.get('custom_words') else []
+        noise_reduction = form_data.get('noise_reduction', 'true').lower() == 'true'
+        
+        if not audio_file:
+            raise HTTPException(status_code=400, detail="音声ファイルが指定されていません")
+        
+        # 音声ファイルを読み込み
+        audio_content = await audio_file.read()
+        
+        # Speech-to-Text サービスを呼び出し
+        from services.speech_service import speech_service
+        
+        result = await speech_service.transcribe_audio(
+            audio_content=audio_content,
+            custom_words=custom_words,
+            noise_reduction=noise_reduction
+        )
+        
+        # ユーザー情報を追加
+        result['processed_by'] = current_user['uid']
+        
+        return {
+            "status": "success",
+            "data": result,
+            "message": "音声認識が完了しました"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to process speech: {str(e)}")
+
+@app.post("/ai/stream-speech-to-text")
+async def stream_speech_to_text(
+    request: Request,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """リアルタイム音声認識（ストリーミング）"""
+    try:
+        form_data = await request.form()
+        audio_file = form_data.get('audio')
+        custom_words = form_data.get('custom_words', '').split(',') if form_data.get('custom_words') else []
+        
+        if not audio_file:
+            raise HTTPException(status_code=400, detail="音声ストリームが指定されていません")
+        
+        from services.speech_service import speech_service
+        
+        result = await speech_service.stream_recognize_audio(
+            audio_stream=audio_file.file,
+            custom_words=custom_words
+        )
+        
+        result['processed_by'] = current_user['uid']
+        
+        return {
+            "status": "success",
+            "data": result,
+            "message": "ストリーミング音声認識が完了しました"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to stream speech: {str(e)}")
+
+@app.post("/ai/user-dictionary")
+async def create_user_dictionary(
+    request: Request,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """ユーザー辞書を作成・更新"""
+    try:
+        body = await request.json()
+        words = body.get('words', [])
+        school_name = body.get('school_name')
+        grade_level = body.get('grade_level', 'elementary')
+        
+        if not words:
+            raise HTTPException(status_code=400, detail="辞書に追加する単語が指定されていません")
+        
+        from services.user_dictionary_service import user_dictionary_service
+        
+        result = await user_dictionary_service.create_user_dictionary(
+            user_id=current_user['uid'],
+            words=words,
+            school_name=school_name,
+            grade_level=grade_level
+        )
+        
+        return {
+            "status": "success",
+            "data": result,
+            "message": "ユーザー辞書が作成されました"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create user dictionary: {str(e)}")
+
+@app.get("/ai/user-dictionary")
+async def get_user_dictionary(
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """ユーザー辞書を取得"""
+    try:
+        from services.user_dictionary_service import user_dictionary_service
+        
+        result = await user_dictionary_service.get_user_dictionary(current_user['uid'])
+        
+        return {
+            "status": "success",
+            "data": result,
+            "message": "ユーザー辞書を取得しました"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get user dictionary: {str(e)}")
+
+@app.put("/ai/user-dictionary")
+async def update_user_dictionary(
+    request: Request,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """ユーザー辞書を更新（単語追加・削除）"""
+    try:
+        body = await request.json()
+        new_words = body.get('new_words', [])
+        remove_words = body.get('remove_words', [])
+        
+        from services.user_dictionary_service import user_dictionary_service
+        
+        result = await user_dictionary_service.update_user_dictionary(
+            user_id=current_user['uid'],
+            new_words=new_words,
+            remove_words=remove_words
+        )
+        
+        return {
+            "status": "success",
+            "data": result,
+            "message": "ユーザー辞書が更新されました"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update user dictionary: {str(e)}")
+
+@app.post("/ai/user-dictionary/import-csv")
+async def import_dictionary_csv(
+    request: Request,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """CSVファイルからユーザー辞書を一括インポート"""
+    try:
+        form_data = await request.form()
+        csv_file = form_data.get('csv_file')
+        
+        if not csv_file:
+            raise HTTPException(status_code=400, detail="CSVファイルが指定されていません")
+        
+        csv_content = (await csv_file.read()).decode('utf-8')
+        
+        from services.user_dictionary_service import user_dictionary_service
+        
+        result = await user_dictionary_service.import_from_csv(
+            user_id=current_user['uid'],
+            csv_content=csv_content
+        )
+        
+        return {
+            "status": "success",
+            "data": result,
+            "message": "CSVから辞書をインポートしました"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to import CSV: {str(e)}")
+
+@app.get("/ai/user-dictionary/export-csv")
+async def export_dictionary_csv(
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """ユーザー辞書をCSV形式でエクスポート"""
+    try:
+        from services.user_dictionary_service import user_dictionary_service
+        from fastapi.responses import StreamingResponse
+        
+        csv_content = await user_dictionary_service.export_to_csv(current_user['uid'])
+        
+        return StreamingResponse(
+            io.StringIO(csv_content),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=user_dictionary.csv"}
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to export CSV: {str(e)}")
 
 @app.post("/ai/enhance-text")
 async def enhance_text(
@@ -243,17 +435,26 @@ async def generate_headlines(
     request: Request,
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    """コンテンツから見出しを自動生成"""
+    """コンテンツから見出しを自動生成（トピック分割・適切な見出し候補提示）"""
     try:
         body = await request.json()
         content = body.get('content', '')
         max_headlines = body.get('max_headlines', 5)
+        topic_type = body.get('topic_type')  # 'event', 'study', 'announcement', 'daily'
+        grade_level = body.get('grade_level', 'elementary')
+        style = body.get('style', 'friendly')  # 'friendly', 'formal', 'energetic'
+        
+        if not content.strip():
+            raise HTTPException(status_code=400, detail="コンテンツが空です")
         
         from services.ai_service import ai_service
         
         result = await ai_service.generate_headlines(
             content=content,
-            max_headlines=max_headlines
+            max_headlines=max_headlines,
+            topic_type=topic_type,
+            grade_level=grade_level,
+            style=style
         )
         
         # ユーザー情報を追加
@@ -267,6 +468,160 @@ async def generate_headlines(
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate headlines: {str(e)}")
+
+@app.post("/ai/analyze-topics")
+async def analyze_content_topics(
+    request: Request,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """コンテンツのトピック分析"""
+    try:
+        body = await request.json()
+        content = body.get('content', '')
+        
+        if not content.strip():
+            raise HTTPException(status_code=400, detail="コンテンツが空です")
+        
+        from services.ai_service import ai_service
+        
+        # トピック分析を実行
+        topic_analysis = await ai_service._analyze_content_topics(content)
+        
+        result = {
+            "content_preview": content[:100] + "..." if len(content) > 100 else content,
+            "topic_analysis": topic_analysis,
+            "analyzed_by": current_user['uid'],
+            "timestamp": int(time.time())
+        }
+        
+        return {
+            "status": "success",
+            "data": result,
+            "message": "トピック分析が完了しました"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to analyze topics: {str(e)}")
+
+# カスタム指示機能エンドポイント
+@app.post("/ai/apply-custom-instruction")
+async def apply_custom_instruction(
+    request: Request,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """カスタム指示を適用してテキストを変換"""
+    try:
+        body = await request.json()
+        original_text = body.get('original_text', '')
+        instruction_id = body.get('instruction_id')  # プリセット指示ID
+        custom_instruction = body.get('custom_instruction')  # カスタム指示文
+        intensity = body.get('intensity', 'medium')  # 'light', 'medium', 'strong'
+        preserve_facts = body.get('preserve_facts', True)
+        
+        if not original_text.strip():
+            raise HTTPException(status_code=400, detail="変換対象のテキストが空です")
+        
+        if not instruction_id and not custom_instruction:
+            raise HTTPException(status_code=400, detail="プリセット指示IDまたはカスタム指示のいずれかを指定してください")
+        
+        from services.custom_instruction_service import custom_instruction_service
+        
+        result = await custom_instruction_service.apply_custom_instruction(
+            original_text=original_text,
+            instruction_id=instruction_id,
+            custom_instruction=custom_instruction,
+            intensity=intensity,
+            preserve_facts=preserve_facts
+        )
+        
+        # ユーザー情報を追加
+        result['applied_by'] = current_user['uid']
+        
+        return {
+            "status": "success",
+            "data": result,
+            "message": "カスタム指示が適用されました"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to apply custom instruction: {str(e)}")
+
+@app.get("/ai/preset-instructions")
+async def get_preset_instructions(
+    category: Optional[str] = None,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """プリセット指示一覧を取得"""
+    try:
+        from services.custom_instruction_service import custom_instruction_service
+        
+        result = await custom_instruction_service.get_preset_instructions(category=category)
+        
+        return {
+            "status": "success",
+            "data": result,
+            "message": "プリセット指示一覧を取得しました"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get preset instructions: {str(e)}")
+
+@app.post("/ai/user-instructions")
+async def create_user_instruction(
+    request: Request,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """ユーザー独自の指示を作成"""
+    try:
+        body = await request.json()
+        name = body.get('name', '')
+        instruction = body.get('instruction', '')
+        description = body.get('description')
+        examples = body.get('examples', [])
+        
+        if not name.strip():
+            raise HTTPException(status_code=400, detail="指示名が空です")
+        
+        if not instruction.strip():
+            raise HTTPException(status_code=400, detail="指示内容が空です")
+        
+        from services.custom_instruction_service import custom_instruction_service
+        
+        result = await custom_instruction_service.create_user_instruction(
+            user_id=current_user['uid'],
+            name=name,
+            instruction=instruction,
+            description=description,
+            examples=examples
+        )
+        
+        return {
+            "status": "success",
+            "data": result,
+            "message": "ユーザー指示が作成されました"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create user instruction: {str(e)}")
+
+@app.get("/ai/user-instructions")
+async def get_user_instructions(
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """ユーザーの指示一覧を取得"""
+    try:
+        from services.custom_instruction_service import custom_instruction_service
+        
+        result = await custom_instruction_service.get_user_instructions(current_user['uid'])
+        
+        return {
+            "status": "success",
+            "data": result,
+            "message": "ユーザー指示一覧を取得しました"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get user instructions: {str(e)}")
 
 # PDF generation endpoint (認証必須)
 @app.post("/export/pdf")

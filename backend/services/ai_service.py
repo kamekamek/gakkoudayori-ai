@@ -105,58 +105,226 @@ class AIService:
     async def generate_headlines(
         self,
         content: str,
-        max_headlines: int = 5
+        max_headlines: int = 5,
+        topic_type: Optional[str] = None,
+        grade_level: Optional[str] = None,
+        style: str = "friendly"
     ) -> Dict[str, Any]:
         """
-        コンテンツから見出しを自動生成
+        コンテンツから見出しを自動生成（トピック分割・適切な見出し候補提示）
         
         Args:
             content: 本文コンテンツ
             max_headlines: 最大見出し数
+            topic_type: トピックタイプ ('event', 'study', 'announcement', 'daily')
+            grade_level: 学年レベル ('elementary', 'middle', 'high')
+            style: 見出しスタイル ('friendly', 'formal', 'energetic')
             
         Returns:
-            Dict containing generated headlines
+            Dict containing generated headlines with topic analysis
         """
         start_time = time.time()
         
         try:
-            # コンパクトなプロンプト（応答時間短縮）
-            prompt = f"""学級通信の見出しを{max_headlines}個生成:
-
-{content[:200]}{'...' if len(content) > 200 else ''}
-
-要件:
-- 小学生保護者向け
-- 簡潔で分かりやすい
-- 番号付きリストで出力
-
-出力形式:
-1. 見出し1
-2. 見出し2
-..."""
+            # トピック分析を先に実行
+            topic_analysis = await self._analyze_content_topics(content)
             
-            response = await self._call_gemini_async(prompt)
-            
-            # 見出しリストを解析
-            headlines = self._parse_headlines(response)
+            # スタイル別の見出し生成
+            headlines_by_style = await self._generate_styled_headlines(
+                content=content,
+                max_headlines=max_headlines,
+                topic_type=topic_type or topic_analysis.get("primary_topic", "general"),
+                grade_level=grade_level or "elementary",
+                style=style,
+                topics=topic_analysis.get("topics", [])
+            )
             
             elapsed_time = time.time() - start_time
             
             result = {
                 "content_preview": content[:100] + "..." if len(content) > 100 else content,
-                "headlines": headlines,
-                "count": len(headlines),
+                "headlines": headlines_by_style["headlines"],
+                "alternative_headlines": headlines_by_style.get("alternatives", []),
+                "topic_analysis": topic_analysis,
+                "count": len(headlines_by_style["headlines"]),
+                "style": style,
+                "grade_level": grade_level,
                 "response_time_ms": int(elapsed_time * 1000),
                 "model_used": self.model_name,
                 "timestamp": int(time.time())
             }
             
-            logger.info(f"見出し生成成功: {len(headlines)}個, {elapsed_time:.3f}s")
+            logger.info(f"見出し生成成功: {len(headlines_by_style['headlines'])}個, トピック{len(topic_analysis.get('topics', []))}個, {elapsed_time:.3f}s")
             return result
             
         except Exception as e:
             logger.error(f"見出し生成失敗: {e}")
             raise RuntimeError(f"Failed to generate headlines: {str(e)}")
+    
+    async def _analyze_content_topics(self, content: str) -> Dict[str, Any]:
+        """
+        コンテンツを解析してトピックを特定
+        
+        Args:
+            content: 分析対象コンテンツ
+            
+        Returns:
+            Dict containing topic analysis results
+        """
+        try:
+            prompt = f"""以下の学級通信コンテンツをトピック分析してJSON形式で出力:
+
+{content[:300]}{'...' if len(content) > 300 else ''}
+
+出力JSON:
+{{
+  "primary_topic": "event|study|announcement|daily|mixed",
+  "topics": [
+    {{
+      "topic": "トピック名",
+      "importance": "high|medium|low",
+      "keywords": ["キーワード1", "キーワード2"],
+      "suggested_headline": "推奨見出し"
+    }}
+  ],
+  "content_type": "お知らせ|報告|案内|日常",
+  "emotional_tone": "positive|neutral|serious",
+  "target_audience": "保護者|生徒|両方"
+}}"""
+            
+            response = await self._call_gemini_async(prompt)
+            topic_analysis = self._parse_json_response(response)
+            
+            # デフォルト値を設定
+            if not topic_analysis.get("topics"):
+                topic_analysis["topics"] = [{
+                    "topic": "学校生活",
+                    "importance": "medium",
+                    "keywords": ["学級", "活動"],
+                    "suggested_headline": "学級の様子"
+                }]
+            
+            return topic_analysis
+            
+        except Exception as e:
+            logger.warning(f"トピック分析失敗、デフォルト値を使用: {e}")
+            return {
+                "primary_topic": "general",
+                "topics": [{"topic": "学校生活", "importance": "medium", "keywords": [], "suggested_headline": "学級の様子"}],
+                "content_type": "その他",
+                "emotional_tone": "neutral",
+                "target_audience": "保護者"
+            }
+    
+    async def _generate_styled_headlines(
+        self,
+        content: str,
+        max_headlines: int,
+        topic_type: str,
+        grade_level: str,
+        style: str,
+        topics: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        スタイル別見出し生成
+        
+        Args:
+            content: コンテンツ
+            max_headlines: 最大見出し数
+            topic_type: トピックタイプ
+            grade_level: 学年レベル
+            style: スタイル
+            topics: トピック情報
+            
+        Returns:
+            Dict containing styled headlines
+        """
+        # スタイル設定
+        style_map = {
+            "friendly": {
+                "tone": "親しみやすく温かい",
+                "examples": ["みんなで楽しく", "〜の様子", "元気いっぱい"],
+                "emoji": True
+            },
+            "formal": {
+                "tone": "丁寧で礼儀正しい",
+                "examples": ["〜についてのお知らせ", "〜の実施について", "〜のご報告"],
+                "emoji": False
+            },
+            "energetic": {
+                "tone": "元気で明るい",
+                "examples": ["がんばっています！", "大成功！", "みんなでチャレンジ"],
+                "emoji": True
+            }
+        }
+        
+        grade_map = {
+            "elementary": "小学生保護者向け・親しみやすく",
+            "middle": "中学生保護者向け・適度にフォーマル",
+            "high": "高校生保護者向け・丁寧で詳細"
+        }
+        
+        style_config = style_map.get(style, style_map["friendly"])
+        grade_config = grade_map.get(grade_level, grade_map["elementary"])
+        
+        # 重要なトピックから見出し生成
+        high_importance_topics = [t for t in topics if t.get("importance") == "high"]
+        medium_importance_topics = [t for t in topics if t.get("importance") == "medium"]
+        
+        prompt = f"""学級通信の見出しを{max_headlines}個生成:
+
+コンテンツ: {content[:200]}{'...' if len(content) > 200 else ''}
+トピック: {topic_type}
+重要トピック: {[t.get('topic', '') for t in high_importance_topics[:3]]}
+
+スタイル要件:
+- {style_config['tone']}調で
+- {grade_config}
+- {'絵文字使用可' if style_config['emoji'] else '絵文字使用不可'}
+- 例: {', '.join(style_config['examples'])}
+
+出力形式（番号付きリスト）:
+1. 見出し1
+2. 見出し2
+3. 見出し3
+
+代替案も3個追加で生成。"""
+        
+        response = await self._call_gemini_async(prompt)
+        
+        # 見出しを解析
+        lines = response.strip().split('\n')
+        headlines = []
+        alternatives = []
+        is_alternative_section = False
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            
+            if "代替" in line or "オルタ" in line or "別案" in line:
+                is_alternative_section = True
+                continue
+            
+            # 番号を除去
+            if '. ' in line:
+                headline = line.split('. ', 1)[1] if len(line.split('. ', 1)) > 1 else line
+            else:
+                headline = line
+            
+            if headline:
+                if is_alternative_section:
+                    alternatives.append(headline)
+                else:
+                    headlines.append(headline)
+        
+        return {
+            "headlines": headlines[:max_headlines],
+            "alternatives": alternatives[:3],
+            "style_applied": style,
+            "topic_basis": [t.get('topic', '') for t in high_importance_topics[:2]]
+        }
     
     async def optimize_layout(
         self,
