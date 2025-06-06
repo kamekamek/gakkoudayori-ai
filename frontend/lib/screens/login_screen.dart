@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_signin_button/flutter_signin_button.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../providers/auth_provider.dart';
-import '../theme/app_theme.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -167,12 +165,21 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     return SizedBox(
       width: double.infinity,
       height: 48,
-      child: SignInButton(
-        Buttons.Google,
-        text: 'Googleでサインイン',
-        onPressed: authProvider.isLoading ? null : () => _signInWithGoogle(authProvider),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+      child: ElevatedButton.icon(
+        onPressed: authProvider.isLoading 
+            ? null 
+            : () async {
+                await _signInWithGoogle(authProvider);
+              },
+        icon: const Icon(LucideIcons.chrome, size: 18),
+        label: const Text('Googleでサインイン'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          side: const BorderSide(color: Colors.grey),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
         ),
       ),
     );
