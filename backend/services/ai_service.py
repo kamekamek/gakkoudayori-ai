@@ -23,7 +23,7 @@ class AIService:
         """AIサービス初期化"""
         self.project_id = cloud_config.project_id
         self.location = cloud_config.location
-        self.model_name = "gemini-1.5-pro"
+        self.model_name = "gemini-1.5-flash"  # より高速なFlashモデルを使用
         
         # Vertex AI初期化
         try:
@@ -33,7 +33,17 @@ class AIService:
                 credentials=cloud_config.credentials
             )
             self.model = GenerativeModel(self.model_name)
-            logger.info(f"Vertex AI初期化成功: {self.project_id} / {self.location}")
+            
+            # パフォーマンス最適化設定
+            self.generation_config = {
+                "temperature": 0.1,  # より一貫性重視（速度向上）
+                "top_p": 0.6,       # より集中的な出力（速度向上）
+                "top_k": 20,        # 候補数を削減（速度向上）
+                "max_output_tokens": 512,  # 出力を制限（速度向上）
+                "candidate_count": 1  # 候補数を1つに制限
+            }
+            
+            logger.info(f"Vertex AI初期化成功: {self.project_id} / {self.location} / {self.model_name}")
         except Exception as e:
             logger.error(f"Vertex AI初期化失敗: {e}")
             raise RuntimeError(f"Failed to initialize Vertex AI: {e}")
@@ -60,12 +70,12 @@ class AIService:
         start_time = time.time()
         
         try:
-            # プロンプト構築
-            prompt = self._build_rewrite_prompt(
+            # コンパクトなプロンプト構築（応答時間短縮）
+            prompt = self._build_compact_rewrite_prompt(
                 original_text, style, custom_instruction, grade_level
             )
             
-            # Gemini API呼び出し
+            # Gemini API呼び出し（最適化設定適用）
             response = await self._call_gemini_async(prompt)
             
             elapsed_time = time.time() - start_time
@@ -110,25 +120,20 @@ class AIService:
         start_time = time.time()
         
         try:
-            prompt = f"""
-以下の学級通信の内容を分析し、適切な見出しを{max_headlines}個まで生成してください。
+            # コンパクトなプロンプト（応答時間短縮）
+            prompt = f"""学級通信の見出しを{max_headlines}個生成:
 
-【要件】
-- 小学校の保護者にとって分かりやすい見出し
-- 内容を的確に表現
-- 親しみやすい表現
-- 簡潔で覚えやすい
+{content[:200]}{'...' if len(content) > 200 else ''}
 
-【コンテンツ】
-{content}
+要件:
+- 小学生保護者向け
+- 簡潔で分かりやすい
+- 番号付きリストで出力
 
-【出力形式】
+出力形式:
 1. 見出し1
 2. 見出し2
-...
-
-見出しのみを番号付きリストで出力してください。説明は不要です。
-"""
+..."""
             
             response = await self._call_gemini_async(prompt)
             
@@ -173,30 +178,21 @@ class AIService:
         start_time = time.time()
         
         try:
-            prompt = f"""
-以下の学級通信コンテンツを分析し、最適なレイアウト・デザインを提案してください。
+            # コンパクトなプロンプト（応答時間短縮）
+            prompt = f"""学級通信のレイアウト提案をJSON形式で出力:
 
-【分析観点】
-- コンテンツの種類・トーン
-- 季節感の反映（{season}）
-- イベント性：{event_type or '特になし'}
-- 読みやすさ・親しみやすさ
+コンテンツ: {content[:150]}{'...' if len(content) > 150 else ''}
+季節: {season}
+イベント: {event_type or 'なし'}
 
-【コンテンツ】
-{content}
-
-【出力形式（JSON）】
+JSON出力:
 {{
-  "content_type": "お知らせ|報告|案内|その他",
+  "content_type": "お知らせ|報告|案内",
   "recommended_template": "テンプレート名",
-  "color_scheme": ["#カラーコード1", "#カラーコード2", "#カラーコード3"],
-  "suggested_icons": ["アイコン名1", "アイコン名2"],
-  "layout_tips": ["レイアウトのポイント1", "レイアウトのポイント2"],
-  "emphasis_keywords": ["強調すべきキーワード1", "強調すべきキーワード2"]
-}}
-
-JSON形式のみで出力してください。他の説明は不要です。
-"""
+  "color_scheme": ["#色1", "#色2", "#色3"],
+  "suggested_icons": ["アイコン1", "アイコン2"],
+  "layout_tips": ["コツ1", "コツ2"]
+}}"""
             
             response = await self._call_gemini_async(prompt)
             
@@ -224,7 +220,7 @@ JSON形式のみで出力してください。他の説明は不要です。
     
     async def _call_gemini_async(self, prompt: str) -> str:
         """
-        Gemini APIを非同期呼び出し
+        Gemini APIを非同期呼び出し（最適化設定適用）
         
         Args:
             prompt: プロンプト文字列
@@ -235,18 +231,50 @@ JSON形式のみで出力してください。他の説明は不要です。
         def _sync_call():
             response = self.model.generate_content(
                 prompt,
-                generation_config={
-                    "temperature": 0.3,  # 一貫性重視
-                    "top_p": 0.8,
-                    "top_k": 40,
-                    "max_output_tokens": 2048,
-                }
+                generation_config=self.generation_config
             )
             return response.text
         
         # 同期呼び出しを非同期実行
         response = await asyncio.to_thread(_sync_call)
         return response
+    
+    def _build_compact_rewrite_prompt(
+        self,
+        original_text: str,
+        style: str,
+        custom_instruction: Optional[str],
+        grade_level: Optional[str]
+    ) -> str:
+        """コンパクトなリライト用プロンプトを構築（応答時間短縮）"""
+        
+        style_map = {
+            "friendly": "親しみやすく温かい",
+            "formal": "丁寧で礼儀正しい", 
+            "energetic": "元気で明るい"
+        }
+        
+        grade_map = {
+            "elementary": "小学生保護者向け・平仮名を適度に使用",
+            "middle": "中学生保護者向け・適度な敬語",
+            "high": "高校生保護者向け・formal"
+        }
+        
+        prompt = f"""学級通信用にリライト:
+
+元テキスト: {original_text}
+
+要件:
+- {style_map.get(style, style)}文体
+- {grade_map.get(grade_level, '')}
+- 誤字脱字修正
+- 自然な語順
+- 保護者に分かりやすく
+{f"- {custom_instruction}" if custom_instruction else ""}
+
+リライト結果のみ出力:"""
+        
+        return prompt
     
     def _build_rewrite_prompt(
         self,
@@ -255,41 +283,8 @@ JSON形式のみで出力してください。他の説明は不要です。
         custom_instruction: Optional[str],
         grade_level: Optional[str]
     ) -> str:
-        """リライト用プロンプトを構築"""
-        
-        style_instructions = {
-            "friendly": "親しみやすく温かい語り口で、保護者との距離感を縮める",
-            "formal": "丁寧で礼儀正しい表現を使い、信頼感を重視する",
-            "energetic": "元気で明るい表現を使い、子どもたちの活発さを表現する"
-        }
-        
-        grade_instructions = {
-            "elementary": "小学生の保護者向け：分かりやすい表現、平仮名を適度に使用",
-            "middle": "中学生の保護者向け：適度な敬語、具体的な内容",
-            "high": "高校生の保護者向け：より formal、将来への言及"
-        }
-        
-        prompt = f"""
-以下の音声認識結果を、小学校の学級通信にふさわしい文章に書き直してください。
-
-【元のテキスト】
-{original_text}
-
-【書き直し要件】
-- 文体スタイル: {style_instructions.get(style, style)}
-- {grade_instructions.get(grade_level, '')}
-- 誤字・脱字の修正
-- 自然な語順への調整
-- 保護者に伝わりやすい表現
-- 学校らしい温かみのある表現
-
-【カスタム指示】
-{custom_instruction or '特になし'}
-
-【出力形式】
-書き直した文章のみを出力してください。説明や前置きは不要です。
-"""
-        return prompt
+        """従来のリライト用プロンプトを構築（後方互換性）"""
+        return self._build_compact_rewrite_prompt(original_text, style, custom_instruction, grade_level)
     
     def _parse_headlines(self, response: str) -> List[str]:
         """見出しレスポンスを解析してリストに変換"""

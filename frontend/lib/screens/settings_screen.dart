@@ -374,18 +374,17 @@ ListTile(
                     size: 20,
                   ),
                   const SizedBox(width: 8),
-FutureBuilder<int>(
-  future: _getUserDictionaryCount(),
-      builder: (context, snapshot) {
-      return Text(
-        '登録済み用語: ${snapshot.data ?? 0}件',
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: AppTheme.primaryColor,
-          fontWeight: FontWeight.w500,
-        ),
-      );
-    },
-  ),
+                  FutureBuilder<int>(
+                    future: _getUserDictionaryCount(),
+                    builder: (context, snapshot) {
+                      return Text(
+                        '登録済み用語: ${snapshot.data ?? 0}件',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppTheme.primaryColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
