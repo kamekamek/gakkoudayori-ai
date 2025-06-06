@@ -340,7 +340,7 @@ gcloud logging read "resource.type=cloud_run_revision"
 ## 🤝 コントリビューション
 
 ### コーディング規約
-[../CODING_GUIDELINES.md](../CODING_GUIDELINES.md) の Python/FastAPI セクションを参照
+[../CODING_GUIDELINES.md](../docs/CODING_GUIDELINES.md) の Python/FastAPI セクションを参照
 
 ### プルリクエスト前チェック
 - [ ] `flake8 app/` エラー0件

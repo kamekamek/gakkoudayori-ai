@@ -85,7 +85,7 @@ lib/
 ## 🔧 開発ルール
 
 ### コーディング規約
-[CODING_GUIDELINES.md](../CODING_GUIDELINES.md) の Flutter/Dart セクションを参照
+[CODING_GUIDELINES.md](../docs/CODING_GUIDELINES.md) の Flutter/Dart セクションを参照
 
 ### 重要ルール
 - **MVVM + Provider**: ViewModelは Providerクラスで実装
