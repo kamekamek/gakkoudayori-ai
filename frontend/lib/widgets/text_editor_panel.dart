@@ -15,6 +15,7 @@ class _TextEditorPanelState extends State<TextEditorPanel> {
   final TextEditingController _contentController = TextEditingController();
   final FocusNode _titleFocus = FocusNode();
   final FocusNode _contentFocus = FocusNode();
+  bool _hasHistory = false;
   
   @override
   void dispose() {
@@ -23,6 +24,17 @@ class _TextEditorPanelState extends State<TextEditorPanel> {
     _titleFocus.dispose();
     _contentFocus.dispose();
     super.dispose();
+  }
+
+  void _undo() {
+    // TODO: 実装
+    setState(() {
+      _hasHistory = false;
+    });
+  }
+
+  void _redo() {
+    // TODO: 実装
   }
 
   @override

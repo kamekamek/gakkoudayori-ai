@@ -11,6 +11,13 @@ google-cloud-firestore==2.13.1
 google-cloud-storage==2.10.0
 google-cloud-aiplatform==1.38.1
 
+# Firebase Admin SDK
+firebase-admin==6.2.0
+
+# Authentication and Security
+pyjwt==2.8.0
+cryptography==41.0.7
+
 # PDF generation
 reportlab==4.0.4
 weasyprint==60.2
