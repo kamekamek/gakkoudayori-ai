@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../providers/app_state.dart';
 import '../theme/app_theme.dart';
+import '../services/api_service.dart';
 
 class VoiceInputPanel extends StatefulWidget {
   const VoiceInputPanel({super.key});
@@ -16,7 +17,7 @@ class _VoiceInputPanelState extends State<VoiceInputPanel>
     with TickerProviderStateMixin {
   late AnimationController _pulseController;
   late AnimationController _waveController;
-  
+
   @override
   void initState() {
     super.initState();
@@ -40,7 +41,7 @@ class _VoiceInputPanelState extends State<VoiceInputPanel>
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
-    
+
     // 録音状態に応じてアニメーション制御
     if (appState.isRecording) {
       _pulseController.repeat();
@@ -79,8 +80,8 @@ class _VoiceInputPanelState extends State<VoiceInputPanel>
         Text(
           '音声入力',
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
+                fontWeight: FontWeight.w600,
+              ),
         ),
         const Spacer(),
         IconButton(
@@ -125,11 +126,14 @@ class _VoiceInputPanelState extends State<VoiceInputPanel>
                     height: 120,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: appState.isRecording ? AppTheme.errorColor : AppTheme.primaryColor,
+                      color: appState.isRecording
+                          ? AppTheme.errorColor
+                          : AppTheme.primaryColor,
                       boxShadow: appState.isRecording
                           ? [
                               BoxShadow(
-                                color: AppTheme.errorColor.withOpacity(0.3 + _pulseController.value * 0.3),
+                                color: AppTheme.errorColor.withOpacity(
+                                    0.3 + _pulseController.value * 0.3),
                                 blurRadius: 20 + _pulseController.value * 20,
                                 spreadRadius: _pulseController.value * 10,
                               ),
@@ -143,7 +147,9 @@ class _VoiceInputPanelState extends State<VoiceInputPanel>
                             ],
                     ),
                     child: Icon(
-                      appState.isRecording ? LucideIcons.square : LucideIcons.mic,
+                      appState.isRecording
+                          ? LucideIcons.square
+                          : LucideIcons.mic,
                       size: 48,
                       color: Colors.white,
                     ),
@@ -151,18 +157,20 @@ class _VoiceInputPanelState extends State<VoiceInputPanel>
                 },
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // 状態テキスト
             Text(
               appState.isRecording ? '録音中...' : 'タップして録音開始',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: appState.isRecording ? AppTheme.errorColor : AppTheme.primaryColor,
-                fontWeight: FontWeight.w600,
-              ),
+                    color: appState.isRecording
+                        ? AppTheme.errorColor
+                        : AppTheme.primaryColor,
+                    fontWeight: FontWeight.w600,
+                  ),
             ),
-            
+
             if (appState.isRecording) ...[
               const SizedBox(height: 16),
               _buildVoiceWaveform(),
@@ -183,7 +191,7 @@ class _VoiceInputPanelState extends State<VoiceInputPanel>
             final delay = index * 0.2;
             final animationValue = (_waveController.value + delay) % 1.0;
             final height = 4 + animationValue * 16;
-            
+
             return Container(
               width: 4,
               height: height,
@@ -217,8 +225,8 @@ class _VoiceInputPanelState extends State<VoiceInputPanel>
                 Text(
                   'リアルタイム字幕',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                        fontWeight: FontWeight.w600,
+                      ),
                 ),
                 const Spacer(),
                 if (appState.currentTranscription.isNotEmpty)
@@ -245,10 +253,10 @@ class _VoiceInputPanelState extends State<VoiceInputPanel>
                       ? '音声認識されたテキストがここに表示されます'
                       : appState.currentTranscription,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: appState.currentTranscription.isEmpty
-                        ? Colors.grey[500]
-                        : Colors.black87,
-                  ),
+                        color: appState.currentTranscription.isEmpty
+                            ? Colors.grey[500]
+                            : Colors.black87,
+                      ),
                 ),
               ),
             ),
@@ -258,7 +266,8 @@ class _VoiceInputPanelState extends State<VoiceInputPanel>
                 children: [
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: () => _addToEditor(context, appState.currentTranscription),
+                      onPressed: () =>
+                          _addToEditor(context, appState.currentTranscription),
                       icon: const Icon(LucideIcons.plus, size: 16),
                       label: const Text('エディタに追加'),
                       style: ElevatedButton.styleFrom(
@@ -269,7 +278,8 @@ class _VoiceInputPanelState extends State<VoiceInputPanel>
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton.icon(
-                    onPressed: () => _improveWithAI(context, appState.currentTranscription),
+                    onPressed: () =>
+                        _improveWithAI(context, appState.currentTranscription),
                     icon: const Icon(LucideIcons.sparkles, size: 16),
                     label: const Text('AI改善'),
                     style: ElevatedButton.styleFrom(
@@ -300,8 +310,8 @@ class _VoiceInputPanelState extends State<VoiceInputPanel>
         Text(
           'クイックコマンド',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
+                fontWeight: FontWeight.w600,
+              ),
         ),
         const SizedBox(height: 12),
         Wrap(
@@ -327,15 +337,13 @@ class _VoiceInputPanelState extends State<VoiceInputPanel>
     if (appState.isRecording) {
       appState.stopRecording();
       // TODO: 実際の録音停止処理
-      
+
       // サンプルの音声認識結果
       Future.delayed(const Duration(milliseconds: 500), () {
         if (!mounted) return; // ウィジェットが破棄されている場合は処理をスキップ
-        appState.updateTranscription(
-          '今日は運動会の練習をしました。子どもたちはとても頑張っていて、'
-          'リレーの練習では白熱した競争が繰り広げられました。'
-          '本番までもう少しですが、みんなで力を合わせて素晴らしい運動会にしましょう。'
-        );
+        appState.updateTranscription('今日は運動会の練習をしました。子どもたちはとても頑張っていて、'
+            'リレーの練習では白熱した競争が繰り広げられました。'
+            '本番までもう少しですが、みんなで力を合わせて素晴らしい運動会にしましょう。');
       });
     } else {
       appState.startRecording();
@@ -353,19 +361,21 @@ class _VoiceInputPanelState extends State<VoiceInputPanel>
     );
   }
 
-  void _improveWithAI(BuildContext context, String text) {
+  void _improveWithAI(BuildContext context, String text) async {
+    final apiService = Provider.of<ApiService>(context, listen: false);
+
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Row(
+      builder: (context) => const AlertDialog(
+        title: Row(
           children: [
             Icon(LucideIcons.sparkles, color: AppTheme.secondaryColor),
             SizedBox(width: 8),
             Text('AI改善中'),
           ],
         ),
-        content: const Column(
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             CircularProgressIndicator(color: AppTheme.secondaryColor),
@@ -376,36 +386,39 @@ class _VoiceInputPanelState extends State<VoiceInputPanel>
       ),
     );
 
-    // TODO: 実際のAI処理
-    Future.delayed(const Duration(seconds: 2), () {
-      Navigator.of(context).pop();
-      
-      // サンプルの改善されたテキスト
-      final improvedText = '''
-# 今日の運動会練習 🏃‍♂️
-
-みなさん、こんにちは！今日は運動会の練習日でした。
-
-## 練習の様子
-子どもたちはとても元気いっぱいで、特にリレーの練習では：
-- 白熱した競争が繰り広げられました
-- チームワークの大切さを学びました
-- みんなが一生懸命に取り組んでいました
-
-## 本番に向けて
-運動会本番まであと少しです。みんなで力を合わせて、
-素晴らしい運動会にしましょう！ 🌟
-''';
-      
-      context.read<AppState>().updateTranscription(improvedText);
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('AIがテキストを改善しました！'),
-          backgroundColor: AppTheme.secondaryColor,
-        ),
+    try {
+      // 実際のAI API呼び出し
+      final result = await apiService.enhanceText(
+        text: text,
+        style: 'friendly',
+        gradeLevel: 'elementary',
       );
-    });
+
+      if (mounted) {
+        Navigator.of(context).pop();
+
+        // APIレスポンスから改善されたテキストを取得
+        final improvedText = result['data']['enhanced_text'] ?? text;
+        context.read<AppState>().updateTranscription(improvedText);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('AIがテキストを改善しました！'),
+            backgroundColor: AppTheme.secondaryColor,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('AI改善に失敗しました: $e'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+    }
   }
 
   void _useQuickCommand(BuildContext context, String command) {
