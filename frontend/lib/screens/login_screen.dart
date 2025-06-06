@@ -170,7 +170,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       child: SignInButton(
         Buttons.Google,
         text: 'Googleでサインイン',
-        onPressed: authProvider.isLoading ? null : () async => await _signInWithGoogle(authProvider),
+        onPressed: authProvider.isLoading ? null : () => _signInWithGoogle(authProvider),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
         ),
