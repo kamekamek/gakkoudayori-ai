@@ -15,6 +15,7 @@ class _TextEditorPanelState extends State<TextEditorPanel> {
   final TextEditingController _contentController = TextEditingController();
   final FocusNode _titleFocus = FocusNode();
   final FocusNode _contentFocus = FocusNode();
+  bool _hasHistory = false;
   
   @override
   void dispose() {
@@ -24,6 +25,8 @@ class _TextEditorPanelState extends State<TextEditorPanel> {
     _contentFocus.dispose();
     super.dispose();
   }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -286,37 +289,38 @@ IconButton(
   }
 
   void _formatText(String format) {
-final selection = _contentController.selection;
-if (!selection.isValid) return;
-if (selection.isCollapsed) {
-  // Expand to a zero-width range at the caret so replaceRange still works.
-  _contentController.selection = selection.copyWith(
-    baseOffset: selection.start,
-    extentOffset: selection.start,
-  );
-}
-      final selectedText = _contentController.text.substring(
-        selection.start,
-        selection.end,
+    final selection = _contentController.selection;
+    if (!selection.isValid) return;
+    
+    if (selection.isCollapsed) {
+      // Expand to a zero-width range at the caret so replaceRange still works.
+      _contentController.selection = selection.copyWith(
+        baseOffset: selection.start,
+        extentOffset: selection.start,
       );
-      
-      String formattedText;
-      switch (format) {
-        case 'bold':
-          formattedText = '**$selectedText**';
-          break;
-        case 'italic':
-          formattedText = '*$selectedText*';
-          break;
-        case 'underline':
-          formattedText = '<u>$selectedText</u>';
-          break;
-        default:
-          formattedText = selectedText;
-      }
-      
-      _replaceSelection(formattedText);
     }
+    
+    final selectedText = _contentController.text.substring(
+      selection.start,
+      selection.end,
+    );
+    
+    String formattedText;
+    switch (format) {
+      case 'bold':
+        formattedText = '**$selectedText**';
+        break;
+      case 'italic':
+        formattedText = '*$selectedText*';
+        break;
+      case 'underline':
+        formattedText = '<u>$selectedText</u>';
+        break;
+      default:
+        formattedText = selectedText;
+    }
+    
+    _replaceSelection(formattedText);
   }
 
   void _insertHeading() {

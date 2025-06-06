@@ -1,5 +1,5 @@
-name: frontend
-description: "A new Flutter project."
+name: yutori_kyoshitsu
+description: "HTMLベースグラレコ風学級通信作成システム - 音声入力・AI編集・PDF配信を20分で完結"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -49,6 +49,16 @@ dependencies:
   
   # Icons
   lucide_icons: ^0.257.0
+  
+  # Firebase
+  firebase_core: ^3.13.0
+  firebase_auth: ^5.5.2
+  firebase_ui_auth: ^1.16.1
+  cloud_firestore: ^5.6.6
+  
+  # Auth UI
+  google_sign_in: ^5.0.2
+  flutter_signin_button: ^2.0.0
 
 dev_dependencies:
   flutter_test:

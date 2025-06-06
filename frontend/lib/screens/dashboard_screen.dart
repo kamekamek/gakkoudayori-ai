@@ -9,240 +9,269 @@ import '../theme/app_theme.dart';
 import '../widgets/season_card.dart';
 import '../widgets/quick_action_button.dart';
 import '../widgets/recent_documents_list.dart';
+import '../providers/auth_provider.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
   @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('ゆとり職員室'),
-        actions: [
-          IconButton(
-            icon: const Icon(LucideIcons.settings),
-            onPressed: () => context.push('/settings'),
-          ),
-        ],
-      ),
-      body: CustomScrollView(
-        slivers: [
-          SliverPadding(
-            padding: const EdgeInsets.all(16),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                _buildWelcomeSection(context),
-                const SizedBox(height: 24),
-                _buildSeasonSelector(context),
-                const SizedBox(height: 24),
-                Text(
-                  'クイックアクション',
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ).animate().fadeIn(
-                  delay: const Duration(milliseconds: 200),
-                  duration: const Duration(milliseconds: 600),
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, _) {
+        final user = authProvider.user;
+        
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('ゆとり職員室'),
+            actions: [
+              IconButton(
+                icon: const Icon(LucideIcons.settings),
+                onPressed: () => context.go('/settings'),
+              ),
+              PopupMenuButton<String>(
+                icon: CircleAvatar(
+                  backgroundImage: user?.photoURL != null 
+                      ? NetworkImage(user!.photoURL!)
+                      : null,
+                  child: user?.photoURL == null 
+                      ? Text(
+                          user?.displayName?.isNotEmpty == true
+                              ? user!.displayName![0].toUpperCase()
+                              : user?.email?[0].toUpperCase() ?? '?',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        )
+                      : null,
                 ),
-                const SizedBox(height: 16),
-              ]),
-            ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            sliver: SliverGrid.count(
-              crossAxisCount: 2,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio: 1.5,
-              children: [
-                QuickActionButton(
-                  icon: LucideIcons.mic,
-                  title: '音声で作成',
-                  subtitle: 'ワンタップ録音',
-                  color: AppTheme.primaryColor,
-                  onTap: () => _startVoiceRecording(context),
-                ).animate().fadeIn(
-                  delay: const Duration(milliseconds: 200),
-                  duration: const Duration(milliseconds: 600),
-                ),
-                QuickActionButton(
-                  icon: LucideIcons.edit,
-                  title: '文字で作成',
-                  subtitle: 'テキスト入力',
-                  color: AppTheme.secondaryColor,
-                  onTap: () => context.push('/editor'),
-                ).animate().fadeIn(
-                  delay: const Duration(milliseconds: 300),
-                  duration: const Duration(milliseconds: 600),
-                ),
-                QuickActionButton(
-                  icon: LucideIcons.image,
-                  title: 'テンプレート',
-                  subtitle: 'デザイン選択',
-                  color: AppTheme.accentColor,
-                  onTap: () => _showTemplateSelector(context),
-                ).animate().fadeIn(
-                  delay: const Duration(milliseconds: 400),
-                  duration: const Duration(milliseconds: 600),
-                ),
-                QuickActionButton(
-                  icon: LucideIcons.history,
-                  title: '履歴から複製',
-                  subtitle: '過去の通信',
-                  color: Colors.purple,
-                  onTap: () => _showDocumentHistory(context),
-                ).animate().fadeIn(
-                  delay: const Duration(milliseconds: 500),
-                  duration: const Duration(milliseconds: 600),
-                ),
-              ],
-            ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.all(16),
-            sliver: SliverToBoxAdapter(
-              child: _buildRecentDocuments(context),
-            ),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/editor'),
-        icon: const Icon(LucideIcons.plus),
-        label: const Text('新しい学級通信'),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
-      ).animate().slideX(
-        begin: 1.0,
-        duration: const Duration(milliseconds: 600),
-        curve: Curves.easeOutBack,
-      ),
-    );
-  }
-
-  Widget _buildWelcomeSection(BuildContext context) {
-    final appState = context.watch<AppState>();
-    final now = DateTime.now();
-    final timeOfDay = now.hour < 12 
-        ? 'おはようございます' 
-        : now.hour < 18 
-            ? 'お疲れさまです' 
-            : 'お疲れさまでした';
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  LucideIcons.sun,
-                  size: 32,
-                  color: AppTheme.primaryColor,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        timeOfDay,
-                        style: Theme.of(context).textTheme.headlineMedium,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '今日も子どもたちのために、素敵な学級通信を作りましょう',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey[600],
+                onSelected: (value) async {
+                  if (value == 'logout') {
+                    await authProvider.signOut();
+                  }
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    child: Row(
+                      children: [
+                        const Icon(LucideIcons.user, size: 16),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                user?.displayName ?? 'ユーザー',
+                                style: const TextStyle(fontWeight: FontWeight.w500),
+                              ),
+                              Text(
+                                user?.email ?? '',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
+                  const PopupMenuDivider(),
+                  const PopupMenuItem(
+                    value: 'logout',
+                    child: Row(
+                      children: [
+                        Icon(LucideIcons.logOut, size: 16),
+                        SizedBox(width: 8),
+                        Text('ログアウト'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 8),
+            ],
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ウェルカムメッセージ
+                _buildWelcomeSection(user),
+                const SizedBox(height: 32),
+                
+                // クイックアクション
+                _buildQuickActions(),
+                const SizedBox(height: 32),
+                
+                // 最近のドキュメント
+                _buildRecentDocuments(),
+                const SizedBox(height: 32),
+                
+                // 統計情報
+                _buildStats(),
               ],
             ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppTheme.accentColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                '現在のテーマ: ${appState.currentSeasonName}',
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: AppTheme.accentColor,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    ).animate().fadeIn(
-      duration: const Duration(milliseconds: 600),
-    ).slideY(
-      begin: -0.2,
-      duration: const Duration(milliseconds: 800),
-      curve: Curves.easeOutQuart,
+          ),
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () => context.go('/editor'),
+            icon: const Icon(LucideIcons.plus),
+            label: const Text('新規作成'),
+          ),
+        );
+      },
     );
   }
 
-
-
-  Widget _buildSeasonSelector(BuildContext context) {
-    final appState = context.watch<AppState>();
+  Widget _buildWelcomeSection(user) {
+    final greeting = _getGreeting();
+    final userName = user?.displayName ?? user?.email?.split('@')[0] ?? 'さん';
     
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: AppTheme.primaryGradient,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$greeting、$userName',
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            '今日も素敵な学級通信を作成しましょう！',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.white70,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActions() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '季節テーマ',
-          style: Theme.of(context).textTheme.headlineMedium,
+          'クイックアクション',
+          style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 16),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
+        GridView.count(
+          crossAxisCount: MediaQuery.of(context).size.width > 600 ? 4 : 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 16,
+          crossAxisSpacing: 16,
+          childAspectRatio: 1.2,
+          children: [
+            _buildActionCard(
+              title: '新規作成',
+              subtitle: 'ゼロから作成',
+              icon: LucideIcons.plus,
+              color: AppTheme.primaryColor,
+              onTap: () => context.go('/editor'),
+            ),
+            _buildActionCard(
+              title: 'テンプレート',
+              subtitle: 'ひな形から作成',
+              icon: LucideIcons.layout,
+              color: AppTheme.secondaryColor,
+              onTap: () {
+                // TODO: テンプレート選択画面に遷移
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('テンプレート機能は準備中です')),
+                );
+              },
+            ),
+            _buildActionCard(
+              title: '音声入力',
+              subtitle: '話して作成',
+              icon: LucideIcons.mic,
+              color: AppTheme.successColor,
+              onTap: () {
+                context.go('/editor?mode=voice');
+              },
+            ),
+            _buildActionCard(
+              title: '設定',
+              subtitle: 'アプリ設定',
+              icon: LucideIcons.settings,
+              color: AppTheme.gray600,
+              onTap: () => context.go('/settings'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              SeasonCard(
-                seasonName: '春',
-                colors: AppTheme.springColors,
-                isSelected: appState.currentSeasonIndex == 0,
-                onTap: () => appState.setSeason(0),
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  icon,
+                  color: color,
+                  size: 24,
+                ),
               ),
-              const SizedBox(width: 12),
-              SeasonCard(
-                seasonName: '夏',
-                colors: AppTheme.summerColors,
-                isSelected: appState.currentSeasonIndex == 1,
-                onTap: () => appState.setSeason(1),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.center,
               ),
-              const SizedBox(width: 12),
-              SeasonCard(
-                seasonName: '秋',
-                colors: AppTheme.autumnColors,
-                isSelected: appState.currentSeasonIndex == 2,
-                onTap: () => appState.setSeason(2),
-              ),
-              const SizedBox(width: 12),
-              SeasonCard(
-                seasonName: '冬',
-                colors: AppTheme.winterColors,
-                isSelected: appState.currentSeasonIndex == 3,
-                onTap: () => appState.setSeason(3),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: Theme.of(context).textTheme.bodySmall,
+                textAlign: TextAlign.center,
               ),
             ],
           ),
         ),
-      ],
-    ).animate().fadeIn(
-      delay: const Duration(milliseconds: 400),
-      duration: const Duration(milliseconds: 600),
+      ),
     );
   }
 
-  Widget _buildRecentDocuments(BuildContext context) {
+  Widget _buildRecentDocuments() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -250,76 +279,230 @@ class DashboardScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              '最近の学級通信',
-              style: Theme.of(context).textTheme.headlineMedium,
+              '最近のドキュメント',
+              style: Theme.of(context).textTheme.titleLarge,
             ),
             TextButton(
-              onPressed: () => _showAllDocuments(context),
-              child: const Text('すべて見る'),
+              onPressed: () {
+                // TODO: 全てのドキュメント表示画面に遷移
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('ドキュメント一覧機能は準備中です')),
+                );
+              },
+              child: const Text('すべて表示'),
             ),
           ],
         ),
         const SizedBox(height: 16),
-        const RecentDocumentsList(),
+        // ダミーデータ
+        _buildDocumentCard(
+          title: '1月の学級だより',
+          lastModified: '2時間前',
+          preview: '新年あけましておめでとうございます。3学期がスタートしました...',
+          status: 'draft',
+        ),
+        const SizedBox(height: 12),
+        _buildDocumentCard(
+          title: '冬休みの思い出特集',
+          lastModified: '1日前',
+          preview: '楽しい冬休みを過ごした子どもたちの様子をお伝えします...',
+          status: 'published',
+        ),
+        const SizedBox(height: 12),
+        _buildDocumentCard(
+          title: '3学期の目標',
+          lastModified: '3日前',
+          preview: '一年の締めくくりとなる3学期。みんなで新たな目標を...',
+          status: 'draft',
+        ),
       ],
-    ).animate().fadeIn(
-      delay: const Duration(milliseconds: 600),
-      duration: const Duration(milliseconds: 600),
     );
   }
 
-  void _startVoiceRecording(BuildContext context) async {
-    final appState = context.read<AppState>();
-
-    // マイク権限チェック
-    if (!await appState.ensureMicPermission()) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('マイク権限が必要です'),
-          backgroundColor: AppTheme.errorColor,
-        ),
-      );
-      return;
-    }
-
-    appState.startRecording();
+  Widget _buildDocumentCard({
+    required String title,
+    required String lastModified,
+    required String preview,
+    required String status,
+  }) {
+    final isDraft = status == 'draft';
     
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => WillPopScope(
-        onWillPop: () async {
-          appState.stopRecording();
-          return true;
+    return Card(
+      child: InkWell(
+        onTap: () {
+          // TODO: エディタ画面に遷移
+          context.go('/editor/sample-id');
         },
-        child: AlertDialog(
-          title: const Text('音声録音中'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
             children: [
-              const Icon(
-                LucideIcons.mic,
-                size: 48,
-                color: AppTheme.errorColor,
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: isDraft ? AppTheme.warningColor.withOpacity(0.1) : AppTheme.successColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  isDraft ? LucideIcons.edit : LucideIcons.checkCircle,
+                  color: isDraft ? AppTheme.warningColor : AppTheme.successColor,
+                  size: 24,
+                ),
               ),
-              const SizedBox(height: 16),
-              const Text('録音中です...'),
-              const SizedBox(height: 16),
-              LinearProgressIndicator(
-                backgroundColor: Colors.grey[300],
-                valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: isDraft ? AppTheme.warningColor.withOpacity(0.1) : AppTheme.successColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            isDraft ? '下書き' : '公開済み',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDraft ? AppTheme.warningColor : AppTheme.successColor,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      preview,
+                      style: Theme.of(context).textTheme.bodySmall,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '最終更新: $lastModified',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppTheme.gray500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                LucideIcons.chevronRight,
+                size: 16,
+                color: AppTheme.gray400,
               ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                appState.stopRecording();
-                Navigator.of(context).pop();
-                context.push('/editor');
-              },
-              child: const Text('停止'),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStats() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '統計情報',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: _buildStatCard(
+                title: '総ドキュメント数',
+                value: '12',
+                icon: LucideIcons.fileText,
+                color: AppTheme.primaryColor,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildStatCard(
+                title: '今月の作成数',
+                value: '3',
+                icon: LucideIcons.trendingUp,
+                color: AppTheme.successColor,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: _buildStatCard(
+                title: '下書き',
+                value: '2',
+                icon: LucideIcons.edit,
+                color: AppTheme.warningColor,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildStatCard(
+                title: '公開済み',
+                value: '10',
+                icon: LucideIcons.checkCircle,
+                color: AppTheme.successColor,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatCard({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Icon(
+                  icon,
+                  color: color,
+                  size: 24,
+                ),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
           ],
         ),
@@ -327,107 +510,14 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  void _showTemplateSelector(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        maxChildSize: 0.9,
-        minChildSize: 0.5,
-        builder: (context, scrollController) => Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'テンプレートを選択',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: GridView.builder(
-                  controller: scrollController,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: 0.8,
-                  ),
-                  itemCount: 6,
-                  itemBuilder: (context, index) => Card(
-                    child: InkWell(
-                      onTap: () {
-                        Navigator.of(context).pop();
-                        context.push('/editor');
-                      },
-                      borderRadius: BorderRadius.circular(16),
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          children: [
-                            Expanded(
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: AppTheme.springColors[index % 3],
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Center(
-                                  child: Icon(
-                                    LucideIcons.fileText,
-                                    size: 32,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'テンプレート ${index + 1}',
-                              style: Theme.of(context).textTheme.labelLarge,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showDocumentHistory(BuildContext context) {
-    // TODO: 履歴画面の実装
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('履歴機能は開発中です'),
-        backgroundColor: AppTheme.primaryColor,
-      ),
-    );
-  }
-
-  void _showAllDocuments(BuildContext context) {
-    // TODO: 全ドキュメント表示画面の実装
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('全ドキュメント表示機能は開発中です'),
-        backgroundColor: AppTheme.primaryColor,
-      ),
-    );
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) {
+      return 'おはようございます';
+    } else if (hour < 18) {
+      return 'こんにちは';
+    } else {
+      return 'こんばんは';
+    }
   }
 }

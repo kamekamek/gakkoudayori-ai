@@ -15,6 +15,13 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   String _selectedAccuracy = 'balanced'; // デフォルトはバランス設定
+  bool _isDriveConnected = false; // Google Drive接続状態
+
+  // ユーザー辞書の用語数を取得（将来的にはローカルストレージから取得）
+  Future<int> _getUserDictionaryCount() async {
+    // TODO: 実際のユーザー辞書から用語数を取得
+    return Future.delayed(const Duration(milliseconds: 500), () => 42);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -120,8 +127,7 @@ SwitchListTile(
       ),
     );
    },
-  // Disable until implemented
-  enabled: false,
+
  ),
           ],
         ),
@@ -370,16 +376,16 @@ ListTile(
                   const SizedBox(width: 8),
 FutureBuilder<int>(
   future: _getUserDictionaryCount(),
-  builder: (context, snapshot) {
-    return Text(
-      '登録済み用語: ${snapshot.data ?? 0}件',
-       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-         color: AppTheme.primaryColor,
-         fontWeight: FontWeight.w500,
-       ),
-    );
-  },
-),
+      builder: (context, snapshot) {
+      return Text(
+        '登録済み用語: ${snapshot.data ?? 0}件',
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          color: AppTheme.primaryColor,
+          fontWeight: FontWeight.w500,
+        ),
+      );
+    },
+  ),
                   ),
                 ],
               ),
@@ -761,7 +767,7 @@ ElevatedButton(
      // TODO: 用語登録処理
      Navigator.of(context).pop();
      ScaffoldMessenger.of(context).showSnackBar(
-       const SnackBar(
+       SnackBar(
         content: Text('用語「$word」を追加しました'),
          backgroundColor: AppTheme.accentColor,
        ),
