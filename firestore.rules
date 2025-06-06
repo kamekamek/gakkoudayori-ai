@@ -2,18 +2,76 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // This rule allows anyone with your Firestore database reference to view, edit,
-    // and delete all data in your Firestore database. It is useful for getting
-    // started, but it is configured to expire after 30 days because it
-    // leaves your app open to attackers. At that time, all client
-    // requests to your Firestore database will be denied.
-    //
-    // Make sure to write security rules for your app before that time, or else
-    // all client requests to your Firestore database will be denied until you Update
-    // your rules
+    
+    // ユーザー認証チェック関数
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // ユーザー本人確認関数
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    // ユーザーコレクション
+    // ユーザーは自分のドキュメントのみ作成・読み書き可能
+    match /users/{userId} {
+      allow read, write, create: if isAuthenticated() && isOwner(userId);
+      
+      // ユーザー設定サブコレクション
+      match /settings/{settingId} {
+        allow read, write, create: if isAuthenticated() && isOwner(userId);
+      }
+      
+      // ユーザー辞書サブコレクション
+      match /dictionary/{dictId} {
+        allow read, write, create, delete: if isAuthenticated() && isOwner(userId);
+      }
+    }
+    
+    // ドキュメントコレクション（学級通信）
+    // ユーザーは自分のドキュメントのみ操作可能
+    match /documents/{documentId} {
+      allow read, write, create, delete: if isAuthenticated() && 
+        isOwner(resource.data.userId);
+      allow create: if isAuthenticated() && 
+        isOwner(request.resource.data.userId);
+        
+      // ドキュメント履歴サブコレクション
+      match /versions/{versionId} {
+        allow read, write, create: if isAuthenticated() && 
+          isOwner(get(/databases/$(database)/documents/documents/$(documentId)).data.userId);
+      }
+    }
+    
+    // テンプレートコレクション
+    // 読み取りは認証済みユーザー全員可能、作成・編集は管理者のみ
+    match /templates/{templateId} {
+      allow read: if isAuthenticated();
+      allow write, create, delete: if isAuthenticated() && 
+        (request.auth.token.admin == true || 
+         request.auth.token.email in ['admin@yutorikyoshitu.com']);
+    }
+    
+    // 素材・アイコンコレクション
+    // 認証済みユーザーは読み取り専用
+    match /assets/{assetId} {
+      allow read: if isAuthenticated();
+      allow write, create, delete: if isAuthenticated() && 
+        (request.auth.token.admin == true ||
+         request.auth.token.email in ['admin@yutorikyoshitu.com']);
+    }
+    
+    // システム設定コレクション（管理者のみ）
+    match /system/{configId} {
+      allow read, write, create, delete: if isAuthenticated() && 
+        (request.auth.token.admin == true ||
+         request.auth.token.email in ['admin@yutorikyoshitu.com']);
+    }
+    
+    // その他のドキュメントはすべて拒否
     match /{document=**} {
-      allow read, write: if request.time < timestamp.date(2025, 7, 6);
+      allow read, write: if false;
     }
   }
 }
