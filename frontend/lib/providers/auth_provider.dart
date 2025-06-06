@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthProvider extends ChangeNotifier {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseAuth _auth;
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: [
       'email',
@@ -25,13 +25,15 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
-  AuthProvider() {
+  // テスト用にFirebaseAuthを注入可能にする
+  AuthProvider({FirebaseAuth? firebaseAuth})
+      : _auth = firebaseAuth ?? FirebaseAuth.instance {
     // Firebase Auth の状態変化を監視
     _authSubscription = _auth.authStateChanges().listen((User? user) {
       _user = user;
       notifyListeners();
     });
-    
+
     // 初期化時に現在のユーザーを取得
     _user = _auth.currentUser;
   }
@@ -59,7 +61,8 @@ class AuthProvider extends ChangeNotifier {
       }
 
       // Google認証情報を取得
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
 
       // Firebase認証用のクレデンシャルを作成
       final credential = GoogleAuthProvider.credential(
@@ -68,7 +71,8 @@ class AuthProvider extends ChangeNotifier {
       );
 
       // Firebaseにサインイン
-      final UserCredential userCredential = await _auth.signInWithCredential(credential);
+      final UserCredential userCredential =
+          await _auth.signInWithCredential(credential);
       _user = userCredential.user;
 
       _isLoading = false;
@@ -89,7 +93,8 @@ class AuthProvider extends ChangeNotifier {
       _errorMessage = null;
       notifyListeners();
 
-      final UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+      final UserCredential userCredential =
+          await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
@@ -112,17 +117,19 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// メールアドレスとパスワードでアカウント作成
-  Future<bool> createUserWithEmailAndPassword(String email, String password, String displayName) async {
+  Future<bool> createUserWithEmailAndPassword(
+      String email, String password, String displayName) async {
     try {
       _isLoading = true;
       _errorMessage = null;
       notifyListeners();
 
-      final UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+      final UserCredential userCredential =
+          await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
-      
+
       // 表示名を設定
       await userCredential.user?.updateDisplayName(displayName);
       _user = userCredential.user;
@@ -201,7 +208,8 @@ class AuthProvider extends ChangeNotifier {
     try {
       final GoogleSignInAccount? googleUser = _googleSignIn.currentUser;
       if (googleUser != null) {
-        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+        final GoogleSignInAuthentication googleAuth =
+            await googleUser.authentication;
         return googleAuth.accessToken;
       }
       return null;
@@ -240,4 +248,4 @@ class AuthProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
   }
-} 
+}
