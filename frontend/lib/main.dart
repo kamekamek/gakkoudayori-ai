@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import 'firebase_options.dart';
 import 'providers/auth_provider.dart' as auth;
+import 'services/api_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/editor_screen.dart';
@@ -13,12 +14,12 @@ import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Firebase初期化
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  
+
   runApp(const YutoriKyoshitsuApp());
 }
 
@@ -30,6 +31,9 @@ class YutoriKyoshitsuApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => auth.AuthProvider()),
+        ProxyProvider<auth.AuthProvider, ApiService>(
+          update: (_, authProvider, __) => ApiService(authProvider),
+        ),
       ],
       child: Consumer<auth.AuthProvider>(
         builder: (context, authProvider, _) {
@@ -50,7 +54,7 @@ class YutoriKyoshitsuApp extends StatelessWidget {
       redirect: (context, state) {
         final isLoggedIn = authProvider.isAuthenticated;
         final isLoginRoute = state.fullPath == '/login';
-        
+
         if (!isLoggedIn && !isLoginRoute) {
           return '/login';
         }

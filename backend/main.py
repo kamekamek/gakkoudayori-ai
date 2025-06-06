@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 # 環境変数を読み込み
 load_dotenv()
 
-from auth import get_current_user, optional_auth, firebase_auth, require_auth
+from auth import get_current_user, optional_auth, firebase_auth
 
 # FastAPIアプリケーション初期化
 app = FastAPI(
@@ -73,7 +73,6 @@ async def verify_token(current_user: Dict[str, Any] = Depends(get_current_user))
 
 # Document management endpoints (認証必須)
 @app.get("/documents")
-@require_auth
 async def get_documents(current_user: Dict[str, Any] = Depends(get_current_user)):
     """ユーザーのドキュメント一覧を取得"""
     # TODO: Firestore からドキュメント一覧を取得
@@ -83,7 +82,6 @@ async def get_documents(current_user: Dict[str, Any] = Depends(get_current_user)
     }
 
 @app.post("/documents")
-@require_auth
 async def create_document(
     request: Request,
     current_user: Dict[str, Any] = Depends(get_current_user)
@@ -107,7 +105,6 @@ async def create_document(
         raise HTTPException(status_code=500, detail=f"Failed to create document: {str(e)}")
 
 @app.get("/documents/{document_id}")
-@require_auth
 async def get_document(
     document_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user)
@@ -125,7 +122,6 @@ async def get_document(
     }
 
 @app.put("/documents/{document_id}")
-@require_auth
 async def update_document(
     document_id: str,
     request: Request,
@@ -149,7 +145,6 @@ async def update_document(
         raise HTTPException(status_code=500, detail=f"Failed to update document: {str(e)}")
 
 @app.delete("/documents/{document_id}")
-@require_auth
 async def delete_document(
     document_id: str,
     current_user: Dict[str, Any] = Depends(get_current_user)
@@ -165,7 +160,6 @@ async def delete_document(
 
 # AI processing endpoints (認証必須)
 @app.post("/ai/speech-to-text")
-@require_auth
 async def speech_to_text(
     request: Request,
     current_user: Dict[str, Any] = Depends(get_current_user)
@@ -179,7 +173,6 @@ async def speech_to_text(
     }
 
 @app.post("/ai/enhance-text")
-@require_auth
 async def enhance_text(
     request: Request,
     current_user: Dict[str, Any] = Depends(get_current_user)
@@ -214,7 +207,6 @@ async def enhance_text(
         raise HTTPException(status_code=500, detail=f"Failed to enhance text: {str(e)}")
 
 @app.post("/ai/generate-layout")
-@require_auth
 async def generate_layout(
     request: Request,
     current_user: Dict[str, Any] = Depends(get_current_user)
@@ -247,7 +239,6 @@ async def generate_layout(
         raise HTTPException(status_code=500, detail=f"Failed to generate layout: {str(e)}")
 
 @app.post("/ai/generate-headlines")
-@require_auth
 async def generate_headlines(
     request: Request,
     current_user: Dict[str, Any] = Depends(get_current_user)
@@ -279,7 +270,6 @@ async def generate_headlines(
 
 # PDF generation endpoint (認証必須)
 @app.post("/export/pdf")
-@require_auth
 async def export_to_pdf(
     request: Request,
     current_user: Dict[str, Any] = Depends(get_current_user)

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:provider/provider.dart';
 
 import '../theme/app_theme.dart';
+import '../services/api_service.dart';
 
 class TextEditorPanel extends StatefulWidget {
   const TextEditorPanel({super.key});
@@ -16,7 +18,7 @@ class _TextEditorPanelState extends State<TextEditorPanel> {
   final FocusNode _titleFocus = FocusNode();
   final FocusNode _contentFocus = FocusNode();
   bool _hasHistory = false;
-  
+
   @override
   void dispose() {
     _titleController.dispose();
@@ -25,8 +27,6 @@ class _TextEditorPanelState extends State<TextEditorPanel> {
     _contentFocus.dispose();
     super.dispose();
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -61,13 +61,13 @@ class _TextEditorPanelState extends State<TextEditorPanel> {
         Text(
           'エディタ',
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
+                fontWeight: FontWeight.w600,
+              ),
         ),
         const Spacer(),
-IconButton(
-  icon: const Icon(LucideIcons.undo),
-  onPressed: _hasHistory ? _undo : null,
+        IconButton(
+          icon: const Icon(LucideIcons.undo),
+          onPressed: _hasHistory ? _undo : null,
           tooltip: '元に戻す',
         ),
         IconButton(
@@ -89,9 +89,9 @@ IconButton(
             Text(
               'タイトル',
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: AppTheme.primaryColor,
-              ),
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.primaryColor,
+                  ),
             ),
             const SizedBox(height: 8),
             TextField(
@@ -128,16 +128,16 @@ IconButton(
                 Text(
                   '本文',
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.primaryColor,
-                  ),
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.primaryColor,
+                      ),
                 ),
                 const Spacer(),
                 Text(
                   '${_contentController.text.length}文字',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey[600],
-                  ),
+                        color: Colors.grey[600],
+                      ),
                 ),
               ],
             ),
@@ -241,7 +241,8 @@ IconButton(
     );
   }
 
-  Widget _buildToolbarButton(IconData icon, String tooltip, VoidCallback onPressed) {
+  Widget _buildToolbarButton(
+      IconData icon, String tooltip, VoidCallback onPressed) {
     return InkWell(
       onTap: onPressed,
       borderRadius: BorderRadius.circular(8),
@@ -259,8 +260,8 @@ IconButton(
             Text(
               tooltip,
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: AppTheme.primaryColor,
-              ),
+                    color: AppTheme.primaryColor,
+                  ),
             ),
           ],
         ),
@@ -291,7 +292,7 @@ IconButton(
   void _formatText(String format) {
     final selection = _contentController.selection;
     if (!selection.isValid) return;
-    
+
     if (selection.isCollapsed) {
       // Expand to a zero-width range at the caret so replaceRange still works.
       _contentController.selection = selection.copyWith(
@@ -299,12 +300,12 @@ IconButton(
         extentOffset: selection.start,
       );
     }
-    
+
     final selectedText = _contentController.text.substring(
       selection.start,
       selection.end,
     );
-    
+
     String formattedText;
     switch (format) {
       case 'bold':
@@ -319,7 +320,7 @@ IconButton(
       default:
         formattedText = selectedText;
     }
-    
+
     _replaceSelection(formattedText);
   }
 
@@ -390,7 +391,8 @@ IconButton(
               title: const Text('可愛い吹き出し'),
               onTap: () {
                 Navigator.of(context).pop();
-                _insertAtCursor('\n<div class="bubble cute">ここにテキストを入力</div>\n');
+                _insertAtCursor(
+                    '\n<div class="bubble cute">ここにテキストを入力</div>\n');
               },
             ),
             ListTile(
@@ -398,7 +400,8 @@ IconButton(
               title: const Text('重要な吹き出し'),
               onTap: () {
                 Navigator.of(context).pop();
-                _insertAtCursor('\n<div class="bubble important">ここにテキストを入力</div>\n');
+                _insertAtCursor(
+                    '\n<div class="bubble important">ここにテキストを入力</div>\n');
               },
             ),
           ],
@@ -458,11 +461,36 @@ IconButton(
           child: GridView.count(
             crossAxisCount: 6,
             children: [
-              '😊', '😃', '😄', '😆', '😍', '🥰',
-              '👍', '👏', '🙌', '💪', '👶', '🧒',
-              '📚', '✏️', '📝', '🎨', '🏃‍♂️', '⚽',
-              '🌸', '🌞', '⭐', '💫', '🎉', '🎊',
-              '❤️', '💚', '💙', '💛', '🧡', '💜',
+              '😊',
+              '😃',
+              '😄',
+              '😆',
+              '😍',
+              '🥰',
+              '👍',
+              '👏',
+              '🙌',
+              '💪',
+              '👶',
+              '🧒',
+              '📚',
+              '✏️',
+              '📝',
+              '🎨',
+              '🏃‍♂️',
+              '⚽',
+              '🌸',
+              '🌞',
+              '⭐',
+              '💫',
+              '🎉',
+              '🎊',
+              '❤️',
+              '💚',
+              '💙',
+              '💛',
+              '🧡',
+              '💜',
             ].map((emoji) {
               return GestureDetector(
                 onTap: () {
@@ -555,19 +583,21 @@ IconButton(
     );
   }
 
-  void _getAISuggestions() {
+  void _getAISuggestions() async {
+    final apiService = Provider.of<ApiService>(context, listen: false);
+
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Row(
+      builder: (context) => const AlertDialog(
+        title: Row(
           children: [
             Icon(LucideIcons.sparkles, color: AppTheme.accentColor),
             SizedBox(width: 8),
             Text('AI提案を取得中'),
           ],
         ),
-        content: const Column(
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             CircularProgressIndicator(color: AppTheme.accentColor),
@@ -578,14 +608,32 @@ IconButton(
       ),
     );
 
-    // TODO: 実際のAI処理
-    Future.delayed(const Duration(seconds: 2), () {
-      Navigator.of(context).pop();
-      _showAISuggestionResults();
-    });
+    try {
+      // 実際のAI API呼び出し
+      final result = await apiService.enhanceText(
+        text: _contentController.text,
+        style: 'friendly',
+        gradeLevel: 'elementary',
+      );
+
+      if (mounted) {
+        Navigator.of(context).pop();
+        _showAISuggestionResults(result);
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('AI提案の取得に失敗しました: $e'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+    }
   }
 
-  void _showAISuggestionResults() {
+  void _showAISuggestionResults([Map<String, dynamic>? result]) {
     final suggestions = [
       '見出しを追加して読みやすくしましょう',
       '絵文字を使って親しみやすい印象にしましょう',
@@ -601,7 +649,8 @@ IconButton(
           mainAxisSize: MainAxisSize.min,
           children: suggestions.map((suggestion) {
             return ListTile(
-              leading: const Icon(LucideIcons.lightbulb, color: AppTheme.accentColor),
+              leading: const Icon(LucideIcons.lightbulb,
+                  color: AppTheme.accentColor),
               title: Text(suggestion),
               onTap: () {
                 Navigator.of(context).pop();
@@ -628,51 +677,51 @@ IconButton(
 
   void _insertAtCursor(String text) {
     final selection = _contentController.selection;
-    
+
     // 選択が無効な場合はカーソルを先頭に設定
     if (!selection.isValid) {
       _contentController.selection = const TextSelection.collapsed(offset: 0);
     }
-    
+
     final validSelection = _contentController.selection;
     final newText = _contentController.text.replaceRange(
       validSelection.start,
       validSelection.end,
       text,
     );
-    
+
     _contentController.value = TextEditingValue(
       text: newText,
       selection: TextSelection.collapsed(
         offset: validSelection.start + text.length,
       ),
     );
-    
+
     setState(() {}); // UI更新をトリガー
   }
 
   void _replaceSelection(String text) {
     final selection = _contentController.selection;
-    
+
     // 選択が無効な場合はカーソルを先頭に設定
     if (!selection.isValid) {
       _contentController.selection = const TextSelection.collapsed(offset: 0);
     }
-    
+
     final validSelection = _contentController.selection;
     final newText = _contentController.text.replaceRange(
       validSelection.start,
       validSelection.end,
       text,
     );
-    
+
     _contentController.value = TextEditingValue(
       text: newText,
       selection: TextSelection.collapsed(
         offset: validSelection.start + text.length,
       ),
     );
-    
+
     setState(() {}); // UI更新をトリガー
   }
 
@@ -683,13 +732,14 @@ IconButton(
         selection.start,
         selection.end,
       );
-      
+
       final colorHex = '#${color.value.toRadixString(16).substring(2)}';
-      final formattedText = '<span style="color: $colorHex">$selectedText</span>';
-      
+      final formattedText =
+          '<span style="color: $colorHex">$selectedText</span>';
+
       _replaceSelection(formattedText);
     }
-    
+
     setState(() {}); // UI更新をトリガー
   }
 }
