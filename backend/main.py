@@ -4,8 +4,12 @@ from fastapi.responses import JSONResponse
 from typing import Dict, Any, Optional
 import uvicorn
 import os
+from dotenv import load_dotenv
 
-from auth import get_current_user, optional_auth, firebase_auth, require_auth
+# 環境変数を読み込み
+load_dotenv()
+
+from .auth import get_current_user, optional_auth, firebase_auth, require_auth
 
 # FastAPIアプリケーション初期化
 app = FastAPI(
@@ -188,7 +192,7 @@ async def enhance_text(
         custom_instruction = body.get('custom_instruction')
         grade_level = body.get('grade_level', 'elementary')
         
-        from services.ai_service import ai_service
+        from .services.ai_service import ai_service
         
         result = await ai_service.rewrite_text(
             original_text=text,

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -14,6 +15,7 @@ class AuthProvider extends ChangeNotifier {
     ],
   );
 
+  late final StreamSubscription<User?> _authSubscription;
   User? _user;
   bool _isLoading = false;
   String? _errorMessage;
@@ -25,13 +27,19 @@ class AuthProvider extends ChangeNotifier {
 
   AuthProvider() {
     // Firebase Auth の状態変化を監視
-    _auth.authStateChanges().listen((User? user) {
+    _authSubscription = _auth.authStateChanges().listen((User? user) {
       _user = user;
       notifyListeners();
     });
     
     // 初期化時に現在のユーザーを取得
     _user = _auth.currentUser;
+  }
+
+  @override
+  void dispose() {
+    _authSubscription.cancel();
+    super.dispose();
   }
 
   /// Google Sign-In でサインイン
