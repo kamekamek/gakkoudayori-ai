@@ -20,8 +20,8 @@
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="音声入力からAI編集でグラレコ風学級通信を簡単作成。先生の「ゆとり」を創出する学級通信システム">
 
-  <!-- Google Sign-In Client ID (実際のFirebaseプロジェクト用) -->
-  <meta name="google-signin-client_id" content="309920383305-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com">
+  <!-- Google OAuth設定読み込み -->
+  <script src="config.js"></script>
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -35,8 +35,8 @@
   <title>ゆとり職員室 - グラレコ風学級通信作成</title>
   <link rel="manifest" href="manifest.json">
 
-  <!-- Google Sign-In API -->
-  <script src="https://apis.google.com/js/platform.js" async defer></script>
+  <!-- Google Identity Services API (新しいAPI) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>
