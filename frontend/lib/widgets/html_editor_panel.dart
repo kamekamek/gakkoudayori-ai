@@ -27,7 +27,8 @@ class _HtmlEditorPanelState extends State<HtmlEditorPanel> {
 
   void _initializeEditor() {
     // デフォルトのグラレコ風HTMLテンプレートを設定
-    const initialContent = '''<div style="font-family: 'Comic Sans MS', cursive; padding: 20px; background: linear-gradient(45deg, #fff9e6, #f0f8ff); border-radius: 15px;">
+    const initialContent =
+        '''<div style="font-family: 'Comic Sans MS', cursive; padding: 20px; background: linear-gradient(45deg, #fff9e6, #f0f8ff); border-radius: 15px;">
   <div style="text-align: center; margin-bottom: 30px;">
     <div style="background: #ffeb3b; border-radius: 20px; padding: 15px; box-shadow: 3px 3px 10px rgba(0,0,0,0.1); margin: 0 auto; max-width: 300px; position: relative;">
       <h1 style="margin: 0; color: #333; font-size: 24px; font-weight: bold;">📢 今日のお知らせ</h1>
@@ -49,7 +50,7 @@ class _HtmlEditorPanelState extends State<HtmlEditorPanel> {
     </div>
   </div>
 </div>''';
-    
+
     _currentContent = initialContent;
     _htmlController.text = initialContent;
     setState(() => _isInitialized = true);
@@ -74,7 +75,8 @@ class _HtmlEditorPanelState extends State<HtmlEditorPanel> {
                   child: Column(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
                           color: Colors.grey[100],
                           border: Border(
@@ -85,11 +87,15 @@ class _HtmlEditorPanelState extends State<HtmlEditorPanel> {
                           children: [
                             const Icon(LucideIcons.code, size: 16),
                             const SizedBox(width: 8),
-                            const Text('HTMLコード', style: TextStyle(fontWeight: FontWeight.w600)),
+                            const Text('HTMLコード',
+                                style: TextStyle(fontWeight: FontWeight.w600)),
                             const Spacer(),
                             IconButton(
-                              onPressed: () => setState(() => _isPreviewMode = !_isPreviewMode),
-                              icon: Icon(_isPreviewMode ? LucideIcons.edit : LucideIcons.eye),
+                              onPressed: () => setState(
+                                  () => _isPreviewMode = !_isPreviewMode),
+                              icon: Icon(_isPreviewMode
+                                  ? LucideIcons.edit
+                                  : LucideIcons.eye),
                               iconSize: 16,
                               tooltip: _isPreviewMode ? 'エディタ表示' : 'プレビュー表示',
                             ),
@@ -123,7 +129,7 @@ class _HtmlEditorPanelState extends State<HtmlEditorPanel> {
                 ),
               ),
               const SizedBox(width: 16),
-              
+
               // プレビュー（右）
               Expanded(
                 flex: 1,
@@ -135,7 +141,8 @@ class _HtmlEditorPanelState extends State<HtmlEditorPanel> {
                   child: Column(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
                           color: Colors.grey[100],
                           border: Border(
@@ -146,7 +153,8 @@ class _HtmlEditorPanelState extends State<HtmlEditorPanel> {
                           children: [
                             Icon(LucideIcons.eye, size: 16),
                             SizedBox(width: 8),
-                            Text('プレビュー', style: TextStyle(fontWeight: FontWeight.w600)),
+                            Text('プレビュー',
+                                style: TextStyle(fontWeight: FontWeight.w600)),
                           ],
                         ),
                       ),
@@ -162,8 +170,9 @@ class _HtmlEditorPanelState extends State<HtmlEditorPanel> {
                               border: Border.all(color: Colors.grey[300]!),
                             ),
                             child: Text(
-                              'HTMLプレビュー\n\n' + 
-                              _currentContent.replaceAll(RegExp(r'<[^>]*>'), '\n'),
+                              'HTMLプレビュー\n\n' +
+                                  _currentContent.replaceAll(
+                                      RegExp(r'<[^>]*>'), '\n'),
                               style: const TextStyle(
                                 fontSize: 14,
                                 height: 1.5,
@@ -207,9 +216,9 @@ class _HtmlEditorPanelState extends State<HtmlEditorPanel> {
               textStyle: const TextStyle(fontSize: 12),
             ),
           ),
-          
+
           const SizedBox(width: 8),
-          
+
           // 季節テーマ適用ボタン
           ElevatedButton.icon(
             onPressed: _applySeasonalTheme,
@@ -222,9 +231,9 @@ class _HtmlEditorPanelState extends State<HtmlEditorPanel> {
               textStyle: const TextStyle(fontSize: 12),
             ),
           ),
-          
+
           const SizedBox(width: 8),
-          
+
           // 吹き出し挿入ボタン
           IconButton(
             onPressed: _insertSpeechBubble,
@@ -232,7 +241,7 @@ class _HtmlEditorPanelState extends State<HtmlEditorPanel> {
             tooltip: '吹き出し挿入',
             iconSize: 18,
           ),
-          
+
           // アイコン挿入ボタン
           IconButton(
             onPressed: _insertIcon,
@@ -240,9 +249,9 @@ class _HtmlEditorPanelState extends State<HtmlEditorPanel> {
             tooltip: 'アイコン挿入',
             iconSize: 18,
           ),
-          
+
           const Spacer(),
-          
+
           // HTMLモード表示
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -316,7 +325,6 @@ class _HtmlEditorPanelState extends State<HtmlEditorPanel> {
 
   void _notifyContentChange(String content) {
     // AppStateに内容変更を通知
-    final appState = context.read<AppState>();
     // TODO: HTMLコンテンツをAppStateに保存
     debugPrint('HTML content updated: ${content.length} characters');
   }
@@ -333,40 +341,49 @@ class _HtmlEditorPanelState extends State<HtmlEditorPanel> {
         </div>
       </div>
     ''';
-    
+
     _insertTextAtCursor(graphicalTemplate);
   }
 
   void _applySeasonalTheme() {
     final appState = context.read<AppState>();
     final season = appState.currentSeasonName;
-    
+
     Map<String, String> seasonalStyles = {
-      '春': 'background: linear-gradient(45deg, #ffb6c1, #98fb98); color: #2e7d32;',
-      '夏': 'background: linear-gradient(45deg, #87ceeb, #ffeb3b); color: #1565c0;',
-      '秋': 'background: linear-gradient(45deg, #daa520, #cd853f); color: #5d4037;',
-      '冬': 'background: linear-gradient(45deg, #b0c4de, #ffffff); color: #1976d2;',
+      '春':
+          'background: linear-gradient(45deg, #ffb6c1, #98fb98); color: #2e7d32;',
+      '夏':
+          'background: linear-gradient(45deg, #87ceeb, #ffeb3b); color: #1565c0;',
+      '秋':
+          'background: linear-gradient(45deg, #daa520, #cd853f); color: #5d4037;',
+      '冬':
+          'background: linear-gradient(45deg, #b0c4de, #ffffff); color: #1976d2;',
     };
-    
+
     final style = seasonalStyles[season] ?? seasonalStyles['春']!;
-    
+
     final seasonalTemplate = '''
       <div style="$style padding: 25px; border-radius: 15px; box-shadow: 0 8px 25px rgba(0,0,0,0.15);">
         <h2>${_getSeasonEmoji(season)} ${season}のお知らせ ${_getSeasonEmoji(season)}</h2>
         <p>季節に合わせたデザインが適用されました。</p>
       </div>
     ''';
-    
+
     _insertTextAtCursor(seasonalTemplate);
   }
 
   String _getSeasonEmoji(String season) {
     switch (season) {
-      case '春': return '🌸';
-      case '夏': return '🌻';
-      case '秋': return '🍁';
-      case '冬': return '⛄';
-      default: return '🌟';
+      case '春':
+        return '🌸';
+      case '夏':
+        return '🌻';
+      case '秋':
+        return '🍁';
+      case '冬':
+        return '⛄';
+      default:
+        return '🌟';
     }
   }
 
@@ -377,7 +394,7 @@ class _HtmlEditorPanelState extends State<HtmlEditorPanel> {
         <div style="position: absolute; bottom: -8px; left: 30px; width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 8px solid #ffeb3b;"></div>
       </div>
     ''';
-    
+
     _insertTextAtCursor(speechBubbleHtml);
   }
 
@@ -391,24 +408,39 @@ class _HtmlEditorPanelState extends State<HtmlEditorPanel> {
           spacing: 10,
           runSpacing: 10,
           children: [
-            '📚', '✏️', '🎓', '🏫', '👨‍🏫', '👩‍🏫', '🧑‍🎓', '📝',
-            '🎨', '🎵', '⚽', '🏃‍♀️', '🎭', '🔬', '📐', '🖥️'
-          ].map((emoji) => GestureDetector(
-            onTap: () {
-              Navigator.of(context).pop();
-              _insertTextAtCursor(
-                '<span style="font-size: 24px; margin: 0 5px;">$emoji</span>'
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey[300]!),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(emoji, style: const TextStyle(fontSize: 24)),
-            ),
-          )).toList(),
+            '📚',
+            '✏️',
+            '🎓',
+            '🏫',
+            '👨‍🏫',
+            '👩‍🏫',
+            '🧑‍🎓',
+            '📝',
+            '🎨',
+            '🎵',
+            '⚽',
+            '🏃‍♀️',
+            '🎭',
+            '🔬',
+            '📐',
+            '🖥️'
+          ]
+              .map((emoji) => GestureDetector(
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      _insertTextAtCursor(
+                          '<span style="font-size: 24px; margin: 0 5px;">$emoji</span>');
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey[300]!),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(emoji, style: const TextStyle(fontSize: 24)),
+                    ),
+                  ))
+              .toList(),
         ),
       ),
     );
@@ -417,16 +449,16 @@ class _HtmlEditorPanelState extends State<HtmlEditorPanel> {
   void _insertTextAtCursor(String text) {
     final currentPosition = _htmlController.selection.baseOffset;
     final currentText = _htmlController.text;
-    
-    final newText = currentText.substring(0, currentPosition) + 
-                   text + 
-                   currentText.substring(currentPosition);
-    
+
+    final newText = currentText.substring(0, currentPosition) +
+        text +
+        currentText.substring(currentPosition);
+
     _htmlController.text = newText;
     _htmlController.selection = TextSelection.collapsed(
       offset: currentPosition + text.length,
     );
-    
+
     setState(() => _currentContent = newText);
     _notifyContentChange(newText);
   }

@@ -39,7 +39,7 @@ dependencies:
   provider: ^6.1.1
   
   # HTTP requests
-  http: ^1.1.0
+  http: ^1.0.0
   
   # Navigation
   go_router: ^13.2.0
@@ -62,7 +62,6 @@ dependencies:
   
   # HTML Editor
   html_editor_enhanced: ^2.5.1
-  webviewx: ^0.2.2
   
   # WebSocket for chat editing
   socket_io_client: ^2.0.3
@@ -71,7 +70,7 @@ dependencies:
   diff_match_patch: ^0.4.1
   
   # File handling
-  file_picker: ^6.1.1
+  file_picker: ^5.5.0
   
   # Audio
   audio_session: ^0.1.13
@@ -103,6 +102,7 @@ dev_dependencies:
   # Testing dependencies
   mockito: ^5.4.4
   build_runner: ^2.4.9
+
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
