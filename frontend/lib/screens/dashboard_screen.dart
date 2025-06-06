@@ -18,7 +18,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, _) {
         final user = authProvider.user;
-        
+
         return Scaffold(
           appBar: AppBar(
             title: const Text('ゆとり職員室'),
@@ -29,10 +29,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               PopupMenuButton<String>(
                 icon: CircleAvatar(
-                  backgroundImage: user?.photoURL != null 
+                  backgroundImage: user?.photoURL != null
                       ? NetworkImage(user!.photoURL!)
                       : null,
-                  child: user?.photoURL == null 
+                  child: user?.photoURL == null
                       ? Text(
                           user?.displayName?.isNotEmpty == true
                               ? user!.displayName![0].toUpperCase()
@@ -61,7 +61,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             children: [
                               Text(
                                 user?.displayName ?? 'ユーザー',
-                                style: const TextStyle(fontWeight: FontWeight.w500),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w500),
                               ),
                               Text(
                                 user?.email ?? '',
@@ -97,15 +98,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 // ウェルカムメッセージ
                 _buildWelcomeSection(user),
                 const SizedBox(height: 32),
-                
+
                 // クイックアクション
                 _buildQuickActions(),
                 const SizedBox(height: 32),
-                
+
                 // 最近のドキュメント
                 _buildRecentDocuments(),
                 const SizedBox(height: 32),
-                
+
                 // 統計情報
                 _buildStats(),
               ],
@@ -124,7 +125,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildWelcomeSection(user) {
     final greeting = _getGreeting();
     final userName = user?.displayName ?? user?.email?.split('@')[0] ?? 'さん';
-    
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -277,12 +278,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               style: Theme.of(context).textTheme.titleLarge,
             ),
             TextButton(
-              onPressed: () {
-                // TODO: 全てのドキュメント表示画面に遷移
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('ドキュメント一覧機能は準備中です')),
-                );
-              },
+              onPressed: () => context.go('/documents'),
               child: const Text('すべて表示'),
             ),
           ],
@@ -320,7 +316,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     required String status,
   }) {
     final isDraft = status == 'draft';
-    
+
     return Card(
       child: InkWell(
         onTap: () {
@@ -336,12 +332,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: isDraft ? AppTheme.warningColor.withOpacity(0.1) : AppTheme.successColor.withOpacity(0.1),
+                  color: isDraft
+                      ? AppTheme.warningColor.withOpacity(0.1)
+                      : AppTheme.successColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
                   isDraft ? LucideIcons.edit : LucideIcons.checkCircle,
-                  color: isDraft ? AppTheme.warningColor : AppTheme.successColor,
+                  color:
+                      isDraft ? AppTheme.warningColor : AppTheme.successColor,
                   size: 24,
                 ),
               ),
@@ -362,16 +361,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: isDraft ? AppTheme.warningColor.withOpacity(0.1) : AppTheme.successColor.withOpacity(0.1),
+                            color: isDraft
+                                ? AppTheme.warningColor.withOpacity(0.1)
+                                : AppTheme.successColor.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
                             isDraft ? '下書き' : '公開済み',
                             style: TextStyle(
                               fontSize: 12,
-                              color: isDraft ? AppTheme.warningColor : AppTheme.successColor,
+                              color: isDraft
+                                  ? AppTheme.warningColor
+                                  : AppTheme.successColor,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -389,8 +393,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Text(
                       '最終更新: $lastModified',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppTheme.gray500,
-                      ),
+                            color: AppTheme.gray500,
+                          ),
                     ),
                   ],
                 ),

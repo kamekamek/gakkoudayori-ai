@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/editor_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/documents_screen.dart';
 import 'providers/app_state.dart';
 import 'theme/app_theme.dart';
 
@@ -43,6 +44,17 @@ final GoRouter _router = GoRouter(
     GoRoute(
       path: '/editor',
       builder: (context, state) => const EditorScreen(),
+    ),
+    GoRoute(
+      path: '/editor/:id',
+      builder: (context, state) {
+        final documentId = state.pathParameters['id']!;
+        return EditorScreen(documentId: documentId);
+      },
+    ),
+    GoRoute(
+      path: '/documents',
+      builder: (context, state) => const DocumentsScreen(),
     ),
     GoRoute(
       path: '/settings',

@@ -75,6 +75,10 @@ dependencies:
   # Audio
   audio_session: ^0.1.13
   just_audio: ^0.9.34
+  record: ^5.0.4
+  
+  # Permissions
+  permission_handler: ^11.3.1
   
   # PDF rendering
   pdf_render: ^1.4.7

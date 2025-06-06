@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../providers/app_state.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
+import '../services/voice_recording_service.dart';
 
 class VoiceInputPanel extends StatefulWidget {
   const VoiceInputPanel({super.key});
@@ -17,6 +19,9 @@ class _VoiceInputPanelState extends State<VoiceInputPanel>
     with TickerProviderStateMixin {
   late AnimationController _pulseController;
   late AnimationController _waveController;
+  final VoiceRecordingService _voiceService = VoiceRecordingService();
+  PermissionStatus _micPermissionStatus = PermissionStatus.denied;
+  double _currentAmplitude = 0.0;
 
   @override
   void initState() {
@@ -29,6 +34,36 @@ class _VoiceInputPanelState extends State<VoiceInputPanel>
       duration: const Duration(milliseconds: 2000),
       vsync: this,
     );
+
+    // 権限状態を監視
+    _voiceService.permissionStream.listen((status) {
+      if (mounted) {
+        setState(() {
+          _micPermissionStatus = status;
+        });
+      }
+    });
+
+    // 音声レベルを監視
+    _voiceService.amplitudeStream.listen((amplitude) {
+      if (mounted) {
+        setState(() {
+          _currentAmplitude = amplitude;
+        });
+      }
+    });
+
+    // 初期権限チェック
+    _checkInitialPermission();
+  }
+
+  Future<void> _checkInitialPermission() async {
+    final status = await _voiceService.checkMicrophonePermission();
+    if (mounted) {
+      setState(() {
+        _micPermissionStatus = status;
+      });
+    }
   }
 
   @override
@@ -121,18 +156,31 @@ class _VoiceInputPanelState extends State<VoiceInputPanel>
               child: AnimatedBuilder(
                 animation: _pulseController,
                 builder: (context, child) {
+                  // 権限状態に応じて色とアイコンを変更
+                  Color buttonColor;
+                  IconData buttonIcon;
+
+                  if (_micPermissionStatus != PermissionStatus.granted) {
+                    buttonColor = Colors.grey;
+                    buttonIcon = LucideIcons.micOff;
+                  } else if (appState.isRecording) {
+                    buttonColor = AppTheme.errorColor;
+                    buttonIcon = LucideIcons.square;
+                  } else {
+                    buttonColor = AppTheme.primaryColor;
+                    buttonIcon = LucideIcons.mic;
+                  }
+
                   return Container(
                     width: 120,
                     height: 120,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: appState.isRecording
-                          ? AppTheme.errorColor
-                          : AppTheme.primaryColor,
+                      color: buttonColor,
                       boxShadow: appState.isRecording
                           ? [
                               BoxShadow(
-                                color: AppTheme.errorColor.withOpacity(
+                                color: buttonColor.withOpacity(
                                     0.3 + _pulseController.value * 0.3),
                                 blurRadius: 20 + _pulseController.value * 20,
                                 spreadRadius: _pulseController.value * 10,
@@ -140,16 +188,14 @@ class _VoiceInputPanelState extends State<VoiceInputPanel>
                             ]
                           : [
                               BoxShadow(
-                                color: AppTheme.primaryColor.withOpacity(0.3),
+                                color: buttonColor.withOpacity(0.3),
                                 blurRadius: 15,
                                 offset: const Offset(0, 5),
                               ),
                             ],
                     ),
                     child: Icon(
-                      appState.isRecording
-                          ? LucideIcons.square
-                          : LucideIcons.mic,
+                      buttonIcon,
                       size: 48,
                       color: Colors.white,
                     ),
@@ -162,11 +208,9 @@ class _VoiceInputPanelState extends State<VoiceInputPanel>
 
             // 状態テキスト
             Text(
-              appState.isRecording ? '録音中...' : 'タップして録音開始',
+              _getStatusText(appState),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: appState.isRecording
-                        ? AppTheme.errorColor
-                        : AppTheme.primaryColor,
+                    color: _getStatusColor(appState),
                     fontWeight: FontWeight.w600,
                   ),
             ),
@@ -187,18 +231,24 @@ class _VoiceInputPanelState extends State<VoiceInputPanel>
       builder: (context, child) {
         return Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(5, (index) {
-            final delay = index * 0.2;
+          children: List.generate(7, (index) {
+            final delay = index * 0.15;
             final animationValue = (_waveController.value + delay) % 1.0;
-            final height = 4 + animationValue * 16;
+
+            // 実際の音声レベルに基づいて高さを調整
+            final baseHeight = 4.0;
+            final amplitudeHeight = _currentAmplitude * 20.0;
+            final animationHeight = animationValue * 8.0;
+            final totalHeight = baseHeight + amplitudeHeight + animationHeight;
 
             return Container(
-              width: 4,
-              height: height,
-              margin: const EdgeInsets.symmetric(horizontal: 2),
+              width: 3,
+              height: totalHeight.clamp(4.0, 24.0),
+              margin: const EdgeInsets.symmetric(horizontal: 1.5),
               decoration: BoxDecoration(
-                color: AppTheme.errorColor,
-                borderRadius: BorderRadius.circular(2),
+                color: AppTheme.errorColor
+                    .withOpacity(0.7 + _currentAmplitude * 0.3),
+                borderRadius: BorderRadius.circular(1.5),
               ),
             );
           }),
@@ -333,21 +383,163 @@ class _VoiceInputPanelState extends State<VoiceInputPanel>
     );
   }
 
-  void _toggleRecording(BuildContext context, AppState appState) {
+  void _toggleRecording(BuildContext context, AppState appState) async {
     if (appState.isRecording) {
+      // 録音停止
       appState.stopRecording();
-      // TODO: 実際の録音停止処理
+      final recordingPath = await _voiceService.stopRecording();
 
-      // サンプルの音声認識結果
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (!mounted) return; // ウィジェットが破棄されている場合は処理をスキップ
-        appState.updateTranscription('今日は運動会の練習をしました。子どもたちはとても頑張っていて、'
-            'リレーの練習では白熱した競争が繰り広げられました。'
-            '本番までもう少しですが、みんなで力を合わせて素晴らしい運動会にしましょう。');
-      });
+      if (recordingPath != null) {
+        // 音声ファイルをAPIに送信して音声認識
+        _processRecording(context, recordingPath);
+      }
     } else {
-      appState.startRecording();
-      // TODO: 実際の録音開始処理
+      // 権限チェック
+      if (_micPermissionStatus != PermissionStatus.granted) {
+        await _requestMicrophonePermission(context);
+        return;
+      }
+
+      // 録音開始
+      final success = await _voiceService.startRecording();
+      if (success) {
+        appState.startRecording();
+      } else {
+        _showErrorSnackBar(context, '録音を開始できませんでした');
+      }
+    }
+  }
+
+  Future<void> _requestMicrophonePermission(BuildContext context) async {
+    final status = await _voiceService.requestMicrophonePermission();
+
+    if (status == PermissionStatus.granted) {
+      _showSuccessSnackBar(context, 'マイク権限が許可されました');
+    } else if (status == PermissionStatus.permanentlyDenied) {
+      _showPermissionDialog(context);
+    } else {
+      _showErrorSnackBar(context, 'マイク権限が必要です');
+    }
+  }
+
+  void _showPermissionDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(LucideIcons.micOff, color: AppTheme.errorColor),
+            SizedBox(width: 8),
+            Text('マイク権限が必要です'),
+          ],
+        ),
+        content: const Text(
+          '音声入力機能を使用するには、マイクへのアクセス権限が必要です。\n設定画面から権限を許可してください。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('キャンセル'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _voiceService.openAppSettings();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+            ),
+            child: const Text('設定を開く'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _processRecording(
+      BuildContext context, String recordingPath) async {
+    final apiService = Provider.of<ApiService>(context, listen: false);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        title: Row(
+          children: [
+            Icon(LucideIcons.mic, color: AppTheme.primaryColor),
+            SizedBox(width: 8),
+            Text('音声認識中'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: AppTheme.primaryColor),
+            SizedBox(height: 16),
+            Text('音声をテキストに変換しています...'),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      // 音声認識API呼び出し（実装済みのAPIを使用）
+      final result = await apiService.transcribeAudio(recordingPath);
+
+      if (mounted) {
+        Navigator.of(context).pop();
+
+        final transcribedText = result['data']['transcription'] ?? '';
+        if (transcribedText.isNotEmpty) {
+          context.read<AppState>().updateTranscription(transcribedText);
+          _showSuccessSnackBar(context, '音声認識が完了しました');
+        } else {
+          _showErrorSnackBar(context, '音声を認識できませんでした');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop();
+        _showErrorSnackBar(context, '音声認識に失敗しました: $e');
+      }
+    }
+  }
+
+  void _showSuccessSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppTheme.accentColor,
+      ),
+    );
+  }
+
+  void _showErrorSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppTheme.errorColor,
+      ),
+    );
+  }
+
+  String _getStatusText(AppState appState) {
+    if (_micPermissionStatus != PermissionStatus.granted) {
+      return 'マイク権限が必要です';
+    } else if (appState.isRecording) {
+      return '録音中...';
+    } else {
+      return 'タップして録音開始';
+    }
+  }
+
+  Color _getStatusColor(AppState appState) {
+    if (_micPermissionStatus != PermissionStatus.granted) {
+      return Colors.grey;
+    } else if (appState.isRecording) {
+      return AppTheme.errorColor;
+    } else {
+      return AppTheme.primaryColor;
     }
   }
 

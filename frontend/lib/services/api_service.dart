@@ -159,8 +159,48 @@ class ApiService {
   Future<Map<String, dynamic>> speechToText({
     required File audioFile,
   }) async {
-    // マルチパートリクエストは別途実装が必要
-    throw UnimplementedError('Speech-to-text not implemented yet');
+    try {
+      final headers = await _getHeaders();
+      headers.remove('Content-Type'); // マルチパートの場合は自動設定される
+
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/ai/speech-to-text'),
+      );
+
+      // ヘッダーを追加
+      request.headers.addAll(headers);
+
+      // 音声ファイルを追加
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'audio_file',
+          audioFile.path,
+        ),
+      );
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      _handleResponse(response);
+      return json.decode(response.body);
+    } catch (e) {
+      debugPrint('Speech-to-text failed: $e');
+      rethrow;
+    }
+  }
+
+  /// 音声ファイルパスから音声認識（便利メソッド）
+  Future<Map<String, dynamic>> transcribeAudio(String audioPath) async {
+    final audioFile = File(audioPath);
+    if (!await audioFile.exists()) {
+      throw ApiException(
+        statusCode: 400,
+        message: 'Audio file not found',
+        details: 'File path: $audioPath',
+      );
+    }
+    return await speechToText(audioFile: audioFile);
   }
 
   // =============================================================================
