@@ -11,6 +11,9 @@ google-cloud-firestore==2.13.1
 google-cloud-storage==2.10.0
 google-cloud-aiplatform==1.38.1
 
+# Vertex AI dependencies
+vertexai>=1.43.0
+
 # Firebase Admin SDK
 firebase-admin==6.2.0
 
