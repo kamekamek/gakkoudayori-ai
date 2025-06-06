@@ -29,19 +29,28 @@ class _EditorScreenState extends State<EditorScreen>
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
 
-    // documentIdが指定されている場合はドキュメントを読み込み
+    // documentIdが指定されている場合はドキュメントを読み込み、そうでなければ新規作成
     if (widget.documentId != null) {
       _loadDocument(widget.documentId!);
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.read<AppState>().createNewDocument();
+      });
     }
   }
 
-  void _loadDocument(String documentId) {
-    // TODO: 実際のドキュメント読み込み処理を実装
-    // 現在はプレースホルダー
-    debugPrint('Loading document: $documentId');
-    // Future implementation: Firestore からドキュメントを読み込み
-    // final appState = context.read<AppState>();
-    // appState.loadDocument(documentId);
+  void _loadDocument(String documentId) async {
+    final appState = context.read<AppState>();
+    final success = await appState.loadDocument(documentId);
+
+    if (!success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('ドキュメントの読み込みに失敗しました'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override

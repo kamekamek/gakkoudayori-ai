@@ -161,4 +161,40 @@ class DocumentHistoryService {
       return false;
     }
   }
+
+  /// すべてのドキュメントを取得（ユーザーIDなしでも取得可能）
+  Future<List<Document>> getAllDocuments({String? userId}) async {
+    try {
+      Query query = _firestore.collection('documents');
+
+      if (userId != null) {
+        query = query.where('user_id', isEqualTo: userId);
+      }
+
+      final querySnapshot =
+          await query.orderBy('updated_at', descending: true).get();
+
+      return querySnapshot.docs
+          .map((doc) => Document.fromFirestore(
+              doc.id, doc.data() as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      print('全ドキュメント取得エラー: $e');
+      return [];
+    }
+  }
+
+  /// ドキュメントを保存（新規作成・更新両対応）
+  Future<bool> saveDocument(Document document) async {
+    try {
+      await _firestore
+          .collection('documents')
+          .doc(document.id)
+          .set(document.toFirestore(), SetOptions(merge: true));
+      return true;
+    } catch (e) {
+      print('ドキュメント保存エラー: $e');
+      return false;
+    }
+  }
 }
