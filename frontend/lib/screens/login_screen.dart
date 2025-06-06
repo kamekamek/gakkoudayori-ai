@@ -88,13 +88,13 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                               _buildHeader(),
                               const SizedBox(height: 32),
                               
-                              // Google Sign-In ボタン
-                              _buildGoogleSignInButton(authProvider),
-                              const SizedBox(height: 24),
+                              // Google Sign-In ボタン (一時的に無効化)
+                              // _buildGoogleSignInButton(authProvider),
+                              // const SizedBox(height: 24),
                               
                               // 区切り線
-                              _buildDivider(),
-                              const SizedBox(height: 24),
+                              // _buildDivider(),
+                              // const SizedBox(height: 24),
                               
                               // メール・パスワードフォーム
                               _buildForm(authProvider),
