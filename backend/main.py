@@ -185,16 +185,27 @@ async def enhance_text(
         body = await request.json()
         text = body.get('text', '')
         style = body.get('style', 'friendly')
+        custom_instruction = body.get('custom_instruction')
+        grade_level = body.get('grade_level', 'elementary')
         
-        # TODO: Vertex AI Gemini API統合
-        enhanced_text = f"【改善されたテキスト】\n{text}\n\n※ {style}スタイルで処理"
+        from services.ai_service import ai_service
+        
+        result = await ai_service.rewrite_text(
+            original_text=text,
+            style=style,
+            custom_instruction=custom_instruction,
+            grade_level=grade_level
+        )
+        
+        # ユーザー情報を追加
+        result['processed_by'] = current_user['uid']
         
         return {
-            "original_text": text,
-            "enhanced_text": enhanced_text,
-            "style": style,
-            "processed_by": current_user['uid']
+            "status": "success",
+            "data": result,
+            "message": "テキストリライトが完了しました"
         }
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to enhance text: {str(e)}")
 
@@ -208,27 +219,59 @@ async def generate_layout(
     try:
         body = await request.json()
         content = body.get('content', '')
-        season = body.get('season', 'spring')
+        season = body.get('season', 'current')
+        event_type = body.get('event_type')
         
-        # TODO: Gemini APIでレイアウト提案
-        layout = {
-            "template": "basic_newsletter",
-            "season": season,
-            "sections": [
-                {"type": "header", "content": "学級だより"},
-                {"type": "body", "content": content},
-                {"type": "footer", "content": "担任より"}
-            ],
-            "colors": ["#FFB3BA", "#FFDFBA", "#FFFFBA"],
-            "suggested_icons": ["school", "cherry-blossom", "pencil"]
-        }
+        from services.ai_service import ai_service
+        
+        result = await ai_service.optimize_layout(
+            content=content,
+            season=season,
+            event_type=event_type
+        )
+        
+        # ユーザー情報を追加
+        result['generated_by'] = current_user['uid']
         
         return {
-            "layout": layout,
-            "generated_by": current_user['uid']
+            "status": "success",
+            "data": result,
+            "message": "レイアウト最適化が完了しました"
         }
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate layout: {str(e)}")
+
+@app.post("/ai/generate-headlines")
+@require_auth
+async def generate_headlines(
+    request: Request,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """コンテンツから見出しを自動生成"""
+    try:
+        body = await request.json()
+        content = body.get('content', '')
+        max_headlines = body.get('max_headlines', 5)
+        
+        from services.ai_service import ai_service
+        
+        result = await ai_service.generate_headlines(
+            content=content,
+            max_headlines=max_headlines
+        )
+        
+        # ユーザー情報を追加
+        result['generated_by'] = current_user['uid']
+        
+        return {
+            "status": "success",
+            "data": result,
+            "message": "見出し生成が完了しました"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate headlines: {str(e)}")
 
 # PDF generation endpoint (認証必須)
 @app.post("/export/pdf")
