@@ -76,8 +76,8 @@ class FirebaseAuth:
             HTTPException: 認証失敗時
         """
         try:
-            # IDトークンを検証
-            decoded_token = auth.verify_id_token(credentials.credentials)
+            # IDトークンを検証（無効化されたトークンもチェック）
+            decoded_token = auth.verify_id_token(credentials.credentials, check_revoked=True)
             
             # ユーザー情報を返す
             return {
@@ -196,6 +196,9 @@ def require_auth(func):
     """
     @wraps(func)
     async def wrapper(*args, **kwargs):
+        current_user = kwargs.get("current_user")
+        if current_user is None:
+            raise HTTPException(status_code=401, detail="Authentication required")
         return await func(*args, **kwargs)
     return wrapper
 

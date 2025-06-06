@@ -245,8 +245,7 @@ JSON形式のみで出力してください。他の説明は不要です。
             return response.text
         
         # 同期呼び出しを非同期実行
-        loop = asyncio.get_event_loop()
-        response = await loop.run_in_executor(None, _sync_call)
+        response = await asyncio.to_thread(_sync_call)
         return response
     
     def _build_rewrite_prompt(

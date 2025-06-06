@@ -3,16 +3,17 @@ fastapi==0.104.1
 uvicorn==0.24.0
 python-multipart==0.0.6
 python-socketio==5.9.0
+python-dotenv==1.0.0
 
 # Google Cloud dependencies
 google-cloud-speech==2.21.0
 google-cloud-texttospeech==2.16.3
 google-cloud-firestore==2.13.1
 google-cloud-storage==2.10.0
-google-cloud-aiplatform==1.38.1
 
-# Vertex AI dependencies
-vertexai>=1.43.0
+# Vertex AI dependencies (バージョンを統一)
+google-cloud-aiplatform>=1.71.0
+vertexai>=1.71.0
 
 # Firebase Admin SDK
 firebase-admin==6.2.0
