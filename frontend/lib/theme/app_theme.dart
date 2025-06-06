@@ -44,7 +44,7 @@ class AppTheme {
       ),
       
       // Card Theme
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: Colors.white,
         elevation: 4,
         shadowColor: Colors.black.withOpacity(0.1),
@@ -345,4 +345,10 @@ class AppTheme {
       Color(0xFFDCDCDC), // ゲインズボロ
     ],
   };
+
+  // 個別の季節カラーパレット（後方互換性のため）
+  static List<Color> get springColors => seasonalColors['spring']!;
+  static List<Color> get summerColors => seasonalColors['summer']!;
+  static List<Color> get autumnColors => seasonalColors['autumn']!;
+  static List<Color> get winterColors => seasonalColors['winter']!;
 }
