@@ -210,3 +210,173 @@ flutter build web
 - 依存関係の脆弱性スキャン
 - API キーの漏洩チェック
 - 入力値検証の確認
+
+# 開発フロー・ツール設定
+
+## 🚀 必須ツール設定
+
+### Flutter 開発ツール
+```bash
+# 静的解析
+flutter analyze
+
+# テスト実行
+flutter test
+
+# フォーマット
+dart format .
+
+# 依存関係更新
+flutter pub get
+```
+
+### Python 開発ツール
+```bash
+# 依存関係インストール
+pip install flake8 black mypy pytest pytest-cov
+
+# 静的解析
+flake8 app/
+mypy app/
+
+# フォーマット
+black app/
+
+# テスト実行
+pytest --cov=app tests/
+```
+
+## 📋 開発フロー（毎回必須）
+
+### 作業開始時
+- [ ] [docs/tasks.md](mdc:docs/tasks.md) で今日のタスク確認
+- [ ] 前回のテスト実行・通過確認
+- [ ] 今日の機能のテスト設計
+
+### 実装時（TDDサイクル）
+- [ ] 🔴 Red: テスト先行作成（失敗する状態）
+- [ ] 🟢 Green: 最小限の実装でテスト通過
+- [ ] 🔵 Refactor: コード品質向上・リファクタリング
+
+### 終了時
+- [ ] 成果確認・全テスト通過
+- [ ] ドキュメント更新
+- [ ] [docs/tasks.md](mdc:docs/tasks.md) 進捗更新
+- [ ] 明日のタスク明確化
+
+## 🔧 VS Code設定（推奨）
+
+### settings.json
+```json
+{
+  "dart.lineLength": 100,
+  "python.linting.enabled": true,
+  "python.linting.flake8Enabled": true,
+  "python.formatting.provider": "black",
+  "[python]": {
+    "editor.formatOnSave": true
+  },
+  "[dart]": {
+    "editor.formatOnSave": true
+  }
+}
+```
+
+## ⚡ pre-commit設定
+
+### .pre-commit-config.yaml
+```yaml
+repos:
+  - repo: local
+    hooks:
+      - id: flutter-analyze
+        name: Flutter Analyze
+        entry: flutter analyze
+        language: system
+        pass_filenames: false
+        
+      - id: flutter-test
+        name: Flutter Test
+        entry: flutter test
+        language: system
+        pass_filenames: false
+        
+      - id: python-black
+        name: Black
+        entry: black
+        language: system
+        types: [python]
+        
+      - id: python-flake8
+        name: Flake8
+        entry: flake8
+        language: system
+        types: [python]
+```
+
+## 📊 品質メトリクス
+
+### 目標指標
+- **テストカバレッジ**: 全体80%以上、重要機能90%以上
+- **静的解析**: エラー0件、警告最小化
+- **パフォーマンス**: UI応答<100ms、API応答<500ms
+- **セキュリティ**: 脆弱性スキャン月1回実施
+
+### チェックコマンド
+```bash
+# Flutter
+flutter analyze
+flutter test --coverage
+flutter run --profile -d chrome
+
+# Python
+flake8 app/
+mypy app/
+pytest --cov=app --cov-report=html tests/
+```
+
+## 🐛 デバッグ・トラブルシューティング
+
+### よくある問題
+
+#### Flutter Web
+```bash
+# キャッシュクリア
+flutter clean
+flutter pub get
+
+# Chrome開発者ツール > Application > Storage > Clear site data
+```
+
+#### Firebase接続エラー
+- web/index.html のFirebase設定確認
+- Firebase Console プロジェクト設定の確認
+
+#### CORS エラー
+- backend の CORS設定確認
+- FastAPIのadd_middleware設定確認
+
+#### Provider状態管理エラー
+- Providerのライフサイクル確認
+- Consumer ウィジェットの適切な配置確認
+
+## 🤝 コミット・PR ルール
+
+### コミットメッセージ
+```
+[FEAT] 音声入力UIのリアルタイム字幕機能を実装
+[FIX] エディタ画面のプレビュー表示バグ修正
+[REFACTOR] Provider状態管理の最適化
+[TEST] 音声入力ウィジェットのテスト追加
+[DOCS] README・API仕様書の更新
+```
+
+### プルリクエスト前チェック
+- [ ] `flutter analyze` エラー0件
+- [ ] `flutter test` 全テスト通過
+- [ ] `flake8 app/` エラー0件
+- [ ] `pytest --cov=app tests/` カバレッジ80%以上
+- [ ] UI/UXレビュー（デザインシステム準拠）
+- [ ] パフォーマンスチェック（Chrome DevTools）
+
+参照: [CODING_GUIDELINES.md](mdc:CODING_GUIDELINES.md) の詳細なツール設定

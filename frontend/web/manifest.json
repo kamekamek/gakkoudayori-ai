@@ -1,11 +1,11 @@
 {
-    "name": "frontend",
-    "short_name": "frontend",
+    "name": "ゆとり職員室 - グラレコ風学級通信作成",
+    "short_name": "ゆとり職員室",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "音声入力からAI編集でグラレコ風学級通信を簡単作成。先生の「ゆとり」を創出する学級通信システム",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
