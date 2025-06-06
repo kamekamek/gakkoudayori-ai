@@ -59,6 +59,35 @@ dependencies:
   # Auth UI
   google_sign_in: ^6.2.1
   flutter_signin_button: ^2.0.0
+  
+  # HTML Editor
+  html_editor_enhanced: ^2.5.1
+  webviewx: ^0.2.2
+  
+  # WebSocket for chat editing
+  socket_io_client: ^2.0.3
+  
+  # Diff display
+  diff_match_patch: ^0.4.1
+  
+  # File handling
+  file_picker: ^6.1.1
+  
+  # Audio
+  audio_session: ^0.1.13
+  just_audio: ^0.9.34
+  
+  # PDF rendering
+  pdf_render: ^1.4.7
+  
+  # HTML parsing
+  flutter_html: ^3.0.0
+  
+  # Drag and drop
+  drag_and_drop_lists: ^0.3.3
+  
+  # Lottie animations
+  lottie: ^2.7.0
 
 dev_dependencies:
   flutter_test:
