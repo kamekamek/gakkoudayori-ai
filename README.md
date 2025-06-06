@@ -95,21 +95,43 @@ Cloud Run (FastAPI)
 
 ```bash
 # 1. プロジェクトクローン
-git clone https://github.com/your-repo/yutorikyoshitu.git
+git clone https://github.com/kamekamek/yutorikyoshitu.git
 cd yutorikyoshitu
 
 # 2. Flutter環境
+cd frontend
 flutter pub get
 flutter run -d chrome
 
 # 3. Python環境 
-cd backend
+cd ../backend
 pip install -r requirements.txt
 uvicorn main:app --reload
 
 # 4. Google Cloud設定
 gcloud auth login
 gcloud config set project YOUR_PROJECT_ID
+
+# 5. 開発品質ツール設定
+pip install pre-commit
+pre-commit install
+```
+
+### 🔄 CI/CD パイプライン
+
+**自動化されたワークフロー**
+- ✅ **継続的インテグレーション**: プッシュ・PR時の自動テスト
+- ✅ **静的解析**: Flutter analyze・flake8・black・mypy
+- ✅ **テストカバレッジ**: 80%以上の品質保証
+- ✅ **自動デプロイ**: Firebase Hosting への自動デプロイ
+- ✅ **依存関係管理**: Dependabot による週次更新
+- ✅ **セキュリティ**: 秘密情報検出・脆弱性スキャン
+
+**品質ゲート**
+```bash
+# ローカル品質チェック
+cd frontend && flutter analyze && flutter test
+cd backend && flake8 . && black --check . && pytest
 ```
 
 ### 📊 現在の進捗

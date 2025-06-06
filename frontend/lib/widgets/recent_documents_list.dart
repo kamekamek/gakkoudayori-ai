@@ -27,12 +27,12 @@ class _RecentDocumentsListState extends State<RecentDocumentsList> {
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
-    
+
     // ローディング中の表示
     if (appState.isLoadingDocuments) {
       return _buildLoadingState();
     }
-    
+
     // 文書データをAppStateから取得
     final documents = appState.recentDocuments;
 
@@ -44,7 +44,7 @@ class _RecentDocumentsListState extends State<RecentDocumentsList> {
       children: documents.asMap().entries.map((entry) {
         final index = entry.key;
         final document = entry.value;
-        
+
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: _buildDocumentCard(context, document, index),
@@ -64,8 +64,8 @@ class _RecentDocumentsListState extends State<RecentDocumentsList> {
             Text(
               '文書を読み込み中...',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Colors.grey[600],
-              ),
+                    color: Colors.grey[600],
+                  ),
             ),
           ],
         ),
@@ -88,37 +88,37 @@ class _RecentDocumentsListState extends State<RecentDocumentsList> {
             Text(
               '学級通信がまだありません',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Colors.grey[600],
-              ),
+                    color: Colors.grey[600],
+                  ),
             ),
             const SizedBox(height: 8),
             Text(
               '最初の学級通信を作成してみましょう',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.grey[500],
-              ),
+                    color: Colors.grey[500],
+                  ),
             ),
           ],
         ),
       ),
-    ).animate()
-      .fadeIn(duration: const Duration(milliseconds: 600))
-      .scale(
-        begin: const Offset(0.8, 0.8),
-        duration: const Duration(milliseconds: 800),
-        curve: Curves.easeOutBack,
-      );
+    ).animate().fadeIn(duration: const Duration(milliseconds: 600)).scale(
+          begin: const Offset(0.8, 0.8),
+          duration: const Duration(milliseconds: 800),
+          curve: Curves.easeOutBack,
+        );
   }
 
-  Widget _buildDocumentCard(BuildContext context, Document document, int index) {
+  Widget _buildDocumentCard(
+      BuildContext context, Document document, int index) {
     final isRecent = index == 0;
-    
+
     return Card(
       elevation: isRecent ? 4 : 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: isRecent 
-            ? BorderSide(color: AppTheme.primaryColor.withOpacity(0.3), width: 1)
+        side: isRecent
+            ? BorderSide(
+                color: AppTheme.primaryColor.withOpacity(0.3), width: 1)
             : BorderSide.none,
       ),
       child: InkWell(
@@ -144,7 +144,7 @@ class _RecentDocumentsListState extends State<RecentDocumentsList> {
                 ),
               ),
               const SizedBox(width: 16),
-              
+
               // 内容
               Expanded(
                 child: Column(
@@ -155,16 +155,22 @@ class _RecentDocumentsListState extends State<RecentDocumentsList> {
                         Expanded(
                           child: Text(
                             document.title,
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: isRecent ? FontWeight.w600 : FontWeight.w500,
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(
+                                  fontWeight: isRecent
+                                      ? FontWeight.w600
+                                      : FontWeight.w500,
+                                ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         if (isRecent)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
                               color: AppTheme.primaryColor,
                               borderRadius: BorderRadius.circular(8),
@@ -191,13 +197,15 @@ class _RecentDocumentsListState extends State<RecentDocumentsList> {
                         const SizedBox(width: 4),
                         Text(
                           document.formattedDate,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.grey[600],
-                          ),
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Colors.grey[600],
+                                  ),
                         ),
                         const SizedBox(width: 12),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
                             color: _getStatusColor(document.status),
                             borderRadius: BorderRadius.circular(6),
@@ -216,7 +224,7 @@ class _RecentDocumentsListState extends State<RecentDocumentsList> {
                   ],
                 ),
               ),
-              
+
               // アクションボタン
               PopupMenuButton<String>(
                 icon: Icon(
@@ -272,13 +280,14 @@ class _RecentDocumentsListState extends State<RecentDocumentsList> {
           ),
         ),
       ),
-    ).animate(delay: Duration(milliseconds: 100 * index))
-      .fadeIn(duration: const Duration(milliseconds: 400))
-      .slideX(
-        begin: 0.3,
-        duration: const Duration(milliseconds: 600),
-        curve: Curves.easeOutQuart,
-      );
+    )
+        .animate(delay: Duration(milliseconds: 100 * index))
+        .fadeIn(duration: const Duration(milliseconds: 400))
+        .slideX(
+          begin: 0.3,
+          duration: const Duration(milliseconds: 600),
+          curve: Curves.easeOutQuart,
+        );
   }
 
   Color _getStatusColor(DocumentStatus status) {
@@ -291,6 +300,8 @@ class _RecentDocumentsListState extends State<RecentDocumentsList> {
         return AppTheme.primaryColor;
       case DocumentStatus.archived:
         return Colors.grey;
+      case DocumentStatus.inReview:
+        return AppTheme.accentColor;
     }
   }
 
