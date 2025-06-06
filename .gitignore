@@ -33,6 +33,12 @@ config.json
 secrets.json
 private.json
 
+# 新しいセキュア設定管理
+scripts/env/*.env
+!scripts/env/*.env.example
+frontend/web/config.js
+!frontend/web/config.js.example
+
 # =============================================================================
 # Google Cloud・Firebase（機密情報）
 # =============================================================================

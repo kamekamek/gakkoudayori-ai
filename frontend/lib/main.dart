@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import 'firebase_options.dart';
 import 'providers/auth_provider.dart' as auth;
+import 'providers/app_state.dart';
 import 'services/api_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
@@ -31,6 +32,7 @@ class YutoriKyoshitsuApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => auth.AuthProvider()),
+        ChangeNotifierProvider(create: (_) => AppState()),
         ProxyProvider<auth.AuthProvider, ApiService>(
           update: (_, authProvider, __) => ApiService(authProvider),
         ),
