@@ -11,7 +11,9 @@ import '../widgets/text_editor_panel.dart';
 import '../widgets/preview_panel.dart';
 
 class EditorScreen extends StatefulWidget {
-  const EditorScreen({super.key});
+  final String? documentId;
+  
+  const EditorScreen({super.key, this.documentId});
 
   @override
   State<EditorScreen> createState() => _EditorScreenState();
