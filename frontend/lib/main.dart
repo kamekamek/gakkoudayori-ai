@@ -54,6 +54,9 @@ class YutoriKyoshitsuApp extends StatelessWidget {
     return GoRouter(
       initialLocation: '/',
       redirect: (context, state) {
+        // 🚧 開発用：認証を一時的にスキップ
+        // TODO: 認証機能が完成したら以下のコメントアウトを解除
+        /*
         final isLoggedIn = authProvider.isAuthenticated;
         final isLoginRoute = state.fullPath == '/login';
 
@@ -63,7 +66,8 @@ class YutoriKyoshitsuApp extends StatelessWidget {
         if (isLoggedIn && isLoginRoute) {
           return '/';
         }
-        return null;
+        */
+        return null; // 認証チェックをスキップ
       },
       routes: [
         GoRoute(
