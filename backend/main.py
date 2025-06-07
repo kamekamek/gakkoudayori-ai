@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from auth import get_current_user, optional_auth, firebase_auth
+from api.websocket import router as websocket_router
 
 # FastAPIアプリケーション初期化
 app = FastAPI(
@@ -33,6 +34,9 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+
+# WebSocketルーターを追加
+app.include_router(websocket_router, prefix="/api", tags=["websocket"])
 
 # ヘルスチェックエンドポイント (タスク完了条件)
 @app.get("/health")

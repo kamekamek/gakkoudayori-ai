@@ -63,8 +63,8 @@ dependencies:
   # HTML Editor (custom implementation using webview)
   webview_flutter: ^4.9.0
   
-  # WebSocket for chat editing
-  socket_io_client: ^2.0.3
+  # WebSocket Chat
+  socket_io_client: ^2.0.3+1
   
   # Diff display
   diff_match_patch: ^0.4.1
