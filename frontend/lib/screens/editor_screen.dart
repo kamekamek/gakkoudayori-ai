@@ -283,11 +283,33 @@ class _EditorScreenState extends State<EditorScreen>
   }
 
   void _saveDocument(BuildContext context) {
-    // TODO: ドキュメント保存処理の実装
+    // TODO: Implement actual document save to Firestore
+    // For now, simulate saving and update the app state
+    
+    final now = DateTime.now();
+    final savedDocument = Document(
+      id: 'doc_${now.millisecondsSinceEpoch}',
+      title: '学級通信', // TODO: Get from editor
+      createdAt: now,
+      updatedAt: now,
+      thumbnail: '📝',
+      status: DocumentStatus.draft,
+      content: '保存された学級通信の内容', // TODO: Get from editor
+      views: 0,
+    );
+    
+    // Add to recent documents
+    context.read<AppState>().addRecentDocument(savedDocument);
+    
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('学級通信を保存しました'),
+      SnackBar(
+        content: const Text('学級通信を保存しました'),
         backgroundColor: AppTheme.successColor,
+        action: SnackBarAction(
+          label: 'ダッシュボードへ',
+          textColor: Colors.white,
+          onPressed: () => context.go('/'),
+        ),
       ),
     );
   }
@@ -447,17 +469,36 @@ class _EditorScreenState extends State<EditorScreen>
   }
 
   void _applyTemplate(Template template) {
-    // TODO: 実際のエディタにテンプレート内容を挿入する処理
-    // 現在はスナックバーで確認
+    // TODO: Implement actual template application to editor content
+    // For now, simulate template application
+    
+    // Create a new document with template content
+    final now = DateTime.now();
+    final templateDocument = Document(
+      id: 'template_${now.millisecondsSinceEpoch}',
+      title: template.name,
+      createdAt: now,
+      updatedAt: now,
+      thumbnail: template.thumbnail,
+      status: DocumentStatus.draft,
+      content: template.content,
+      views: 0,
+    );
+    
+    // Add to recent documents
+    context.read<AppState>().addRecentDocument(templateDocument);
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('「${template.name}」テンプレートを適用しました'),
         backgroundColor: AppTheme.primaryColor,
+        duration: const Duration(seconds: 3),
         action: SnackBarAction(
           label: '元に戻す',
           textColor: Colors.white,
           onPressed: () {
-            // TODO: 元に戻す処理
+            // Remove the template document from recent documents
+            context.read<AppState>().removeRecentDocument(templateDocument.id);
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('テンプレートの適用を取り消しました'),

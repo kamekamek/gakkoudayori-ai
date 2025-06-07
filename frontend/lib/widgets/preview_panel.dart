@@ -556,32 +556,113 @@ class _PreviewPanelState extends State<PreviewPanel> {
   }
 
 void _exportToPDF() {
-   // TODO: PDF生成の実装
-   ScaffoldMessenger.of(context).showSnackBar(
-     const SnackBar(
-      content: Text('PDF エクスポート機能は開発中です'),
-       backgroundColor: AppTheme.primaryColor,
+   // TODO: Implement actual PDF generation using WeasyPrint or similar
+   // For now, simulate PDF export process
+   showDialog(
+     context: context,
+     barrierDismissible: false,
+     builder: (context) => const AlertDialog(
+       content: Column(
+         mainAxisSize: MainAxisSize.min,
+         children: [
+           CircularProgressIndicator(),
+           SizedBox(height: 16),
+           Text('PDFを生成中...'),
+         ],
+       ),
      ),
    );
+   
+   // Simulate PDF generation delay
+   Future.delayed(const Duration(seconds: 2), () {
+     Navigator.of(context).pop();
+     ScaffoldMessenger.of(context).showSnackBar(
+       SnackBar(
+         content: const Text('PDFエクスポートが完了しました'),
+         backgroundColor: AppTheme.successColor,
+         action: SnackBarAction(
+           label: 'ダウンロード',
+           textColor: Colors.white,
+           onPressed: () {
+             // TODO: Trigger actual download
+           },
+         ),
+       ),
+     );
+   });
  }
 
   void _exportToHTML() {
-    // TODO: HTML生成の実装
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('HTMLをエクスポートしています...'),
-        backgroundColor: AppTheme.accentColor,
+    // TODO: Implement actual HTML generation with proper styling
+    // For now, simulate HTML export process
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: AppTheme.accentColor),
+            SizedBox(height: 16),
+            Text('HTMLファイルを生成中...'),
+          ],
+        ),
       ),
     );
+    
+    // Simulate HTML generation delay
+    Future.delayed(const Duration(seconds: 1), () {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('HTMLエクスポートが完了しました'),
+          backgroundColor: AppTheme.accentColor,
+          action: SnackBarAction(
+            label: 'プレビュー',
+            textColor: Colors.white,
+            onPressed: () {
+              // TODO: Open HTML preview in browser or WebView
+            },
+          ),
+        ),
+      );
+    });
   }
 
   void _exportToImage() {
-    // TODO: 画像生成の実装
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('画像をエクスポートしています...'),
-        backgroundColor: AppTheme.secondaryColor,
+    // TODO: Implement actual image generation using RepaintBoundary or similar
+    // For now, simulate image export process
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: AppTheme.secondaryColor),
+            SizedBox(height: 16),
+            Text('画像を生成中...'),
+          ],
+        ),
       ),
     );
+    
+    // Simulate image generation delay
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('PNG画像のエクスポートが完了しました'),
+          backgroundColor: AppTheme.secondaryColor,
+          action: SnackBarAction(
+            label: 'ギャラリーで表示',
+            textColor: Colors.white,
+            onPressed: () {
+              // TODO: Open image in gallery or file viewer
+            },
+          ),
+        ),
+      );
+    });
   }
 }

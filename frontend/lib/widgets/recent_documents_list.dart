@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
@@ -295,11 +296,14 @@ class _RecentDocumentsListState extends State<RecentDocumentsList> {
   }
 
   void _openDocument(BuildContext context, Document document) {
-    // TODO: ドキュメント編集画面へ遷移
+    // Navigate to editor screen with the document data
+    context.push('/editor', extra: document);
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('「${document.title}」を開きます'),
+        content: Text('「${document.title}」を開いています...'),
         backgroundColor: AppTheme.primaryColor,
+        duration: const Duration(seconds: 1),
       ),
     );
   }
@@ -307,19 +311,36 @@ class _RecentDocumentsListState extends State<RecentDocumentsList> {
   void _handleAction(BuildContext context, String action, Document document) {
     switch (action) {
       case 'edit':
-        // TODO: 編集機能の実装
+        // Navigate to editor screen for editing the document
+        context.push('/editor', extra: document);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('「${document.title}」を編集します'),
+            content: Text('「${document.title}」を編集画面で開いています...'),
             backgroundColor: AppTheme.primaryColor,
+            duration: const Duration(seconds: 1),
           ),
         );
         break;
       case 'duplicate':
-        // TODO: 複製機能の実装
+        // Create a duplicate document with modified title
+        final duplicatedDocument = Document(
+          id: '${document.id}_copy_${DateTime.now().millisecondsSinceEpoch}',
+          title: '${document.title} のコピー',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+          thumbnail: document.thumbnail,
+          status: DocumentStatus.draft,
+          content: document.content,
+          views: 0,
+        );
+        
+        // Add to app state and navigate to editor
+        context.read<AppState>().addRecentDocument(duplicatedDocument);
+        context.push('/editor', extra: duplicatedDocument);
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('複製機能は開発中です'),
+          SnackBar(
+            content: Text('「${document.title}」を複製しました'),
             backgroundColor: AppTheme.secondaryColor,
           ),
         );

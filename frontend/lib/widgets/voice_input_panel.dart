@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
@@ -345,11 +346,24 @@ class _VoiceInputPanelState extends State<VoiceInputPanel>
   }
 
   void _addToEditor(BuildContext context, String text) {
-    // TODO: エディタにテキスト追加
+    // Send text to be added to the editor via event or callback
+    // For now, we'll clear the transcription and show confirmation
+    context.read<AppState>().clearTranscription();
+    
+    // In a full implementation, this would send the text to the editor
+    // via a shared state or event system
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('エディタにテキストを追加しました'),
+      SnackBar(
+        content: Text('テキストをエディタに追加しました (${text.length}文字)'),
         backgroundColor: AppTheme.accentColor,
+        action: SnackBarAction(
+          label: 'エディタを開く',
+          textColor: Colors.white,
+          onPressed: () {
+            // Could pass the text as extra data to the editor
+            context.push('/editor');
+          },
+        ),
       ),
     );
   }

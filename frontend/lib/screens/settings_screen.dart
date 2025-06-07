@@ -15,6 +15,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   String _selectedAccuracy = 'balanced'; // デフォルトはバランス設定
+  bool _isDriveConnected = false; // Google Drive connection status
 
   @override
   Widget build(BuildContext context) {
@@ -812,5 +813,12 @@ ElevatedButton(
         backgroundColor: AppTheme.primaryColor,
       ),
     );
+  }
+
+  Future<int> _getUserDictionaryCount() async {
+    // TODO: 実際のユーザー辞書データベースから取得
+    // 現在はサンプル値を返す
+    await Future.delayed(const Duration(milliseconds: 100));
+    return 12; // サンプル: 12件の登録済み用語
   }
 }
