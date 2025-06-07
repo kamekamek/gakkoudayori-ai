@@ -258,4 +258,42 @@ async def optional_auth(request: Request) -> Optional[Dict[str, Any]]:
         return None
     except Exception as e:
         print(f"Optional auth error: {e}")
-        return None 
+        return None
+
+
+async def get_current_user_from_websocket(websocket) -> str:
+    """
+    WebSocket接続からユーザーIDを取得
+    
+    Args:
+        websocket: WebSocket connection
+        
+    Returns:
+        ユーザーID (uid)
+        
+    Raises:
+        WebSocketException: 認証失敗時
+    """
+    try:
+        # WebSocketのクエリパラメータからトークンを取得
+        query_params = dict(websocket.query_params)
+        token = query_params.get("token")
+        
+        if not token:
+            await websocket.close(code=4001, reason="Authentication token required")
+            raise Exception("No authentication token provided")
+        
+        # Firebase IDトークンを検証
+        decoded_token = auth.verify_id_token(token, check_revoked=True)
+        return decoded_token['uid']
+        
+    except auth.InvalidIdTokenError:
+        await websocket.close(code=4001, reason="Invalid authentication token")
+        raise Exception("Invalid authentication token")
+    except auth.ExpiredIdTokenError:
+        await websocket.close(code=4001, reason="Authentication token expired")
+        raise Exception("Authentication token expired")
+    except Exception as e:
+        print(f"WebSocket authentication error: {e}")
+        await websocket.close(code=4001, reason="Authentication failed")
+        raise Exception("Authentication failed") 
