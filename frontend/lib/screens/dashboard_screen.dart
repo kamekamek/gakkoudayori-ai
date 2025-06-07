@@ -412,22 +412,114 @@ class DashboardScreen extends StatelessWidget {
   }
 
   void _showDocumentHistory(BuildContext context) {
-    // TODO: 履歴画面の実装
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('履歴機能は開発中です'),
-        backgroundColor: AppTheme.primaryColor,
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        maxChildSize: 0.9,
+        minChildSize: 0.5,
+        builder: (context, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    const Icon(LucideIcons.history, color: AppTheme.primaryColor),
+                    const SizedBox(width: 8),
+                    Text(
+                      '学級通信履歴',
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Consumer<AppState>(
+                    builder: (context, appState, child) {
+                      if (appState.recentDocuments.isEmpty) {
+                        return const Center(
+                          child: Text('まだ学級通信がありません'),
+                        );
+                      }
+                      return ListView.builder(
+                        controller: scrollController,
+                        itemCount: appState.recentDocuments.length,
+                        itemBuilder: (context, index) {
+                          final document = appState.recentDocuments[index];
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                                child: Text(
+                                  document.thumbnail,
+                                  style: const TextStyle(fontSize: 20),
+                                ),
+                              ),
+                              title: Text(document.title),
+                              subtitle: Text(document.formattedDate),
+                              trailing: ElevatedButton(
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                  // 複製して新しいドキュメントとして開く
+                                  final duplicatedDocument = Document(
+                                    id: DateTime.now().millisecondsSinceEpoch.toString(),
+                                    title: '${document.title}のコピー',
+                                    createdAt: DateTime.now(),
+                                    updatedAt: DateTime.now(),
+                                    thumbnail: document.thumbnail,
+                                    status: DocumentStatus.draft,
+                                    content: document.content,
+                                    views: 0,
+                                  );
+                                  context.push('/editor', extra: {'document': duplicatedDocument});
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppTheme.accentColor,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                ),
+                                child: const Text('複製'),
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
   void _showAllDocuments(BuildContext context) {
-    // TODO: 全ドキュメント表示画面の実装
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('全ドキュメント表示機能は開発中です'),
-        backgroundColor: AppTheme.primaryColor,
-      ),
-    );
+    // 履歴画面と同じ機能を使用（将来的にはページネーションなど追加）
+    _showDocumentHistory(context);
   }
 }

@@ -8,6 +8,7 @@ class AppState extends ChangeNotifier {
   String _currentTranscription = '';
   List<Document> _recentDocuments = [];
   bool _isLoadingDocuments = false;
+  String _editorText = '';
   
   // Getters
   ThemeMode get themeMode => _themeMode;
@@ -16,6 +17,7 @@ class AppState extends ChangeNotifier {
   String get currentTranscription => _currentTranscription;
   List<Document> get recentDocuments => _recentDocuments;
   bool get isLoadingDocuments => _isLoadingDocuments;
+  String get editorText => _editorText;
   
   // Theme management
   void toggleTheme() {
@@ -79,6 +81,16 @@ class AppState extends ChangeNotifier {
   
   void clearTranscription() {
     _currentTranscription = '';
+    notifyListeners();
+  }
+  
+  void setEditorText(String text) {
+    _editorText = text;
+    notifyListeners();
+  }
+  
+  void clearEditorText() {
+    _editorText = '';
     notifyListeners();
   }
   
