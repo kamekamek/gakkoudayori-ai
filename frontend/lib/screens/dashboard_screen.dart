@@ -17,6 +17,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, _) {
+        // 🚧 開発用：認証なしでも動作するよう調整
         final user = authProvider.user;
 
         return Scaffold(
@@ -27,6 +28,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 icon: const Icon(LucideIcons.settings),
                 onPressed: () => context.go('/settings'),
               ),
+              // 🚧 開発用：認証なしでも動作するよう簡略化
               PopupMenuButton<String>(
                 icon: CircleAvatar(
                   backgroundImage: user?.photoURL != null
@@ -36,7 +38,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ? Text(
                           user?.displayName?.isNotEmpty == true
                               ? user!.displayName![0].toUpperCase()
-                              : user?.email?[0].toUpperCase() ?? '?',
+                              : user?.email?[0].toUpperCase() ?? 'T', // デフォルト値
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
@@ -46,7 +48,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 onSelected: (value) async {
                   if (value == 'logout') {
-                    await authProvider.signOut();
+                    // 認証機能が完成するまでは何もしない
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('認証機能は準備中です')),
+                    );
                   }
                 },
                 itemBuilder: (context) => [
@@ -60,12 +65,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                user?.displayName ?? 'ユーザー',
+                                user?.displayName ?? 'テストユーザー',
                                 style: const TextStyle(
                                     fontWeight: FontWeight.w500),
                               ),
                               Text(
-                                user?.email ?? '',
+                                user?.email ?? 'test@example.com',
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                             ],
@@ -81,7 +86,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       children: [
                         Icon(LucideIcons.logOut, size: 16),
                         SizedBox(width: 8),
-                        Text('ログアウト'),
+                        Text('ログアウト（準備中）'),
                       ],
                     ),
                   ),
@@ -124,7 +129,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildWelcomeSection(user) {
     final greeting = _getGreeting();
-    final userName = user?.displayName ?? user?.email?.split('@')[0] ?? 'さん';
+    // 🚧 開発用：認証なしでも動作するよう調整
+    final userName =
+        user?.displayName ?? user?.email?.split('@')[0] ?? 'テストユーザー';
 
     return Container(
       width: double.infinity,
