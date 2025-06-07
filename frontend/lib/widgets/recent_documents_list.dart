@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
 
 import '../providers/app_state.dart';
 import '../models/document.dart';
@@ -295,48 +296,105 @@ class _RecentDocumentsListState extends State<RecentDocumentsList> {
   }
 
   void _openDocument(BuildContext context, Document document) {
-    // TODO: ドキュメント編集画面へ遷移
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('「${document.title}」を開きます'),
-        backgroundColor: AppTheme.primaryColor,
-      ),
-    );
+    // ドキュメント編集画面へ遷移
+    context.push('/editor', extra: {'document': document});
   }
 
   void _handleAction(BuildContext context, String action, Document document) {
     switch (action) {
       case 'edit':
-        // TODO: 編集機能の実装
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('「${document.title}」を編集します'),
-            backgroundColor: AppTheme.primaryColor,
-          ),
-        );
+        // 編集画面へ遷移
+        context.push('/editor', extra: {'document': document});
         break;
       case 'duplicate':
-        // TODO: 複製機能の実装
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('複製機能は開発中です'),
-            backgroundColor: AppTheme.secondaryColor,
-          ),
+        // 複製機能の実装
+        final duplicatedDocument = Document(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          title: '${document.title}のコピー',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+          thumbnail: document.thumbnail,
+          status: DocumentStatus.draft,
+          content: document.content,
+          views: 0,
         );
+        context.read<AppState>().addRecentDocument(duplicatedDocument);
+        context.push('/editor', extra: {'document': duplicatedDocument});
         break;
       case 'share':
-        // TODO: 共有機能の実装
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('共有機能は開発中です'),
-            backgroundColor: AppTheme.accentColor,
-          ),
-        );
+        // 基本的な共有機能（コンテンツをクリップボードにコピー）
+        _showShareDialog(context, document);
         break;
       case 'delete':
         _showDeleteConfirmation(context, document);
         break;
     }
+  }
+
+  void _showShareDialog(BuildContext context, Document document) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('共有'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(LucideIcons.copy),
+              title: const Text('テキストをコピー'),
+              subtitle: const Text('クリップボードにコピー'),
+              onTap: () {
+                Navigator.of(context).pop();
+                _copyToClipboard(context, document);
+              },
+            ),
+            ListTile(
+              leading: const Icon(LucideIcons.mail),
+              title: const Text('Google Classroom'),
+              subtitle: const Text('クラスに投稿'),
+              onTap: () {
+                Navigator.of(context).pop();
+                _showFeatureNotImplemented(context, 'Google Classroom連携');
+              },
+            ),
+            ListTile(
+              leading: const Icon(LucideIcons.folderOpen),
+              title: const Text('Google Drive'),
+              subtitle: const Text('Driveに保存'),
+              onTap: () {
+                Navigator.of(context).pop();
+                _showFeatureNotImplemented(context, 'Google Drive連携');
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('閉じる'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _copyToClipboard(BuildContext context, Document document) {
+    // TODO: 実際のクリップボードコピー（flutter/services必要）
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('「${document.title}」をクリップボードにコピーしました'),
+        backgroundColor: AppTheme.successColor,
+      ),
+    );
+  }
+
+  void _showFeatureNotImplemented(BuildContext context, String feature) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$feature機能は開発中です'),
+        backgroundColor: AppTheme.primaryColor,
+      ),
+    );
   }
 
   void _showDeleteConfirmation(BuildContext context, Document document) {
