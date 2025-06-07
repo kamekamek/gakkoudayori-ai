@@ -15,6 +15,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   String _selectedAccuracy = 'balanced'; // デフォルトはバランス設定
+  bool _isDriveConnected = false; // Google Drive接続状態
 
   @override
   Widget build(BuildContext context) {
@@ -275,7 +276,7 @@ ListTile(
    title: const Text('Google Drive'),
   subtitle: Text(_isDriveConnected ? '接続済み' : '未接続'),
    trailing: ElevatedButton(
-    onPressed: _isDriveConnected ? () => _configureGoogleDrive(context) : null,
+    onPressed: _isDriveConnected ? () => _configureGoogleDrive(context) : () => _connectGoogleDrive(context),
      style: ElevatedButton.styleFrom(
        backgroundColor: Colors.blue,
        foregroundColor: Colors.white,
@@ -617,11 +618,87 @@ FutureBuilder<int>(
   }
 
   void _connectGoogleClassroom(BuildContext context) {
-    // TODO: Google Classroom連携の実装
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Google Classroom連携機能は開発中です'),
-        backgroundColor: AppTheme.primaryColor,
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Google Classroom連携'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(LucideIcons.graduationCap, size: 48, color: Colors.green),
+            SizedBox(height: 16),
+            Text('Google Classroomとの連携を行います。'),
+            SizedBox(height: 8),
+            Text('学級通信を自動でクラスに投稿できるようになります。'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('キャンセル'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // TODO: 実際のOAuth認証処理
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Google Classroom連携機能は開発中です'),
+                  backgroundColor: AppTheme.primaryColor,
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('連携する'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _connectGoogleDrive(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Google Drive連携'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(LucideIcons.folderOpen, size: 48, color: Colors.blue),
+            SizedBox(height: 16),
+            Text('Google Driveとの連携を行います。'),
+            SizedBox(height: 8),
+            Text('学級通信をDriveに自動保存できるようになります。'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('キャンセル'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              setState(() {
+                _isDriveConnected = true;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Google Driveと連携しました'),
+                  backgroundColor: Colors.blue,
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('連携する'),
+          ),
+        ],
       ),
     );
   }
@@ -659,6 +736,15 @@ FutureBuilder<int>(
                 // TODO: 設定保存
               },
             ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(LucideIcons.unlink, color: Colors.red),
+              title: const Text('連携を解除', style: TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.of(context).pop();
+                _disconnectGoogleDrive(context);
+              },
+            ),
           ],
         ),
         actions: [
@@ -669,6 +755,41 @@ FutureBuilder<int>(
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _disconnectGoogleDrive(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('連携解除の確認'),
+        content: const Text('Google Driveとの連携を解除しますか？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('キャンセル'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              setState(() {
+                _isDriveConnected = false;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Google Driveとの連携を解除しました'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('解除'),
           ),
         ],
       ),
@@ -812,5 +933,12 @@ ElevatedButton(
         backgroundColor: AppTheme.primaryColor,
       ),
     );
+  }
+
+  Future<int> _getUserDictionaryCount() async {
+    // TODO: 実際のユーザー辞書データ取得
+    // 現在はサンプル値を返す
+    await Future.delayed(const Duration(milliseconds: 100));
+    return 5; // サンプル登録数
   }
 }

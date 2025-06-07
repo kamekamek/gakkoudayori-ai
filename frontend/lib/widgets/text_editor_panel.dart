@@ -16,6 +16,9 @@ class _TextEditorPanelState extends State<TextEditorPanel> {
   final FocusNode _titleFocus = FocusNode();
   final FocusNode _contentFocus = FocusNode();
   
+  // 履歴管理用（未実装）
+  bool get _hasHistory => false;
+  
   @override
   void dispose() {
     _titleController.dispose();

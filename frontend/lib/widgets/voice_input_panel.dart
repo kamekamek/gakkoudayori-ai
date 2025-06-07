@@ -345,7 +345,11 @@ class _VoiceInputPanelState extends State<VoiceInputPanel>
   }
 
   void _addToEditor(BuildContext context, String text) {
-    // TODO: エディタにテキスト追加
+    // エディタにテキスト追加
+    // 実装方法: AppStateに一時的なテキストを保存し、エディタでそれを読み取る
+    final appState = context.read<AppState>();
+    appState.setEditorText(text);
+    
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('エディタにテキストを追加しました'),
@@ -410,7 +414,12 @@ class _VoiceInputPanelState extends State<VoiceInputPanel>
   }
 
   void _useQuickCommand(BuildContext context, String command) {
-    // TODO: クイックコマンドの実装
+    // クイックコマンドの実装
+    final appState = context.read<AppState>();
+    
+    // プロンプトをエディタテキストとして設定
+    appState.setEditorText('【$command】\n\n');
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('「$command」でプロンプトを設定しました'),
