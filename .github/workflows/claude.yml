@@ -23,9 +23,11 @@ jobs:
       issues: write
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          ref: develop
+          fetch-depth: 0
       - name: Run Claude Code
         uses: kamekamek/claude-code-action@main
         with:
