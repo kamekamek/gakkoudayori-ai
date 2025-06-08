@@ -1,4 +1,5 @@
 name: Claude Code
+
 on:
   issue_comment:
     types: [created]
@@ -20,17 +21,18 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-      issues: write
+      issues: read
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          ref: develop
+          fetch-depth: 0
+
       - name: Run Claude Code
-        uses: kamekamek/claude-code-action@main
+        id: claude
+        uses: anthropics/claude-code-action@beta
         with:
-          use_oauth: 'true'
-          claude_access_token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
-          claude_refresh_token: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
-          claude_expires_at: ${{ secrets.CLAUDE_EXPIRES_AT }}
-          model: 'claude-sonnet-4-20250514'
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+
