@@ -226,10 +226,10 @@ async def generate_pdf(
 
 ## 📚 参考ドキュメント
 
-- [タスク管理](docs/tasks.md) - 実装進捗管理
-- [システム設計](docs/system_design.md) - アーキテクチャ詳細
-- [TDDガイド](docs/tdd_guide.md) - テスト駆動開発手順
-- [要件定義](docs/REQUIREMENT.md) - 機能要件・非機能要件
+- [タスク管理](docs/Archive/tasks.md) - 実装進捗管理
+- [システム設計](docs/Archive/system_design.md) - アーキテクチャ詳細
+- [TDDガイド](docs/Archive/tdd_guide.md) - テスト駆動開発手順
+- [要件定義](docs/Archive/REQUIREMENT.md) - 機能要件・非機能要件
 
 ---
 

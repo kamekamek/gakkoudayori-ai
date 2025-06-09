@@ -4,7 +4,7 @@
 
 ---
 
-**📚 ドキュメントナビ**: [📋 Index](index.md) | [📖 Overview](README.md) | [📝 要件定義](REQUIREMENT.md) | **🏗️ システム設計** | [📋 タスク](tasks.md) | [🧪 TDD](tdd_guide.md)
+**📚 ドキュメントナビ**: [📋 Index](index.md) | [📖 Overview](README.md) | [📝 要件定義](Archive/REQUIREMENT.md) | **🏗️ システム設計** | [📋 タスク](Archive/tasks.md) | [🧪 TDD](tdd_guide.md)
 
 ---
 

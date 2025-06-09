@@ -182,4 +182,3 @@ PDF 出力 / Drive 保存 / Classroom 転送
 * **AI バージョン管理** (aiVersion) は将来の再生成トレーサビリティに必須
 
 ---
-
