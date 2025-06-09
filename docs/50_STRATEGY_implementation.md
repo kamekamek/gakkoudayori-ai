@@ -1,11 +1,48 @@
-# 学校だよりAI 実装計画
+# 学校だよりAI 実装計画 - Google ADK対応版
 
-## 1. 仮決め項目
+**カテゴリ**: STRATEGY | **レイヤー**: IMPLEMENTATION | **更新**: 2025-06-09  
+**担当**: 亀ちゃん | **依存**: 24_SPEC_adk_multi_agent.md | **タグ**: #implementation #adk #multi-agent
+
+## 1. 実装フェーズ概要
+
+### Phase 1: 基盤構築（2-3日）
+- 新プロジェクト初期化
+- Google ADK環境セットアップ  
+- 基本エージェント実装
+
+### Phase 2: マルチエージェント開発（3-4日）
+- Content Analyzer Agent
+- Style Writer Agent
+- エージェント協調システム
+
+### Phase 3: 高度エージェント（2-3日）
+- Layout Designer Agent
+- Fact Checker Agent
+- Engagement Optimizer Agent
+
+### Phase 4: UI統合（2-3日）
+- Flutter Web + Quill.js統合
+- エージェント結果の表示
+- リアルタイムプレビュー
+
+### Phase 5: 統合・最適化（2-3日）
+- E2Eテスト
+- パフォーマンス最適化
+- 品質保証
+
+## 2. 技術仕様（仮決め項目）
+
+### Google ADK環境
+- **Python ADK**: v1.0.0（Production Ready）
+- **Vertex AI**: Gemini Pro API統合
+- **エージェント管理**: ADK Agent Orchestrator
+- **通信**: WebSocket（リアルタイム協調）
 
 ### Quill.js設定
 - **バージョン**: 2.0.0（最新の安定版）
 - **テーマ**: Snow
 - **モジュール**: toolbar, history, clipboard, formula
+- **ADK統合**: WebView経由でエージェント結果受信
 - **CDN**: `https://cdn.quilljs.com/2.0.0/quill.snow.css` および `https://cdn.quilljs.com/2.0.0/quill.min.js`
 
 ### HTMLテンプレート（グラレコ風）

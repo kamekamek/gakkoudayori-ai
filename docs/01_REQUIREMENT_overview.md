@@ -16,6 +16,7 @@
 |------|-----------|--------|
 | 派生 | 20_SPEC_quill_summary.md | エディタ仕様 |
 | 派生 | 21_SPEC_ai_prompts.md | AIプロンプト仕様 |
+| 派生 | 24_SPEC_adk_multi_agent.md | マルチエージェント仕様 |
 | 派生 | 50_STRATEGY_implementation.md | 実装戦略 |
 
 *Notion へそのまま貼り付けられる Markdown 形式*
@@ -28,7 +29,7 @@
 | --------- | ----------------------------------------------------------------------------- |
 | **課題**    | 学級通信・学年通信・学校通信の作成に 2-3 時間かかる／Word 格闘でレイアウト崩れ                                  |
 | **ゴール**   | **20 分以内**でドラフト完成＋編集体験は Google Docs / Sites 風の WYSIWYG<br>教師の残業削減 & 保護者との接点強化 |
-| **AI 価値** | 音声入力 → Gemini が HTML ドラフト生成 → AI 補助 UI で文章提案・リライト                             |
+| **AI 価値** | 音声入力 → **Google ADKマルチエージェント協調** → HTML ドラフト生成 → AI 補助 UI で文章提案・リライト                             |
 
 ---
 
@@ -38,9 +39,13 @@
 スマホ録音
     ↓  Google STT
 文字起こし
-    ↓  辞書補正＋Section分け
-整形済テキスト
-    ↓  Gemini (編集用 HTML 出力)
+    ↓  Content Analyzer Agent (ADK)
+構造化データ
+    ↓  マルチエージェント協調処理
+    ┌─ Style Writer Agent
+    ├─ Layout Designer Agent  
+    ├─ Fact Checker Agent
+    └─ Engagement Optimizer Agent
 HTMLドラフト
     ↓
 PC編集画面
@@ -96,7 +101,7 @@ PDF 出力 / Drive 保存 / Classroom 転送
 | - | ---------------- | ----------------------------------------------- | ---------- | ---------------------------------------- |
 | 1 | 音声録音→STT         | Flutter 録音 + Google STT                         | 亀ちゃん       | 録音停止後即アップロード                             |
 | 2 | ユーザー辞書＋Section分け | Python or Dart 前処理                              | 山谷→統合:亀ちゃん | 誤変換補正＋見出し抽出                              |
-| 3 | AI文章整形           | Gemini Pro + 制約付きプロンプト                          | 亀ちゃん       | "編集可 HTML" タグ制限厳守                        |
+| 3 | AI文章整形           | **Google ADK マルチエージェント** + Gemini Pro                          | 亀ちゃん       | エージェント協調による高品質化                        |
 | 4 | 編集画面             | **Quill.js** (Snow) + WebView                   | 亀ちゃん       | delta→HTML 整形時に余計な div/style 削除          |
 | 5 | AI補助UI           | 折りたたみ（モーダル可）+ Gemini 呼出                         | 亀ちゃん       | 挿入は必ず Quill に経由させ Preview と同期            |
 | 6 | データ保存            | **Firestore (メタ)** + **Storage (HTML & delta)** | 亀ちゃん       | 更新は Firestore ↔ Storage 同期 1 本化          |
