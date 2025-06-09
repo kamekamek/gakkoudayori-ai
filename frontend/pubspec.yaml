@@ -1,0 +1,68 @@
+name: yutori_kyoshitu
+description: 学校だよりAI - 音声入力で学級通信を自動生成
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # 基本パッケージ
+  cupertino_icons: ^1.0.6
+  
+  # State Management
+  provider: ^6.0.5
+  
+  # HTTP & API
+  http: ^1.1.0
+  
+  # JSON
+  json_annotation: ^4.8.1
+  
+  # UI Components
+  material_design_icons_flutter: ^7.0.7296
+  
+  # File & Storage
+  file_picker: ^6.1.1
+  path_provider: ^2.1.1
+  
+  # Utils
+  uuid: ^4.1.0
+  intl: ^0.18.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  
+  # Testing
+  mockito: ^5.4.4
+  flutter_driver:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  
+  # Code Generation
+  build_runner: ^2.4.7
+  json_serializable: ^6.7.1
+  
+  # Linting
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/images/
+    - assets/icons/
+    - assets/audio/
+  
+  fonts:
+    - family: NotoSansJP
+      fonts:
+        - asset: assets/fonts/NotoSansJP-Regular.ttf
+        - asset: assets/fonts/NotoSansJP-Bold.ttf
+          weight: 700
+
