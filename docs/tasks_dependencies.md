@@ -21,9 +21,8 @@
 
 ## 📋 Phase 1: 基盤構築 依存関係図
 
-<function_calls>
-<invoke name="create_diagram">
-<parameter name="content">graph TD
+```mermaid
+graph TD
     %% Group A: Google Cloud基盤 (順次実行)
     subgraph "Group A: Google Cloud基盤"
         A1[T1-GCP-001-M<br/>🔧 GCPプロジェクト作成<br/>20分]
@@ -82,6 +81,9 @@
     class A1,A2,A3,B1,B2,B3,B4,C1,C6 manual
     class A4,B5,C2,C3,C5 ai
     class C4 hybrid
+```
+
+**凡例**:
 - **🔧 赤色 (MANUAL)**: 人間の手動設定が必要（Google Cloud Console、Firebase Console等）
 - **🤖 緑色 (AI)**: AIに完全委託可能なコーディング・テスト実装
 - **🤝 橙色 (HYBRID)**: 人間の指示でAIが実装する複雑な機能
@@ -122,9 +124,8 @@ T1-GCP-001-M (20分)
 
 ## 📋 Phase 2: Quill.js統合 依存関係図
 
-<function_calls>
-<invoke name="create_diagram">
-<parameter name="content">graph TD
+```mermaid
+graph TD
     %% Phase 2のGroup D: Quill.js基盤実装
     subgraph "Group D: Quill.js基盤実装"
         D1[T2-QU-001-A<br/>🤖 Quill HTML作成<br/>45分]
@@ -166,6 +167,7 @@ T1-GCP-001-M (20分)
     class D1,D2,D3,D5,E1,E2,E3 ai
     class D4 hybrid
     class P1 phase1
+```
 
 #### Group D: Quill基盤（順次実行必須）
 ```
@@ -186,9 +188,8 @@ T2-QU-001-A (45分) → T2-QU-002-A (55分) → T2-QU-003-A (60分) → T2-QU-00
 
 ## 📋 Phase 3: AI機能統合 依存関係図
 
-<function_calls>
-<invoke name="create_diagram">
-<parameter name="content">graph TD
+```mermaid
+graph TD
     %% Phase 3のGroup F: 基本AI機能
     subgraph "Group F: 基本AI機能"
         F1[T3-AI-001-M<br/>🔧 Vertex AI設定<br/>30分]
@@ -256,6 +257,7 @@ T2-QU-001-A (45分) → T2-QU-002-A (55分) → T2-QU-003-A (60分) → T2-QU-00
     class F2,F5,H1,H2,H3 ai
     class F3,G1,G2,G3,G4,H4 hybrid
     class P1_GCP,P1_FL,P2 phase
+```
 
 #### Group F: 基本AI機能（部分並行実行）
 - **並行開始可能**: T3-AI-001-M と T3-AI-004-M

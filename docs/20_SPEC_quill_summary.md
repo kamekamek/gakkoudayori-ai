@@ -15,9 +15,7 @@
 | 種別 | ファイル名 | 関係性 |
 |------|-----------|--------|
 | 依存 | 01_REQUIREMENT_overview.md | 要件定義 |
-| 派生 | 21_SPEC_quill_setup.md | セットアップ手順 |
-| 派生 | 22_SPEC_quill_features.md | 機能詳細 |
-| 派生 | 23_SPEC_quill_implementation.md | 実装詳細 |
+| 派生 | 22_SPEC_quill_integrated.md | 統合仕様書（セットアップ〜実装） |
 
 ## 📋 技術概要
 
@@ -46,9 +44,10 @@ Delta/HTML データ
 
 ## ✅ 実装チェックリスト
 
-- [ ] HTML/CSS/JS環境構築（21_SPEC_quill_setup.md）
-- [ ] エディタ機能実装（22_SPEC_quill_features.md）
-- [ ] Flutter側統合（23_SPEC_quill_implementation.md）
+- [ ] Phase 1: 基盤セットアップ（22_SPEC_quill_integrated.md）
+- [ ] Phase 2: Quill.js機能設計
+- [ ] Phase 3: Flutter統合実装
+- [ ] Phase 4: JavaScript Bridge
 - [ ] テスト・デバッグ
 
 ## 📊 メタデータ
