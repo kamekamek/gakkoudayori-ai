@@ -508,10 +508,7 @@
 
 ## 📊 依存関係可視化
 
-### 🔗 Critical Path (最長経路)
-1. T1-GCP-001-M → T1-GCP-002-M → T1-GCP-003-M → T1-GCP-004-A
-2. T2-QU-001-A → T2-QU-002-A → T2-QU-003-A → T2-QU-004-H → T2-QU-005-A
-3. T3-MA-001-H → T3-MA-004-H (最終統合)
+### 全体クリティカルパス分析
 
 ### ⚡ 並行実行可能グループ
 - **Week 1**: Group A + Group B + Group C (並行)

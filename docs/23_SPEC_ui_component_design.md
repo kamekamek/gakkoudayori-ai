@@ -1,14 +1,14 @@
 # UI コンポーネント設計仕様書
 
 **カテゴリ**: SPEC | **レイヤー**: DETAIL | **更新**: 2025-01-09  
-**担当**: Claude | **依存**: 01_REQUIREMENT_overview.md, 20_SPEC_quill_integration.md | **タグ**: #frontend #ui #flutter
+**担当**: Claude | **依存**: 01_REQUIREMENT_overview.md, 20_SPEC_quill_integration.md | **タグ**: #frontend #ui #flutter #voice-input #accessibility
 
 ## 🎯 TL;DR（30秒で読める要約）
 
-- **目的**: Layout B（3カラム構成）のUIコンポーネント設計仕様を定義
+- **目的**: Layout B（3カラム構成）+ 音声入力特化モバイルUIの設計仕様を定義
 - **対象**: フロントエンド開発者、UIデザイナー  
-- **成果物**: 9つのコンポーネント仕様＋状態管理＋実装優先順位
-- **次のアクション**: AppShell Grid基盤から実装開始
+- **成果物**: 9つのコンポーネント仕様＋音声UI設計＋アクセシビリティ対応＋実装優先順位
+- **次のアクション**: 音声入力基盤から実装開始
 
 ## 🔗 関連ドキュメント
 
