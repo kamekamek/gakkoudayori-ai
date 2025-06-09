@@ -1,6 +1,0 @@
-// Google OAuth設定テンプレート
-// 本番使用時は config.js にコピーして実際の値を設定
-window.googleConfig = {
-  clientId: 'YOUR_GOOGLE_CLIENT_ID_HERE',
-  // 必要に応じて他の設定も追加
-}; 
