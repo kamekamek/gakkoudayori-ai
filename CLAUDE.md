@@ -1,3 +1,7 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # ゆとり職員室 - Claude Code Action ガイドライン
 
 ## 🎯 プロジェクト概要
@@ -165,7 +169,7 @@ async def generate_pdf(
 ## 🔧 開発環境・ツール
 
 ### 必須ツール
-- **Flutter**: 最新安定版
+- **Flutter**: 最新安定版 (現在 3.32.2)
 - **Python**: 3.9+
 - **Node.js**: 18+ (開発ツール用)
 - **Google Cloud CLI**: 最新版
@@ -176,6 +180,56 @@ async def generate_pdf(
 - GitLens
 - Error Lens
 - Thunder Client (API テスト)
+
+## 🛠️ 開発コマンド
+
+### Flutter Web開発
+```bash
+# プロジェクトディレクトリ移動
+cd frontend
+
+# 依存関係インストール
+flutter pub get
+
+# 開発サーバー起動 (Chrome)
+flutter run -d chrome
+
+# ビルド (本番用)
+flutter build web --release
+
+# テスト実行
+flutter test
+
+# 静的解析
+flutter analyze
+
+# パッケージ更新確認
+flutter pub outdated
+```
+
+### 品質チェック
+```bash
+# Frontend品質チェック
+cd frontend && flutter analyze && flutter test
+
+# コードフォーマット確認
+cd frontend && dart format --set-exit-if-changed .
+
+# テストカバレッジ
+cd frontend && flutter test --coverage
+```
+
+### プロジェクト構造の確認
+```bash
+# ドキュメント一覧表示
+ls docs/
+
+# タスク進捗確認
+cat docs/tasks.md
+
+# 設定ファイル確認
+cat frontend/pubspec.yaml
+```
 
 ## 📝 コミットメッセージ規約
 
@@ -226,16 +280,42 @@ async def generate_pdf(
 
 ## 📚 参考ドキュメント
 
-- [タスク管理](docs/Archive/tasks.md) - 実装進捗管理
-- [システム設計](docs/Archive/system_design.md) - アーキテクチャ詳細
-- [TDDガイド](docs/Archive/tdd_guide.md) - テスト駆動開発手順
-- [要件定義](docs/Archive/REQUIREMENT.md) - 機能要件・非機能要件
+- [タスク管理](docs/tasks.md) - 実装進捗管理 (58タスク、現在4/58完了)
+- [要件定義](docs/01_REQUIREMENT_overview.md) - 機能要件・非機能要件
+- [システム設計](docs/11_DESIGN_database_schema.md) - データベース・アーキテクチャ詳細
+- [API仕様](docs/30_API_endpoints.md) - エンドポイント設計
+
+---
+
+## 🎯 現在のプロジェクト状況
+
+### 進捗サマリー
+- **全体進捗**: 4/58タスク完了 (6.9%)
+- **Phase 1進捗**: Google Cloud基盤・Firebase基盤・Flutter基盤の環境構築中
+- **次のマイルストーン**: T1-FL-002-A Flutter Webプロジェクト初期化
+
+### 重要な実装方針
+1. **TDD必須**: すべてのコーディングタスクで Red→Green→Refactor サイクル
+2. **並行開発**: 依存関係のないタスクは同時実行で効率化
+3. **教育現場重視**: 教師の使いやすさを最優先に設計
+4. **ハッカソン制約**: Google Cloud サービス使用が必須要件
+
+### アーキテクチャの理解
+- **WebView統合**: Quill.js エディタを Flutter Web 内で動作させる複雑な統合
+- **マルチエージェントAI**: 3つの専門エージェント(分析・執筆・レイアウト)の協調処理
+- **リアルタイム音声処理**: Speech-to-Text から Gemini リライトまでの一連の流れ
 
 ---
 
 **🤖 Claude Code Action へのメッセージ**
 
 このプロジェクトは教育現場の効率化を目指すWebアプリケーションです。コード品質・ユーザビリティ・アクセシビリティを重視し、教師が直感的に使える設計を心がけてください。TDD原則に従い、テストファーストで安全な実装をお願いします。
+
+**開始時の必須チェック項目**:
+1. `docs/tasks.md` で現在の進捗と次のタスクを確認
+2. 実装前に必ずテストコードを作成 (TDD)
+3. `flutter analyze && flutter test` で品質確認
+4. 教育現場での使いやすさを常に意識
 
 質問や不明点があれば、遠慮なく確認してください！
 
