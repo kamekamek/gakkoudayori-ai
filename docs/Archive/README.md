@@ -12,17 +12,17 @@
 
 | ドキュメント | 概要 | 対象者 | 更新頻度 |
 |------------|------|--------|----------|
-| **[REQUIREMENT.md](REQUIREMENT.md)** | プロジェクト要件定義書<br/>・14項目の機能要件<br/>・技術スタック・画面設計<br/>・成功指標・開発スケジュール | 全員 | プロジェクト初期のみ |
-| **[tasks.md](tasks.md)** | 実装タスクリスト（79タスク）<br/>・Phase別詳細タスク<br/>・完了条件・優先度管理<br/>・進捗状況・TDD要件 | 開発者 | 毎日更新 |
-| **[system_design.md](system_design.md)** | システム設計書<br/>・アーキテクチャ・API設計<br/>・データ設計・セキュリティ<br/>・技術選定理由 | 開発者・レビューア | 設計変更時 |
+| **[REQUIREMENT.md](Archive/REQUIREMENT.md)** | プロジェクト要件定義書<br/>・14項目の機能要件<br/>・技術スタック・画面設計<br/>・成功指標・開発スケジュール | 全員 | プロジェクト初期のみ |
+| **[tasks.md](Archive/tasks.md)** | 実装タスクリスト（79タスク）<br/>・Phase別詳細タスク<br/>・完了条件・優先度管理<br/>・進捗状況・TDD要件 | 開発者 | 毎日更新 |
+| **[system_design.md](Archive/system_design.md)** | システム設計書<br/>・アーキテクチャ・API設計<br/>・データ設計・セキュリティ<br/>・技術選定理由 | 開発者・レビューア | 設計変更時 |
 
 ### 🔧 開発・技術ドキュメント
 
 | ドキュメント | 概要 | 対象者 | 用途 |
 |------------|------|--------|------|
 | **[tdd_guide.md](tdd_guide.md)** | TDD実践ガイド<br/>・具体的なテスト例<br/>・カバレッジ目標・実践のコツ<br/>・統合テスト手法 | 開発者 | 実装時参考 |
-| **[future_extensions.md](future_extensions.md)** | 将来拡張機能設計<br/>・ADKマルチエージェント<br/>・高度AI機能・実装優先度 | 開発者・企画者 | 長期計画 |
-| **[hackason_rule.md](hackason_rule.md)** | ハッカソン要件・制約<br/>・必須技術条件<br/>・特別賞対象・技術選定基準 | 全員 | 要件確認 |
+| **[future_extensions.md](Archive/future_extensions.md)** | 将来拡張機能設計<br/>・ADKマルチエージェント<br/>・高度AI機能・実装優先度 | 開発者・企画者 | 長期計画 |
+| **[hackason_rule.md](HACKASON_RULE.md)** | ハッカソン要件・制約<br/>・必須技術条件<br/>・特別賞対象・技術選定基準 | 全員 | 要件確認 |
 
 ---
 
@@ -48,24 +48,24 @@ graph TD
 
 ### 🎬 新規参加者向け
 
-1. **[hackason_rule.md](hackason_rule.md)** - ハッカソン制約理解
-2. **[REQUIREMENT.md](REQUIREMENT.md)** - プロジェクト全体把握
-3. **[system_design.md](system_design.md)** - 技術アーキテクチャ理解
-4. **[tasks.md](tasks.md)** - 現在の進捗・次のタスク確認
+1. **[hackason_rule.md](HACKASON_RULE.md)** - ハッカソン制約理解
+2. **[REQUIREMENT.md](Archive/REQUIREMENT.md)** - プロジェクト全体把握
+3. **[system_design.md](Archive/system_design.md)** - 技術アーキテクチャ理解
+4. **[tasks.md](Archive/tasks.md)** - 現在の進捗・次のタスク確認
 
 ### 💻 開発開始時
 
-1. **[tasks.md](tasks.md)** - 今日のタスク確認
+1. **[tasks.md](Archive/tasks.md)** - 今日のタスク確認
 2. **[tdd_guide.md](tdd_guide.md)** - TDD手法確認
-3. **[system_design.md](system_design.md)** - 実装仕様確認
-4. 実装開始 → **[tasks.md](tasks.md)** 進捗更新
+3. **[system_design.md](Archive/system_design.md)** - 実装仕様確認
+4. 実装開始 → **[tasks.md](Archive/tasks.md)** 進捗更新
 
 ### 🔍 設計レビュー時
 
-1. **[REQUIREMENT.md](REQUIREMENT.md)** - 要件適合性確認
-2. **[system_design.md](system_design.md)** - 設計妥当性検証
-3. **[future_extensions.md](future_extensions.md)** - 拡張性考慮
-4. **[hackason_rule.md](hackason_rule.md)** - 制約違反チェック
+1. **[REQUIREMENT.md](Archive/REQUIREMENT.md)** - 要件適合性確認
+2. **[system_design.md](Archive/system_design.md)** - 設計妥当性検証
+3. **[future_extensions.md](Archive/future_extensions.md)** - 拡張性考慮
+4. **[hackason_rule.md](HACKASON_RULE.md)** - 制約違反チェック
 
 ---
 
@@ -75,10 +75,10 @@ graph TD
 
 | 機能フェーズ | 関連ドキュメント | キーポイント |
 |------------|------------------|--------------|
-| **音声入力** | [REQUIREMENT.md](REQUIREMENT.md) ①②<br/>[system_design.md](system_design.md) Speech-to-Text<br/>[tasks.md](tasks.md) Phase1 | ノイズ抑制・ユーザー辞書・リアルタイム字幕 |
-| **AI編集** | [REQUIREMENT.md](REQUIREMENT.md) ③④⑤⑨<br/>[system_design.md](system_design.md) Gemini 1.5 Pro<br/>[tasks.md](tasks.md) Phase2 | リライト・カスタム指示・見出し生成・チャット編集 |
-| **グラレコ風HTML** | [REQUIREMENT.md](REQUIREMENT.md) ⑥⑦⑧⑩<br/>[system_design.md](system_design.md) HTMLエディタ<br/>[tasks.md](tasks.md) Phase2-3 | 季節カラー・全まかせ・WYSIWYG・テンプレート |
-| **PDF配信** | [REQUIREMENT.md](REQUIREMENT.md) ⑪⑫⑬<br/>[system_design.md](system_design.md) PDF生成<br/>[tasks.md](tasks.md) Phase4 | HTML↔PDF切替・Drive保存・Classroom投稿 |
+| **音声入力** | [REQUIREMENT.md](Archive/REQUIREMENT.md) ①②<br/>[system_design.md](Archive/system_design.md) Speech-to-Text<br/>[tasks.md](Archive/tasks.md) Phase1 | ノイズ抑制・ユーザー辞書・リアルタイム字幕 |
+| **AI編集** | [REQUIREMENT.md](Archive/REQUIREMENT.md) ③④⑤⑨<br/>[system_design.md](Archive/system_design.md) Gemini 1.5 Pro<br/>[tasks.md](Archive/tasks.md) Phase2 | リライト・カスタム指示・見出し生成・チャット編集 |
+| **グラレコ風HTML** | [REQUIREMENT.md](Archive/REQUIREMENT.md) ⑥⑦⑧⑩<br/>[system_design.md](Archive/system_design.md) HTMLエディタ<br/>[tasks.md](Archive/tasks.md) Phase2-3 | 季節カラー・全まかせ・WYSIWYG・テンプレート |
+| **PDF配信** | [REQUIREMENT.md](Archive/REQUIREMENT.md) ⑪⑫⑬<br/>[system_design.md](Archive/system_design.md) PDF生成<br/>[tasks.md](Archive/tasks.md) Phase4 | HTML↔PDF切替・Drive保存・Classroom投稿 |
 
 ---
 
@@ -130,9 +130,9 @@ open docs/system_design.md
 
 ### 📝 日常的な更新作業
 
-- **毎日**: [tasks.md](tasks.md) 進捗更新・完了タスクチェック
-- **機能完成時**: [system_design.md](system_design.md) 実装詳細追記
-- **仕様変更時**: [REQUIREMENT.md](REQUIREMENT.md) 要件更新検討
+- **毎日**: [tasks.md](Archive/tasks.md) 進捗更新・完了タスクチェック
+- **機能完成時**: [system_design.md](Archive/system_design.md) 実装詳細追記
+- **仕様変更時**: [REQUIREMENT.md](Archive/REQUIREMENT.md) 要件更新検討
 
 ### 🎯 重要な完了条件
 
@@ -158,4 +158,4 @@ open docs/system_design.md
 ---
 
 *最終更新: 2024年12月*
-*プロジェクト全体の最新状況は [tasks.md](tasks.md) を参照* 
+*プロジェクト全体の最新状況は [tasks.md](Archive/tasks.md) を参照* 
