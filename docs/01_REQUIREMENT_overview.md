@@ -29,13 +29,29 @@
 | --------- | ----------------------------------------------------------------------------- |
 | **課題**    | 学級通信・学年通信・学校通信の作成に 2-3 時間かかる／Word 格闘でレイアウト崩れ                                  |
 | **ゴール**   | **20 分以内**でドラフト完成＋編集体験は Google Docs / Sites 風の WYSIWYG<br>教師の残業削減 & 保護者との接点強化 |
-| **AI 価値** | 音声入力 → **Google ADKマルチエージェント協調** → HTML ドラフト生成 → AI 補助 UI で文章提案・リライト                             |
+| **AI 価値** | 音声入力 → **Vertex AI (将来ADK拡張)** → HTML ドラフト生成 → AI 補助 UI で文章提案・リライト                             |
 
 ---
 
 ## 1. エンドツーエンド フロー
 
 ```plaintext
+Phase 1 (MVP):
+スマホ録音
+    ↓  Google STT
+文字起こし
+    ↓  Vertex AI Gemini Pro
+HTMLドラフト
+    ↓
+PC編集画面
+┌─────────────────────────┐
+│ 左：Quill.js WYSIWYG + AI補助UI       │
+│ 右：リアルタイム HTML プレビュー       │
+└─────────────────────────┘
+    ↓
+PDF 出力 / Drive 保存 / Classroom 転送
+
+Phase 2 (将来拡張):
 スマホ録音
     ↓  Google STT
 文字起こし
@@ -46,15 +62,9 @@
     ├─ Layout Designer Agent  
     ├─ Fact Checker Agent
     └─ Engagement Optimizer Agent
-HTMLドラフト
+最適化HTMLドラフト
     ↓
-PC編集画面
-┌─────────────────────────┐
-│ 左：Quill.js WYSIWYG + AI補助UI       │
-│ 右：リアルタイム HTML プレビュー       │
-└─────────────────────────┘
-    ↓
-PDF 出力 / Drive 保存 / Classroom 転送
+PC編集画面 → PDF出力
 ```
 
 ## 📊 メタデータ
@@ -79,7 +89,8 @@ PDF 出力 / Drive 保存 / Classroom 転送
                                         │
                                         ▼
                               ┌─────────────────┐
-                              │ Gemini Pro API  │
+                              │ Vertex AI       │
+                              │ (Gemini Pro)    │
                               └─────────────────┘
                                         │ HTML
 ┌──────────────────────────────┐         ▼

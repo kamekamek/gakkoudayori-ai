@@ -10,7 +10,7 @@
 
 ### 📊 並列実装の価値提案
 - **開発期間短縮**: 12-15日 → 6-8日 (50%短縮)
-- **技術的価値向上**: Google ADK マルチエージェント統合
+- **技術的価値向上**: Vertex AI MVP → 将来のGoogle ADK マルチエージェント統合
 - **リスク分散**: 独立ストリームによる障害影響局所化
 - **品質向上**: TDD + 継続的統合による堅牢性確保
 
@@ -61,25 +61,27 @@ pip install pytest pytest-asyncio httpx
 tmux new-window -t yutori:1 -n "ai-infra"
 
 # 実装対象タスク (docs/tasks.md参照)
-T3-AI-002-A: Gemini API基盤実装 (50分)
+T3-AI-002-A: Vertex AI基盤実装 (50分)
 T3-AI-003-H: HTML制約プロンプト実装 (60分)
 T3-AI-005-A: 音声認識API実装 (55分)
-T3-MA-001-H: Content Analyzer Agent (90分)
-T3-MA-002-H: Style Writer Agent (90分)
-T3-MA-003-H: Layout Designer Agent (90分)
-T3-MA-004-H: Agent Orchestrator (75分)
+T3-MVP-001-A: Vertex AI MVP統合 (90分)
+# 将来実装 (Phase 2):
+# T3-MA-001-H: Content Analyzer Agent (90分)
+# T3-MA-002-H: Style Writer Agent (90分)
+# T3-MA-003-H: Layout Designer Agent (90分)
+# T3-MA-004-H: Agent Orchestrator (75分)
 ```
 
 **実装順序**:
-1. Day 1: Gemini API基盤 → HTML制約プロンプト
-2. Day 2: 音声認識API → Content Analyzer Agent
-3. Day 3: Style Writer Agent (並行) + Layout Designer Agent
-4. Day 4: Agent Orchestrator → 統合テスト
+1. Day 1: Vertex AI基盤 → HTML制約プロンプト
+2. Day 2: 音声認識API → MVP統合実装
+3. Day 3: エンドツーエンドテスト → 基本動作確認
+4. Day 4: パフォーマンス最適化 → リファクタリング
 
 **成功指標**:
-- エージェント単体テスト通過率 95%以上
+- Vertex AI統合テスト通過率 95%以上
 - API応答時間 <500ms
-- エージェント協調フロー動作確認
+- エンドツーエンドフロー動作確認
 
 #### **Stream 2: Frontend Editor System** 🎨
 **担当**: Claude Code Session 2
