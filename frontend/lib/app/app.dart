@@ -18,7 +18,7 @@ class YutoriKyoshituApp extends StatelessWidget {
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.system,
-      initialRoute: '/',
+      initialRoute: '/home',
       onGenerateRoute: _router.onGenerateRoute,
       // Firebase初期化確認用
       builder: (context, child) {
