@@ -1,0 +1,197 @@
+/* 学級通信エディタ カスタムスタイルシート */
+
+/* 季節テーマ: 春 */
+.theme-spring {
+  --primary: #ff9eaa;     /* 桜色 */
+  --secondary: #a5d8ff;   /* 春の空色 */
+  --accent: #ffdb4d;      /* 菜の花色 */
+  --background: #f8f9fa;  /* 明るい背景 */
+  --text: #343a40;        /* 標準テキスト色 */
+  --heading: #e64980;     /* 見出し色 */
+  --link: #4c6ef5;        /* リンク色 */
+  --border: #dee2e6;      /* 境界線色 */
+}
+
+/* 季節テーマ: 夏 */
+.theme-summer {
+  --primary: #51cf66;     /* 若葉色 */
+  --secondary: #339af0;   /* 夏空色 */
+  --accent: #ff922b;      /* 太陽色 */
+  --background: #f1f8ff;  /* 涼しげな背景 */
+  --text: #1a1c20;        /* 濃いテキスト色 */
+  --heading: #20c997;     /* 見出し色 */
+  --link: #1971c2;        /* リンク色 */
+  --border: #e7f5ff;      /* 境界線色 */
+}
+
+/* 季節テーマ: 秋 */
+.theme-autumn {
+  --primary: #e67700;     /* 紅葉色 */
+  --secondary: #d9480f;   /* 深紅色 */
+  --accent: #fff3bf;      /* 穏やかな黄色 */
+  --background: #fff9db;  /* 優しい背景 */
+  --text: #2b2a29;        /* 深みのあるテキスト色 */
+  --heading: #c92a2a;     /* 見出し色 */
+  --link: #a61e4d;        /* リンク色 */
+  --border: #ffe8cc;      /* 境界線色 */
+}
+
+/* 季節テーマ: 冬 */
+.theme-winter {
+  --primary: #4dabf7;     /* 冬空色 */
+  --secondary: #e7f5ff;   /* 雪色 */
+  --accent: #91a7ff;      /* 薄紫色 */
+  --background: #f8f9fa;  /* 白い背景 */
+  --text: #1a1c20;        /* 濃いテキスト色 */
+  --heading: #1864ab;     /* 見出し色 */
+  --link: #5f3dc4;        /* リンク色 */
+  --border: #d0ebff;      /* 境界線色 */
+}
+
+/* テーマ適用スタイル */
+.theme-spring .ql-editor h1,
+.theme-spring .ql-editor h2,
+.theme-spring .ql-editor h3 {
+  color: var(--heading);
+}
+
+.theme-summer .ql-editor h1,
+.theme-summer .ql-editor h2,
+.theme-summer .ql-editor h3 {
+  color: var(--heading);
+}
+
+.theme-autumn .ql-editor h1,
+.theme-autumn .ql-editor h2,
+.theme-autumn .ql-editor h3 {
+  color: var(--heading);
+}
+
+.theme-winter .ql-editor h1,
+.theme-winter .ql-editor h2,
+.theme-winter .ql-editor h3 {
+  color: var(--heading);
+}
+
+/* 共通リンクスタイル */
+.ql-editor a {
+  color: var(--link);
+  text-decoration: underline;
+}
+
+/* 共通ボーダースタイル */
+.ql-editor blockquote {
+  border-left-color: var(--primary);
+}
+
+/* 季節感を強調するための追加スタイル */
+
+/* 春：桜風の装飾 */
+.theme-spring .ql-editor h1::after {
+  content: " 🌸";
+}
+
+.theme-spring .ql-editor blockquote {
+  background-color: rgba(255, 158, 170, 0.1);
+  padding: 10px;
+  border-radius: 4px;
+}
+
+/* 夏：太陽と海の装飾 */
+.theme-summer .ql-editor h1::after {
+  content: " ☀️";
+}
+
+.theme-summer .ql-editor blockquote {
+  background-color: rgba(81, 207, 102, 0.1);
+  padding: 10px;
+  border-radius: 4px;
+}
+
+/* 秋：紅葉の装飾 */
+.theme-autumn .ql-editor h1::after {
+  content: " 🍁";
+}
+
+.theme-autumn .ql-editor blockquote {
+  background-color: rgba(230, 119, 0, 0.1);
+  padding: 10px;
+  border-radius: 4px;
+}
+
+/* 冬：雪の装飾 */
+.theme-winter .ql-editor h1::after {
+  content: " ❄️";
+}
+
+.theme-winter .ql-editor blockquote {
+  background-color: rgba(77, 171, 247, 0.1);
+  padding: 10px;
+  border-radius: 4px;
+}
+
+/* グラレコ風要素のスタイル */
+.speech-bubble {
+  position: relative;
+  background-color: white;
+  border-radius: 10px;
+  padding: 15px;
+  margin: 15px 0;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  border-left: 4px solid var(--primary);
+}
+
+.speech-bubble::after {
+  content: "";
+  position: absolute;
+  bottom: -15px;
+  left: 50px;
+  border-width: 15px 0 0 15px;
+  border-style: solid;
+  border-color: white transparent transparent transparent;
+}
+
+/* テーブル装飾 */
+.ql-editor table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 15px 0;
+}
+
+.ql-editor table td,
+.ql-editor table th {
+  border: 1px solid var(--border);
+  padding: 8px;
+}
+
+.ql-editor table th {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  text-align: left;
+  background-color: var(--primary);
+  color: white;
+}
+
+/* リスト装飾 */
+.ql-editor ul li::before {
+  color: var(--primary);
+}
+
+.ql-editor ol li::before {
+  color: var(--primary);
+}
+
+/* 印刷用スタイル */
+@media print {
+  body {
+    background-color: white !important;
+  }
+  
+  .ql-editor {
+    padding: 0 !important;
+  }
+  
+  .custom-toolbar {
+    display: none !important;
+  }
+} 
