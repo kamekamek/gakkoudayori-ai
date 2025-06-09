@@ -8,11 +8,14 @@
 | 10 | DESIGN | color palettes | [10_DESIGN_color_palettes.md](docs/10_DESIGN_color_palettes.md) |
 | 20 | SPEC | quill summary | [20_SPEC_quill_summary.md](docs/20_SPEC_quill_summary.md) |
 | 21 | SPEC | ai prompts | [21_SPEC_ai_prompts.md](docs/21_SPEC_ai_prompts.md) |
-| 21 | SPEC | quill setup | [21_SPEC_quill_setup.md](docs/21_SPEC_quill_setup.md) |
-| 22 | SPEC | ai assistant panel | [22_SPEC_ai_assistant_panel.md](docs/22_SPEC_ai_assistant_panel.md) |
+| 22 | SPEC | quill setup | [22_SPEC_quill_setup.md](docs/22_SPEC_quill_setup.md) |
+| 22 | SPEC | quill features | [22_SPEC_quill_features.md](docs/22_SPEC_quill_features.md) |
+| 23 | SPEC | quill implementation | [23_SPEC_quill_implementation.md](docs/23_SPEC_quill_implementation.md) |
+| 23 | SPEC | ui component design | [23_SPEC_ui_component_design.md](docs/23_SPEC_ui_component_design.md) |
+| 24 | SPEC | ai assistant panel | [24_SPEC_ai_assistant_panel.md](docs/24_SPEC_ai_assistant_panel.md) |
+| 24 | SPEC | adk multi agent | [24_SPEC_adk_multi_agent.md](docs/24_SPEC_adk_multi_agent.md) |
+| 30 | API | endpoints | [30_API_endpoints.md](docs/30_API_endpoints.md) |
 | 50 | STRATEGY | implementation | [50_STRATEGY_implementation.md](docs/50_STRATEGY_implementation.md) |
-| 51 | STRATEGY | restart | [51_STRATEGY_restart.md](docs/51_STRATEGY_restart.md) |
-| 52 | STRATEGY | plan overview | [52_STRATEGY_plan_overview.md](docs/52_STRATEGY_plan_overview.md) |
 
 ## 📁 その他のファイル
 
