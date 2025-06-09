@@ -59,7 +59,7 @@ if gcloud projects describe $PROJECT_ID &>/dev/null; then
     print_status "プロジェクト $PROJECT_ID は既に存在します"
 else
     print_warning "プロジェクト $PROJECT_ID を作成中..."
-    if gcloud projects create $PROJECT_ID --name="ゆとり職員室AI"; then
+    if gcloud projects create $PROJECT_ID --name="Yutori Kyoshitu AI"; then
         print_status "プロジェクト作成完了"
     else
         print_error "プロジェクト作成失敗"
@@ -120,7 +120,7 @@ if gcloud iam service-accounts describe $SA_EMAIL &>/dev/null; then
     print_status "サービスアカウント $SA_EMAIL は既に存在します"
 else
     if gcloud iam service-accounts create $SA_NAME \
-        --display-name="ゆとり職員室AI サービスアカウント" \
+        --display-name="Yutori Kyoshitu AI Service Account" \
         --description="学校だよりAI システム用サービスアカウント"; then
         print_status "サービスアカウント作成完了: $SA_EMAIL"
     else
