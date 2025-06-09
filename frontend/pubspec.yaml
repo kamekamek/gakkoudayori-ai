@@ -58,11 +58,4 @@ flutter:
     - assets/images/
     - assets/icons/
     - assets/audio/
-  
-  fonts:
-    - family: NotoSansJP
-      fonts:
-        - asset: assets/fonts/NotoSansJP-Regular.ttf
-        - asset: assets/fonts/NotoSansJP-Bold.ttf
-          weight: 700
 

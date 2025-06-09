@@ -38,38 +38,44 @@
 
 ### Group A: Google Cloud基盤 (順次実行)
 
-#### T1-GCP-001-M: Google Cloudプロジェクト作成
+#### T1-GCP-001-M: Google Cloudプロジェクト作成 ✅
 - **作業者**: 🔧 MANUAL
-- **所要時間**: 20分
+- **所要時間**: 20分 (実績: 18分)
 - **依存**: なし
+- **進行状況**: ✅ 完了 (2025-06-09 23:48)
 - **📄 参考**: `docs/HACKASON_RULE.md` Section 1
 - **完了条件**: 
-  - [ ] Google Cloudプロジェクト作成完了
-  - [ ] プロジェクトID記録（環境変数用）
-  - [ ] 課金アカウント有効化確認
+  - [x] Google Cloudプロジェクト作成完了
+  - [x] プロジェクトID記録（環境変数用）
+  - [x] 課金アカウント有効化確認
+- **成果物**: プロジェクトID `yutori-kyoshitu-ai`
 
-#### T1-GCP-002-M: 必要API有効化
+#### T1-GCP-002-M: 必要API有効化 ✅
 - **作業者**: 🔧 MANUAL  
-- **所要時間**: 30分
-- **依存**: T1-GCP-001-M
+- **所要時間**: 30分 (実績: 25分)
+- **依存**: T1-GCP-001-M ✅
+- **進行状況**: ✅ 完了 (2025-06-09 23:52)
 - **📄 参考**: `docs/HACKASON_RULE.md` Section 2
 - **完了条件**:
-  - [ ] Vertex AI API有効化
-  - [ ] Speech-to-Text API有効化
-  - [ ] Cloud Storage API有効化
-  - [ ] Cloud Run API有効化
-  - [ ] Cloud Firestore API有効化
+  - [x] Vertex AI API有効化
+  - [x] Speech-to-Text API有効化
+  - [x] Cloud Storage API有効化
+  - [x] Cloud Run API有効化
+  - [x] Cloud Firestore API有効化
+- **成果物**: 8つのAPI有効化完了
 
-#### T1-GCP-003-M: サービスアカウント設定
+#### T1-GCP-003-M: サービスアカウント設定 ✅
 - **作業者**: 🔧 MANUAL
-- **所要時間**: 25分  
-- **依存**: T1-GCP-002-M
+- **所要時間**: 25分 (実績: 22分)
+- **依存**: T1-GCP-002-M ✅
+- **進行状況**: ✅ 完了 (2025-06-09 23:50)
 - **📄 参考**: `docs/11_DESIGN_database_schema.md` Section 5
 - **完了条件**:
-  - [ ] サービスアカウント作成
-  - [ ] 必要な権限付与（Vertex AI, Storage, Firestore）
-  - [ ] JSONキーファイルダウンロード
-  - [ ] キーファイル安全保存（gitignore確認）
+  - [x] サービスアカウント作成
+  - [x] 必要な権限付与（Vertex AI, Storage, Firestore）
+  - [x] JSONキーファイルダウンロード
+  - [x] キーファイル安全保存（gitignore確認）
+- **成果物**: `backend/secrets/service-account-key.json`
 
 #### T1-GCP-004-A: 認証テストコード実装
 - **作業者**: 🤖 AI
@@ -87,15 +93,17 @@
 
 ### Group B: Firebase基盤 (並行実行可能)
 
-#### T1-FB-001-M: Firebase プロジェクト設定
+#### T1-FB-001-M: Firebase プロジェクト設定 ✅
 - **作業者**: 🔧 MANUAL
-- **所要時間**: 30分
-- **依存**: T1-GCP-001-M  
+- **所要時間**: 30分 (実績: 28分)
+- **依存**: T1-GCP-001-M ✅
+- **進行状況**: ✅ 完了 (2025-06-10 00:23)
 - **📄 参考**: `docs/11_DESIGN_database_schema.md` Section 1-2
 - **完了条件**:
-  - [ ] Firebaseプロジェクト作成
-  - [ ] Google Cloudプロジェクトと連携
-  - [ ] Firebase Console でプロジェクト確認
+  - [x] Firebaseプロジェクト作成
+  - [x] Google Cloudプロジェクトと連携
+  - [x] Firebase Console でプロジェクト確認
+- **成果物**: firebase.json, firestore.rules, storage.rules
 
 #### T1-FB-002-M: Authentication設定
 - **作業者**: 🔧 MANUAL
@@ -520,10 +528,10 @@
 ## 📈 進捗管理
 
 ### Phase 1 進捗 (18タスク)
-- **Group A**: 0/4 完了 (GCP基盤)
-- **Group B**: 0/5 完了 (Firebase基盤)  
+- **Group A**: 3/4 完了 (GCP基盤) 🎯
+- **Group B**: 1/5 完了 (Firebase基盤) 🚀  
 - **Group C**: 0/6 完了 (Flutter基盤)
-- **環境設定**: 0/3 完了
+- **環境設定**: 1/3 完了
 
 ### Phase 2 進捗 (8タスク)
 - **Group D**: 0/5 完了 (Quill基盤)
@@ -534,7 +542,7 @@
 - **Group G**: 0/4 完了 (マルチエージェント)
 - **Group H**: 0/4 完了 (AI UI)
 
-**全体進捗**: 0/58 タスク完了 (0%)
+**全体進捗**: 3/58 タスク完了 (5.2%) ⬆️
 
 ---
 
