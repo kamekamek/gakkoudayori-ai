@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>学級通信エディタ</title>
+  
+  <!-- Quill.js CSS -->
+  <link href="https://cdn.quilljs.com/2.0.0/quill.snow.css" rel="stylesheet">
+  
+  <!-- 季節テーマ用カスタムCSS -->
+  <link href="styles.css" rel="stylesheet">
+  
+  <style>
+    body {
+      margin: 0;
+      padding: 16px;
+      font-family: 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
+    }
+    
+    #editor-container {
+      height: 100%;
+      min-height: 400px;
+    }
+    
+    .ql-editor {
+      font-size: 16px;
+      line-height: 1.6;
+    }
+    
+    /* 季節テーマ適用 */
+    .theme-spring .ql-editor { background-color: #f8f9fa; color: #343a40; }
+    .theme-summer .ql-editor { background-color: #f1f8ff; color: #1a1c20; }
+    .theme-autumn .ql-editor { background-color: #fff9db; color: #2b2a29; }
+    .theme-winter .ql-editor { background-color: #f8f9fa; color: #1a1c20; }
+    
+    /* ツールバーカスタマイズ */
+    .custom-toolbar {
+      margin-bottom: 8px;
+      padding: 4px;
+      border-radius: 4px;
+      background-color: #f1f3f5;
+    }
+    
+    .custom-toolbar button {
+      background: none;
+      border: none;
+      padding: 4px 8px;
+      margin: 0 2px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    
+    .custom-toolbar button:hover {
+      background-color: #e9ecef;
+    }
+    
+    .custom-toolbar .active {
+      background-color: #dee2e6;
+    }
+  </style>
+</head>
+<body class="theme-spring">
+  <!-- カスタムツールバー（オプション） -->
+  <div class="custom-toolbar">
+    <button id="btn-season-spring" class="active" title="春テーマ">🌸 春</button>
+    <button id="btn-season-summer" title="夏テーマ">☀️ 夏</button>
+    <button id="btn-season-autumn" title="秋テーマ">🍁 秋</button>
+    <button id="btn-season-winter" title="冬テーマ">❄️ 冬</button>
+  </div>
+
+  <!-- Quillエディタコンテナ -->
+  <div id="editor-container"></div>
+
+  <!-- Quill.js Script -->
+  <script src="https://cdn.quilljs.com/2.0.0/quill.min.js"></script>
+  
+  <script>
+    // Quill エディタ初期化
+    const quill = new Quill('#editor-container', {
+      theme: 'snow',
+      placeholder: '学級通信の内容を入力してください...',
+      modules: {
+        toolbar: [
+          ['bold', 'italic', 'underline', 'strike'],
+          [{ 'header': 1 }, { 'header': 2 }, { 'header': 3 }],
+          [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+          [{ 'color': [] }, { 'background': [] }],
+          ['image', 'link'],
+          ['clean']
+        ]
+      }
+    });
+    
+    // 季節ボタンのイベントリスナー設定
+    document.getElementById('btn-season-spring').addEventListener('click', () => changeSeason('spring'));
+    document.getElementById('btn-season-summer').addEventListener('click', () => changeSeason('summer'));
+    document.getElementById('btn-season-autumn').addEventListener('click', () => changeSeason('autumn'));
+    document.getElementById('btn-season-winter').addEventListener('click', () => changeSeason('winter'));
+    
+    // 季節テーマ変更関数
+    function changeSeason(season) {
+      // ボディのクラスを変更
+      document.body.className = '';
+      document.body.classList.add('theme-' + season);
+      
+      // ボタンのアクティブ状態を更新
+      document.querySelectorAll('.custom-toolbar button').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      document.getElementById('btn-season-' + season).classList.add('active');
+      
+      // Flutter側に通知（FlutterのJavaScriptChannelが設定されている場合）
+      if (window.flutterChannel) {
+        window.flutterChannel.postMessage(JSON.stringify({
+          type: 'seasonChanged',
+          season: season
+        }));
+      }
+    }
+    
+    // FlutterとのJavaScript通信ブリッジ
+    window.addEventListener('flutterInAppWebViewPlatformReady', function(event) {
+      // Flutter -> JS 通信ハンドラー
+      
+      // デルタの取得と設定
+      window.flutter_inappwebview.callHandler('getDelta')
+        .then(function(delta) {
+          if (delta) {
+            quill.setContents(JSON.parse(delta));
+          }
+        });
+      
+      // 内容変更時のイベント
+      quill.on('text-change', function() {
+        const delta = JSON.stringify(quill.getContents());
+        const html = quill.root.innerHTML;
+        window.flutter_inappwebview.callHandler('contentChanged', delta, html);
+      });
+      
+      // コンテンツ挿入メソッド
+      window.insertContent = function(content, index) {
+        if (index === undefined) {
+          index = quill.getSelection() ? quill.getSelection().index : 0;
+        }
+        quill.insertText(index, content);
+      };
+      
+      // HTMLコンテンツ挿入（リッチテキスト）
+      window.insertHTML = function(html, index) {
+        if (index === undefined) {
+          index = quill.getSelection() ? quill.getSelection().index : 0;
+        }
+        const delta = quill.clipboard.convert(html);
+        quill.updateContents(delta);
+      };
+      
+      // 選択テキスト取得
+      window.getSelectedText = function() {
+        const selection = quill.getSelection();
+        if (selection) {
+          return quill.getText(selection.index, selection.length);
+        }
+        return '';
+      };
+      
+      // 準備完了通知
+      window.flutter_inappwebview.callHandler('editorReady');
+    });
+  </script>
+</body>
+</html> 
