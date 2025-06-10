@@ -183,34 +183,41 @@
   - [x] 開発ツール準備完了
 - **成果物**: Flutter Web環境構築完了、build/web/ 生成確認
 
-#### T1-FL-002-A: Flutter Webプロジェクト初期化
+#### T1-FL-002-A: Flutter Webプロジェクト初期化 ✅
 - **作業者**: 🤖 AI  
-- **所要時間**: 45分
+- **所要時間**: 45分 (実績: 40分)
 - **依存**: T1-FL-001-M
+- **進行状況**: ✅ 完了 (2025-06-10 00:45)
 - **📄 参考**: `docs/23_SPEC_ui_component_design.md` Section 2
 - **TDD要件**: Red→Green→Refactor
 - **完了条件**:
-  - [ ] プロジェクト構造作成
-  - [ ] 必要依存関係追加（pubspec.yaml）
-  - [ ] 基本ルーティング設定
-  - [ ] プロジェクト起動テスト通過
+  - [x] プロジェクト構造作成
+  - [x] 必要依存関係追加（pubspec.yaml）
+  - [x] 基本ルーティング設定
+  - [x] プロジェクト起動テスト通過
+- **成果物**: `lib/app/app.dart`, `lib/core/router/app_router.dart`, `lib/core/theme/app_theme.dart`
 
-#### T1-FL-003-A: Firebase Web SDK統合
+#### T1-FL-003-A: Firebase Web SDK統合 ✅
 - **作業者**: 🤖 AI
-- **所要時間**: 40分  
-- **依存**: T1-FL-002-A, T1-FB-001-M
+- **所要時間**: 40分 (実績: 38分) 
+- **依存**: T1-FL-002-A ✅, T1-FB-001-M ✅
+- **進行状況**: ✅ 完了 (2025-06-10 01:05)
 - **📄 参考**: `docs/30_API_endpoints.md` Section 1.3
 - **TDD要件**: Red→Green→Refactor
 - **完了条件**:
-  - [ ] firebase_core パッケージ統合
-  - [ ] Firebase設定ファイル配置
-  - [ ] Web初期化コード実装
-  - [ ] Firebase接続テスト通過
+  - [x] firebase_core パッケージ統合 ✅
+  - [x] Firebase設定ファイル配置 ✅
+  - [x] Web初期化コード実装 ✅
+  - [x] Firebase接続テスト通過 ✅
+- **成果物**: `lib/core/services/firebase_service.dart`, `lib/firebase_options.dart`, `web/firebase-config.js.sample`
 
-#### T1-FL-004-H: 認証システム実装
+#### T1-FL-004-H: 認証システム実装 (一時スキップ)
 - **作業者**: 🤝 HYBRID
+- **進行状況**: ⚠️ 保留 (ユーザー指示により、認証なしでの画面動作を優先するため一時スキップ)
+- **メモ**: 認証なしで画面表示・基本操作ができるように開発を優先。認証機能は後日実装予定。
 - **所要時間**: 60分
-- **依存**: T1-FL-003-A, T1-FB-002-M
+- **依存**: T1-FL-003-A ✅, T1-FB-002-M ✅
+- **進行状況**: 🚀 実行可能
 - **📄 参考**: `docs/23_SPEC_ui_component_design.md` Section 3.1
 - **TDD要件**: Red→Green→Refactor
 - **完了条件**:
@@ -220,17 +227,32 @@
   - [ ] 認証フローテスト通過
   - [ ] ユーザー情報表示確認
 
-#### T1-FL-005-A: 基本レイアウト実装
+#### T1-FL-005-A: E2Eテスト環境構築 ✅
 - **作業者**: 🤖 AI
-- **所要時間**: 50分
-- **依存**: T1-FL-004-H
+- **所要時間**: 60分 (実績: 70分)
+- **依存**: T1-FL-003-A ✅, T1-FL-004-H (一時スキップ)
+- **📄 参考**: `docs/70_TEST_unit_specs.md`
+- **TDD要件**: Red→Green→Refactor
+- **完了条件**:
+  - [x] Playwright導入 🔴→🟩
+  - [x] E2Eテスト基本設定 🔴→🟩
+  - [x] ホーム画面表示テスト実装 🔴→🟩
+  - [x] CI/CD用テスト実行スクリプト作成 🔴→🟩
+- **成果物**: `frontend/e2e/tests/home.spec.js` (テストケース), `frontend/e2e/run_e2e_test.sh` (CI/CDスクリプト)
+
+#### T1-FL-006-A: 基本レイアウト実装 ✅
+- **作業者**: 🤖 AI
+- **所要時間**: 50分 (実績: 55分)
+- **依存**: T1-FL-004-H (一時スキップ)
+- **進行状況**: ✅ 完了 (2025-06-10 09:35)
 - **📄 参考**: `docs/23_SPEC_ui_component_design.md` Section 4
 - **TDD要件**: Red→Green→Refactor
 - **完了条件**:
-  - [ ] AppShell (3カラム) ウィジェット実装
-  - [ ] レスポンシブデザイン対応
-  - [ ] 基本画面（ホーム・設定）作成
-  - [ ] ナビゲーションテスト通過
+  - [x] AppShell (3カラム) ウィジェット実装 ✅
+  - [x] レスポンシブデザイン対応 ✅
+  - [x] 基本画面（ホーム・設定）作成 ✅
+  - [x] ナビゲーションテスト通過 ✅
+- **成果物**: `lib/features/layout/presentation/widgets/app_shell.dart`, `lib/features/settings/presentation/pages/settings_page.dart`
 
 #### T1-FL-006-M: 環境変数設定
 - **作業者**: 🔧 MANUAL  
