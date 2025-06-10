@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
 
 /// Firebase設定オプションのデフォルト値
+/// 注意: このファイルはテンプレートです。
+/// 実際の設定値は firebase_options.dart に環境変数から設定してください。
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
@@ -44,14 +46,14 @@ class DefaultFirebaseOptions {
   }
 
   // Web用のFirebase設定
-  // 注: 実際の設定値は環境に合わせて更新してください
+  // 注: 実際の設定値は環境変数から取得してください
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'YOUR_API_KEY',
-    appId: 'YOUR_APP_ID',
-    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-    projectId: 'YOUR_PROJECT_ID',
-    authDomain: 'YOUR_AUTH_DOMAIN',
-    storageBucket: 'YOUR_STORAGE_BUCKET',
-    measurementId: 'YOUR_MEASUREMENT_ID',
+    apiKey: 'YOUR_API_KEY_HERE',                    // 環境変数: FIREBASE_API_KEY
+    appId: 'YOUR_APP_ID_HERE',                      // 環境変数: FIREBASE_APP_ID
+    messagingSenderId: 'YOUR_SENDER_ID_HERE',       // 環境変数: FIREBASE_SENDER_ID
+    projectId: 'YOUR_PROJECT_ID_HERE',              // 環境変数: FIREBASE_PROJECT_ID
+    authDomain: 'YOUR_AUTH_DOMAIN_HERE',            // 環境変数: FIREBASE_AUTH_DOMAIN
+    storageBucket: 'YOUR_STORAGE_BUCKET_HERE',      // 環境変数: FIREBASE_STORAGE_BUCKET
+    measurementId: 'YOUR_MEASUREMENT_ID_HERE',      // 環境変数: FIREBASE_MEASUREMENT_ID
   );
-}
+} 

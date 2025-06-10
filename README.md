@@ -220,4 +220,48 @@ MIT License - Google Cloud Japan AI Hackathon Vol.2 提出用
 
 ---
 
+## 🔐 機密情報の管理
+
+### Firebase設定
+
+Firebase設定ファイル `frontend/lib/firebase_options.dart` には機密情報が含まれているため、以下の手順で管理してください：
+
+1. **初回セットアップ時**：
+   ```bash
+   # テンプレートファイルから実際の設定ファイルを作成
+   cp frontend/lib/firebase_options.dart.template frontend/lib/firebase_options.dart
+   
+   # 実際のFirebase設定値を設定
+   # エディタで firebase_options.dart を開き、YOUR_*_HERE を実際の値に置換
+   ```
+
+2. **設定値の更新**：
+   - API Key: `AIzaSyAROJC6oomnN4tl1Sv27fcE5yaB_vIzXxc`
+   - App ID: `1:309920383305:web:fa0ae9890d4e7bf2355a98`
+   - Project ID: `yutori-kyoshitu`
+   - Auth Domain: `yutori-kyoshitu.firebaseapp.com`
+   - Storage Bucket: `yutori-kyoshitu.firebasestorage.app`
+
+3. **セキュリティ注意事項**：
+   - `firebase_options.dart` は `.gitignore` に登録済みでGit追跡されません
+   - テンプレートファイル `firebase_options.dart.template` のみがバージョン管理対象です
+   - 本番環境では環境変数やシークレット管理サービスの使用を推奨
+
+### 環境変数
+
+各環境で `.env` ファイルを作成し、以下の変数を設定してください：
+
+```bash
+# Frontend (.env)
+FIREBASE_API_KEY=your_api_key_here
+FIREBASE_APP_ID=your_app_id_here
+FIREBASE_PROJECT_ID=your_project_id_here
+
+# Backend (backend/functions/.env)
+GOOGLE_CLOUD_PROJECT=your_project_id_here
+FIREBASE_PROJECT_ID=your_project_id_here
+```
+
+---
+
 **🎉 ゴール: 先生が子どもと向き合う「ゆとり」を創出する学級通信システムの実現！**
