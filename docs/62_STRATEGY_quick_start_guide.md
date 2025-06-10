@@ -47,8 +47,8 @@ git worktree list  # 既存worktreeがあれば表示
 
 **何が作成されるか：**
 - **Git Worktree**: 3つの独立した作業ディレクトリ
-  - `../yutorikyoshitu-e2e-test` (feat/e2e-test-setup)
   - `../yutorikyoshitu-quill-html` (feat/quill-html-base)  
+  - `../yutorikyoshitu-webview-integration` (feat/webview-integration)
   - `../yutorikyoshitu-gemini-api` (feat/gemini-api-client)
 - **Tmux セッション**: `yutori-parallel` (4ウィンドウ)
 - **Claude設定**: 各worktreeにCLAUDE.md
@@ -68,14 +68,14 @@ cd /Users/kamenonagare/yutorikyoshitu
 ==================================
 更新時刻: 2025-01-17 19:45:23
 
-📋 Agent: e2e-test
-  Branch: feat/e2e-test-setup
+📋 Agent: quill-html
+  Branch: feat/quill-html-base
   Commits: 0
   Modified files: 0
   Last commit: No commits
 
-📋 Agent: quill-html
-  Branch: feat/quill-html-base
+📋 Agent: webview-integration
+  Branch: feat/webview-integration
   Commits: 0
   Modified files: 0
   Last commit: No commits
@@ -98,8 +98,8 @@ tmux attach-session -t yutori-parallel
 
 **セッション構成：**
 - **Window 0 (main)**: プロジェクト管理・進捗確認
-- **Window 1 (e2e-agent)**: T1-FL-005-A実行
-- **Window 2 (quill-agent)**: T2-QU-001-A実行  
+- **Window 1 (quill-agent)**: T2-QU-001-A実行
+- **Window 2 (webview-agent)**: T2-QU-002-A実行  
 - **Window 3 (gemini-agent)**: T3-AI-002-A実行
 
 ---
@@ -108,24 +108,24 @@ tmux attach-session -t yutori-parallel
 
 ### ステップ1: 各ウィンドウでClaude Code起動
 
-#### Window 1: E2Eテストエージェント
+#### Window 1: Quill.js HTMLエージェント
 ```bash
 # C-b 1 でウィンドウ移動
 # 上ペインで実行:
 claude
 
 # 起動後、以下を伝える:
-# "T1-FL-005-A: E2Eテスト環境構築を開始してください。CLAUDE.mdに詳細があります。"
+# "T2-QU-001-A: Quill.js HTMLファイル作成を開始してください。CLAUDE.mdに詳細があります。"
 ```
 
-#### Window 2: Quill.jsエージェント
+#### Window 2: WebView統合エージェント
 ```bash
 # C-b 2 でウィンドウ移動
 # 上ペインで実行:
 claude
 
 # 起動後、以下を伝える:
-# "T2-QU-001-A: Quill.js HTMLファイル作成を開始してください。CLAUDE.mdに詳細があります。"
+# "T2-QU-002-A: WebView Flutter統合を開始してください。CLAUDE.mdに詳細があります。"
 ```
 
 #### Window 3: Gemini APIエージェント
