@@ -1,17 +1,18 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# ------------------------------------------------------------
+#   setup_hierarchical_v3.sh  
+#   階層型エージェント開発環境の完全セットアップ
+#   COORDINATOR -> PARENT(3) -> CHILDREN(9) 階層構造
+# ------------------------------------------------------------
+set -euo pipefail
 
-# 🏗️ 階層型並列AI開発環境セットアップ v3.0
-# 参考: https://github.com/kamekamek/Claude-Code-Communication.git
-# 構造: COORDINATOR → 3 PARENTs → 9 CHILDs (合計13エージェント)
-
-set -e
-
-# カラー定義
+# 色設定
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
+YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 PURPLE='\033[0;35m'
+CYAN='\033[0;36m'
 NC='\033[0m'
 
 # ログ関数
@@ -25,26 +26,41 @@ log_hierarchy() { echo -e "${PURPLE}[HIERARCHY]${NC} $1"; }
 PROJECT_ROOT=$(pwd)
 PROJECT_NAME=$(basename "$PROJECT_ROOT")
 
-# 階層定義
-declare -A HIERARCHY_CONFIG=(
-    ["coordinator"]="COORDINATOR:プロジェクト統括:main"
-    ["parent1"]="PARENT1:Quill.js統合Boss:feat/quill-parent"  
-    ["parent2"]="PARENT2:WebView統合Boss:feat/webview-parent"
-    ["parent3"]="PARENT3:Gemini API Boss:feat/gemini-parent"
-)
+# 階層定義（Bash 3.2互換）
+get_hierarchy_config() {
+    case "$1" in
+        "coordinator") echo "COORDINATOR:プロジェクト統括:main" ;;
+        "parent1") echo "PARENT1:Quill.js統合Boss:feat/quill-parent" ;;
+        "parent2") echo "PARENT2:WebView統合Boss:feat/webview-parent" ;;
+        "parent3") echo "PARENT3:Gemini API Boss:feat/gemini-parent" ;;
+        *) echo "" ;;
+    esac
+}
 
-# 子エージェント定義
-declare -A CHILDREN_CONFIG=(
-    ["child1-1"]="CHILD1-1:HTML基本構造Worker:feat/quill-html:parent1"
-    ["child1-2"]="CHILD1-2:Quill.js統合Worker:feat/quill-js:parent1"
-    ["child1-3"]="CHILD1-3:CSS・スタイルWorker:feat/quill-css:parent1"
-    ["child2-1"]="CHILD2-1:WebView実装Worker:feat/webview-impl:parent2"
-    ["child2-2"]="CHILD2-2:Bridge通信Worker:feat/webview-bridge:parent2"
-    ["child2-3"]="CHILD2-3:統合テストWorker:feat/webview-test:parent2"
-    ["child3-1"]="CHILD3-1:API基盤Worker:feat/gemini-api:parent3"
-    ["child3-2"]="CHILD3-2:プロンプト管理Worker:feat/gemini-prompt:parent3"
-    ["child3-3"]="CHILD3-3:レスポンス処理Worker:feat/gemini-response:parent3"
-)
+# 子エージェント定義（Bash 3.2互換）
+get_children_config() {
+    case "$1" in
+        "child1-1") echo "CHILD1-1:HTML基本構造Worker:feat/quill-html:parent1" ;;
+        "child1-2") echo "CHILD1-2:Quill.js統合Worker:feat/quill-js:parent1" ;;
+        "child1-3") echo "CHILD1-3:CSS・スタイルWorker:feat/quill-css:parent1" ;;
+        "child2-1") echo "CHILD2-1:WebView実装Worker:feat/webview-impl:parent2" ;;
+        "child2-2") echo "CHILD2-2:Bridge通信Worker:feat/webview-bridge:parent2" ;;
+        "child2-3") echo "CHILD2-3:統合テストWorker:feat/webview-test:parent2" ;;
+        "child3-1") echo "CHILD3-1:API基盤Worker:feat/gemini-api:parent3" ;;
+        "child3-2") echo "CHILD3-2:プロンプト管理Worker:feat/gemini-prompt:parent3" ;;
+        "child3-3") echo "CHILD3-3:レスポンス処理Worker:feat/gemini-response:parent3" ;;
+        *) echo "" ;;
+    esac
+}
+
+# リスト取得関数
+get_parent_list() {
+    echo "parent1 parent2 parent3"
+}
+
+get_children_list() {
+    echo "child1-1 child1-2 child1-3 child2-1 child2-2 child2-3 child3-1 child3-2 child3-3"
+}
 
 # 依存関係チェック
 check_dependencies() {
@@ -94,8 +110,9 @@ setup_worktrees() {
     git worktree add "$coordinator_path" -b coordinator-main
     
     # Parentワークツリー
-    for parent_key in parent1 parent2 parent3; do
-        IFS=':' read -r role description branch <<< "${HIERARCHY_CONFIG[$parent_key]}"
+    for parent_key in $(get_parent_list); do
+        config=$(get_hierarchy_config "$parent_key")
+        IFS=':' read -r role description branch <<< "$config"
         parent_path="../yutori-${parent_key}"
         
         log_info "Parent worktree作成: $role ($parent_path)"
@@ -108,8 +125,9 @@ setup_worktrees() {
     done
     
     # Childワークツリー
-    for child_key in "${!CHILDREN_CONFIG[@]}"; do
-        IFS=':' read -r role description branch parent <<< "${CHILDREN_CONFIG[$child_key]}"
+    for child_key in $(get_children_list); do
+        config=$(get_children_config "$child_key")
+        IFS=':' read -r role description branch parent <<< "$config"
         child_path="../yutori-${child_key}"
         
         log_info "Child worktree作成: $role ($child_path)"
@@ -395,8 +413,12 @@ EOF
     done
     
     # Child用CLAUDE.md作成
-    for child_key in "${!CHILDREN_CONFIG[@]}"; do
-        IFS=':' read -r role description branch parent <<< "${CHILDREN_CONFIG[$child_key]}"
+    for child_key in $(get_children_list); do
+        config=$(get_children_config "$child_key")
+        IFS=':' read -r role description branch parent <<< "$config"
+        
+        # parentを大文字に変換（Bash 3.2互換）
+        parent_upper=$(echo "$parent" | tr '[:lower:]' '[:upper:]')
         
         cat > "../yutori-${child_key}/CLAUDE.md" << EOF
 # $role
@@ -419,7 +441,7 @@ instructions/child.md に詳細な指示があります。
 flutter test  # または python -m pytest
 
 # 完了報告
-../scripts/agent_hierarchy_communication.sh ${parent^^} "$role 作業完了"
+../scripts/agent_hierarchy_communication.sh $parent_upper "$role 作業完了"
 \`\`\`
 EOF
     done
