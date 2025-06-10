@@ -2,36 +2,48 @@ import 'package:flutter/foundation.dart';
 import '../services/delta_converter.dart';
 
 /// Quill エディタの状態管理プロバイダー
-/// エディタの内容、テーマ、履歴などを管理
+/// エディタの内容、テーマ、履歴、AI補助機能などを管理
 class QuillEditorProvider extends ChangeNotifier {
   // エディタの状態
   bool _isReady = false;
   bool _isLoading = false;
   String? _errorMessage;
-  
+
   // コンテンツ関連
   String _content = '';
   String _plainText = '';
   Map<String, dynamic> _currentSelection = {};
-  
+
+  // AI補助パネルの表示状態
+  bool _isAiAssistVisible = false;
+  String _selectedText = '';
+  int _cursorPosition = 0;
+  bool _isProcessing = false;
+
   // テーマ管理
   String _currentTheme = 'default';
-  static const _validThemes = ['default', 'spring', 'summer', 'autumn', 'winter'];
-  
+  static const _validThemes = [
+    'default',
+    'spring',
+    'summer',
+    'autumn',
+    'winter',
+  ];
+
   // 履歴管理
   final List<String> _history = [];
   int _historyIndex = -1;
   static const int _maxHistorySize = 20;
   bool _hasUnsavedChanges = false;
-  
+
   // ドキュメント管理
   final Map<String, String> _savedDocuments = {};
   String? _currentDocumentId;
-  
+
   // サービス
   final DeltaConverter _deltaConverter = DeltaConverter();
 
-  // Getters
+  // Getters - エディタ基本状態
   bool get isReady => _isReady;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -40,14 +52,25 @@ class QuillEditorProvider extends ChangeNotifier {
   Map<String, dynamic> get currentSelection => _currentSelection;
   String get currentTheme => _currentTheme;
   bool get hasUnsavedChanges => _hasUnsavedChanges;
-  
-  // 履歴関連
+
+  // Getters - AI補助関連
+  bool get isAiAssistVisible => _isAiAssistVisible;
+  String get selectedText => _selectedText;
+  int get cursorPosition => _cursorPosition;
+  bool get isProcessing => _isProcessing;
+
+  // Getters - 履歴関連
   bool get canUndo => _historyIndex > 0;
   bool get canRedo => _historyIndex < _history.length - 1;
   int get historySize => _history.length;
-  
-  // 統計情報
-  int get wordCount => _plainText.isEmpty ? 0 : _plainText.split(RegExp(r'\s+')).where((word) => word.isNotEmpty).length;
+
+  // Getters - 統計情報
+  int get wordCount => _plainText.isEmpty
+      ? 0
+      : _plainText
+            .split(RegExp(r'\s+'))
+            .where((word) => word.isNotEmpty)
+            .length;
   int get characterCount => _plainText.length;
 
   /// エディタの準備完了状態を設定
@@ -77,6 +100,33 @@ class QuillEditorProvider extends ChangeNotifier {
   /// エラーメッセージをクリア
   void clearError() {
     setError(null);
+  }
+
+  /// AI補助パネルを表示
+  void showAiAssist({
+    required String selectedText,
+    required int cursorPosition,
+  }) {
+    _isAiAssistVisible = true;
+    _selectedText = selectedText;
+    _cursorPosition = cursorPosition;
+    _errorMessage = null;
+    notifyListeners();
+  }
+
+  /// AI補助パネルを非表示
+  void hideAiAssist() {
+    _isAiAssistVisible = false;
+    _selectedText = '';
+    _cursorPosition = 0;
+    _errorMessage = null;
+    notifyListeners();
+  }
+
+  /// 処理中状態を設定
+  void setProcessing(bool processing) {
+    _isProcessing = processing;
+    notifyListeners();
   }
 
   /// コンテンツを更新
@@ -113,11 +163,11 @@ class QuillEditorProvider extends ChangeNotifier {
     if (_historyIndex < _history.length - 1) {
       _history.removeRange(_historyIndex + 1, _history.length);
     }
-    
+
     // 新しいエントリを追加
     _history.add(content);
     _historyIndex = _history.length - 1;
-    
+
     // 履歴サイズ制限
     if (_history.length > _maxHistorySize) {
       _history.removeAt(0);
@@ -162,17 +212,17 @@ class QuillEditorProvider extends ChangeNotifier {
         setError('ドキュメントIDが無効です');
         return false;
       }
-      
+
       setLoading(true);
       clearError();
-      
+
       // シミュレーション: 実際の実装ではFirestoreに保存
       await Future.delayed(const Duration(milliseconds: 500));
-      
+
       _savedDocuments[documentId] = _content;
       _currentDocumentId = documentId;
       _hasUnsavedChanges = false;
-      
+
       setLoading(false);
       return true;
     } catch (e) {
@@ -189,18 +239,18 @@ class QuillEditorProvider extends ChangeNotifier {
         setError('ドキュメントIDが無効です');
         return false;
       }
-      
+
       setLoading(true);
       clearError();
-      
+
       // シミュレーション: 実際の実装ではFirestoreから読み込み
       await Future.delayed(const Duration(milliseconds: 500));
-      
+
       if (_savedDocuments.containsKey(documentId)) {
         updateContent(_savedDocuments[documentId]!);
         _currentDocumentId = documentId;
         _hasUnsavedChanges = false;
-        
+
         setLoading(false);
         return true;
       } else {
@@ -283,6 +333,11 @@ class QuillEditorProvider extends ChangeNotifier {
     _historyIndex = -1;
     _hasUnsavedChanges = false;
     _currentDocumentId = null;
+    // AI補助関連もリセット
+    _isAiAssistVisible = false;
+    _selectedText = '';
+    _cursorPosition = 0;
+    _isProcessing = false;
     notifyListeners();
   }
 
