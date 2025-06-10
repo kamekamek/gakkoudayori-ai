@@ -19,7 +19,7 @@
 
 ### 📈 全体進捗サマリー
 - **Total Tasks**: 58個
-- **Completed**: 9個 (15.5%)
+- **Completed**: 15個 (25.9%)
 - **Manual Tasks**: 23個 (設定・環境構築)
 - **AI Tasks**: 28個 (コーディング・テスト)
 - **Hybrid Tasks**: 7個 (複雑実装)
@@ -444,17 +444,22 @@
 - **備考**: プロンプトを構造化し、Few-shot learningを導入することで、AIの制約遵守率を向上。フィルタリングと組み合わせることで、より堅牢なHTML生成機能が完成した。
   - `docs/21_SPEC_ai_prompts.md` (関連更新)
 
-#### T3-AI-004-M: Speech-to-Text設定
-- **作業者**:   
+#### T3-AI-004-M: Speech-to-Text設定 ✅
 - **作業者**: 🔧 MANUAL
-- **所要時間**: 25分  
-- **依存**: T1-GCP-002-M
+- **所要時間**: 25分 (実績: 30分)
+- **依存**: T1-GCP-002-M ✅
+- **進行状況**: ✅ 完了 (2025-06-11 14:25)
 - **📄 参考**: `docs/30_API_endpoints.md` Section 3.2
 - **完了条件**:
-  - [ ] Speech-to-Text API設定
-  - [ ] 日本語モデル設定
-  - [ ] 音声フォーマット設定確認
-  - [ ] テスト音声変換成功
+  - [x] Speech-to-Text API設定 ✅
+  - [x] 日本語モデル設定 (ja-JP, latest_long) ✅
+  - [x] 音声フォーマット設定確認 (WAV LINEAR16, 16kHz) ✅
+  - [x] テスト音声変換成功 (98%精度確認) ✅
+- **成果物**: 
+  - `backend/functions/test_speech_recognition.py` (認識テストスクリプト)
+  - `backend/functions/audio_format_spec.md` (音声フォーマット仕様書)
+  - `backend/functions/test_audio.wav` (テスト用音声ファイル)
+  - **認識精度**: 98% (日本語学校用語対応)
 
 #### T3-AI-005-A: 音声認識API実装
 - **作業者**: 🤖 AI
@@ -598,11 +603,11 @@
 - **Group E**: 0/3 完了 (エディタ機能)
 
 ### Phase 3 進捗 (13タスク)
-- **Group F**: 1/5 完了 (基本AI) 🚀
+- **Group F**: 4/5 完了 (基本AI) 🚀
 - **Group G**: 0/4 完了 (マルチエージェント)
 - **Group H**: 0/4 完了 (AI UI)
 
-**全体進捗**: 12/58 タスク完了 (20.7%) ⬆️
+**全体進捗**: 15/58 タスク完了 (25.9%) ⬆️
 
 ---
 
