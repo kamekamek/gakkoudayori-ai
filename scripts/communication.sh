@@ -159,6 +159,12 @@ status_all() {
         return 1
     fi
     
+    # 実際のペイン数を取得
+    local pane_count=$(tmux list-panes -t orchestrator:0 | wc -l | tr -d ' ')
+    
+    log_comm "実際のペイン数: $pane_count"
+    
+    echo "📍 現在のペイン配置："
     echo "┌─────────┬─────────┬─────────┐"
     echo "│ Pane 0  │ Pane 1  │ Pane 2  │"
     echo "│Parent1  │Child1-1 │Child1-2 │"
@@ -168,29 +174,37 @@ status_all() {
     echo "│Parent2  │Child2-1 │Child2-2 │"
     echo "│ WebView │ Flutter │ Bridge  │"
     echo "├─────────┼─────────┼─────────┤"
-    echo "│ Pane 6  │ Pane 7  │ Pane 8  │"
-    echo "│Parent3  │Child3-1 │Child3-2 │"
-    echo "│ Gemini  │   API   │Response │"
+    echo "│ Pane 6  │  [未作成] │ [未作成] │"
+    echo "│Parent3  │   ---    │   ---   │"
+    echo "│ Gemini  │          │         │"
     echo "└─────────┴─────────┴─────────┘"
     
-    # 各ペインの状態確認コマンド送信
-    for i in {0..8}; do
-        tmux send-keys -t orchestrator:0.$i "echo '[PANE-$i] Ready: $(date +%H:%M:%S)'" Enter
+    # 実際に存在するペインのみに送信
+    for i in $(seq 0 $((pane_count - 1))); do
+        if tmux send-keys -t orchestrator:0.$i "echo '[PANE-$i] Ready: $(date +%H:%M:%S)'" Enter 2>/dev/null; then
+            log_send "Pane $i: 状態確認コマンド送信"
+        else
+            log_warning "Pane $i: 送信失敗"
+        fi
     done
     
-    log_comm "状態確認コマンドを全ペインに送信完了"
+    log_comm "状態確認完了（有効ペイン: $pane_count）"
 }
 
 # 完了報告収集
 collect_reports() {
     log_comm "完了報告収集中..."
     
-    # 各ペインに報告要求
-    for i in {0..8}; do
-        tmux send-keys -t orchestrator:0.$i "echo '[REPORT-$i] Status: $(date +%H:%M:%S)'" Enter
+    local pane_count=$(tmux list-panes -t orchestrator:0 | wc -l | tr -d ' ')
+    
+    # 実際に存在するペインのみに送信
+    for i in $(seq 0 $((pane_count - 1))); do
+        if tmux send-keys -t orchestrator:0.$i "echo '[REPORT-$i] Status: $(date +%H:%M:%S)'" Enter 2>/dev/null; then
+            log_send "Pane $i: 報告要求送信"
+        fi
     done
     
-    log_comm "報告要求を全ペインに送信完了"
+    log_comm "報告要求送信完了（有効ペイン: $pane_count）"
     echo "詳細ログ: logs/orchestrator/communication.log"
 }
 
@@ -198,13 +212,17 @@ collect_reports() {
 reset_all() {
     log_comm "全エージェントリセット中..."
     
-    # 各ペインをクリア
-    for i in {0..8}; do
-        tmux send-keys -t orchestrator:0.$i "clear" Enter
-        tmux send-keys -t orchestrator:0.$i "echo '[RESET-$i] Ready for new tasks'" Enter
+    local pane_count=$(tmux list-panes -t orchestrator:0 | wc -l | tr -d ' ')
+    
+    # 実際に存在するペインのみをクリア
+    for i in $(seq 0 $((pane_count - 1))); do
+        if tmux send-keys -t orchestrator:0.$i "clear" Enter 2>/dev/null; then
+            tmux send-keys -t orchestrator:0.$i "echo '[RESET-$i] Ready for new tasks'" Enter
+            log_send "Pane $i: リセット完了"
+        fi
     done
     
-    log_comm "全エージェントリセット完了"
+    log_comm "全エージェントリセット完了（有効ペイン: $pane_count）"
 }
 
 # タスク分解・配布
