@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:yutori_kyoshitu/features/home/presentation/pages/home_page.dart';
 import 'package:yutori_kyoshitu/features/layout/presentation/pages/main_layout_page.dart';
 import 'package:yutori_kyoshitu/features/splash/presentation/pages/splash_page.dart';
+import 'package:yutori_kyoshitu/features/editor/presentation/pages/editor_page.dart';
 
 /// アプリケーションのルーティングを管理するクラス
 class AppRouter {
@@ -10,6 +11,7 @@ class AppRouter {
     '/': (context) => const SplashPage(),
     '/home': (context) => const MainLayoutPage(), // メインレイアウトページを使用
     '/legacy-home': (context) => const HomePage(), // 古い実装はlegacyとしてアクセス可能に
+    '/editor': (context) => const EditorPage(), // Quill.jsエディタページ
     '/not-found': (context) => const _NotFoundPage(),
   };
 
