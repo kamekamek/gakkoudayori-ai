@@ -29,6 +29,16 @@ dependencies:
   file_picker: ^6.1.1
   path_provider: ^2.1.1
   
+  # Firebase - 互換性のある固定バージョンを使用
+  firebase_core: ^2.24.2
+  firebase_core_web: ^2.10.0
+  firebase_auth: ^4.15.3
+  cloud_firestore: ^4.13.6
+  firebase_storage: ^11.5.6
+  
+  # JavaScript interop
+  js: ^0.6.7
+  
   # Utils
   uuid: ^4.1.0
   intl: ^0.18.1
