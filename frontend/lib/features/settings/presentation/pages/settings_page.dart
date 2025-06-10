@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 /// 設定画面
 /// アプリケーションの各種設定を管理するページ
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({Key? key}) : super(key: key);
+  const SettingsPage({super.key});
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();

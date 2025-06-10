@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:yutori_kyoshitu/core/router/app_router.dart';
 import 'package:yutori_kyoshitu/core/theme/app_theme.dart';
 import 'package:yutori_kyoshitu/core/services/firebase_service.dart';
@@ -8,7 +7,7 @@ import 'package:yutori_kyoshitu/core/services/firebase_service.dart';
 class YutoriKyoshituApp extends StatelessWidget {
   final AppRouter _router = AppRouter();
 
-  YutoriKyoshituApp({Key? key}) : super(key: key);
+  YutoriKyoshituApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -20,9 +19,11 @@ class YutoriKyoshituApp extends StatelessWidget {
       themeMode: ThemeMode.system,
       initialRoute: '/home',
       onGenerateRoute: _router.onGenerateRoute,
-      // E2Eテスト用に一時的にFirebase初期化確認を無効化
+      // Firebase初期化確認
       builder: (context, child) {
-        debugPrint('E2Eテスト用に一時的にFirebase初期化確認を無効化します');
+        if (!FirebaseService.isInitialized) {
+          debugPrint('Firebase初期化待機中...');
+        }
         return child!;
       },
     );

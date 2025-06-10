@@ -1,9 +1,7 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
-import 'package:yutori_kyoshitu/firebase_options.dart';
 
-/// Firebaseサービスを管理するクラス
-/// 
+/// Firebaseサービスを管理するクラス（Web専用）
+///
 /// アプリケーション起動時に初期化する必要があります。
 /// ```dart
 /// await FirebaseService.initialize();
@@ -11,18 +9,15 @@ import 'package:yutori_kyoshitu/firebase_options.dart';
 class FirebaseService {
   // シングルトンインスタンス
   static FirebaseService? _instance;
-  
-  // Firebaseアプリインスタンス
-  final FirebaseApp _firebaseApp;
-  
+
   // 初期化フラグ
   static bool _initialized = false;
-  
+
   // プライベートコンストラクタ
-  FirebaseService._(this._firebaseApp);
-  
-  /// Firebaseを初期化する
-  /// 
+  FirebaseService._();
+
+  /// Firebaseを初期化する（Web専用モック実装）
+  ///
   /// アプリケーション起動時に一度だけ呼び出す必要があります。
   /// main.dart の中で呼び出すことを推奨します。
   static Future<void> initialize() async {
@@ -30,47 +25,28 @@ class FirebaseService {
       debugPrint('FirebaseService: すでに初期化されています');
       return;
     }
-    
+
     try {
-      // E2Eテスト実行のために一時的にモック化
-      // 本番環境では実際のFirebase初期化コードを使用する
-      debugPrint('FirebaseService: テスト用にモック初期化');
-      
-      // モックFirebaseAppを作成
-      final app = FirebaseApp.instanceFor(
-        name: 'mock-app',
-        options: FirebaseOptions(
-          apiKey: 'mock-api-key',
-          appId: 'mock-app-id',
-          messagingSenderId: 'mock-sender-id',
-          projectId: 'mock-project-id',
-        ),
-      );
-      
-      _instance = FirebaseService._(app);
+      // Web環境でのモック初期化
+      debugPrint('FirebaseService: Web環境用にモック初期化開始');
+
+      // モック初期化処理
+      await Future.delayed(Duration(milliseconds: 100));
+
+      _instance = FirebaseService._();
       _initialized = true;
-      debugPrint('FirebaseService: モック初期化完了 - ${app.name}');
+      debugPrint('FirebaseService: モック初期化完了');
     } catch (e) {
       debugPrint('FirebaseService: 初期化エラー - $e');
       // エラーをスローせず、モック状態で続行
       _initialized = true;
-      _instance = FirebaseService._(
-        FirebaseApp.instanceFor(
-          name: 'fallback-mock-app',
-          options: FirebaseOptions(
-            apiKey: 'mock-api-key',
-            appId: 'mock-app-id',
-            messagingSenderId: 'mock-sender-id',
-            projectId: 'mock-project-id',
-          ),
-        ),
-      );
+      _instance = FirebaseService._();
       debugPrint('FirebaseService: フォールバックモック初期化完了');
     }
   }
-  
+
   /// FirebaseServiceのインスタンスを取得する
-  /// 
+  ///
   /// 初期化前にこのゲッターを呼び出すとエラーが発生します。
   static FirebaseService get instance {
     if (!_initialized) {
@@ -78,10 +54,27 @@ class FirebaseService {
     }
     return _instance!;
   }
-  
+
   /// Firebaseが初期化されているかどうかを返す
   static bool get isInitialized => _initialized;
-  
-  /// FirebaseAppインスタンスを取得する
-  FirebaseApp get app => _firebaseApp;
+
+  /// Authentication関連のモック実装
+  Future<bool> signInAnonymously() async {
+    debugPrint('FirebaseService: 匿名サインイン（モック）');
+    await Future.delayed(Duration(milliseconds: 200));
+    return true;
+  }
+
+  /// データベース保存のモック実装
+  Future<void> saveData(String collection, Map<String, dynamic> data) async {
+    debugPrint('FirebaseService: データ保存（モック） - $collection: $data');
+    await Future.delayed(Duration(milliseconds: 100));
+  }
+
+  /// ファイルアップロードのモック実装
+  Future<String> uploadFile(String fileName, List<int> data) async {
+    debugPrint('FirebaseService: ファイルアップロード（モック） - $fileName');
+    await Future.delayed(Duration(milliseconds: 300));
+    return 'mock://uploaded/$fileName';
+  }
 }
