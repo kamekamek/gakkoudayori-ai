@@ -226,17 +226,19 @@
   - [x] CI/CD用テスト実行スクリプト作成 🔴→🟩
 - **成果物**: `frontend/e2e/tests/home.spec.js` (テストケース), `frontend/e2e/run_e2e_test.sh` (CI/CDスクリプト)
 
-#### T1-FL-006-A: 基本レイアウト実装
+#### T1-FL-006-A: 基本レイアウト実装 ✅
 - **作業者**: 🤖 AI
-- **所要時間**: 50分
+- **所要時間**: 50分 (実績: 55分)
 - **依存**: T1-FL-004-H (一時スキップ)
+- **進行状況**: ✅ 完了 (2025-06-10 09:35)
 - **📄 参考**: `docs/23_SPEC_ui_component_design.md` Section 4
 - **TDD要件**: Red→Green→Refactor
 - **完了条件**:
-  - [ ] AppShell (3カラム) ウィジェット実装
-  - [ ] レスポンシブデザイン対応
-  - [ ] 基本画面（ホーム・設定）作成
-  - [ ] ナビゲーションテスト通過
+  - [x] AppShell (3カラム) ウィジェット実装 ✅
+  - [x] レスポンシブデザイン対応 ✅
+  - [x] 基本画面（ホーム・設定）作成 ✅
+  - [x] ナビゲーションテスト通過 ✅
+- **成果物**: `lib/features/layout/presentation/widgets/app_shell.dart`, `lib/features/settings/presentation/pages/settings_page.dart`
 
 #### T1-FL-006-M: 環境変数設定
 - **作業者**: 🔧 MANUAL  
