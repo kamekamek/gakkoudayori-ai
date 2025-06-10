@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 /// ホーム画面
 /// アプリのメインページとして機能する
 class HomePage extends StatefulWidget {
-  const HomePage({Key? key}) : super(key: key);
+  const HomePage({super.key});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -189,7 +189,8 @@ class _SettingsTab extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       children: [
         const ListTile(
-          title: Text('設定', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+          title: Text('設定',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
           subtitle: Text('アプリケーション設定を管理します'),
         ),
         const Divider(),

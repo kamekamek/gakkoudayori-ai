@@ -6,7 +6,7 @@ import 'package:yutori_kyoshitu/features/settings/presentation/pages/settings_pa
 /// メインレイアウトページ
 /// アプリケーションの基本3カラムレイアウトを提供します
 class MainLayoutPage extends StatefulWidget {
-  const MainLayoutPage({Key? key}) : super(key: key);
+  const MainLayoutPage({super.key});
 
   @override
   State<MainLayoutPage> createState() => _MainLayoutPageState();
@@ -14,7 +14,7 @@ class MainLayoutPage extends StatefulWidget {
 
 class _MainLayoutPageState extends State<MainLayoutPage> {
   int _selectedIndex = 0;
-  
+
   // ナビゲーションメニュー項目
   final List<NavigationItem> _navItems = [
     NavigationItem(
@@ -61,15 +61,15 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
               Text(
                 '学校だよりAI',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
               const SizedBox(height: 8),
               const Text('教師のためのAI通信作成ツール'),
             ],
           ),
         ),
-        
+
         // メニュー項目
         Expanded(
           child: ListView.builder(
@@ -84,7 +84,7 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
             },
           ),
         ),
-        
+
         // 新規作成ボタン
         Padding(
           padding: const EdgeInsets.all(16.0),
@@ -115,14 +115,15 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.desktop_windows, color: Theme.of(context).primaryColor),
+              Icon(Icons.desktop_windows,
+                  color: Theme.of(context).primaryColor),
               const SizedBox(width: 8),
               Text('デスクトップビュー', style: Theme.of(context).textTheme.titleMedium),
             ],
           ),
         ),
         const Divider(),
-        
+
         // プレビューモード切替タブ
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -133,7 +134,8 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
                 icon: const Icon(Icons.desktop_windows),
                 label: const Text('PC'),
                 style: TextButton.styleFrom(
-                  backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
+                  backgroundColor:
+                      Theme.of(context).primaryColor.withOpacity(0.1),
                 ),
               ),
             ),
@@ -146,7 +148,7 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
             ),
           ],
         ),
-        
+
         // プレビューコンテンツ
         Expanded(
           child: Padding(
@@ -172,9 +174,9 @@ class NavigationItem {
   final String title;
   final IconData icon;
   final Widget page;
-  
+
   NavigationItem({
-    required this.title, 
+    required this.title,
     required this.icon,
     required this.page,
   });

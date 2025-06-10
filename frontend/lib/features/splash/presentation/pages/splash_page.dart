@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 /// スプラッシュ画面
 /// アプリ起動時に表示され、初期化処理を行う
 class SplashPage extends StatefulWidget {
-  const SplashPage({Key? key}) : super(key: key);
+  const SplashPage({super.key});
 
   @override
   State<SplashPage> createState() => _SplashPageState();
@@ -22,9 +22,9 @@ class _SplashPageState extends State<SplashPage> {
     // - 設定の読み込み
     // - 認証状態の確認
     // - 必要なデータの事前読み込み など
-    
+
     await Future.delayed(const Duration(seconds: 2));
-    
+
     if (mounted) {
       Navigator.of(context).pushReplacementNamed('/home');
     }
@@ -68,7 +68,8 @@ class _SplashPageState extends State<SplashPage> {
                 '音声入力で学級通信を自動生成',
                 style: TextStyle(
                   fontSize: 16,
-                  color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.8),
+                  color:
+                      Theme.of(context).colorScheme.onPrimary.withOpacity(0.8),
                 ),
               ),
               const SizedBox(height: 48),
