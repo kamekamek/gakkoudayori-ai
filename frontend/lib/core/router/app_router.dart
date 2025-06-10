@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:yutori_kyoshitu/features/home/presentation/pages/home_page.dart';
+import 'package:yutori_kyoshitu/features/layout/presentation/pages/main_layout_page.dart';
 import 'package:yutori_kyoshitu/features/splash/presentation/pages/splash_page.dart';
 
 /// アプリケーションのルーティングを管理するクラス
@@ -7,7 +8,8 @@ class AppRouter {
   /// 利用可能なルートのマップ
   final Map<String, WidgetBuilder> routes = {
     '/': (context) => const SplashPage(),
-    '/home': (context) => const HomePage(),
+    '/home': (context) => const MainLayoutPage(), // メインレイアウトページを使用
+    '/legacy-home': (context) => const HomePage(), // 古い実装はlegacyとしてアクセス可能に
     '/not-found': (context) => const _NotFoundPage(),
   };
 
