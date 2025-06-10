@@ -1,38 +1,36 @@
 // @ts-check
-const { defineConfig, devices } = require('@playwright/test');
+
+const { devices } = require('@playwright/test');
 
 /**
  * @see https://playwright.dev/docs/test-configuration
+ * @type {import('@playwright/test').PlaywrightTestConfig}
  */
-module.exports = defineConfig({
+const config = {
   testDir: './tests',
-  /* テスト実行の最大時間 */
   timeout: 30 * 1000,
   expect: {
-    /**
-     * アサーションのタイムアウト
-     */
     timeout: 5000
   },
-  /* 失敗したテストのレポート */
-  reporter: 'html',
-  /* 並列実行の設定 */
   fullyParallel: true,
-  /* 再試行回数 */
+  forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  /* テストワーカーの数 */
   workers: process.env.CI ? 1 : undefined,
-  /* テスト実行前の準備 */
+  reporter: 'html',
+  
   use: {
-    /* ベースURL */
     baseURL: 'http://localhost:8080',
-    /* すべてのテストでトレースを取得 */
     trace: 'on-first-retry',
-    /* スクリーンショットを取得 */
     screenshot: 'only-on-failure',
   },
 
-  /* テスト実行環境の設定 */
+  webServer: {
+    command: 'cd .. && flutter run -d chrome --web-port=8080 lib/main_e2e.dart',
+    url: 'http://localhost:8080',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120 * 1000,
+  },
+
   projects: [
     {
       name: 'chromium',
@@ -46,7 +44,6 @@ module.exports = defineConfig({
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
     },
-    /* モバイルビューポートのテスト */
     {
       name: 'Mobile Chrome',
       use: { ...devices['Pixel 5'] },
@@ -56,12 +53,6 @@ module.exports = defineConfig({
       use: { ...devices['iPhone 12'] },
     },
   ],
+};
 
-  /* Webサーバーの設定 */
-  webServer: {
-    command: 'cd .. && flutter run -d chrome --web-port=8080 --web-renderer=html',
-    port: 8080,
-    reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
-  },
-});
+module.exports = config;

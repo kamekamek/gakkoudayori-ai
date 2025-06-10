@@ -20,12 +20,9 @@ class YutoriKyoshituApp extends StatelessWidget {
       themeMode: ThemeMode.system,
       initialRoute: '/home',
       onGenerateRoute: _router.onGenerateRoute,
-      // Firebase初期化確認用
+      // E2Eテスト用に一時的にFirebase初期化確認を無効化
       builder: (context, child) {
-        // Firebaseが初期化されているか確認
-        final isFirebaseInitialized = FirebaseService.isInitialized;
-        debugPrint('Firebase初期化状態: $isFirebaseInitialized');
-        
+        debugPrint('E2Eテスト用に一時的にFirebase初期化確認を無効化します');
         return child!;
       },
     );
