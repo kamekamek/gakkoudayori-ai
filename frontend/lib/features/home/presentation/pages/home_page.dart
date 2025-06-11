@@ -95,9 +95,12 @@ class _DashboardTab extends StatelessWidget {
           const SizedBox(height: 32),
           ElevatedButton.icon(
             onPressed: () {
-              // 新規作成画面への遷移処理
+              // 左サイドバーの新規作成ボタンを使用するよう案内
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('新規作成機能は開発中です')),
+                const SnackBar(
+                  content: Text('左サイドバーの「新規作成」ボタンまたは「エディタ」メニューをご利用ください'),
+                  duration: Duration(seconds: 3),
+                ),
               );
             },
             icon: const Icon(Icons.add),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/quill_editor_widget.dart';
+import '../widgets/voice_input_widget.dart';
 import 'package:provider/provider.dart';
 import '../../providers/quill_editor_provider.dart';
 
@@ -140,6 +141,11 @@ class _EditorPageState extends State<EditorPage> {
                   icon: Icons.palette,
                   label: 'テーマ',
                   onPressed: _isEditorReady ? _showThemeDialog : null,
+                ),
+                _buildActionButton(
+                  icon: Icons.mic,
+                  label: 'AI音声',
+                  onPressed: _isEditorReady ? _showVoiceInputDialog : null,
                 ),
               ],
             ),
@@ -449,6 +455,40 @@ class _EditorPageState extends State<EditorPage> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
+        ),
+      );
+    }
+  }
+
+  void _showVoiceInputDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        child: Container(
+          width: 600,
+          height: 500,
+          padding: const EdgeInsets.all(20),
+          child: VoiceInputWidget(
+            onContentGenerated: (content) {
+              Navigator.of(context).pop();
+              _insertGeneratedContent(content);
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _insertGeneratedContent(String content) async {
+    final state = _editorKey.currentState;
+    if (state != null) {
+      // Quillエディタに生成されたコンテンツを設定
+      await state.setHTML(content);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('AI生成コンテンツをエディタに設定しました'),
+          duration: Duration(seconds: 2),
         ),
       );
     }
