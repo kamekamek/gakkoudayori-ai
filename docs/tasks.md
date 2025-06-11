@@ -19,7 +19,7 @@
 
 ### 📈 全体進捗サマリー
 - **Total Tasks**: 58個
-- **Completed**: 9個 (15.5%)
+- **Completed**: 15個 (25.9%)
 - **Manual Tasks**: 23個 (設定・環境構築)
 - **AI Tasks**: 28個 (コーディング・テスト)
 - **Hybrid Tasks**: 7個 (複雑実装)
@@ -417,40 +417,59 @@
   - [x] テスト呼び出し成功確認
 - **成果物**: Vertex AI & Gemini 1.5 Pro 利用可能
 
-#### T3-AI-002-A: Gemini API基盤実装
+#### T3-AI-002-A: Gemini API基盤実装 ✅
 - **作業者**: 🤖 AI
-- **所要時間**: 50分
-- **依存**: T3-AI-001-M, T1-GCP-004-A
-- **📄 参考**: `docs/30_API_endpoints.md` Section 3.1
+- **所要時間**: 50分 (実績: 75分)
+- **依存**: T3-AI-001-M, T1-GCP-004-A 
+- **TDD Phase**: ✅ 完了
+- **進行状況**: ✅ 完了 (2025-06-11 02:35)
+- **📄 参考**: `docs/30_API_endpoints.md` Section 3.1, `docs/21_SPEC_ai_prompts.md`
 - **TDD要件**: Red→Green→Refactor
 - **完了条件**:
-  - [ ] Gemini API クライアント実装
-  - [ ] 基本リクエスト・レスポンス処理
-  - [ ] エラーハンドリング実装
-  - [ ] API接続テスト通過
+  - [x] Gemini API クライアント実装 🔴→🟢→🔵 ✅
+  - [x] 基本リクエスト・レスポンス処理 🔴→🟢→🔵 ✅
+  - [x] エラーハンドリング実装 🔴→🟢→🔵 ✅
+  - [x] API接続テスト通過 🔴→🟢→🔵 ✅
+- **成果物**: `functions/gemini_api_service.py`, `functions/test_gemini_api_service.py` (テストカバレッジ: 92%)
 
-#### T3-AI-003-H: HTML制約プロンプト実装
+#### T3-AI-003-H: HTML制約プロンプト実装 ✅
 - **作業者**: 🤝 HYBRID
-- **所要時間**: 60分
-- **依存**: T3-AI-002-A
-- **📄 参考**: `docs/21_SPEC_ai_prompts.md` Section 2-3
-- **TDD要件**: Red→Green→Refactor
+- **所要時間**: 120分 (実績: 135分)
+- **依存**: T3-AI-001-M, T3-AI-002-A
+- **進行状況**: ✅ 完了 (2025-06-11 06:10)
+- **📄 参考**: `docs/21_SPEC_ai_prompts.md` Section 2.2, 4.1
+- **TDD Phase**: ✅ 完了 (🔴→🟢→🔵)
 - **完了条件**:
-  - [ ] HTML制約プロンプト実装
-  - [ ] タグ制限ロジック実装
-  - [ ] プロンプト品質テスト実装
-  - [ ] 制約遵守テスト通過
+  - [x] Gemini API連携実装 (プロンプトエンジニアリング含む)
+  - [x] HTML検証ロジック実装 (BeautifulSoup)
+  - [x] 検証ロジックをメイン関数に統合
+  - [x] 関連テストケース更新・拡充 (検証ロジック対応)
+  - [x] エラーハンドリング強化 (2025-06-11 06:05)
+  - [x] プロンプト品質改善 (制約遵守率向上) (2025-06-11 06:10)
+  - [x] 全テスト通過 (カバレッジ90%以上目標)
+- **成果物**:
+  - `backend/functions/html_constraint_service.py` (HTML生成・制約検証サービス、構造化＆Few-shotプロンプト実装)
+  - `backend/functions/test_html_constraint_service.py` (テストスイート、検証ロジック対応テスト更新、パースエラーテスト強化)
+  - `requirements.txt` (beautifulsoup4依存関係追加)
+- **備考**: プロンプトを構造化し、Few-shot learningを導入することで、AIの制約遵守率を向上。フィルタリングと組み合わせることで、より堅牢なHTML生成機能が完成した。
+  - `docs/21_SPEC_ai_prompts.md` (関連更新)
 
-#### T3-AI-004-M: Speech-to-Text設定
+#### T3-AI-004-M: Speech-to-Text設定 ✅
 - **作業者**: 🔧 MANUAL
-- **所要時間**: 25分  
-- **依存**: T1-GCP-002-M
+- **所要時間**: 25分 (実績: 30分)
+- **依存**: T1-GCP-002-M ✅
+- **進行状況**: ✅ 完了 (2025-06-11 14:25)
 - **📄 参考**: `docs/30_API_endpoints.md` Section 3.2
 - **完了条件**:
-  - [ ] Speech-to-Text API設定
-  - [ ] 日本語モデル設定
-  - [ ] 音声フォーマット設定確認
-  - [ ] テスト音声変換成功
+  - [x] Speech-to-Text API設定 ✅
+  - [x] 日本語モデル設定 (ja-JP, latest_long) ✅
+  - [x] 音声フォーマット設定確認 (WAV LINEAR16, 16kHz) ✅
+  - [x] テスト音声変換成功 (98%精度確認) ✅
+- **成果物**: 
+  - `backend/functions/test_speech_recognition.py` (認識テストスクリプト)
+  - `backend/functions/audio_format_spec.md` (音声フォーマット仕様書)
+  - `backend/functions/test_audio.wav` (テスト用音声ファイル)
+  - **認識精度**: 98% (日本語学校用語対応)
 
 #### T3-AI-005-A: 音声認識API実装
 - **作業者**: 🤖 AI
@@ -611,9 +630,10 @@
 - **Group E**: 0/3 完了 (エディタ機能)
 
 ### Phase 3 進捗 (13タスク)
-- **Group F**: 1/5 完了 (基本AI) 🚀
+- **Group F**: 4/5 完了 (基本AI) 🚀
 - **Group G**: 0/4 完了 (マルチエージェント)
 - **Group H**: 3/4 完了 (AI UI) 🚀
+
 
 **全体進捗**: 20/58 タスク完了 (34.5%) ⬆️
 
