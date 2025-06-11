@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/quill_editor_widget.dart';
+import 'package:provider/provider.dart';
+import '../../providers/quill_editor_provider.dart';
 
 /// エディタページ - Quill.jsエディタのメイン画面
 class EditorPage extends StatefulWidget {
@@ -42,25 +44,29 @@ class _EditorPageState extends State<EditorPage> {
             color: Theme.of(context).colorScheme.surface,
             child: Row(
               children: [
-                Icon(Icons.edit, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                Icon(Icons.edit,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
                 const SizedBox(width: 8),
                 Text(
                   'エディタ状態: ${_isEditorReady ? "準備完了" : "読み込み中"}',
-                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
                 const Spacer(),
                 if (_currentContent.isNotEmpty) ...[
-                  Icon(Icons.text_fields, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  Icon(Icons.text_fields,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
                   const SizedBox(width: 8),
                   Text(
                     '文字数: ${_currentContent.length}',
-                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                 ],
               ],
             ),
           ),
-          
+
           // メインエディタエリア
           Expanded(
             child: Padding(
@@ -90,7 +96,7 @@ class _EditorPageState extends State<EditorPage> {
               ),
             ),
           ),
-          
+
           // アクションボタンバー
           Container(
             padding: const EdgeInsets.all(16.0),
@@ -98,7 +104,10 @@ class _EditorPageState extends State<EditorPage> {
               color: Theme.of(context).colorScheme.surface,
               boxShadow: [
                 BoxShadow(
-                  color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.1),
+                  color: Theme.of(context)
+                      .colorScheme
+                      .shadow
+                      .withValues(alpha: 0.1),
                   spreadRadius: 1,
                   blurRadius: 5,
                   offset: const Offset(0, -3),
@@ -111,17 +120,21 @@ class _EditorPageState extends State<EditorPage> {
                 _buildActionButton(
                   icon: Icons.format_bold,
                   label: '太字',
-                  onPressed: _isEditorReady ? () => _insertFormat('**太字**') : null,
+                  onPressed:
+                      _isEditorReady ? () => _insertFormat('**太字**') : null,
                 ),
                 _buildActionButton(
                   icon: Icons.format_list_bulleted,
                   label: 'リスト',
-                  onPressed: _isEditorReady ? () => _insertFormat('\n• リスト項目\n') : null,
+                  onPressed: _isEditorReady
+                      ? () => _insertFormat('\n• リスト項目\n')
+                      : null,
                 ),
                 _buildActionButton(
                   icon: Icons.image,
                   label: '画像',
-                  onPressed: _isEditorReady ? () => _insertFormat('[画像を挿入]') : null,
+                  onPressed:
+                      _isEditorReady ? () => _insertFormat('[画像を挿入]') : null,
                 ),
                 _buildActionButton(
                   icon: Icons.palette,
@@ -214,51 +227,236 @@ class _EditorPageState extends State<EditorPage> {
   void _showThemeDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('季節テーマの選択'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildThemeOption('default', '標準', Colors.blue),
-            _buildThemeOption('spring', '春', Colors.pink),
-            _buildThemeOption('summer', '夏', Colors.green),
-            _buildThemeOption('autumn', '秋', Colors.orange),
-            _buildThemeOption('winter', '冬', Colors.indigo),
-          ],
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('閉じる'),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          width: 400,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.palette,
+                    color: Theme.of(context).primaryColor,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    '季節テーマの選択',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                '学級通信にぴったりの季節感を選んでください',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 24),
+              // 季節テーマ選択グリッド
+              GridView.count(
+                shrinkWrap: true,
+                crossAxisCount: 2,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 2.5,
+                children: [
+                  _buildSeasonThemeCard(
+                    'default',
+                    '標準',
+                    Icons.auto_awesome,
+                    const Color(0xFF4CAF50),
+                    '一年中使える標準テーマ',
+                  ),
+                  _buildSeasonThemeCard(
+                    'spring',
+                    '春',
+                    Icons.local_florist,
+                    const Color(0xFFFF9EAA),
+                    '桜咲く新学期の季節',
+                  ),
+                  _buildSeasonThemeCard(
+                    'summer',
+                    '夏',
+                    Icons.wb_sunny,
+                    const Color(0xFF51CF66),
+                    '緑あふれる夏休み',
+                  ),
+                  _buildSeasonThemeCard(
+                    'autumn',
+                    '秋',
+                    Icons.eco,
+                    const Color(0xFFE67700),
+                    '紅葉美しい学習の秋',
+                  ),
+                  _buildSeasonThemeCard(
+                    'winter',
+                    '冬',
+                    Icons.ac_unit,
+                    const Color(0xFF4DABF7),
+                    '雪降る静寂の季節',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('キャンセル'),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildThemeOption(String theme, String label, Color color) {
-    return ListTile(
-      leading: CircleAvatar(backgroundColor: color),
-      title: Text(label),
+  Widget _buildSeasonThemeCard(
+    String themeId,
+    String label,
+    IconData icon,
+    Color color,
+    String description,
+  ) {
+    return InkWell(
       onTap: () async {
-        final state = _editorKey.currentState;
-        if (state != null) {
-          await state.setTheme(theme);
-          Navigator.of(context).pop();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('テーマを「$label」に変更しました'),
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
+        await _applySeasonTheme(themeId, label);
+        Navigator.of(context).pop();
       },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: color.withOpacity(0.3),
+            width: 2,
+          ),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              color.withOpacity(0.1),
+              color.withOpacity(0.05),
+            ],
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    icon,
+                    color: color,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: color.withOpacity(0.9),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                description,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.grey[600],
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
+  }
+
+  Future<void> _applySeasonTheme(String themeId, String themeLabel) async {
+    try {
+      final state = _editorKey.currentState;
+      if (state != null) {
+        // Quillエディタにテーマを即座に適用
+        await state.setTheme(themeId);
+
+        // プロバイダーの状態も更新
+        final provider =
+            Provider.of<QuillEditorProvider>(context, listen: false);
+        provider.changeTheme(themeId);
+
+        // 成功メッセージを表示
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(
+                  Icons.check_circle,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text('テーマを「$themeLabel」に変更しました'),
+              ],
+            ),
+            backgroundColor: const Color(0xFF4CAF50),
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      // エラーハンドリング
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(
+                Icons.error,
+                color: Colors.white,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text('テーマの変更に失敗しました: $e'),
+            ],
+          ),
+          backgroundColor: Colors.red[600],
+          duration: const Duration(seconds: 4),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    }
   }
 }
 
 // Helper extension to access state methods
 extension QuillEditorWidgetExtension on QuillEditorWidget {
-  QuillEditorWidgetState? get currentState => 
+  QuillEditorWidgetState? get currentState =>
       (key as GlobalKey<QuillEditorWidgetState>?)?.currentState;
 }

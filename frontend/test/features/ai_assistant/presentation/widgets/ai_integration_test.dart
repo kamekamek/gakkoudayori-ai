@@ -9,6 +9,7 @@ import 'package:yutori_kyoshitu/features/ai_assistant/presentation/widgets/custo
 import 'package:yutori_kyoshitu/features/ai_assistant/presentation/widgets/ai_function_button.dart';
 import 'package:yutori_kyoshitu/features/editor/providers/quill_editor_provider.dart';
 import 'package:yutori_kyoshitu/core/services/api_service.dart';
+import 'package:yutori_kyoshitu/core/models/ai_suggestion.dart';
 
 import 'ai_integration_test.mocks.dart';
 
@@ -311,18 +312,5 @@ void main() {
         expect(provider.suggestions, isEmpty);
       });
     });
-  });
-}
-
-// テスト用のAISuggestionクラス
-class AISuggestion {
-  final String text;
-  final double confidence;
-  final String explanation;
-
-  AISuggestion({
-    required this.text,
-    required this.confidence,
-    required this.explanation,
   });
 }

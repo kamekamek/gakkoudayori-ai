@@ -111,32 +111,212 @@
             --danger-color: #e74c3c;
         }
         
+        /* 春テーマ（桜の季節） */
         .spring-theme {
-            --primary-color: #ff69b4;
-            --secondary-color: #98fb98;
-            --accent-color: #ffd700;
-            --danger-color: #ff6347;
+            --primary: #ff9eaa;     /* 桜色 */
+            --secondary: #a5d8ff;   /* 春の空色 */
+            --accent: #ffdb4d;      /* 菜の花色 */
+            --background: #f8f9fa;  /* 明るい背景 */
+            --text: #343a40;        /* 標準テキスト色 */
+            --heading: #e64980;     /* 見出し色 */
+            --link: #4c6ef5;        /* リンク色 */
+            --border: #dee2e6;      /* 境界線色 */
         }
         
+        .spring-theme .ql-editor {
+            background-color: var(--background);
+            color: var(--text);
+        }
+        
+        .spring-theme .ql-editor h1,
+        .spring-theme .ql-editor h2,
+        .spring-theme .ql-editor h3 {
+            color: var(--heading);
+        }
+        
+        .spring-theme .ql-editor h1 {
+            border-bottom-color: var(--secondary);
+        }
+        
+        .spring-theme .ql-editor blockquote {
+            border-left-color: var(--accent);
+            background-color: var(--background);
+        }
+        
+        /* 夏テーマ（緑の季節） */
         .summer-theme {
-            --primary-color: #00bfff;
-            --secondary-color: #32cd32;
-            --accent-color: #ffa500;
-            --danger-color: #dc143c;
+            --primary: #51cf66;     /* 若葉色 */
+            --secondary: #339af0;   /* 夏空色 */
+            --accent: #ff922b;      /* 太陽色 */
+            --background: #f1f8ff;  /* 涼しげな背景 */
+            --text: #1a1c20;        /* 濃いテキスト色 */
+            --heading: #20c997;     /* 見出し色 */
+            --link: #1971c2;        /* リンク色 */
+            --border: #e7f5ff;      /* 境界線色 */
         }
         
+        .summer-theme .ql-editor {
+            background-color: var(--background);
+            color: var(--text);
+        }
+        
+        .summer-theme .ql-editor h1,
+        .summer-theme .ql-editor h2,
+        .summer-theme .ql-editor h3 {
+            color: var(--heading);
+        }
+        
+        .summer-theme .ql-editor h1 {
+            border-bottom-color: var(--secondary);
+        }
+        
+        .summer-theme .ql-editor blockquote {
+            border-left-color: var(--accent);
+            background-color: var(--background);
+        }
+        
+        /* 秋テーマ（紅葉の季節） */
         .autumn-theme {
-            --primary-color: #d2691e;
-            --secondary-color: #daa520;
-            --accent-color: #cd853f;
-            --danger-color: #b22222;
+            --primary: #e67700;     /* 紅葉色 */
+            --secondary: #d9480f;   /* 深紅色 */
+            --accent: #fff3bf;      /* 穏やかな黄色 */
+            --background: #fff9db;  /* 優しい背景 */
+            --text: #2b2a29;        /* 深みのあるテキスト色 */
+            --heading: #c92a2a;     /* 見出し色 */
+            --link: #a61e4d;        /* リンク色 */
+            --border: #ffe8cc;      /* 境界線色 */
         }
         
+        .autumn-theme .ql-editor {
+            background-color: var(--background);
+            color: var(--text);
+        }
+        
+        .autumn-theme .ql-editor h1,
+        .autumn-theme .ql-editor h2,
+        .autumn-theme .ql-editor h3 {
+            color: var(--heading);
+        }
+        
+        .autumn-theme .ql-editor h1 {
+            border-bottom-color: var(--secondary);
+        }
+        
+        .autumn-theme .ql-editor blockquote {
+            border-left-color: var(--accent);
+            background-color: var(--background);
+        }
+        
+        /* 冬テーマ（雪の季節） */
         .winter-theme {
-            --primary-color: #4682b4;
-            --secondary-color: #708090;
-            --accent-color: #9370db;
-            --danger-color: #8b0000;
+            --primary: #4dabf7;     /* 冬空色 */
+            --secondary: #e7f5ff;   /* 雪色 */
+            --accent: #91a7ff;      /* 薄紫色 */
+            --background: #f8f9fa;  /* 白い背景 */
+            --text: #1a1c20;        /* 濃いテキスト色 */
+            --heading: #1864ab;     /* 見出し色 */
+            --link: #5f3dc4;        /* リンク色 */
+            --border: #d0ebff;      /* 境界線色 */
+        }
+        
+        .winter-theme .ql-editor {
+            background-color: var(--background);
+            color: var(--text);
+        }
+        
+        .winter-theme .ql-editor h1,
+        .winter-theme .ql-editor h2,
+        .winter-theme .ql-editor h3 {
+            color: var(--heading);
+        }
+        
+        .winter-theme .ql-editor h1 {
+            border-bottom-color: var(--secondary);
+        }
+        
+        .winter-theme .ql-editor blockquote {
+            border-left-color: var(--accent);
+            background-color: var(--background);
+        }
+        
+        /* ツールバーのテーマ対応 */
+        .ql-toolbar {
+            background-color: var(--background, #ffffff);
+            border-color: var(--border, #ccc);
+        }
+        
+        .ql-container {
+            border-color: var(--border, #ccc);
+        }
+        
+        /* リンクスタイル */
+        .ql-editor a {
+            color: var(--link);
+        }
+        
+        /* アクセシビリティ対応（高コントラスト） */
+        @media (prefers-contrast: high) {
+            .ql-editor {
+                color: #000000 !important;
+                background-color: #ffffff !important;
+            }
+            
+            .ql-editor h1,
+            .ql-editor h2,
+            .ql-editor h3 {
+                color: #000000 !important;
+            }
+        }
+
+        /* 学級通信専用ツールのスタイル */
+        .custom-education-tools {
+            border-left: 1px solid #ccc;
+            padding-left: 8px;
+            margin-left: 8px;
+        }
+
+        .custom-btn {
+            background: none;
+            border: none;
+            padding: 6px 8px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 16px;
+            transition: background-color 0.2s;
+        }
+
+        .custom-btn:hover {
+            background-color: var(--background, #f0f0f0);
+        }
+
+        .custom-btn:active {
+            background-color: var(--secondary, #e0e0e0);
+        }
+
+        /* ショートカットキーのヒント表示 */
+        .shortcut-hint {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+            transform: translateY(-100%);
+            margin-top: -5px;
+        }
+
+        /* 日本語入力時のIME対応 */
+        .ql-editor {
+            ime-mode: active;
+        }
+
+        /* ツールバーボタンの日本語ラベル強化 */
+        .ql-toolbar button::after,
+        .ql-toolbar select::after {
+            font-size: 11px;
+            color: #666;
         }
     </style>
 </head>
@@ -146,12 +326,12 @@
             <div id="toolbar">
                 <!-- 基本フォーマット -->
                 <span class="ql-formats">
-                    <select class="ql-font">
+                    <select class="ql-font" title="フォント">
                         <option selected>標準フォント</option>
                         <option value="serif">明朝体</option>
                         <option value="monospace">等幅フォント</option>
                     </select>
-                    <select class="ql-size">
+                    <select class="ql-size" title="文字サイズ">
                         <option value="small">小</option>
                         <option selected>標準</option>
                         <option value="large">大</option>
@@ -161,19 +341,19 @@
                 
                 <!-- 見出し -->
                 <span class="ql-formats">
-                    <select class="ql-header">
+                    <select class="ql-header" title="見出し">
                         <option selected>本文</option>
-                        <option value="1">見出し1</option>
-                        <option value="2">見出し2</option>
-                        <option value="3">見出し3</option>
+                        <option value="1">大見出し</option>
+                        <option value="2">中見出し</option>
+                        <option value="3">小見出し</option>
                     </select>
                 </span>
                 
                 <!-- テキスト装飾 -->
                 <span class="ql-formats">
-                    <button class="ql-bold" title="太字"></button>
-                    <button class="ql-italic" title="斜体"></button>
-                    <button class="ql-underline" title="下線"></button>
+                    <button class="ql-bold" title="太字 (Ctrl+B)"></button>
+                    <button class="ql-italic" title="斜体 (Ctrl+I)"></button>
+                    <button class="ql-underline" title="下線 (Ctrl+U)"></button>
                     <button class="ql-strike" title="取り消し線"></button>
                 </span>
                 
@@ -183,35 +363,45 @@
                     <select class="ql-background" title="背景色"></select>
                 </span>
                 
+                <!-- 文章構成 -->
+                <span class="ql-formats">
+                    <button class="ql-blockquote" title="引用 (学習のポイント)"></button>
+                    <button class="ql-code-block" title="コードブロック"></button>
+                </span>
+                
                 <!-- リスト -->
                 <span class="ql-formats">
                     <button class="ql-list" value="ordered" title="番号付きリスト"></button>
-                    <button class="ql-list" value="bullet" title="箇条書き"></button>
+                    <button class="ql-list" value="bullet" title="箇条書きリスト"></button>
+                    <button class="ql-indent" value="-1" title="インデント減"></button>
+                    <button class="ql-indent" value="+1" title="インデント増"></button>
                 </span>
                 
-                <!-- 配置 -->
+                <!-- 文字揃え -->
                 <span class="ql-formats">
-                    <select class="ql-align">
+                    <select class="ql-align" title="文字揃え">
                         <option selected></option>
                         <option value="center">中央</option>
-                        <option value="right">右</option>
-                        <option value="justify">両端</option>
+                        <option value="right">右揃え</option>
+                        <option value="justify">両端揃え</option>
                     </select>
-                </span>
-                
-                <!-- 引用・インデント -->
-                <span class="ql-formats">
-                    <button class="ql-blockquote" title="引用"></button>
-                    <button class="ql-code-block" title="コードブロック"></button>
                 </span>
                 
                 <!-- リンク・画像 -->
                 <span class="ql-formats">
                     <button class="ql-link" title="リンク"></button>
-                    <button class="ql-image" title="画像"></button>
+                    <button class="ql-image" title="画像挿入"></button>
                 </span>
                 
-                <!-- 取り消し・やり直し -->
+                <!-- 学級通信専用機能 -->
+                <span class="ql-formats custom-education-tools">
+                    <button class="custom-btn" id="insert-date" title="今日の日付挿入 (Ctrl+D)">📅</button>
+                    <button class="custom-btn" id="insert-greeting" title="季節の挨拶文 (Ctrl+G)">🌸</button>
+                    <button class="custom-btn" id="insert-subjects" title="教科テンプレート (Ctrl+T)">📚</button>
+                    <button class="custom-btn" id="insert-homework" title="宿題テンプレート (Ctrl+H)">📝</button>
+                </span>
+                
+                <!-- 編集機能 */
                 <span class="ql-formats">
                     <button class="ql-clean" title="書式クリア"></button>
                 </span>
@@ -240,15 +430,169 @@
     <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
     
     <script>
-        // Quill エディタ初期化
-        var quill = new Quill('#editor', {
+        // Quill.js エディタの初期化と設定
+        const quill = new Quill('#editor', {
             theme: 'snow',
+            placeholder: '今日の学級通信を書きましょう...',
             modules: {
                 toolbar: '#toolbar'
-            },
-            placeholder: '学級通信の内容を入力してください...'
+            }
         });
-        
+
+        // 学級通信専用機能の実装
+        function initializeEducationTools() {
+            // 今日の日付挿入
+            document.getElementById('insert-date').addEventListener('click', function() {
+                insertCurrentDate();
+            });
+
+            // 季節の挨拶文挿入
+            document.getElementById('insert-greeting').addEventListener('click', function() {
+                insertSeasonalGreeting();
+            });
+
+            // 教科テンプレート挿入
+            document.getElementById('insert-subjects').addEventListener('click', function() {
+                insertSubjectTemplate();
+            });
+
+            // 宿題テンプレート挿入
+            document.getElementById('insert-homework').addEventListener('click', function() {
+                insertHomeworkTemplate();
+            });
+        }
+
+        // 今日の日付を挿入
+        function insertCurrentDate() {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = today.getMonth() + 1;
+            const date = today.getDate();
+            const days = ['日', '月', '火', '水', '木', '金', '土'];
+            const day = days[today.getDay()];
+            
+            const dateString = `${year}年${month}月${date}日（${day}）`;
+            const selection = quill.getSelection();
+            const index = selection ? selection.index : quill.getLength();
+            quill.insertText(index, dateString);
+        }
+
+        // 季節の挨拶文を挿入
+        function insertSeasonalGreeting() {
+            const month = new Date().getMonth() + 1;
+            let greeting = '';
+
+            if (month >= 3 && month <= 5) {
+                greeting = '暖かな春の日差しが心地よい季節となりました。新学期も始まり、子どもたちの元気な声が教室に響いています。';
+            } else if (month >= 6 && month <= 8) {
+                greeting = '緑豊かな夏の季節を迎えました。子どもたちは元気いっぱいに学習に取り組んでいます。';
+            } else if (month >= 9 && month <= 11) {
+                greeting = '秋風が心地よく、実りの季節を迎えました。子どもたちも学習に集中して取り組んでいます。';
+            } else {
+                greeting = '寒さが厳しい季節となりましたが、子どもたちは元気に登校し、学習に励んでいます。';
+            }
+
+            const selection = quill.getSelection();
+            const index = selection ? selection.index : quill.getLength();
+            quill.insertText(index, greeting);
+        }
+
+        // 教科テンプレートを挿入
+        function insertSubjectTemplate() {
+            const template = `
+【今日の学習内容】
+
+国語：
+算数：
+理科：
+社会：
+
+【学習のポイント】
+・
+・
+・
+`;
+            const selection = quill.getSelection();
+            const index = selection ? selection.index : quill.getLength();
+            quill.insertText(index, template);
+        }
+
+        // 宿題テンプレートを挿入
+        function insertHomeworkTemplate() {
+            const template = `
+【今日の宿題】
+
+□ 漢字練習：
+□ 計算ドリル：
+□ 音読：
+□ その他：
+
+【提出日】：明日
+【持ち物】：
+`;
+            const selection = quill.getSelection();
+            const index = selection ? selection.index : quill.getLength();
+            quill.insertText(index, template);
+        }
+
+        // ショートカットキー実装
+        function initializeShortcuts() {
+            document.addEventListener('keydown', function(e) {
+                // Ctrl + D: 日付挿入
+                if (e.ctrlKey && e.key === 'd') {
+                    e.preventDefault();
+                    insertCurrentDate();
+                }
+                
+                // Ctrl + G: 挨拶文挿入
+                if (e.ctrlKey && e.key === 'g') {
+                    e.preventDefault();
+                    insertSeasonalGreeting();
+                }
+                
+                // Ctrl + T: 教科テンプレート挿入
+                if (e.ctrlKey && e.key === 't') {
+                    e.preventDefault();
+                    insertSubjectTemplate();
+                }
+                
+                // Ctrl + H: 宿題テンプレート挿入
+                if (e.ctrlKey && e.key === 'h') {
+                    e.preventDefault();
+                    insertHomeworkTemplate();
+                }
+
+                // F1: ヘルプ表示
+                if (e.key === 'F1') {
+                    e.preventDefault();
+                    showShortcutHelp();
+                }
+            });
+        }
+
+        // ショートカットヘルプを表示
+        function showShortcutHelp() {
+            const helpText = `
+【ショートカットキー一覧】
+
+基本操作：
+Ctrl + B：太字
+Ctrl + I：斜体
+Ctrl + U：下線
+Ctrl + Z：元に戻す
+Ctrl + Y：やり直し
+
+学級通信機能：
+Ctrl + D：今日の日付挿入
+Ctrl + G：季節の挨拶文挿入
+Ctrl + T：教科テンプレート挿入
+Ctrl + H：宿題テンプレート挿入
+
+F1：このヘルプを表示
+`;
+            alert(helpText);
+        }
+
         // JavaScript Bridge用のグローバル関数を定義
         window.quillBridge = {
             // コマンド実行のメインハンドラー
@@ -389,7 +733,11 @@
         if (window.flutter_inappwebview) {
             window.flutter_inappwebview.callHandler('onQuillReady');
         }
-        
+
+        // 教育ツールとショートカットキーを初期化
+        initializeEducationTools();
+        initializeShortcuts();
+
         // エディタの変更を監視してFlutter側に通知
         quill.on('text-change', function(delta, oldDelta, source) {
             if (source === 'user') {
@@ -418,8 +766,8 @@
                 }
             }
         });
-        
-        console.log('Quill.js editor initialized successfully');
+
+        console.log('Quill.js editor with education tools initialized successfully');
     </script>
 </body>
 </html>
