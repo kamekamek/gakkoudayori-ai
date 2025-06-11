@@ -120,10 +120,13 @@ class TestGeminiTextGeneration:
         
         # 結果の検証
         assert result is not None
-        assert "text" in result
-        assert "usage" in result
-        assert result["text"] == self.sample_response["text"]
-        assert result["usage"]["totalTokenCount"] == self.sample_response["usage"]["totalTokenCount"]
+        assert result["success"] is True
+        assert "data" in result
+        assert "text" in result["data"]
+        assert "ai_metadata" in result["data"]
+        assert "usage" in result["data"]["ai_metadata"]
+        assert result["data"]["text"] == self.sample_response["text"]
+        assert result["data"]["ai_metadata"]["usage"]["total_token_count"] == self.sample_response["usage"]["totalTokenCount"]
 
     @patch('gemini_api_service.get_gemini_client')
     def test_generate_text_with_context(self, mock_get_client):
@@ -156,9 +159,12 @@ class TestGeminiTextGeneration:
         
         # 結果の検証
         assert result is not None
-        assert "text" in result
-        assert "usage" in result
-        assert "context" in result  # 更新されたコンテキストが含まれていることを確認
+        assert result["success"] is True
+        assert "data" in result
+        assert "text" in result["data"]
+        assert "ai_metadata" in result["data"]
+        assert "usage" in result["data"]["ai_metadata"]
+        assert "context" in result["data"]  # 更新されたコンテキストが含まれていることを確認
 
     def test_generate_text_error(self):
         """テキスト生成エラーテスト"""
@@ -172,8 +178,9 @@ class TestGeminiTextGeneration:
         
         # エラー時の結果確認
         assert result is not None
+        assert result["success"] is False
         assert "error" in result
-        assert "text" not in result
+        assert "data" not in result
 
 
 class TestGeminiConnection:
@@ -206,10 +213,10 @@ class TestGeminiConnection:
         
         # 接続テスト結果の確認
         assert result is not None
-        assert "success" in result
         assert result["success"] is True
-        assert "model_info" in result
-        assert "response_time" in result
+        assert "data" in result
+        assert "model_info" in result["data"]
+        assert "processing_time_ms" in result["data"]
 
     @patch('gemini_api_service.get_gemini_client')
     def test_gemini_connection_failure(self, mock_get_client):
@@ -226,10 +233,9 @@ class TestGeminiConnection:
         
         # 失敗時の結果確認
         assert result is not None
-        assert "success" in result
         assert result["success"] is False
         assert "error" in result
-        assert "response_time" in result
+        assert "processing_time_ms" in result["error"]["details"]
 
 
 class TestGeminiErrorHandling:
@@ -247,10 +253,10 @@ class TestGeminiErrorHandling:
         result = handle_gemini_error(error)
         
         assert result is not None
+        assert result["success"] is False
         assert "error" in result
-        assert "type" in result
-        assert result["type"] == "QUOTA_EXCEEDED"
-        assert error_msg in result["error"]
+        assert result["error"]["code"] == "QUOTA_EXCEEDED"
+        assert error_msg in result["error"]["message"]
 
     def test_handle_permission_denied_error(self):
         """権限不足エラーハンドリングテスト"""
@@ -260,10 +266,10 @@ class TestGeminiErrorHandling:
         result = handle_gemini_error(error)
         
         assert result is not None
+        assert result["success"] is False
         assert "error" in result
-        assert "type" in result
-        assert result["type"] == "PERMISSION_DENIED"
-        assert error_msg in result["error"]
+        assert result["error"]["code"] == "PERMISSION_DENIED"
+        assert error_msg in result["error"]["message"]
 
     def test_handle_model_not_found_error(self):
         """モデル未発見エラーハンドリングテスト"""
@@ -273,10 +279,10 @@ class TestGeminiErrorHandling:
         result = handle_gemini_error(error)
         
         assert result is not None
+        assert result["success"] is False
         assert "error" in result
-        assert "type" in result
-        assert result["type"] == "MODEL_NOT_FOUND"
-        assert error_msg in result["error"]
+        assert result["error"]["code"] == "MODEL_NOT_FOUND"
+        assert error_msg in result["error"]["message"]
 
     def test_handle_general_error(self):
         """一般エラーハンドリングテスト"""
@@ -286,10 +292,10 @@ class TestGeminiErrorHandling:
         result = handle_gemini_error(error)
         
         assert result is not None
+        assert result["success"] is False
         assert "error" in result
-        assert "type" in result
-        assert result["type"] == "GENERAL_ERROR"
-        assert error_msg in result["error"]
+        assert result["error"]["code"] == "GENERAL_ERROR"
+        assert error_msg in result["error"]["message"]
 
 
 if __name__ == "__main__":
