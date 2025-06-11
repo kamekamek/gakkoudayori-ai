@@ -206,6 +206,90 @@ def get_audio_formats():
             'error': str(e)
         }), 500
 
+# ==============================================================================
+# 学級通信生成エンドポイント
+# ==============================================================================
+
+@app.route('/api/v1/ai/generate-newsletter', methods=['POST'])
+def generate_newsletter():
+    """学級通信自動生成エンドポイント"""
+    try:
+        # リクエストデータ取得
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No JSON data provided',
+                'error_code': 'MISSING_DATA'
+            }), 400
+        
+        # 必須パラメータチェック
+        speech_text = data.get('speech_text', '')
+        if not speech_text.strip():
+            return jsonify({
+                'success': False,
+                'error': 'Speech text is required',
+                'error_code': 'MISSING_SPEECH_TEXT'
+            }), 400
+        
+        # オプションパラメータ
+        template_type = data.get('template_type', 'daily_report')
+        include_greeting = data.get('include_greeting', True)
+        target_audience = data.get('target_audience', 'parents')
+        season = data.get('season', 'auto')
+        
+        # 認証情報パス
+        credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', '../secrets/service-account-key.json')
+        
+        # 学級通信生成実行
+        from newsletter_generator import generate_newsletter_from_speech
+        
+        result = generate_newsletter_from_speech(
+            speech_text=speech_text,
+            template_type=template_type,
+            include_greeting=include_greeting,
+            target_audience=target_audience,
+            season=season,
+            credentials_path=credentials_path
+        )
+        
+        if result['success']:
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 500
+            
+    except Exception as e:
+        logger.error(f"Newsletter generation endpoint error: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Newsletter generation failed: {str(e)}',
+            'error_code': 'GENERATION_ERROR'
+        }), 500
+
+@app.route('/api/v1/ai/newsletter-templates', methods=['GET'])
+def get_newsletter_templates():
+    """学級通信テンプレート一覧取得エンドポイント"""
+    try:
+        from newsletter_generator import get_newsletter_templates
+        
+        templates = get_newsletter_templates()
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'templates': templates,
+                'total_count': len(templates)
+            }
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Templates endpoint error: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Failed to get templates: {str(e)}',
+            'error_code': 'TEMPLATES_ERROR'
+        }), 500
+
 @app.errorhandler(404)
 def not_found(error):
     """404エラーハンドラー"""

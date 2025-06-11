@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:yutori_kyoshitu/features/layout/presentation/widgets/app_shell.dart';
 import 'package:yutori_kyoshitu/features/home/presentation/pages/home_page.dart';
 import 'package:yutori_kyoshitu/features/settings/presentation/pages/settings_page.dart';
+import 'package:yutori_kyoshitu/features/editor/presentation/pages/editor_page.dart';
 
 /// メインレイアウトページ
 /// アプリケーションの基本3カラムレイアウトを提供します
@@ -21,6 +22,11 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
       title: 'ホーム',
       icon: Icons.home,
       page: const HomePage(),
+    ),
+    NavigationItem(
+      title: 'エディタ',
+      icon: Icons.edit,
+      page: const EditorPage(),
     ),
     NavigationItem(
       title: '下書き',
@@ -90,9 +96,7 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
           padding: const EdgeInsets.all(16.0),
           child: ElevatedButton.icon(
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('新規作成機能は開発中です')),
-              );
+              setState(() => _selectedIndex = 1); // エディタページに切り替え
             },
             icon: const Icon(Icons.add),
             label: const Text('新規作成'),
