@@ -135,41 +135,6 @@ def get_gemini_client(
         return None
 
 
-def initialize_gcp_credentials(credentials_path: str) -> bool:
-    """
-    Google Cloud認証情報の初期化
-    
-    Args:
-        credentials_path (str): サービスアカウントキーファイルのパス
-        
-    Returns:
-        bool: 初期化が成功したかどうか
-    """
-    try:
-        # テスト環境では認証情報ファイルがなくてもモックを使用するため、
-        # "test_credentials.json"の場合はテスト環境と判断してTrueを返す
-        if credentials_path.endswith("test_credentials.json") and 'PYTEST_CURRENT_TEST' in os.environ:
-            logger.info("Running in test mode with mock credentials")
-            return True
-
-        if not os.path.exists(credentials_path):
-            logger.error(f"Credentials file not found: {credentials_path}")
-            return False
-        
-        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_path
-        credentials, project = default()
-        
-        if credentials and project:
-            logger.info(f"GCP credentials initialized successfully for project: {project}")
-            return True
-        else:
-            logger.error("Failed to load GCP credentials")
-            return False
-            
-    except Exception as e:
-        logger.error(f"Failed to initialize GCP credentials: {e}")
-        return False
-
 
 # ==============================================================================
 # テキスト生成機能
@@ -328,10 +293,15 @@ def generate_text_with_context(
         
         if client is None:
             return {
-                "error": "Failed to initialize Gemini API client",
-                "type": "CLIENT_ERROR",
-                "timestamp": datetime.now().isoformat(),
-                "response_time": time.time() - start_time
+                "success": False,
+                "error": {
+                    "code": "CLIENT_INITIALIZATION_ERROR",
+                    "message": "Gemini APIクライアントの初期化に失敗しました",
+                    "details": {
+                        "response_time": time.time() - start_time,
+                        "timestamp": datetime.now().isoformat()
+                    }
+                }
             }
         
         # 生成パラメータ設定
@@ -367,20 +337,41 @@ def generate_text_with_context(
         updated_context.append({"role": "user", "content": prompt})
         updated_context.append({"role": "assistant", "content": response.text})
         
-        # レスポンス処理
+        # 使用量情報を取得 (利用可能な場合)
+        response_time = time.time() - start_time
+        timestamp = datetime.now().isoformat()
+        usage_info = {}
+        if hasattr(response, "usage_metadata"):
+            usage_info = {
+                "prompt_token_count": getattr(response.usage_metadata, "prompt_token_count", 0),
+                "candidates_token_count": getattr(response.usage_metadata, "candidates_token_count", 0),
+                "total_token_count": getattr(response.usage_metadata, "total_token_count", 0)
+            }
+        else:
+            # 概算のトークン数を計算
+            usage_info = {
+                "prompt_token_count": len(full_prompt) // 4,  # 概算値
+                "candidates_token_count": len(response.text) // 4,  # 概算値
+                "total_token_count": (len(full_prompt) + len(response.text)) // 4  # 概算値
+            }
+
+        # API仕様書に合わせたレスポンス形式で返却
         result = {
-            "text": response.text,
-            "usage": {
-                "promptTokenCount": response.usage.prompt_token_count,
-                "candidatesTokenCount": response.usage.candidates_token_count,
-                "totalTokenCount": response.usage.total_token_count
-            },
-            "context": updated_context,
-            "timestamp": datetime.now().isoformat(),
-            "response_time": time.time() - start_time
+            "success": True,
+            "data": {
+                "text": response.text,
+                "ai_metadata": {
+                    "model": model_name,
+                    "processing_time_ms": int(response_time * 1000),
+                    "word_count": len(response.text.split()),
+                    "usage": usage_info
+                },
+                "context": updated_context,
+                "timestamp": timestamp
+            }
         }
         
-        logger.info(f"Text with context generation successful. Total tokens: {result['usage']['totalTokenCount']}")
+        logger.info(f"Text with context generation successful. Total tokens: {usage_info['total_token_count']}")
         return result
         
     except Exception as e:
