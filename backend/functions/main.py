@@ -224,12 +224,12 @@ def generate_newsletter():
             }), 400
         
         # 必須パラメータチェック
-        speech_text = data.get('speech_text', '')
+        speech_text = data.get('transcribed_text', '')
         if not speech_text.strip():
             return jsonify({
                 'success': False,
-                'error': 'Speech text is required',
-                'error_code': 'MISSING_SPEECH_TEXT'
+                'error': 'Transcribed text is required',
+                'error_code': 'MISSING_TRANSCRIBED_TEXT'
             }), 400
         
         # オプションパラメータ

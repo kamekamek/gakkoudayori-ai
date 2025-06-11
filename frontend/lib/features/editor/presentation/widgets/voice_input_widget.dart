@@ -442,7 +442,7 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget>
     try {
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('http://localhost:8080/api/v1/ai/transcribe'),
+        Uri.parse('http://localhost:8081/api/v1/ai/transcribe'),
       );
 
       request.files.add(
@@ -481,10 +481,10 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget>
 
     try {
       final response = await http.post(
-        Uri.parse('http://localhost:8080/api/v1/ai/generate-newsletter'),
+        Uri.parse('http://localhost:8081/api/v1/ai/generate-newsletter'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
-          'speech_text': _speechResult,
+          'transcribed_text': _speechResult,
           'template_type': 'daily_report',
           'include_greeting': true,
           'target_audience': 'parents',
@@ -495,7 +495,7 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget>
         var jsonData = json.decode(response.body);
         if (jsonData['success']) {
           setState(() {
-            _generatedContent = jsonData['data']['newsletter_html'];
+            _generatedContent = jsonData['generated_content'];
             _progressValue = 1.0;
           });
         } else {
