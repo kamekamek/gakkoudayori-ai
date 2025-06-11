@@ -39,22 +39,22 @@ class _EditorPageState extends State<EditorPage> {
           // エディタ統計情報
           Container(
             padding: const EdgeInsets.all(16.0),
-            color: Colors.grey[100],
+            color: Theme.of(context).colorScheme.surface,
             child: Row(
               children: [
-                Icon(Icons.edit, color: Colors.grey[600]),
+                Icon(Icons.edit, color: Theme.of(context).colorScheme.onSurfaceVariant),
                 const SizedBox(width: 8),
                 Text(
                   'エディタ状態: ${_isEditorReady ? "準備完了" : "読み込み中"}',
-                  style: TextStyle(color: Colors.grey[600]),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
                 const Spacer(),
                 if (_currentContent.isNotEmpty) ...[
-                  Icon(Icons.text_fields, color: Colors.grey[600]),
+                  Icon(Icons.text_fields, color: Theme.of(context).colorScheme.onSurfaceVariant),
                   const SizedBox(width: 8),
                   Text(
                     '文字数: ${_currentContent.length}',
-                    style: TextStyle(color: Colors.grey[600]),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                 ],
               ],
@@ -95,10 +95,10 @@ class _EditorPageState extends State<EditorPage> {
           Container(
             padding: const EdgeInsets.all(16.0),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.surface,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.3),
+                  color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.1),
                   spreadRadius: 1,
                   blurRadius: 5,
                   offset: const Offset(0, -3),

@@ -15,8 +15,7 @@ class YutoriKyoshituApp extends StatelessWidget {
       title: '学校だよりAI',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
-      themeMode: ThemeMode.system,
+      themeMode: ThemeMode.light,
       initialRoute: '/home',
       onGenerateRoute: _router.onGenerateRoute,
       // Firebase初期化確認

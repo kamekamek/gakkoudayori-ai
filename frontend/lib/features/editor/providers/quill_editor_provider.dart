@@ -1,5 +1,8 @@
 import 'package:flutter/foundation.dart';
 import '../services/delta_converter.dart';
+import '../../../core/services/api_service.dart';
+import '../../../core/models/ai_suggestion.dart';
+import '../../ai_assistant/presentation/widgets/ai_function_button.dart';
 
 /// Quill エディタの状態管理プロバイダー
 /// エディタの内容、テーマ、履歴、AI補助機能などを管理
@@ -39,9 +42,22 @@ class QuillEditorProvider extends ChangeNotifier {
   // ドキュメント管理
   final Map<String, String> _savedDocuments = {};
   String? _currentDocumentId;
+  String _title = '学級通信';
 
   // サービス
   final DeltaConverter _deltaConverter = DeltaConverter();
+  dynamic bridgeService;
+
+  // AI補助関連の状態
+  String _customInstruction = '';
+  List<AISuggestion> _suggestions = [];
+  String? _currentSeason = 'spring';
+  ApiService? _apiService;
+
+  // AI補助関連のgetters
+  String get customInstruction => _customInstruction;
+  List<AISuggestion> get suggestions => _suggestions;
+  String? get currentSeason => _currentSeason;
 
   // Getters - エディタ基本状態
   bool get isReady => _isReady;
@@ -68,9 +84,9 @@ class QuillEditorProvider extends ChangeNotifier {
   int get wordCount => _plainText.isEmpty
       ? 0
       : _plainText
-            .split(RegExp(r'\s+'))
-            .where((word) => word.isNotEmpty)
-            .length;
+          .split(RegExp(r'\s+'))
+          .where((word) => word.isNotEmpty)
+          .length;
   int get characterCount => _plainText.length;
 
   /// エディタの準備完了状態を設定
@@ -351,6 +367,123 @@ class QuillEditorProvider extends ChangeNotifier {
       hasUnsavedChanges: _hasUnsavedChanges,
       currentTheme: _currentTheme,
     );
+  }
+
+  /// API サービスを設定
+  void setApiService(ApiService? apiService) {
+    _apiService = apiService;
+  }
+
+  /// Bridge サービスを設定
+  void setBridgeService(dynamic service) {
+    bridgeService = service;
+  }
+
+  /// カスタム指示を設定
+  void setCustomInstruction(String instruction) {
+    _customInstruction = instruction;
+    notifyListeners();
+  }
+
+  /// 季節テーマを設定
+  void setCurrentSeason(String season) {
+    _currentSeason = season;
+    notifyListeners();
+  }
+
+  /// AI機能を実行
+  Future<void> executeAIFunction(
+      AIFunctionType type, ApiService? apiService) async {
+    setProcessing(true);
+
+    try {
+      final response = await apiService?.callAIAssist(
+        action: _getFunctionAction(type),
+        selectedText: _selectedText,
+        instruction: _customInstruction,
+        context: {
+          'document_title': _title,
+          'season_theme': _currentSeason,
+          'cursor_position': _cursorPosition,
+        },
+      );
+
+      if (response != null && response['success'] == true) {
+        _suggestions = (response['suggestions'] as List<dynamic>?)
+                ?.map((s) => AISuggestion.fromMap(s as Map<String, dynamic>))
+                .toList() ??
+            [];
+        notifyListeners();
+      }
+    } catch (e) {
+      setError('AI処理でエラーが発生しました: $e');
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  /// カスタム指示を実行
+  Future<void> executeCustomInstruction(ApiService? apiService) async {
+    if (_customInstruction.trim().isEmpty) return;
+
+    setProcessing(true);
+
+    try {
+      final response = await apiService?.callAIAssist(
+        action: 'custom_instruction',
+        selectedText: _selectedText,
+        instruction: _customInstruction,
+        context: {
+          'document_title': _title,
+          'season_theme': _currentSeason,
+          'cursor_position': _cursorPosition,
+        },
+      );
+
+      if (response != null && response['success'] == true) {
+        _suggestions = (response['suggestions'] as List<dynamic>?)
+                ?.map((s) => AISuggestion.fromMap(s as Map<String, dynamic>))
+                .toList() ??
+            [];
+        notifyListeners();
+      }
+    } catch (e) {
+      setError('AI処理でエラーが発生しました: $e');
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  /// AI提案をエディタに適用
+  void applySuggestion(AISuggestion suggestion) {
+    if (bridgeService != null) {
+      bridgeService!.insertAiContent(
+        suggestion.text,
+        _cursorPosition,
+      );
+    }
+
+    // 提案パネルをクリア
+    _suggestions.clear();
+    notifyListeners();
+  }
+
+  /// AI機能タイプからアクション名を取得
+  String _getFunctionAction(AIFunctionType type) {
+    switch (type) {
+      case AIFunctionType.addGreeting:
+        return 'add_greeting';
+      case AIFunctionType.addSchedule:
+        return 'add_schedule';
+      case AIFunctionType.rewrite:
+        return 'rewrite';
+      case AIFunctionType.generateHeading:
+        return 'generate_heading';
+      case AIFunctionType.summarize:
+        return 'summarize';
+      case AIFunctionType.expand:
+        return 'expand';
+    }
   }
 
   @override

@@ -18,6 +18,12 @@ from firebase_service import (
     health_check,
     get_firebase_config
 )
+from speech_recognition_service import (
+    transcribe_audio_file,
+    validate_audio_format,
+    get_supported_formats,
+    get_default_speech_contexts
+)
 
 # ログ設定
 logging.basicConfig(level=logging.INFO)
@@ -88,6 +94,116 @@ def config():
         return jsonify({
             'error': str(e),
             'timestamp': datetime.utcnow().isoformat()
+        }), 500
+
+# ==============================================================================
+# 音声認識エンドポイント
+# ==============================================================================
+
+@app.route('/api/v1/ai/transcribe', methods=['POST'])
+def transcribe_audio():
+    """音声文字起こしエンドポイント"""
+    try:
+        # ファイルアップロード確認
+        if 'audio_file' not in request.files:
+            return jsonify({
+                'success': False,
+                'error': 'No audio file provided',
+                'error_code': 'MISSING_FILE'
+            }), 400
+        
+        audio_file = request.files['audio_file']
+        if audio_file.filename == '':
+            return jsonify({
+                'success': False,
+                'error': 'No file selected',
+                'error_code': 'EMPTY_FILENAME'
+            }), 400
+        
+        # 音声データ読み込み
+        audio_content = audio_file.read()
+        
+        # 音声フォーマット検証
+        validation_result = validate_audio_format(audio_content)
+        if not validation_result['valid']:
+            return jsonify({
+                'success': False,
+                'error': validation_result['error'],
+                'error_code': validation_result['error_code']
+            }), 400
+        
+        # パラメータ取得
+        language_code = request.form.get('language', 'ja-JP')
+        custom_contexts = request.form.get('user_dictionary', '')
+        speech_contexts = custom_contexts.split(',') if custom_contexts else None
+        
+        # 認証情報パス
+        credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', '../secrets/service-account-key.json')
+        
+        # 音声文字起こし実行
+        result = transcribe_audio_file(
+            audio_content=audio_content,
+            credentials_path=credentials_path,
+            language_code=language_code,
+            speech_contexts=speech_contexts
+        )
+        
+        if result['success']:
+            # API仕様に合わせたレスポンス形式
+            response_data = {
+                'success': True,
+                'data': {
+                    'transcript': result['data']['transcript'],
+                    'confidence': result['data']['confidence'],
+                    'processing_time_ms': result['data']['processing_time_ms'],
+                    'sections': result['data']['sections'],
+                    'audio_info': result['data']['audio_info'],
+                    'validation_info': validation_result
+                }
+            }
+            return jsonify(response_data)
+        else:
+            return jsonify({
+                'success': False,
+                'error': result['error'],
+                'error_type': result.get('error_type', 'unknown'),
+                'processing_time_ms': result.get('processing_time_ms', 0)
+            }), 500
+    
+    except Exception as e:
+        logger.error(f"Audio transcription error: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Transcription failed: {str(e)}',
+            'error_type': 'server_error'
+        }), 500
+
+@app.route('/api/v1/ai/formats', methods=['GET'])
+def get_audio_formats():
+    """サポートされている音声フォーマット一覧取得"""
+    try:
+        formats = get_supported_formats()
+        contexts = get_default_speech_contexts()
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'supported_formats': formats,
+                'default_contexts': contexts,
+                'max_file_size_mb': 10,
+                'max_duration_seconds': 60,
+                'supported_languages': [
+                    {'code': 'ja-JP', 'name': '日本語'},
+                    {'code': 'en-US', 'name': 'English (US)'},
+                    {'code': 'en-GB', 'name': 'English (UK)'}
+                ]
+            }
+        })
+    except Exception as e:
+        logger.error(f"Format info error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
         }), 500
 
 @app.errorhandler(404)
