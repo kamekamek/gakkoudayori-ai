@@ -52,6 +52,7 @@ dev_dependencies:
     sdk: flutter
   integration_test:
     sdk: flutter
+  html: ^0.15.4
   
   # Code Generation
   build_runner: ^2.4.7
