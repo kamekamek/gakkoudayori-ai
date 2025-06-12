@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:yutori_kyoshitu/app/app.dart';
-import 'package:yutori_kyoshitu/core/services/firebase_service.dart';
+// import 'package:yutori_kyoshitu/core/services/firebase_service.dart'; // 一時的に無効化
 
 /// アプリケーションのエントリーポイント
 void main() async {
   // Flutterウィジェットバインディングの初期化
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Firebase初期化（一旦無効化）
   /*
   if (kIsWeb) {
@@ -25,7 +25,7 @@ void main() async {
   }
   */
   debugPrint('main: Firebase初期化をスキップ（テスト用）');
-  
+
   // エラーハンドリングの設定
   FlutterError.onError = (FlutterErrorDetails details) {
     FlutterError.presentError(details);

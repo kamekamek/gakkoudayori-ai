@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 import '../services/delta_converter.dart';
 import '../../../core/services/api_service.dart';
+import '../../../core/services/firebase_service.dart';
 import '../../../core/models/ai_suggestion.dart';
+import '../../../core/models/document_data.dart';
 import '../../ai_assistant/presentation/widgets/ai_function_button.dart';
 
 /// Quill エディタの状態管理プロバイダー
@@ -43,6 +45,9 @@ class QuillEditorProvider extends ChangeNotifier {
   final Map<String, String> _savedDocuments = {};
   String? _currentDocumentId;
   String _title = '学級通信';
+  String _author = '';
+  String _grade = '';
+  DocumentData? _currentDocument;
 
   // サービス
   final DeltaConverter _deltaConverter = DeltaConverter();
@@ -221,34 +226,74 @@ class QuillEditorProvider extends ChangeNotifier {
     }
   }
 
-  /// ドキュメントを保存
-  Future<bool> saveDocument(String documentId) async {
+  /// ドキュメントを保存（Firebase連携）
+  Future<bool> saveDocument({
+    String? documentId,
+    String? title,
+    String? author,
+    String? grade,
+    List<String>? sections,
+  }) async {
     try {
-      if (documentId.isEmpty) {
-        setError('ドキュメントIDが無効です');
-        return false;
-      }
-
       setLoading(true);
       clearError();
 
-      // シミュレーション: 実際の実装ではFirestoreに保存
-      await Future.delayed(const Duration(milliseconds: 500));
+      // ドキュメントデータを作成
+      final docId = documentId ?? _currentDocumentId ?? _generateDocumentId();
+      final docTitle = title ?? _title;
+      final docAuthor = author ?? _author;
+      final docGrade = grade ?? _grade;
+      
+      // Delta形式でコンテンツを取得
+      final deltaContent = getDeltaContent();
+      
+      // DocumentDataを作成または更新
+      DocumentData document;
+      if (_currentDocument != null) {
+        document = _currentDocument!.updated(
+          title: docTitle,
+          author: docAuthor,
+          grade: docGrade,
+          sections: sections,
+          htmlContent: _content,
+          deltaContent: deltaContent,
+        );
+      } else {
+        document = DocumentDataFactory.createNew(
+          documentId: docId,
+          title: docTitle,
+          author: docAuthor,
+          grade: docGrade,
+          sections: sections ?? [],
+        ).copyWith(
+          htmlContent: _content,
+          deltaContent: deltaContent,
+        );
+      }
 
-      _savedDocuments[documentId] = _content;
-      _currentDocumentId = documentId;
+      // Firebaseに保存
+      await FirebaseService.instance.saveDocument(document);
+      
+      // 状態を更新
+      _currentDocument = document;
+      _currentDocumentId = docId;
+      _title = docTitle;
+      _author = docAuthor;
+      _grade = docGrade;
       _hasUnsavedChanges = false;
 
       setLoading(false);
+      debugPrint('ドキュメント保存成功: $docId');
       return true;
     } catch (e) {
       setError('保存に失敗しました: $e');
       setLoading(false);
+      debugPrint('ドキュメント保存エラー: $e');
       return false;
     }
   }
 
-  /// ドキュメントを読み込み
+  /// ドキュメントを読み込み（Firebase連携）
   Future<bool> loadDocument(String documentId) async {
     try {
       if (documentId.isEmpty) {
@@ -259,15 +304,29 @@ class QuillEditorProvider extends ChangeNotifier {
       setLoading(true);
       clearError();
 
-      // シミュレーション: 実際の実装ではFirestoreから読み込み
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      if (_savedDocuments.containsKey(documentId)) {
-        updateContent(_savedDocuments[documentId]!);
-        _currentDocumentId = documentId;
+      // Firebaseからドキュメントを読み込み
+      final document = await FirebaseService.instance.loadDocument(documentId);
+      
+      if (document != null) {
+        // ドキュメントデータを状態に反映
+        _currentDocument = document;
+        _currentDocumentId = document.documentId;
+        _title = document.title;
+        _author = document.author;
+        _grade = document.grade;
+        
+        // コンテンツを更新（HTMLがあればそれを使用、なければDeltaから変換）
+        if (document.htmlContent?.isNotEmpty == true) {
+          updateContent(document.htmlContent!);
+        } else if (document.deltaContent?.isNotEmpty == true) {
+          setDeltaContent(document.deltaContent!);
+        } else {
+          updateContent(''); // 空のドキュメント
+        }
+        
         _hasUnsavedChanges = false;
-
         setLoading(false);
+        debugPrint('ドキュメント読み込み成功: $documentId');
         return true;
       } else {
         setError('ドキュメントが見つかりません');
@@ -277,15 +336,25 @@ class QuillEditorProvider extends ChangeNotifier {
     } catch (e) {
       setError('読み込みに失敗しました: $e');
       setLoading(false);
+      debugPrint('ドキュメント読み込みエラー: $e');
       return false;
     }
   }
 
   /// 新しいドキュメントを作成
-  void createNewDocument() {
+  void createNewDocument({
+    String? title,
+    String? author,
+    String? grade,
+    List<String>? sections,
+  }) {
     _content = '';
     _plainText = '';
     _currentDocumentId = null;
+    _currentDocument = null;
+    _title = title ?? '学級通信';
+    _author = author ?? '';
+    _grade = grade ?? '';
     _hasUnsavedChanges = false;
     _history.clear();
     _historyIndex = -1;
@@ -484,6 +553,100 @@ class QuillEditorProvider extends ChangeNotifier {
       case AIFunctionType.expand:
         return 'expand';
     }
+  }
+
+  /// ユーザーのドキュメント一覧を取得
+  Future<List<DocumentData>> getUserDocuments() async {
+    try {
+      setLoading(true);
+      final documents = await FirebaseService.instance.getUserDocuments();
+      setLoading(false);
+      return documents;
+    } catch (e) {
+      setError('ドキュメント一覧の取得に失敗しました: $e');
+      setLoading(false);
+      return [];
+    }
+  }
+
+  /// ドキュメントの状態を更新
+  Future<bool> updateDocumentStatus(DocumentStatus status) async {
+    try {
+      if (_currentDocumentId == null) {
+        setError('保存されていないドキュメントです');
+        return false;
+      }
+
+      await FirebaseService.instance.updateDocumentStatus(_currentDocumentId!, status);
+      
+      if (_currentDocument != null) {
+        _currentDocument = _currentDocument!.copyWith(status: status);
+        notifyListeners();
+      }
+      
+      return true;
+    } catch (e) {
+      setError('ステータス更新に失敗しました: $e');
+      return false;
+    }
+  }
+
+  /// ドキュメントを削除
+  Future<bool> deleteDocument(String documentId) async {
+    try {
+      await FirebaseService.instance.deleteDocument(documentId);
+      
+      // 現在のドキュメントが削除対象なら状態をクリア
+      if (_currentDocumentId == documentId) {
+        createNewDocument();
+      }
+      
+      return true;
+    } catch (e) {
+      setError('削除に失敗しました: $e');
+      return false;
+    }
+  }
+
+  /// 現在のドキュメントデータを取得
+  DocumentData? get currentDocument => _currentDocument;
+  
+  /// ドキュメントのタイトルを取得
+  String get title => _title;
+  
+  /// ドキュメントの作成者を取得
+  String get author => _author;
+  
+  /// ドキュメントの学年・クラスを取得
+  String get grade => _grade;
+  
+  /// ドキュメントのタイトルを設定
+  void setTitle(String title) {
+    _title = title;
+    _hasUnsavedChanges = true;
+    notifyListeners();
+  }
+  
+  /// ドキュメントの作成者を設定
+  void setAuthor(String author) {
+    _author = author;
+    _hasUnsavedChanges = true;
+    notifyListeners();
+  }
+  
+  /// ドキュメントの学年・クラスを設定
+  void setGrade(String grade) {
+    _grade = grade;
+    _hasUnsavedChanges = true;
+    notifyListeners();
+  }
+
+  /// ドキュメントIDを生成
+  String _generateDocumentId() {
+    final now = DateTime.now();
+    final timestamp = now.millisecondsSinceEpoch;
+    final random = (timestamp % 10000).toString().padLeft(4, '0');
+    return 'doc_${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_$random';
   }
 
   @override

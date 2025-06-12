@@ -110,9 +110,8 @@ class _AppShellState extends State<AppShell> {
 
   /// モバイルレイアウト: ボトムナビゲーション + 音声入力FAB
   Widget _buildMobileLayout(BuildContext context) {
-    final mobileItems = widget.navigationItems
-        .where((item) => item.showInMobile)
-        .toList();
+    final mobileItems =
+        widget.navigationItems.where((item) => item.showInMobile).toList();
 
     return Scaffold(
       key: _scaffoldKey,
@@ -131,9 +130,8 @@ class _AppShellState extends State<AppShell> {
       ),
       body: _currentPage,
       bottomNavigationBar: _buildBottomNavigationBar(mobileItems),
-      floatingActionButton: widget.showVoiceInput 
-          ? _buildVoiceInputFAB(context)
-          : null,
+      floatingActionButton:
+          widget.showVoiceInput ? _buildVoiceInputFAB(context) : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
   }
@@ -146,7 +144,9 @@ class _AppShellState extends State<AppShell> {
           // 折りたたみ可能サイドバー
           AnimatedContainer(
             duration: const Duration(milliseconds: 300),
-            width: _isSidebarCollapsed ? 80 : MediaQuery.of(context).size.width * widget.navWidthFactor,
+            width: _isSidebarCollapsed
+                ? 80
+                : MediaQuery.of(context).size.width * widget.navWidthFactor,
             child: _buildSidebar(context, _isSidebarCollapsed),
           ),
 
@@ -158,9 +158,11 @@ class _AppShellState extends State<AppShell> {
                 title: Text(widget.navigationItems[_selectedIndex].title),
                 actions: [
                   IconButton(
-                    icon: Icon(_isSidebarCollapsed ? Icons.menu_open : Icons.menu),
+                    icon: Icon(
+                        _isSidebarCollapsed ? Icons.menu_open : Icons.menu),
                     tooltip: _isSidebarCollapsed ? 'サイドバーを展開' : 'サイドバーを折りたたみ',
-                    onPressed: () => setState(() => _isSidebarCollapsed = !_isSidebarCollapsed),
+                    onPressed: () => setState(
+                        () => _isSidebarCollapsed = !_isSidebarCollapsed),
                   ),
                   IconButton(
                     icon: const Icon(Icons.visibility),
@@ -174,9 +176,8 @@ class _AppShellState extends State<AppShell> {
           ),
         ],
       ),
-      floatingActionButton: widget.showVoiceInput 
-          ? _buildVoiceInputFAB(context)
-          : null,
+      floatingActionButton:
+          widget.showVoiceInput ? _buildVoiceInputFAB(context) : null,
     );
   }
 
@@ -213,7 +214,8 @@ class _AppShellState extends State<AppShell> {
           // プレビューパネル
           if (_isPreviewVisible)
             SizedBox(
-              width: MediaQuery.of(context).size.width * widget.previewWidthFactor,
+              width:
+                  MediaQuery.of(context).size.width * widget.previewWidthFactor,
               child: Scaffold(
                 appBar: AppBar(
                   automaticallyImplyLeading: false,
@@ -222,7 +224,8 @@ class _AppShellState extends State<AppShell> {
                     IconButton(
                       icon: const Icon(Icons.close),
                       tooltip: 'プレビューを閉じる',
-                      onPressed: () => setState(() => _isPreviewVisible = false),
+                      onPressed: () =>
+                          setState(() => _isPreviewVisible = false),
                     ),
                   ],
                 ),
@@ -231,9 +234,8 @@ class _AppShellState extends State<AppShell> {
             ),
         ],
       ),
-      floatingActionButton: widget.showVoiceInput 
-          ? _buildVoiceInputFAB(context)
-          : null,
+      floatingActionButton:
+          widget.showVoiceInput ? _buildVoiceInputFAB(context) : null,
     );
   }
 
@@ -274,17 +276,18 @@ class _AppShellState extends State<AppShell> {
                   return Tooltip(
                     message: item.tooltip,
                     child: Container(
-                      margin: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 12.0),
+                      margin: const EdgeInsets.symmetric(
+                          vertical: 4.0, horizontal: 12.0),
                       child: IconButton(
                         icon: Icon(
                           item.icon,
-                          color: isSelected 
+                          color: isSelected
                               ? Theme.of(context).colorScheme.primary
                               : Theme.of(context).colorScheme.onSurface,
                         ),
                         onPressed: () => setState(() => _selectedIndex = index),
                         style: IconButton.styleFrom(
-                          backgroundColor: isSelected 
+                          backgroundColor: isSelected
                               ? Theme.of(context).colorScheme.primaryContainer
                               : null,
                         ),
@@ -294,14 +297,41 @@ class _AppShellState extends State<AppShell> {
                 }
 
                 return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
-                  child: ListTile(
-                    leading: Icon(item.icon),
-                    title: Text(item.title),
-                    selected: isSelected,
+                  margin: const EdgeInsets.symmetric(
+                      horizontal: 8.0, vertical: 2.0),
+                  child: InkWell(
                     onTap: () => setState(() => _selectedIndex = index),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8.0),
+                    borderRadius: BorderRadius.circular(8.0),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0, vertical: 12.0),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8.0),
+                        color: isSelected
+                            ? Theme.of(context).colorScheme.primaryContainer
+                            : null,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            item.icon,
+                            color: isSelected
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context).colorScheme.onSurface,
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Text(
+                              item.title,
+                              style: TextStyle(
+                                color: isSelected
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 );
@@ -361,11 +391,13 @@ class _AppShellState extends State<AppShell> {
       type: BottomNavigationBarType.fixed,
       currentIndex: _selectedIndex.clamp(0, items.length - 1),
       onTap: (index) => setState(() => _selectedIndex = index),
-      items: items.map((item) => BottomNavigationBarItem(
-        icon: Icon(item.icon),
-        label: item.title,
-        tooltip: item.tooltip,
-      )).toList(),
+      items: items
+          .map((item) => BottomNavigationBarItem(
+                icon: Icon(item.icon),
+                label: item.title,
+                tooltip: item.tooltip,
+              ))
+          .toList(),
     );
   }
 

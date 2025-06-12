@@ -1,10 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'dart:js' as js;
-import 'dart:js_util' as js_util;
-import 'dart:typed_data';
-import 'dart:html' as html;
-import 'dart:convert';
+// 非推奨API一時無効化 - 音声録音機能は後で実装
+// import 'dart:js' as js;
+// import 'dart:js_util' as js_util;
+// import 'dart:html' as html;
+// import 'dart:convert';
 
 /// Webブラウザでのリアルタイム音声録音ウィジェット
 ///
@@ -300,11 +300,10 @@ class _WebAudioRecorderState extends State<WebAudioRecorder>
 
   void _pollForAudioData() {
     // Web環境での音声データ取得をシミュレート
-    Future.delayed(const Duration(milliseconds: 500), () {
+    Future.delayed(const Duration(milliseconds: 1000), () {
       if (_isProcessing) {
         try {
-          // 実際の実装では、JavaScriptから音声データを取得
-          // ここではダミーデータを生成
+          // ダミーデータを生成（本番では実際の録音データを使用）
           final dummyAudioData = _generateDummyAudioData();
 
           setState(() {
