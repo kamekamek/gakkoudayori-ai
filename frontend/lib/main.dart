@@ -8,10 +8,23 @@ void main() async {
   // Flutterウィジェットバインディングの初期化
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Firebase初期化
+  // Firebase初期化（一旦無効化）
+  /*
   if (kIsWeb) {
     await FirebaseService.initialize();
+    
+    // 自動匿名認証
+    try {
+      if (FirebaseService.isInitialized) {
+        await FirebaseService.instance.signInAnonymously();
+        debugPrint('main: 匿名認証完了');
+      }
+    } catch (e) {
+      debugPrint('main: 匿名認証エラー - $e');
+    }
   }
+  */
+  debugPrint('main: Firebase初期化をスキップ（テスト用）');
   
   // エラーハンドリングの設定
   FlutterError.onError = (FlutterErrorDetails details) {

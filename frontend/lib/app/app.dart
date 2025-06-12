@@ -24,11 +24,13 @@ class YutoriKyoshituApp extends StatelessWidget {
         themeMode: ThemeMode.light,
         initialRoute: '/home',
         onGenerateRoute: _router.onGenerateRoute,
-        // Firebase初期化確認
+        // Firebase初期化確認（一旦無効化）
         builder: (context, child) {
+          /*
           if (!FirebaseService.isInitialized) {
             debugPrint('Firebase初期化待機中...');
           }
+          */
           return child!;
         },
       ),
