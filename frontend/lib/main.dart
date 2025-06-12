@@ -47,6 +47,7 @@ class HomePageState extends State<HomePage> {
   bool _isRecording = false;
   String _transcribedText = '';
   String _generatedHtml = '';
+  String _editorHtml = ''; // エディタから受信したHTML
   bool _isProcessing = false;
   bool _isGenerating = false;
   bool _showEditor = false; // プレビュー(false) / エディター(true) 切り替え
@@ -898,15 +899,27 @@ class HomePageState extends State<HomePage> {
                               borderRadius: BorderRadius.circular(8),
                               child: _showEditor
                                   ? QuillEditorWidget(
+                                      key: ValueKey(
+                                          'quill_editor_${_generatedHtml.hashCode}'),
                                       initialContent: _generatedHtml,
                                       height: double.infinity,
                                       onContentChanged: (html) {
-                                        setState(() {
-                                          _generatedHtml = html;
-                                        });
+                                        if (_editorHtml != html) {
+                                          setState(() {
+                                            _editorHtml = html;
+                                            // エディタの変更をプレビューにも反映
+                                            _generatedHtml = html;
+                                          });
+                                        }
+                                      },
+                                      onEditorReady: () {
+                                        // エディタ準備完了時の処理
+                                        print('✅ エディタ準備完了');
                                       },
                                     )
                                   : HtmlPreviewWidget(
+                                      key: ValueKey(
+                                          'html_preview_${_generatedHtml.hashCode}'),
                                       htmlContent: _generatedHtml,
                                       height: double.infinity,
                                     ),

@@ -39,11 +39,70 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
   String _currentTheme = 'spring';
   final String _viewType = 'quill-editor-iframe';
 
+  // 通信用のメッセージハンドラ
+  html.EventListener? _messageHandler;
+
   @override
   void initState() {
     super.initState();
     _currentTheme = widget.initialTheme;
     _initializeIframe();
+    _setupMessageListener();
+  }
+
+  @override
+  void dispose() {
+    _removeMessageListener();
+    super.dispose();
+  }
+
+  void _setupMessageListener() {
+    _messageHandler = (html.Event event) {
+      if (event is html.MessageEvent) {
+        try {
+          // メッセージデータを解析
+          final data = event.data;
+          if (data is String) {
+            // 文字列形式のメッセージ
+            if (data.startsWith('QUILL_HTML:')) {
+              final html = data.substring('QUILL_HTML:'.length);
+              _handleHtmlUpdate(html);
+            } else if (data.startsWith('QUILL_READY')) {
+              _handleQuillReady();
+            }
+          }
+        } catch (e) {
+          print('❌ [QuillEditor] メッセージ処理エラー: $e');
+        }
+      }
+    };
+
+    html.window.addEventListener('message', _messageHandler!);
+  }
+
+  void _removeMessageListener() {
+    if (_messageHandler != null) {
+      html.window.removeEventListener('message', _messageHandler!);
+      _messageHandler = null;
+    }
+  }
+
+  void _handleHtmlUpdate(String html) {
+    if (mounted) {
+      _currentContent = html;
+      widget.onContentChanged?.call(html);
+      print('📝 [QuillEditor] 内容更新: ${html.length}文字');
+    }
+  }
+
+  void _handleQuillReady() {
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+      widget.onEditorReady?.call();
+      print('📝 [QuillBridge] Quill.js 準備完了');
+    }
   }
 
   void _initializeIframe() {
@@ -51,7 +110,7 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
       // iframeElement作成
       _iframeElement = html.IFrameElement()
         ..width = '100%'
-        ..height = '100%'
+        ..height = '${widget.height.toInt()}px'
         ..src = 'quill/index.html'
         ..style.border = 'none'
         ..style.width = '100%'
@@ -60,15 +119,8 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
       // iframe読み込み完了イベント
       _iframeElement.onLoad.listen((_) {
         print('✅ [QuillEditor] iframe読み込み完了');
-        _setupJavaScriptBridge();
         _initializeContent();
-
-        // 🔥 mounted チェック追加でメモリリーク防止
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
+        // ローディング状態は QUILL_READY メッセージで制御
       });
 
       // platformViewRegistryに登録
@@ -80,71 +132,6 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
       print('🔗 [QuillEditor] iframe初期化完了');
     } catch (e) {
       print('❌ [QuillEditor] iframe初期化エラー: $e');
-    }
-  }
-
-  void _setupJavaScriptBridge() {
-    try {
-      // Flutter → iframe Bridge設定
-
-      // iframe内のwindowオブジェクトを取得
-      final iframeWindow = _iframeElement.contentWindow;
-      if (iframeWindow == null) {
-        print('❌ [QuillEditor] iframe contentWindow取得失敗');
-        return;
-      }
-
-      // Flutter側のコールバック関数をグローバルに設定
-      js.context['onQuillReady'] = js.allowInterop(() {
-        print('📝 [QuillBridge] Quill.js 準備完了');
-        widget.onEditorReady?.call();
-      });
-
-      js.context['onQuillContentChanged'] = js.allowInterop((data) {
-        try {
-          // JSオブジェクトをDartオブジェクトに変換
-          final dartData = _jsObjectToDart(data);
-          final html = dartData['html'] as String;
-          final wordCount = dartData['wordCount'] as int;
-
-          _currentContent = html;
-          widget.onContentChanged?.call(html);
-
-          print('📝 [QuillEditor] 内容更新: ${wordCount}文字');
-        } catch (e) {
-          print('❌ [QuillEditor] コンテンツ変更処理エラー: $e');
-        }
-      });
-
-      js.context['onQuillHtmlChanged'] = js.allowInterop((html) {
-        widget.onHtmlReady?.call(html);
-      });
-
-      js.context['onQuillDeltaChanged'] = js.allowInterop((deltaJson) {
-        widget.onDeltaChanged?.call(deltaJson);
-      });
-
-      js.context['onQuillPdfRequest'] = js.allowInterop((html) {
-        _requestPdfGeneration(html);
-      });
-
-      print('🔗 [QuillEditor] JavaScript Bridge設定完了');
-    } catch (e) {
-      print('❌ [QuillEditor] Bridge設定エラー: $e');
-    }
-  }
-
-  // JSオブジェクトをDartマップに変換するヘルパー
-  Map<String, dynamic> _jsObjectToDart(dynamic jsObject) {
-    if (jsObject == null) return {};
-
-    try {
-      // JS objectをJSONに変換してからDartオブジェクトにパース
-      final jsonString = js.context.callMethod('JSON.stringify', [jsObject]);
-      return jsonDecode(jsonString);
-    } catch (e) {
-      print('⚠️ [QuillEditor] JSオブジェクト変換エラー: $e');
-      return {};
     }
   }
 
@@ -177,7 +164,8 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
       final script =
           "if(window.quillSetContent) window.quillSetContent('$escapedContent', '$format');";
 
-      iframeWindow.postMessage({'type': 'evalScript', 'script': script}, '*');
+      // 直接スクリプト実行（より安定）
+      iframeWindow.postMessage("EXEC:$script", "*");
 
       print('📝 [QuillEditor] 内容設定完了 ($format形式)');
     } catch (e) {
@@ -191,7 +179,10 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
       final iframeWindow = _iframeElement.contentWindow;
       if (iframeWindow == null) return '';
 
-      // TODO: postMessageでHTML取得を実装
+      // 直接スクリプト実行
+      iframeWindow.postMessage("EXEC:window.quillGetHtml();", "*");
+
+      // 現在の内容を返す（非同期で更新される）
       return _currentContent;
     } catch (e) {
       print('❌ [QuillEditor] HTML取得エラー: $e');
@@ -219,10 +210,7 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
       final iframeWindow = _iframeElement.contentWindow;
       if (iframeWindow == null) return;
 
-      iframeWindow.postMessage({
-        'type': 'evalScript',
-        'script': 'if(window.quillClear) window.quillClear();'
-      }, '*');
+      iframeWindow.postMessage("EXEC:window.quillClear();", "*");
 
       print('🗑️ [QuillEditor] 内容クリア完了');
     } catch (e) {
@@ -236,11 +224,7 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
       final iframeWindow = _iframeElement.contentWindow;
       if (iframeWindow == null) return;
 
-      iframeWindow.postMessage({
-        'type': 'evalScript',
-        'script':
-            "if(window.quillSwitchTheme) window.quillSwitchTheme('$theme');"
-      }, '*');
+      iframeWindow.postMessage("EXEC:window.quillSwitchTheme('$theme');", "*");
 
       _currentTheme = theme;
       print('🎨 [QuillEditor] テーマ変更: $theme');
@@ -275,63 +259,11 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       height: widget.height,
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey[300]!),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Stack(
-        children: [
-          // HtmlElementView本体
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: HtmlElementView(
-              viewType: _viewType,
-            ),
-          ),
-
-          // ローディング表示
-          if (_isLoading)
-            Container(
-              color: Colors.white.withOpacity(0.9),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
-                    ),
-                    SizedBox(height: 16),
-                    Text(
-                      '📝 Quill.js エディタ読み込み中...',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-        ],
-      ),
+      child: _isLoading
+          ? Center(child: CircularProgressIndicator())
+          : HtmlElementView(viewType: _viewType),
     );
-  }
-
-  @override
-  void dispose() {
-    // クリーンアップ
-    try {
-      js.context.deleteProperty('onQuillReady');
-      js.context.deleteProperty('onQuillContentChanged');
-      js.context.deleteProperty('onQuillHtmlChanged');
-      js.context.deleteProperty('onQuillDeltaChanged');
-      js.context.deleteProperty('onQuillPdfRequest');
-    } catch (e) {
-      print('⚠️ [QuillEditor] クリーンアップエラー: $e');
-    }
-    super.dispose();
   }
 }
