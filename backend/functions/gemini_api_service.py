@@ -86,8 +86,8 @@ class ConnectionStatus(TypedDict):
 def get_gemini_client(
     project_id: str,
     credentials_path: str,
-    model_name: str = "gemini-1.5-pro",
-    location: str = "us-central1"
+    model_name: str = "gemini-1.5-flash",
+    location: str = "asia-northeast1"
 ) -> Optional[GenerativeModel]:
     """
     Gemini APIクライアントを取得します
@@ -96,7 +96,7 @@ def get_gemini_client(
         project_id (str): Google CloudプロジェクトID
         credentials_path (str): サービスアカウントキーファイルのパス
         model_name (str, optional): 使用するGeminiモデル名. デフォルトは "gemini-1.5-pro"
-        location (str, optional): APIリージョン. デフォルトは "us-central1"
+        location (str, optional): APIリージョン. デフォルトは "asia-northeast1"
         
     Returns:
         Optional[GenerativeModel]: 初期化されたGemini APIクライアントまたはNone
@@ -149,7 +149,7 @@ def generate_text(
     max_output_tokens: int = 1024,
     top_k: int = 40,
     top_p: float = 0.8,
-    location: str = "us-central1"
+    location: str = "asia-northeast1"
 ) -> Dict[str, Any]:
     """
     Geminiを使用してテキストを生成します
@@ -260,7 +260,7 @@ def generate_text_with_context(
     max_output_tokens: int = 1024,
     top_k: int = 40,
     top_p: float = 0.8,
-    location: str = "us-central1"
+    location: str = "asia-northeast1"
 ) -> Dict[str, Any]:
     """
     Geminiを使用してコンテキスト付きでテキストを生成
@@ -387,7 +387,7 @@ def check_gemini_connection(
     project_id: str,
     credentials_path: str,
     model_name: str = "gemini-1.5-pro",
-    location: str = "us-central1"
+    location: str = "asia-northeast1"
 ) -> Dict[str, Any]:
     """
     Gemini API接続をテストします
