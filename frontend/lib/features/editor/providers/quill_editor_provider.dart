@@ -5,6 +5,7 @@ import '../../../core/services/firebase_service.dart';
 import '../../../core/models/ai_suggestion.dart';
 import '../../../core/models/document_data.dart';
 import '../../ai_assistant/presentation/widgets/ai_function_button.dart';
+import '../presentation/widgets/tone_selector_widget.dart';
 
 /// Quill エディタの状態管理プロバイダー
 /// エディタの内容、テーマ、履歴、AI補助機能などを管理
@@ -58,11 +59,13 @@ class QuillEditorProvider extends ChangeNotifier {
   List<AISuggestion> _suggestions = [];
   String? _currentSeason = 'spring';
   ApiService? _apiService;
+  ToneType _selectedTone = ToneType.modern;
 
   // AI補助関連のgetters
   String get customInstruction => _customInstruction;
   List<AISuggestion> get suggestions => _suggestions;
   String? get currentSeason => _currentSeason;
+  ToneType get selectedTone => _selectedTone;
 
   // Getters - エディタ基本状態
   bool get isReady => _isReady;
@@ -243,10 +246,10 @@ class QuillEditorProvider extends ChangeNotifier {
       final docTitle = title ?? _title;
       final docAuthor = author ?? _author;
       final docGrade = grade ?? _grade;
-      
+
       // Delta形式でコンテンツを取得
       final deltaContent = getDeltaContent();
-      
+
       // DocumentDataを作成または更新
       DocumentData document;
       if (_currentDocument != null) {
@@ -273,7 +276,7 @@ class QuillEditorProvider extends ChangeNotifier {
 
       // Firebaseに保存
       await FirebaseService.instance.saveDocument(document);
-      
+
       // 状態を更新
       _currentDocument = document;
       _currentDocumentId = docId;
@@ -306,7 +309,7 @@ class QuillEditorProvider extends ChangeNotifier {
 
       // Firebaseからドキュメントを読み込み
       final document = await FirebaseService.instance.loadDocument(documentId);
-      
+
       if (document != null) {
         // ドキュメントデータを状態に反映
         _currentDocument = document;
@@ -314,7 +317,7 @@ class QuillEditorProvider extends ChangeNotifier {
         _title = document.title;
         _author = document.author;
         _grade = document.grade;
-        
+
         // コンテンツを更新（HTMLがあればそれを使用、なければDeltaから変換）
         if (document.htmlContent?.isNotEmpty == true) {
           updateContent(document.htmlContent!);
@@ -323,7 +326,7 @@ class QuillEditorProvider extends ChangeNotifier {
         } else {
           updateContent(''); // 空のドキュメント
         }
-        
+
         _hasUnsavedChanges = false;
         setLoading(false);
         debugPrint('ドキュメント読み込み成功: $documentId');
@@ -460,6 +463,12 @@ class QuillEditorProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 文体テイストを設定
+  void setSelectedTone(ToneType tone) {
+    _selectedTone = tone;
+    notifyListeners();
+  }
+
   /// AI機能を実行
   Future<void> executeAIFunction(
       AIFunctionType type, ApiService? apiService) async {
@@ -577,13 +586,14 @@ class QuillEditorProvider extends ChangeNotifier {
         return false;
       }
 
-      await FirebaseService.instance.updateDocumentStatus(_currentDocumentId!, status);
-      
+      await FirebaseService.instance
+          .updateDocumentStatus(_currentDocumentId!, status);
+
       if (_currentDocument != null) {
         _currentDocument = _currentDocument!.copyWith(status: status);
         notifyListeners();
       }
-      
+
       return true;
     } catch (e) {
       setError('ステータス更新に失敗しました: $e');
@@ -595,12 +605,12 @@ class QuillEditorProvider extends ChangeNotifier {
   Future<bool> deleteDocument(String documentId) async {
     try {
       await FirebaseService.instance.deleteDocument(documentId);
-      
+
       // 現在のドキュメントが削除対象なら状態をクリア
       if (_currentDocumentId == documentId) {
         createNewDocument();
       }
-      
+
       return true;
     } catch (e) {
       setError('削除に失敗しました: $e');
@@ -610,30 +620,30 @@ class QuillEditorProvider extends ChangeNotifier {
 
   /// 現在のドキュメントデータを取得
   DocumentData? get currentDocument => _currentDocument;
-  
+
   /// ドキュメントのタイトルを取得
   String get title => _title;
-  
+
   /// ドキュメントの作成者を取得
   String get author => _author;
-  
+
   /// ドキュメントの学年・クラスを取得
   String get grade => _grade;
-  
+
   /// ドキュメントのタイトルを設定
   void setTitle(String title) {
     _title = title;
     _hasUnsavedChanges = true;
     notifyListeners();
   }
-  
+
   /// ドキュメントの作成者を設定
   void setAuthor(String author) {
     _author = author;
     _hasUnsavedChanges = true;
     notifyListeners();
   }
-  
+
   /// ドキュメントの学年・クラスを設定
   void setGrade(String grade) {
     _grade = grade;

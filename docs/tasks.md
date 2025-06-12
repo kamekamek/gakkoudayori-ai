@@ -349,6 +349,114 @@
 
 ---
 
+## 📋 Phase 1.5: 新ユーザーフロー対応（画像フロー実装）
+
+**追加理由**: ユーザー提供の詳細フロー画像に対応するため、現在の実装に不足している機能を追加実装
+
+### 🎯 Phase 1.5 新機能グループ
+
+**Group P1.5**: 画像フロー対応機能実装（5タスク）
+
+---
+
+#### T1.5-UF-001-H: テイスト選択システム実装 🚀
+- **作業者**: 🤝 HYBRID
+- **所要時間**: 60分
+- **依存**: T2-QU-005-A ✅, T3-AI-003-H ✅
+- **進行状況**: 🚀 進行中 (開始: 2025-01-17 23:00)
+- **📄 参考**: 画像フロー「テイストを選ぶ（モダン/クラシック）」
+- **TDD Phase**: 🔴 RED - テスト作成中
+- **完了条件**:
+  - [x] モダン/クラシック文体選択UI実装 ✅
+  - [ ] Geminiプロンプトの文体最適化
+  - [ ] 選択状態の永続化（localStorage）
+  - [ ] 文体適用テスト通過
+- **成果物（進行中）**: 
+  - `lib/features/editor/presentation/widgets/tone_selector_widget.dart` ✅
+  - `lib/features/layout/presentation/pages/enhanced_editor_layout.dart` ✅ (基本レイアウト実装)
+
+#### T1.5-UF-002-A: 詳細季節挨拶定型文実装 🚀
+- **作業者**: 🤖 AI
+- **所要時間**: 45分
+- **依存**: T2-ED-001-A ✅
+- **進行状況**: ⭐ 新規追加
+- **📄 参考**: 画像フロー「季節の挨拶定型文追加」
+- **TDD Phase**: Red→Green→Refactor
+- **完了条件**:
+  - [ ] 月別詳細挨拶文データベース作成
+  - [ ] 学校行事対応挨拶文追加
+  - [ ] 挨拶文選択ダイアログ実装
+  - [ ] 季節挨拶テスト通過
+- **成果物予定**:
+  - `assets/data/seasonal_greetings.json`
+  - `lib/features/editor/services/seasonal_greeting_service.dart`
+
+#### T1.5-UF-003-H: 写真選択・挿入機能実装 🚀
+- **作業者**: 🤝 HYBRID
+- **所要時間**: 90分
+- **依存**: T2-QU-002-A ✅, T1-FB-004-M ✅
+- **進行状況**: ⭐ 新規追加
+- **📄 参考**: 画像フロー「写真を選択」
+- **TDD Phase**: Red→Green→Refactor
+- **完了条件**:
+  - [ ] 画像アップロード機能実装
+  - [ ] 写真ライブラリUI実装
+  - [ ] Firebase Storage統合
+  - [ ] 画像リサイズ・圧縮機能
+  - [ ] 写真挿入テスト通過
+- **成果物予定**:
+  - `lib/features/editor/presentation/widgets/photo_library_widget.dart`
+  - `lib/features/editor/services/image_upload_service.dart`
+
+#### T1.5-UF-004-A: 強化AI文章改善機能 🚀
+- **作業者**: 🤖 AI
+- **所要時間**: 75分
+- **依存**: T1.5-UF-001-H, T3-AI-003-H ✅
+- **進行状況**: ⭐ 新規追加
+- **📄 参考**: 画像フロー「文章リライト」強化版
+- **TDD Phase**: Red→Green→Refactor
+- **完了条件**:
+  - [ ] 複数文体オプション対応
+  - [ ] 改善提案の比較表示
+  - [ ] 部分選択リライト強化
+  - [ ] リライト履歴機能
+  - [ ] 強化リライトテスト通過
+- **成果物予定**:
+  - 既存rewrite機能の強化
+  - `lib/features/ai_assistant/presentation/widgets/rewrite_options_dialog.dart`
+
+#### T1.5-UF-005-H: 統合ユーザーフロー実装 🚀
+- **作業者**: 🤝 HYBRID
+- **所要時間**: 105分
+- **依存**: T1.5-UF-001-H, T1.5-UF-002-A, T1.5-UF-003-H, T1.5-UF-004-A
+- **進行状況**: ⭐ 新規追加
+- **📄 参考**: 画像フロー全体統合
+- **TDD Phase**: Red→Green→Refactor
+- **完了条件**:
+  - [ ] 画像フロー通りのUI配置実装
+  - [ ] フロー制御ロジック実装
+  - [ ] ユーザー導線最適化
+  - [ ] 全機能統合テスト通過
+  - [ ] パフォーマンス最適化
+- **成果物予定**:
+  - `lib/features/editor/presentation/pages/enhanced_editor_page.dart`
+  - 統合E2Eテストスイート
+
+---
+
+### 📊 Phase 1.5 進捗
+
+**Phase 1.5 新機能**: 0/5 完了 🚀 
+- **T1.5-UF-001-H**: テイスト選択システム
+- **T1.5-UF-002-A**: 詳細季節挨拶定型文  
+- **T1.5-UF-003-H**: 写真選択・挿入機能
+- **T1.5-UF-004-A**: 強化AI文章改善
+- **T1.5-UF-005-H**: 統合ユーザーフロー
+
+**Phase 1.5 完了予定**: 2025-01-18 (5タスク、375分見込み)
+
+---
+
 ## 📋 Phase 2: Quill.js統合・エディタ機能
 
 ### 🌟 Phase 2 並行実行グループ
