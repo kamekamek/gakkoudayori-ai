@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
+import 'web_audio_recorder.dart';
 
 /// 音声入力から学級通信自動生成ウィジェット
 ///
@@ -140,49 +141,101 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget>
 
     return Column(
       children: [
-        // 音声ファイルアップロードボタン
-        Container(
-          width: double.infinity,
-          height: 100,
-          decoration: BoxDecoration(
-            color: Colors.blue.shade50,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: Colors.blue.shade200,
-              width: 2,
-              style: BorderStyle.solid,
-            ),
-          ),
-          child: InkWell(
-            onTap: _pickAudioFile,
-            borderRadius: BorderRadius.circular(12),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.upload_file,
-                  size: 32,
-                  color: Colors.blue.shade600,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '音声ファイルをアップロード',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.blue.shade700,
+        // 録音ボタンと音声ファイルアップロードボタン
+        Row(
+          children: [
+            // リアルタイム録音ボタン
+            Expanded(
+              child: Container(
+                height: 100,
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.red.shade200,
+                    width: 2,
                   ),
                 ),
-                Text(
-                  'WAV, MP3, M4A対応',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
+                child: InkWell(
+                  onTap: _showRecordingDialog,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.mic,
+                        size: 32,
+                        color: Colors.red.shade600,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'リアルタイム録音',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.red.shade700,
+                        ),
+                      ),
+                      Text(
+                        'マイクで直接録音',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
+
+            const SizedBox(width: 12),
+
+            // ファイルアップロードボタン
+            Expanded(
+              child: Container(
+                height: 100,
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.blue.shade200,
+                    width: 2,
+                  ),
+                ),
+                child: InkWell(
+                  onTap: _pickAudioFile,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.upload_file,
+                        size: 32,
+                        color: Colors.blue.shade600,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'ファイルアップロード',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.blue.shade700,
+                        ),
+                      ),
+                      Text(
+                        'WAV, MP3, M4A',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
 
         const SizedBox(height: 16),
@@ -382,6 +435,46 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget>
         ],
       ),
     );
+  }
+
+  void _showRecordingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        child: Container(
+          width: 400,
+          height: 300,
+          padding: const EdgeInsets.all(20),
+          child: WebAudioRecorder(
+            onAudioRecorded: (audioData) {
+              Navigator.of(context).pop();
+              _processRecordedAudio(audioData);
+            },
+            onError: (error) {
+              Navigator.of(context).pop();
+              _showErrorDialog('録音エラー', error);
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _processRecordedAudio(Uint8List audioData) async {
+    setState(() {
+      _isProcessing = true;
+      _currentStep = '録音された音声を処理中...';
+      _progressValue = 0.1;
+    });
+
+    _waveController.repeat();
+
+    try {
+      await _processAudioToNewsletter(audioData);
+    } catch (e) {
+      _showErrorDialog('録音処理エラー', '録音データの処理中にエラーが発生しました: $e');
+    }
   }
 
   Future<void> _pickAudioFile() async {

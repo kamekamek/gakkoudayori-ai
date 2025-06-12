@@ -290,6 +290,91 @@ def get_newsletter_templates():
             'error_code': 'TEMPLATES_ERROR'
         }), 500
 
+# ==============================================================================
+# PDF生成エンドポイント
+# ==============================================================================
+
+@app.route('/api/v1/ai/generate-pdf', methods=['POST'])
+def generate_pdf():
+    """HTML学級通信をPDFに変換"""
+    try:
+        # リクエストデータ取得
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No JSON data provided',
+                'error_code': 'MISSING_DATA'
+            }), 400
+        
+        # 必須パラメータチェック
+        html_content = data.get('html_content', '')
+        if not html_content.strip():
+            return jsonify({
+                'success': False,
+                'error': 'HTML content is required',
+                'error_code': 'MISSING_HTML_CONTENT'
+            }), 400
+        
+        # オプションパラメータ
+        title = data.get('title', '学級通信')
+        page_size = data.get('page_size', 'A4')
+        margin = data.get('margin', '20mm')
+        include_header = data.get('include_header', True)
+        include_footer = data.get('include_footer', True)
+        custom_css = data.get('custom_css', '')
+        
+        # PDF生成実行
+        from pdf_generator import generate_pdf_from_html
+        
+        result = generate_pdf_from_html(
+            html_content=html_content,
+            title=title,
+            page_size=page_size,
+            margin=margin,
+            include_header=include_header,
+            include_footer=include_footer,
+            custom_css=custom_css
+        )
+        
+        if result['success']:
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 500
+            
+    except Exception as e:
+        logger.error(f"PDF generation endpoint error: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'PDF generation failed: {str(e)}',
+            'error_code': 'PDF_GENERATION_ERROR'
+        }), 500
+
+@app.route('/api/v1/ai/pdf-info/<path:pdf_id>', methods=['GET'])
+def get_pdf_info_endpoint(pdf_id):
+    """PDF情報取得エンドポイント"""
+    try:
+        from pdf_generator import get_pdf_info
+        
+        # 実際の実装では、pdf_idからファイルパスを解決
+        # ここではダミー実装
+        pdf_path = f"/tmp/{pdf_id}.pdf"
+        
+        result = get_pdf_info(pdf_path)
+        
+        if result['success']:
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 404
+            
+    except Exception as e:
+        logger.error(f"PDF info endpoint error: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Failed to get PDF info: {str(e)}',
+            'error_code': 'PDF_INFO_ERROR'
+        }), 500
+
 @app.errorhandler(404)
 def not_found(error):
     """404エラーハンドラー"""

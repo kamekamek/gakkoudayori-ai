@@ -96,4 +96,43 @@ class ApiService {
       throw Exception('HTML generation failed: $e');
     }
   }
+
+  /// PDF生成機能
+  Future<Map<String, dynamic>> generatePDF({
+    required String htmlContent,
+    String title = '学級通信',
+    String pageSize = 'A4',
+    String margin = '20mm',
+    bool includeHeader = true,
+    bool includeFooter = true,
+    String customCss = '',
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/api/v1/ai/generate-pdf');
+      final body = jsonEncode({
+        'html_content': htmlContent,
+        'title': title,
+        'page_size': pageSize,
+        'margin': margin,
+        'include_header': includeHeader,
+        'include_footer': includeFooter,
+        'custom_css': customCss,
+      });
+
+      final response = await http.post(
+        url,
+        headers: _headers,
+        body: body,
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else {
+        throw Exception(
+            'PDF generation failed with status ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('PDF generation failed: $e');
+    }
+  }
 }

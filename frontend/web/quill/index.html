@@ -738,34 +738,38 @@ F1：このヘルプを表示
         initializeEducationTools();
         initializeShortcuts();
 
-        // エディタの変更を監視してFlutter側に通知
-        quill.on('text-change', function(delta, oldDelta, source) {
-            if (source === 'user') {
-                const content = {
-                    html: quill.root.innerHTML,
-                    delta: JSON.stringify(quill.getContents()),
-                    text: quill.getText()
-                };
-                
-                if (window.flutter_inappwebview) {
-                    window.flutter_inappwebview.callHandler('onContentChange', JSON.stringify(content));
+        // エディタの変更を監視してFlutter側に通知（Quillの初期化後に実行）
+        if (quill && typeof quill.on === 'function') {
+            quill.on('text-change', function(delta, oldDelta, source) {
+                if (source === 'user') {
+                    const content = {
+                        html: quill.root.innerHTML,
+                        delta: JSON.stringify(quill.getContents()),
+                        text: quill.getText()
+                    };
+                    
+                    if (window.flutter_inappwebview) {
+                        window.flutter_inappwebview.callHandler('onContentChange', JSON.stringify(content));
+                    }
                 }
-            }
-        });
-        
-        // 選択範囲変更の通知
-        quill.on('selection-change', function(range, oldRange, source) {
-            if (range) {
-                const selection = {
-                    index: range.index,
-                    length: range.length
-                };
-                
-                if (window.flutter_inappwebview) {
-                    window.flutter_inappwebview.callHandler('onSelectionChange', JSON.stringify(selection));
+            });
+            
+            // 選択範囲変更の通知
+            quill.on('selection-change', function(range, oldRange, source) {
+                if (range) {
+                    const selection = {
+                        index: range.index,
+                        length: range.length
+                    };
+                    
+                    if (window.flutter_inappwebview) {
+                        window.flutter_inappwebview.callHandler('onSelectionChange', JSON.stringify(selection));
+                    }
                 }
-            }
-        });
+            });
+        } else {
+            console.error('Quill editor not properly initialized');
+        }
 
         console.log('Quill.js editor with education tools initialized successfully');
     </script>
