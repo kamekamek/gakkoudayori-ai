@@ -194,10 +194,11 @@ async def generate_pdf(
 ## 🔧 開発環境・ツール
 
 ### 必須ツール
-- **Flutter**: 最新安定版 (現在 3.32.2)
+- **Flutter**: SDK 3.4.0+ (現在の環境設定)
 - **Python**: 3.9+
 - **Node.js**: 18+ (開発ツール用)
 - **Google Cloud CLI**: 最新版
+- **Firebase CLI**: 最新版 (`firebase --version` で確認)
 
 ### 推奨VS Code拡張
 - Dart/Flutter
@@ -315,11 +316,11 @@ px playwright test --headed
 
 ### 品質チェック統合
 ```bash
-# Frontend品質チェック
+# Frontend品質チェック (必須実行コマンド)
 cd frontend && flutter analyze && flutter test
 
-# Backend品質チェック
-cd backend/functions && flake8 . && pytest
+# Backend品質チェック  
+cd backend/functions && pytest && flake8 .
 
 # コードフォーマット確認
 cd frontend && dart format --set-exit-if-changed .
@@ -328,6 +329,9 @@ cd backend/functions && black --check .
 # テストカバレッジ
 cd frontend && flutter test --coverage
 cd backend/functions && pytest --cov=.
+
+# 全体品質チェック (CI/CD前の最終確認)
+cd frontend && flutter analyze && flutter test && cd ../backend/functions && pytest && flake8 .
 ```
 
 ### プロジェクト管理
