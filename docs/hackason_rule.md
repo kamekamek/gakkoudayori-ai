@@ -2,7 +2,7 @@
 
 ---
 
-**📚 ドキュメントナビ**: [📋 Index](index.md) | [📖 Overview](Archive/README.md) | [📝 要件定義](Archive/REQUIREMENT.md) | [🏗️ システム設計](Archive/system_design.md) | [📋 タスク](Archive/tasks.md) | [🧪 TDD](Archive/tdd_guide.md) | [🚀 将来拡張](Archive/future_extensions.md) | **📏 ハッカソンルール**
+**📚 ドキュメントナビ**: [📋 Index](archive/INDEX.md) | [📖 Overview](Archive/README.md) | [📝 要件定義](Archive/REQUIREMENT.md) | [🏗️ システム設計](Archive/system_design.md) | [📋 タスク](Archive/tasks.md) | [🧪 TDD](Archive/tdd_guide.md) | [🚀 将来拡張](Archive/future_extensions.md) | **📏 ハッカソンルール**
 
 ## 必須条件
 
