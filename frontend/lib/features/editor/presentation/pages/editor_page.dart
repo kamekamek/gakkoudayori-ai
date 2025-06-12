@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/quill_editor_widget.dart';
-import '../widgets/voice_input_widget.dart';
+// import '../widgets/voice_input_widget.dart'; // 一時無効化
 import 'package:provider/provider.dart';
 import '../../providers/quill_editor_provider.dart';
 
@@ -468,11 +468,42 @@ class _EditorPageState extends State<EditorPage> {
           width: 600,
           height: 500,
           padding: const EdgeInsets.all(20),
-          child: VoiceInputWidget(
-            onContentGenerated: (content) {
-              Navigator.of(context).pop();
-              _insertGeneratedContent(content);
-            },
+          // VoiceInputWidget一時無効化 - Web API対応中
+          child: Container(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.mic_off,
+                  size: 80,
+                  color: Colors.grey,
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  '音声入力機能は準備中です',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Web Audio APIの最新対応を行っています。\nしばらくお待ちください。',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('閉じる'),
+                ),
+              ],
+            ),
           ),
         ),
       ),
