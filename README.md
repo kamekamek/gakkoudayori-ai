@@ -159,7 +159,7 @@ cd backend && flake8 . && black --check . && pytest
 5. ✅ **Firebase統合** - 認証・ストレージ・リアルタイムDB
 6. ✅ **レスポンシブUI** - 3カラム・PC/タブレット/モバイル対応
 
-**📊 詳細な実装状況は [📋 tasks.md](docs/tasks.md) と [🎉 完了報告書](docs/PROJECT_COMPLETION_SUMMARY.md) を参照**
+**📊 詳細な実装状況は [📋 tasks.md](docs/tasks.md) と [🎉 完了報告書](docs/archive/PROJECT_COMPLETION_SUMMARY.md) を参照**
 
 ---
 
@@ -180,7 +180,7 @@ cd backend && flake8 . && black --check . && pytest
 
 | ドキュメント | 説明 | 対象 |
 |------------|------|------|
-| **[📋 Index](docs/index.md)** | エントリーポイント | 全員 |
+| **[📋 Index](docs/archive/INDEX.md)** | エントリーポイント | 全員 |
 | **[📖 Overview](docs/Archive/README.md)** | 全体ナビゲーション | 全員 |
 | **[📝 要件定義](docs/REQUIREMENT.md)** | 14機能要件・画面設計 | 全員 |
 | **[🏗️ システム設計](docs/Archive/system_design.md)** | API・データ・セキュリティ | 開発者 |
