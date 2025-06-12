@@ -49,7 +49,7 @@ def generate_constrained_html(
     max_output_tokens: int = 1024,
     top_k: int = 40,
     top_p: float = 0.8,
-    location: str = "us-central1"
+    location: str = "asia-northeast1"
 ) -> Dict[str, Any]:
     """
     指定された制約に基づいてHTMLコンテンツを生成します。

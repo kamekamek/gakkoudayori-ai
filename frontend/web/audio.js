@@ -235,8 +235,8 @@ class AudioRecorder {
                 console.log('⚠️ [AudioRecorder] onAudioRecorded コールバックが未設定');
             }
 
-            // デバッグ用：音声ファイルダウンロード（一時的に有効化）
-            this.downloadAudio(audioBlob);
+            // デバッグ用：音声ファイルダウンロード（無効化）
+            // this.downloadAudio(audioBlob);
         };
         reader.readAsDataURL(audioBlob);
     }
