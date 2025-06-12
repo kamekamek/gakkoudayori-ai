@@ -35,6 +35,7 @@ class HomePageState extends State<HomePage> {
   final AudioService _audioService = AudioService();
   bool _isRecording = false;
   String _recordedAudio = '';
+  String _transcribedText = '';
   String _statusMessage = 'Phase R2: 音声録音機能実装完了';
 
   @override
@@ -56,9 +57,18 @@ class HomePageState extends State<HomePage> {
     _audioService.setOnAudioRecorded((base64Audio) {
       setState(() {
         _recordedAudio = base64Audio;
-        _statusMessage = '✅ 録音完了！ (${base64Audio.length}文字)';
+        _statusMessage = '🎙️ 文字起こし処理中...';
       });
       print('🎵 録音された音声データサイズ: ${base64Audio.length}文字');
+    });
+
+    // 文字起こし完了コールバック
+    _audioService.setOnTranscriptionCompleted((transcript) {
+      setState(() {
+        _transcribedText = transcript;
+        _statusMessage = '✅ 文字起こし完了！次のステップ：AI生成';
+      });
+      print('📝 文字起こし結果: $transcript');
     });
   }
 
@@ -159,6 +169,58 @@ class HomePageState extends State<HomePage> {
                       Text(
                         '次のPhase: AI音声認識へ',
                         style: TextStyle(color: Colors.blue),
+                      ),
+                    ],
+                  ),
+                ),
+
+              // 文字起こし結果表示
+              if (_transcribedText.isNotEmpty)
+                Container(
+                  padding: EdgeInsets.all(16),
+                  margin: EdgeInsets.only(top: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.green[50],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.green[300]!),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '📝 文字起こし結果',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Colors.green[700],
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: Colors.green[200]!),
+                        ),
+                        child: Text(
+                          _transcribedText,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.black87,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        '🤖 次のステップ：Gemini AIで学級通信生成',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.green[600],
+                          fontStyle: FontStyle.italic,
+                        ),
                       ),
                     ],
                   ),

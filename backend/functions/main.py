@@ -136,6 +136,7 @@ def transcribe_audio():
         
         # パラメータ取得
         language_code = request.form.get('language', 'ja-JP')
+        sample_rate = int(request.form.get('sample_rate', '48000'))  # 48kHzをデフォルトに
         custom_contexts = request.form.get('user_dictionary', '')
         speech_contexts = custom_contexts.split(',') if custom_contexts else None
         
@@ -147,6 +148,7 @@ def transcribe_audio():
             audio_content=audio_content,
             credentials_path=credentials_path,
             language_code=language_code,
+            sample_rate_hertz=sample_rate,  # パラメータから設定
             speech_contexts=speech_contexts
         )
         

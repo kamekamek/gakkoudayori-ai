@@ -56,8 +56,8 @@ def transcribe_audio_file(
     audio_content: bytes,
     credentials_path: str,
     language_code: str = "ja-JP",
-    sample_rate_hertz: int = 16000,
-    encoding: speech.RecognitionConfig.AudioEncoding = speech.RecognitionConfig.AudioEncoding.LINEAR16,
+    sample_rate_hertz: int = None,  # サンプルレートを自動検出に変更
+    encoding: speech.RecognitionConfig.AudioEncoding = speech.RecognitionConfig.AudioEncoding.WEBM_OPUS,  # WEBM_OPUSに変更
     enable_enhanced: bool = True,
     enable_punctuation: bool = True,
     enable_word_timestamps: bool = True,
@@ -70,8 +70,8 @@ def transcribe_audio_file(
         audio_content (bytes): 音声ファイルのバイナリデータ
         credentials_path (str): サービスアカウントキーファイルのパス
         language_code (str): 言語コード (デフォルト: "ja-JP")
-        sample_rate_hertz (int): サンプリングレート (デフォルト: 16000)
-        encoding: 音声エンコーディング (デフォルト: LINEAR16)
+        sample_rate_hertz (int): サンプリングレート (デフォルト: 48000)
+        encoding: 音声エンコーディング (デフォルト: OGG_OPUS)
         enable_enhanced (bool): 強化モデル使用 (デフォルト: True)
         enable_punctuation (bool): 句読点自動挿入 (デフォルト: True)
         enable_word_timestamps (bool): 単語タイムスタンプ (デフォルト: True)
@@ -96,15 +96,20 @@ def transcribe_audio_file(
         audio = speech.RecognitionAudio(content=audio_content)
         
         # 認識設定
-        config = speech.RecognitionConfig(
-            encoding=encoding,
-            sample_rate_hertz=sample_rate_hertz,
-            language_code=language_code,
-            model='latest_long',  # 長時間音声用モデル
-            use_enhanced=enable_enhanced,
-            enable_automatic_punctuation=enable_punctuation,
-            enable_word_time_offsets=enable_word_timestamps,
-        )
+        config_params = {
+            'encoding': encoding,
+            'language_code': language_code,
+            'model': 'latest_long',  # 長時間音声用モデル
+            'use_enhanced': enable_enhanced,
+            'enable_automatic_punctuation': enable_punctuation,
+            'enable_word_time_offsets': enable_word_timestamps,
+        }
+        
+        # サンプルレートが指定されている場合のみ設定
+        if sample_rate_hertz is not None:
+            config_params['sample_rate_hertz'] = sample_rate_hertz
+        
+        config = speech.RecognitionConfig(**config_params)
         
         # 学校用語の認識精度向上設定
         if speech_contexts is None:
@@ -121,7 +126,35 @@ def transcribe_audio_file(
         
         # 音声認識実行
         logger.info(f"Starting speech recognition. Audio size: {len(audio_content)} bytes")
+        logger.info(f"Config: language={language_code}, sample_rate={sample_rate_hertz}, encoding={encoding}, model=latest_long")
+        
+        # 音声データの最初の部分をデバッグ用に確認
+        if len(audio_content) > 4:
+            header_bytes = audio_content[:4]
+            logger.info(f"Audio header bytes: {header_bytes.hex()}")
+        
         response = client.recognize(config=config, audio=audio)
+        
+        # レスポンスの詳細ログ
+        logger.info(f"Speech API response: {len(response.results)} results found")
+        
+        if len(response.results) == 0:
+            logger.warning("No speech results returned from API. Possible causes:")
+            logger.warning("1. Audio contains no recognizable speech")
+            logger.warning("2. Audio format is incompatible")
+            logger.warning("3. Audio is too short or too quiet")
+            logger.warning("4. Language code mismatch")
+            
+        for i, result in enumerate(response.results):
+            logger.info(f"Result {i}: {len(result.alternatives)} alternatives, is_final={result.is_final}")
+            if result.alternatives:
+                alt = result.alternatives[0]
+                logger.info(f"Alternative 0: transcript='{alt.transcript}', confidence={alt.confidence}")
+                logger.info(f"Transcript length: {len(alt.transcript)}")
+                if len(alt.transcript) == 0:
+                    logger.warning(f"Empty transcript in result {i} - confidence was {alt.confidence}")
+            else:
+                logger.warning(f"No alternatives found in result {i}")
         
         # 結果処理
         transcripts = []

@@ -2,6 +2,7 @@ import 'dart:html' as html;
 import 'dart:js' as js;
 import 'dart:js_util' as js_util;
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 /// 音声録音サービス (Phase R2)
 /// JavaScript の Web Audio API と連携
@@ -14,6 +15,7 @@ class AudioService {
   bool _isRecording = false;
   Function(String)? _onAudioRecorded;
   Function(bool)? _onRecordingStateChanged;
+  Function(String)? _onTranscriptionCompleted;
 
   bool get isRecording => _isRecording;
 
@@ -25,6 +27,11 @@ class AudioService {
   /// 録音状態変更時のコールバック設定
   void setOnRecordingStateChanged(Function(bool isRecording) callback) {
     _onRecordingStateChanged = callback;
+  }
+
+  /// 文字起こし完了時のコールバック設定
+  void setOnTranscriptionCompleted(Function(String transcript) callback) {
+    _onTranscriptionCompleted = callback;
   }
 
   /// JavaScript Bridge初期化
@@ -53,6 +60,9 @@ class AudioService {
 
         print('📊 音声データ: ${size}bytes, ${duration}ms');
         _onAudioRecorded?.call(audioData);
+
+        // 自動的に文字起こし処理を実行
+        _performSpeechToText(audioData);
       } catch (e) {
         print('❌ [AudioService] 音声データ処理エラー: $e');
       }
@@ -66,15 +76,36 @@ class AudioService {
     try {
       print('🎤 [AudioService] 録音開始要求');
 
-      // JavaScript側の録音開始関数を呼び出し（Promiseを適切に処理）
+      // JavaScript側の録音開始関数を呼び出し
+      print('🔗 [AudioService] JavaScript関数呼び出し開始');
       final jsResult = js.context.callMethod('startRecording');
-      final result = await js_util.promiseToFuture<bool>(jsResult);
+      print('🔗 [AudioService] Promise待機開始');
+
+      // JavaScript関数の戻り値をチェック
+      if (jsResult == null) {
+        print('❌ [AudioService] JavaScript関数が null を返しました');
+        return false;
+      }
+
+      // Promiseかどうか確認
+      bool result;
+      if (js_util.hasProperty(jsResult, 'then')) {
+        // Promiseの場合
+        print('🔗 [AudioService] Promise検出 - 非同期待機中');
+        result = await js_util.promiseToFuture<bool>(jsResult);
+      } else {
+        // 同期的な戻り値の場合
+        print('🔗 [AudioService] 同期的戻り値検出');
+        result = jsResult as bool;
+      }
+
+      print('🔗 [AudioService] 最終結果: $result');
 
       if (result == true) {
         print('✅ [AudioService] 録音開始成功');
         return true;
       } else {
-        print('❌ [AudioService] 録音開始失敗');
+        print('❌ [AudioService] 録音開始失敗 - 戻り値: $result');
         return false;
       }
     } catch (e) {
@@ -144,6 +175,7 @@ class AudioService {
     _isRecording = false;
     _onAudioRecorded = null;
     _onRecordingStateChanged = null;
+    _onTranscriptionCompleted = null;
 
     // JavaScript側のクリーンアップ
     try {
@@ -151,6 +183,60 @@ class AudioService {
       print('🧹 [AudioService] リソース解放完了');
     } catch (e) {
       print('⚠️ [AudioService] クリーンアップエラー: $e');
+    }
+  }
+
+  /// 音声データを文字起こしAPIに送信
+  Future<void> _performSpeechToText(String base64AudioData) async {
+    try {
+      print('🎙️ [AudioService] 文字起こし処理開始...');
+
+      // Base64データをデコードしてバイナリデータに変換
+      final audioBytes = base64Decode(base64AudioData);
+      print('📄 [AudioService] 音声データサイズ: ${audioBytes.length} bytes');
+
+      // バックエンドAPIのエンドポイント（本番環境では適切なURLに変更）
+      const apiUrl = 'http://localhost:8080/api/v1/ai/transcribe';
+
+      // マルチパートフォームデータとして送信
+      final request = http.MultipartRequest('POST', Uri.parse(apiUrl));
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'audio_file',
+          audioBytes,
+          filename: 'recording.webm',
+        ),
+      );
+      request.fields['language'] = 'ja-JP';
+      request.fields['sample_rate'] = '48000'; // WebM Opus形式に合わせて48kHzに変更
+      request.fields['user_dictionary'] = '学級通信,運動会,学習発表会,子どもたち,先生,授業';
+
+      print('📤 [AudioService] Speech-to-Text API呼び出し中...');
+      final response = await request.send();
+      final responseData = await response.stream.bytesToString();
+
+      if (response.statusCode == 200) {
+        final jsonData = jsonDecode(responseData);
+        if (jsonData['success'] == true) {
+          final transcript = jsonData['data']['transcript'] as String;
+          final confidence = jsonData['data']['confidence'] as double;
+
+          print('✅ [AudioService] 文字起こし成功');
+          print('📝 [AudioService] 結果: $transcript');
+          print(
+              '🎯 [AudioService] 信頼度: ${(confidence * 100).toStringAsFixed(1)}%');
+
+          // 文字起こし完了をコールバックで通知
+          _onTranscriptionCompleted?.call(transcript);
+        } else {
+          print('❌ [AudioService] 文字起こしAPIエラー: ${jsonData['error']}');
+        }
+      } else {
+        print('❌ [AudioService] HTTPエラー: ${response.statusCode}');
+        print('📄 [AudioService] レスポンス: $responseData');
+      }
+    } catch (e) {
+      print('❌ [AudioService] 文字起こし処理エラー: $e');
     }
   }
 }

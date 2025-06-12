@@ -34,7 +34,7 @@ class AudioRecorder {
         try {
             this.stream = await navigator.mediaDevices.getUserMedia({ 
                 audio: {
-                    sampleRate: 16000,    // Speech-to-Text最適化
+                    sampleRate: 16000,    // Speech-to-Text最適化（16kHzに統一）
                     channelCount: 1,      // モノラル
                     echoCancellation: true,
                     noiseSuppression: true
@@ -117,25 +117,79 @@ class AudioRecorder {
                 const audioBlob = new Blob(this.audioChunks, { type: actualMimeType });
                 this.onRecordingComplete(audioBlob);
             };
+            
+            // 音声レベル監視開始
+            this.startAudioLevelMonitoring();
 
             // 録音開始
             this.mediaRecorder.start();
             this.isRecording = true;
             console.log('🎤 録音開始成功 - 新しい状態:', this.isRecording);
             
-            // Flutter側に通知
-            if (window.flutter_inappwebview) {
-                window.flutter_inappwebview.callHandler('onRecordingStarted');
-            }
+            // Flutter側に通知（正しいコールバック関数を使用）
+            if (window.onRecordingStarted) {
+                            console.log('🔗 [AudioRecorder] Flutter側に録音開始通知送信');
+            window.onRecordingStarted();
+        } else {
+            console.log('⚠️ [AudioRecorder] onRecordingStarted コールバックが未設定');
+        }
 
-            console.log('✅ startRecording: true を返します');
-            return true;
+        // 音声レベル監視開始
+        this.startAudioLevelMonitoring();
+
+        console.log('✅ startRecording: true を返します');
+        return true;
         } catch (error) {
             console.error('❌ 録音開始エラー:', error);
             this.isRecording = false; // エラー時は確実にfalseに戻す
             console.log('❌ startRecording: false を返します');
             return false;
         }
+    }
+
+    // 音声レベル監視開始
+    startAudioLevelMonitoring() {
+        if (!this.stream) return;
+        
+        // オーディオコンテキスト作成
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioContext.createMediaStreamSource(this.stream);
+        const analyser = audioContext.createAnalyser();
+        
+        analyser.fftSize = 512;  // より高精度に
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        
+        source.connect(analyser);
+        
+        console.log('🎙️ 音声レベル監視開始（感度アップ版）');
+        
+        // 音声レベル監視ループ
+        const monitorLevel = () => {
+            if (!this.isRecording) return;
+            
+            analyser.getByteFrequencyData(dataArray);
+            
+            // 平均音量計算
+            let sum = 0;
+            for (let i = 0; i < bufferLength; i++) {
+                sum += dataArray[i];
+            }
+            const average = sum / bufferLength;
+            
+            // 音声レベルをコンソールに表示（感度を大幅アップ）
+            if (average > 1) {  // 閾値を20→1に下げて超敏感に
+                const level = Math.min(5, Math.floor(average / 10));  // 30→10に変更
+                const bars = '█'.repeat(level) + '░'.repeat(5 - level);
+                console.log(`🎙️ 音声レベル: ${bars} (${Math.round(average)}) ${average > 15 ? '🔊' : average > 5 ? '🔉' : '🔈'}`);
+            } else if (average > 0.1) {
+                console.log(`🎙️ 微弱音声検出: ${Math.round(average * 10)/10} (マイクはアクティブ)`);
+            }
+            
+            setTimeout(monitorLevel, 300); // 0.3秒間隔で頻繁チェック
+        };
+        
+        monitorLevel();
     }
 
     // 録音停止
@@ -149,9 +203,12 @@ class AudioRecorder {
         this.isRecording = false;
         console.log('⏹️ 録音停止');
 
-        // Flutter側に通知
-        if (window.flutter_inappwebview) {
-            window.flutter_inappwebview.callHandler('onRecordingStopped');
+        // Flutter側に通知（正しいコールバック関数を使用）
+        if (window.onRecordingStopped) {
+            console.log('🔗 [AudioRecorder] Flutter側に録音停止通知送信');
+            window.onRecordingStopped();
+        } else {
+            console.log('⚠️ [AudioRecorder] onRecordingStopped コールバックが未設定');
         }
 
         return true;
@@ -166,16 +223,19 @@ class AudioRecorder {
         reader.onload = () => {
             const audioBase64 = reader.result.split(',')[1]; // data:audio/wav;base64, を除去
             
-            // Flutter側に音声データを送信
-            if (window.flutter_inappwebview) {
-                window.flutter_inappwebview.callHandler('onAudioRecorded', {
+            // Flutter側に音声データを送信（正しいコールバック関数を使用）
+            if (window.onAudioRecorded) {
+                console.log('🔗 [AudioRecorder] Flutter側に音声データ送信');
+                window.onAudioRecorded({
                     audioData: audioBase64,
                     size: audioBlob.size,
                     duration: this.getRecordingDuration()
                 });
+            } else {
+                console.log('⚠️ [AudioRecorder] onAudioRecorded コールバックが未設定');
             }
 
-            // デバッグ用：音声ファイルダウンロード
+            // デバッグ用：音声ファイルダウンロード（一時的に有効化）
             this.downloadAudio(audioBlob);
         };
         reader.readAsDataURL(audioBlob);
@@ -232,8 +292,12 @@ window.startRecording = async () => {
         const result = await window.audioRecorder.startRecording();
         console.log('🔗 startRecording実行完了 - result:', result);
         console.log('🔗 現在の録音状態（Bridge呼び出し後）:', window.audioRecorder.isRecording);
-        console.log('🔗 JavaScript Bridge: startRecording result =', result);
-        return result;
+        
+        // 確実にboolean値を返す
+        const finalResult = result === true;
+        console.log('🔗 JavaScript Bridge: startRecording final result =', finalResult);
+        
+        return finalResult;
     } catch (error) {
         console.error('❌ JavaScript Bridge: startRecording error =', error);
         return false;
