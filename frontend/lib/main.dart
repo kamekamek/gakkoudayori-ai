@@ -50,6 +50,7 @@ class HomePageState extends State<HomePage> {
   String _textInput = ''; // 文字入力用
   bool _isProcessing = false; // 処理中フラグ
   bool _showTranscriptionConfirm = false; // 文字起こし確認表示
+  bool _isGenerating = false; // 🔥 AI生成重複防止フラグ追加
 
   final TextEditingController _textController = TextEditingController();
   AIGenerationResult? _aiResult;
@@ -79,16 +80,15 @@ class HomePageState extends State<HomePage> {
       print('🎵 録音された音声データサイズ: ${base64Audio.length}文字');
     });
 
-    // 文字起こし完了コールバック
+    // 文字起こし完了コールバック（🔥 自動AI生成を削除）
     _audioService.setOnTranscriptionCompleted((transcript) {
       setState(() {
         _transcribedText = transcript;
         _textController.text = transcript; // テキストボックスに文字起こし結果を表示
-        _statusMessage = '✅ 文字起こし完了！内容を確認して送信してください';
+        _statusMessage = '✅ 文字起こし完了！内容を確認して「学級通信を作成する」ボタンを押してください';
+        _showTranscriptionConfirm = true; // 確認画面表示
       });
       print('📝 文字起こし結果: $transcript');
-
-      // 自動的にAI生成を開始は削除 - ユーザーが送信ボタンを押すまで待機
     });
   }
 
@@ -98,37 +98,61 @@ class HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  // AI学級通信生成
-  Future<void> _generateNewsletter(String transcript) async {
-    try {
-      setState(() {
-        _statusMessage = '🤖 AI文章生成中...';
-        _isProcessing = true;
-      });
+  // 🔥 AI学級通信生成（重複防止強化版）
+  Future<void> _generateNewsletter() async {
+    // 重複実行防止チェック
+    if (_isGenerating) {
+      print('⚠️ AI生成処理中のため、重複実行をスキップ');
+      return;
+    }
 
+    if (_isProcessing) {
+      print('⚠️ 他の処理中のため、AI生成をスキップ');
+      return;
+    }
+
+    final inputText = _textController.text.trim();
+    if (inputText.isEmpty) {
+      setState(() {
+        _statusMessage = '❌ 入力テキストが空です。音声録音または文字入力をしてください。';
+      });
+      return;
+    }
+
+    // 生成処理開始
+    _isGenerating = true; // 🔥 生成フラグON
+    setState(() {
+      _isProcessing = true;
+      _statusMessage = '🤖 AI生成中...（約5秒）';
+    });
+
+    print('🤖 AI生成開始 - テキスト: $inputText...');
+
+    try {
       final result = await _aiService.generateNewsletter(
-        transcribedText: transcript,
-        templateType: 'daily_report',
-        includeGreeting: true,
-        targetAudience: 'parents',
-        season: 'auto',
+        transcribedText: inputText,
       );
 
       setState(() {
         _aiResult = result;
         _generatedHtml = result.newsletterHtml;
-        _statusMessage = '✅ 学級通信生成完了！(${result.qualityScore})';
-        _isProcessing = false;
+        _statusMessage = '🎉 AI生成完了！HTMLプレビューを確認してください';
+        _showTranscriptionConfirm = false; // 確認画面を非表示
       });
 
       print(
           '🎉 AI生成完了 - 文字数: ${result.characterCount}, 時間: ${result.processingTimeDisplay}');
     } catch (e) {
       setState(() {
-        _statusMessage = '❌ AI生成に失敗しました: $e';
-        _isProcessing = false;
+        _statusMessage = '❌ AI生成でエラーが発生しました: $e';
       });
       print('❌ AI生成エラー: $e');
+    } finally {
+      // 必ず実行される処理
+      setState(() {
+        _isProcessing = false;
+      });
+      _isGenerating = false; // 🔥 生成フラグOFF
     }
   }
 
@@ -143,7 +167,7 @@ class HomePageState extends State<HomePage> {
     });
 
     // 同じ文字起こしテキストで再生成
-    await _generateNewsletter(_transcribedText);
+    await _generateNewsletter();
   }
 
   // HTMLファイルダウンロード (Phase R5)
@@ -241,19 +265,19 @@ $_generatedHtml
                   MediaQuery.of(context).padding.bottom,
             ),
             child: Padding(
-              padding: EdgeInsets.all(32.0),
+              padding: EdgeInsets.all(16.0),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
-                  SizedBox(height: 20),
+                  SizedBox(height: 10),
 
                   // シンプルなタイトル
                   Text(
                     '🎓 学級通信作成',
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                     textAlign: TextAlign.center,
                   ),
-                  SizedBox(height: 40),
+                  SizedBox(height: 20),
 
                   // 入力方法選択（シンプル化）
                   Row(
@@ -261,30 +285,30 @@ $_generatedHtml
                     children: [
                       // 音声入力（中央寄せ）
                       SizedBox(
-                        width: 300,
+                        width: 280,
                         child: ElevatedButton.icon(
                           onPressed: _toggleRecording,
                           icon: Icon(_isRecording ? Icons.stop : Icons.mic,
-                              size: 32),
+                              size: 28),
                           label: Text(_isRecording ? '録音停止' : '音声で入力'),
                           style: ElevatedButton.styleFrom(
-                            minimumSize: Size(double.infinity, 80),
+                            minimumSize: Size(double.infinity, 70),
                             backgroundColor:
                                 _isRecording ? Colors.red : Colors.blue,
                             foregroundColor: Colors.white,
                             textStyle: TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold),
+                                fontSize: 16, fontWeight: FontWeight.bold),
                           ),
                         ),
                       ),
                     ],
                   ),
 
-                  SizedBox(height: 30),
+                  SizedBox(height: 20),
 
                   // ステータス表示（シンプル化）
                   Container(
-                    padding: EdgeInsets.all(20),
+                    padding: EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: Colors.grey[100],
                       borderRadius: BorderRadius.circular(12),
@@ -292,7 +316,7 @@ $_generatedHtml
                     child: Text(
                       _statusMessage,
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 14,
                         color: Colors.grey[700],
                         fontWeight: FontWeight.w500,
                       ),
@@ -300,11 +324,11 @@ $_generatedHtml
                     ),
                   ),
 
-                  SizedBox(height: 30),
+                  SizedBox(height: 20),
 
                   // 文字入力フィールド（常時表示）
                   Container(
-                    padding: EdgeInsets.all(16),
+                    padding: EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.blue[300]!),
                       borderRadius: BorderRadius.circular(12),
@@ -315,24 +339,24 @@ $_generatedHtml
                         Text(
                           '📝 内容を入力してください',
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 14,
                             fontWeight: FontWeight.bold,
                             color: Colors.blue[700],
                           ),
                         ),
-                        SizedBox(height: 12),
+                        SizedBox(height: 8),
                         TextField(
                           controller: _textController,
-                          maxLines: 6,
+                          maxLines: 4,
                           decoration: InputDecoration(
                             hintText:
                                 '音声録音または文字入力で学級通信の内容を入力...\n例：今日は避難訓練がありました。',
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            contentPadding: EdgeInsets.all(16),
+                            contentPadding: EdgeInsets.all(12),
                           ),
-                          style: TextStyle(fontSize: 16),
+                          style: TextStyle(fontSize: 14),
                           onChanged: (value) {
                             setState(() {
                               _textInput = value;
@@ -344,23 +368,22 @@ $_generatedHtml
                     ),
                   ),
 
-                  SizedBox(height: 30),
+                  SizedBox(height: 20),
 
                   // 送信ボタン（明確化）
                   if (_textController.text.isNotEmpty && !_isProcessing)
                     Container(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: () =>
-                            _generateNewsletter(_textController.text),
-                        icon: Icon(Icons.send, size: 24),
+                        onPressed: () => _generateNewsletter(),
+                        icon: Icon(Icons.send, size: 20),
                         label: Text('学級通信を作成する'),
                         style: ElevatedButton.styleFrom(
-                          minimumSize: Size(double.infinity, 60),
+                          minimumSize: Size(double.infinity, 50),
                           backgroundColor: Colors.orange[600],
                           foregroundColor: Colors.white,
                           textStyle: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
+                              fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ),
@@ -368,14 +391,14 @@ $_generatedHtml
                   // 処理中表示
                   if (_isProcessing)
                     Container(
-                      padding: EdgeInsets.all(20),
+                      padding: EdgeInsets.all(16),
                       child: Column(
                         children: [
                           CircularProgressIndicator(),
-                          SizedBox(height: 12),
+                          SizedBox(height: 8),
                           Text('AI が学級通信を作成中...',
                               style: TextStyle(
-                                  fontSize: 16, color: Colors.orange[700])),
+                                  fontSize: 14, color: Colors.orange[700])),
                         ],
                       ),
                     ),
