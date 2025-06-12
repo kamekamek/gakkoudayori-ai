@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:web/web.dart' as web;
 import 'dart:convert';
+import 'dart:ui_web' as ui_web;
 import 'services/audio_service.dart';
 import 'services/ai_service.dart';
+import 'widgets/html_preview_widget.dart';
 
 /// 学級通信AI - 音声入力システム（リビルド版）
 void main() {
@@ -118,6 +120,20 @@ class HomePageState extends State<HomePage> {
     }
   }
 
+  // AI学級通信再生成
+  Future<void> _regenerateNewsletter() async {
+    if (_transcribedText.isEmpty) return;
+
+    setState(() {
+      _statusMessage = '🔄 再生成中...';
+      _aiResult = null;
+      _generatedHtml = '';
+    });
+
+    // 同じ文字起こしテキストで再生成
+    await _generateNewsletter(_transcribedText);
+  }
+
   // HTMLファイルダウンロード (Phase R5)
   void _downloadHtml() {
     if (_generatedHtml.isEmpty) return;
@@ -203,18 +219,19 @@ $_generatedHtml
         title: Text('🎤 学級通信AI - 音声入力システム'),
         backgroundColor: Colors.blue,
       ),
-      body: Center(
+      body: SingleChildScrollView(
         child: Padding(
           padding: EdgeInsets.all(32.0),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.start,
             children: [
+              SizedBox(height: 20),
               Text(
                 '音声→AI→学級通信の自動生成',
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
-              SizedBox(height: 40),
+              SizedBox(height: 30),
 
               // Phase R2: 録音ボタン実装
               ElevatedButton.icon(
@@ -405,18 +422,53 @@ $_generatedHtml
                         ),
                       ),
 
-                      SizedBox(height: 12),
+                      SizedBox(height: 16),
 
-                      // ダウンロードボタン
-                      ElevatedButton.icon(
-                        onPressed: _downloadHtml,
-                        icon: Icon(Icons.download),
-                        label: Text('📄 学級通信をダウンロード'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.purple[600],
-                          foregroundColor: Colors.white,
-                          minimumSize: Size(double.infinity, 45),
+                      // HTMLプレビュー表示
+                      Text(
+                        '📄 学級通信プレビュー',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Colors.purple[700],
                         ),
+                      ),
+                      SizedBox(height: 8),
+                      HtmlPreviewWidget(
+                        htmlContent: _generatedHtml,
+                        height: 300,
+                      ),
+
+                      SizedBox(height: 16),
+
+                      // アクションボタン
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () => _regenerateNewsletter(),
+                              icon: Icon(Icons.refresh),
+                              label: Text('🔄 再生成'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.orange[600],
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            flex: 2,
+                            child: ElevatedButton.icon(
+                              onPressed: _downloadHtml,
+                              icon: Icon(Icons.download),
+                              label: Text('📄 ダウンロード'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.purple[600],
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
