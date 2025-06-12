@@ -5,12 +5,13 @@ import 'dart:ui_web' as ui_web;
 import 'services/audio_service.dart';
 import 'services/ai_service.dart';
 import 'widgets/html_preview_widget.dart';
+import 'widgets/quill_editor_widget.dart';
 import 'package:flutter/services.dart';
 import 'dart:html' as html;
 import 'dart:js_interop' as js_interop;
 import 'package:http/http.dart' as http;
 
-/// 学級通信AI - 音声入力システム（リビルド版）
+/// 学級通信AI - 音声入力システム（完全版）
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(YutoriKyoshituApp());
@@ -22,7 +23,7 @@ class YutoriKyoshituApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '学級通信AI',
+      title: '学級通信エディタ',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
@@ -44,13 +45,11 @@ class HomePageState extends State<HomePage> {
   final AudioService _audioService = AudioService();
   final AIService _aiService = AIService();
   bool _isRecording = false;
-  String _recordedAudio = '';
   String _transcribedText = '';
   String _generatedHtml = '';
-  String _textInput = ''; // 文字入力用
-  bool _isProcessing = false; // 処理中フラグ
-  bool _showTranscriptionConfirm = false; // 文字起こし確認表示
-  bool _isGenerating = false; // 🔥 AI生成重複防止フラグ追加
+  bool _isProcessing = false;
+  bool _isGenerating = false;
+  bool _showEditor = false; // プレビュー(false) / エディター(true) 切り替え
 
   final TextEditingController _textController = TextEditingController();
   AIGenerationResult? _aiResult;
@@ -74,21 +73,17 @@ class HomePageState extends State<HomePage> {
     // 音声録音完了コールバック
     _audioService.setOnAudioRecorded((base64Audio) {
       setState(() {
-        _recordedAudio = base64Audio;
         _statusMessage = '🎙️ 文字起こし処理中...';
       });
-      print('🎵 録音された音声データサイズ: ${base64Audio.length}文字');
     });
 
-    // 文字起こし完了コールバック（🔥 自動AI生成を削除）
+    // 文字起こし完了コールバック
     _audioService.setOnTranscriptionCompleted((transcript) {
       setState(() {
         _transcribedText = transcript;
-        _textController.text = transcript; // テキストボックスに文字起こし結果を表示
-        _statusMessage = '✅ 文字起こし完了！内容を確認して「学級通信を作成する」ボタンを押してください';
-        _showTranscriptionConfirm = true; // 確認画面表示
+        _textController.text = transcript;
+        _statusMessage = '✅ 文字起こし完了！「学級通信を作成する」ボタンを押してください';
       });
-      print('📝 文字起こし結果: $transcript');
     });
   }
 
@@ -98,16 +93,10 @@ class HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  // 🔥 AI学級通信生成（重複防止強化版）
+  // AI学級通信生成
   Future<void> _generateNewsletter() async {
-    // 重複実行防止チェック（デバッグログ強化）
-    if (_isGenerating) {
-      print('⚠️ [DUPLICATE_PREVENTION] AI生成処理中のため、重複実行をスキップ');
-      return;
-    }
-
-    if (_isProcessing) {
-      print('⚠️ [DUPLICATE_PREVENTION] 他の処理中のため、AI生成をスキップ');
+    if (_isGenerating || _isProcessing) {
+      print('⚠️ [DUPLICATE_PREVENTION] 既に処理中のため生成をスキップ');
       return;
     }
 
@@ -119,17 +108,11 @@ class HomePageState extends State<HomePage> {
       return;
     }
 
-    // 生成処理開始（即座にフラグ設定）
-    print('🚀 [GENERATE_START] AI生成開始要求 - _isGenerating: $_isGenerating');
-    _isGenerating = true; // 🔥 生成フラグON（setStateより先に設定）
-
+    _isGenerating = true;
     setState(() {
       _isProcessing = true;
       _statusMessage = '🤖 AI生成中...（約5秒）';
     });
-
-    print(
-        '🤖 [GENERATE_EXEC] AI生成実行開始 - テキスト: $inputText... (Flag: $_isGenerating)');
 
     try {
       final result = await _aiService.generateNewsletter(
@@ -138,34 +121,225 @@ class HomePageState extends State<HomePage> {
 
       setState(() {
         _aiResult = result;
-        _generatedHtml = result.newsletterHtml;
-        _statusMessage = '🎉 AI生成完了！HTMLプレビューを確認してください';
-        _showTranscriptionConfirm = false; // 確認画面を非表示
+        _generatedHtml = _createStylishHtml(result.newsletterHtml);
+        _statusMessage = '🎉 AI生成完了！プレビューまたはエディターで確認してください';
+        _showEditor = false; // 生成完了後はプレビューを表示
       });
-
-      print(
-          '🎉 [GENERATE_SUCCESS] AI生成完了 - 文字数: ${result.characterCount}, 時間: ${result.processingTimeDisplay}');
     } catch (e) {
       setState(() {
         _statusMessage = '❌ AI生成でエラーが発生しました: $e';
       });
-      print('❌ [GENERATE_ERROR] AI生成エラー: $e');
     } finally {
-      // 必ず実行される処理
-      print('🔄 [GENERATE_CLEANUP] 生成処理完了、フラグリセット');
       setState(() {
         _isProcessing = false;
       });
-      _isGenerating = false; // 🔥 生成フラグOFF
-      print('✅ [GENERATE_END] フラグリセット完了 - _isGenerating: $_isGenerating');
+      _isGenerating = false;
     }
+  }
+
+  // おしゃれなHTMLテンプレートを作成
+  String _createStylishHtml(String content) {
+    final now = DateTime.now();
+    final dateStr = '${now.year}年${now.month}月${now.day}日';
+
+    return '''
+<div class="newsletter-container">
+  <header class="newsletter-header">
+    <div class="school-info">
+      <h1 class="school-name">○○小学校</h1>
+      <div class="class-info">○年○組 学級通信</div>
+    </div>
+    <div class="date-info">
+      <div class="date">${dateStr}</div>
+      <div class="season-badge ${_getSeason()}">${_getSeasonText()}</div>
+    </div>
+  </header>
+  
+  <main class="newsletter-content">
+    ${_cleanHtmlContent(content)}
+  </main>
+  
+  <footer class="newsletter-footer">
+    <div class="footer-content">
+      <div class="contact-info">
+        <p>何かご質問がございましたら、お気軽にお声がけください。</p>
+      </div>
+      <div class="signature">
+        <p>担任：○○　○○</p>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<style>
+.newsletter-container {
+  max-width: 800px;
+  margin: 0 auto;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  overflow: hidden;
+  font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif;
+}
+
+.newsletter-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.school-name {
+  font-size: 24px;
+  font-weight: bold;
+  margin: 0;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.class-info {
+  font-size: 16px;
+  margin-top: 5px;
+  opacity: 0.9;
+}
+
+.date-info {
+  text-align: right;
+}
+
+.date {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.season-badge {
+  padding: 5px 15px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.season-badge.spring {
+  background: linear-gradient(45deg, #ff9a9e 0%, #fecfef 100%);
+}
+
+.season-badge.summer {
+  background: linear-gradient(45deg, #a8edea 0%, #fed6e3 100%);
+}
+
+.season-badge.autumn {
+  background: linear-gradient(45deg, #ffecd2 0%, #fcb69f 100%);
+}
+
+.season-badge.winter {
+  background: linear-gradient(45deg, #e0c3fc 0%, #9bb5ff 100%);
+}
+
+.newsletter-content {
+  padding: 40px;
+  background: white;
+  line-height: 1.8;
+}
+
+.newsletter-content h1 {
+  color: #2c3e50;
+  border-bottom: 3px solid #3498db;
+  padding-bottom: 10px;
+  margin-bottom: 20px;
+}
+
+.newsletter-content h2 {
+  color: #34495e;
+  margin-top: 30px;
+  margin-bottom: 15px;
+}
+
+.newsletter-content h3 {
+  color: #7f8c8d;
+  margin-top: 25px;
+  margin-bottom: 12px;
+}
+
+.newsletter-content p {
+  margin-bottom: 15px;
+  color: #2c3e50;
+}
+
+.newsletter-content ul, .newsletter-content ol {
+  margin-bottom: 20px;
+  padding-left: 30px;
+}
+
+.newsletter-content li {
+  margin-bottom: 8px;
+  color: #34495e;
+}
+
+.newsletter-footer {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  padding: 25px 40px;
+}
+
+.footer-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.contact-info p, .signature p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.signature {
+  text-align: right;
+  font-weight: bold;
+}
+
+@media print {
+  .newsletter-container {
+    box-shadow: none;
+    background: white;
+  }
+  
+  .newsletter-header {
+    background: #667eea !important;
+    -webkit-print-color-adjust: exact;
+    color-adjust: exact;
+  }
+}
+</style>
+''';
+  }
+
+  String _getSeason() {
+    final month = DateTime.now().month;
+    if (month >= 3 && month <= 5) return 'spring';
+    if (month >= 6 && month <= 8) return 'summer';
+    if (month >= 9 && month <= 11) return 'autumn';
+    return 'winter';
+  }
+
+  String _getSeasonText() {
+    final month = DateTime.now().month;
+    if (month >= 3 && month <= 5) return '春';
+    if (month >= 6 && month <= 8) return '夏';
+    if (month >= 9 && month <= 11) return '秋';
+    return '冬';
+  }
+
+  String _cleanHtmlContent(String content) {
+    return content.replaceAll('```html', '').replaceAll('```', '').trim();
   }
 
   // AI学級通信再生成
   Future<void> _regenerateNewsletter() async {
-    if (_transcribedText.isEmpty) return;
+    if (_transcribedText.isEmpty && _textController.text.trim().isEmpty) return;
 
-    // 重複防止チェック
     if (_isGenerating || _isProcessing) {
       print('⚠️ [REGENERATE_SKIP] 既に処理中のため再生成をスキップ');
       return;
@@ -177,413 +351,573 @@ class HomePageState extends State<HomePage> {
       _generatedHtml = '';
     });
 
-    print('🔄 [REGENERATE_START] 再生成開始');
-    // 同じ文字起こしテキストで再生成
     await _generateNewsletter();
   }
 
-  // HTMLファイルダウンロード (Phase R5)
+  // PDFダウンロード機能
+  Future<void> _downloadPdf() async {
+    if (_generatedHtml.isEmpty) {
+      setState(() {
+        _statusMessage = '❌ 生成されたコンテンツがありません';
+      });
+      return;
+    }
+
+    setState(() {
+      _statusMessage = '📄 PDF生成中...';
+    });
+
+    try {
+      // HTML to PDF変換用のJavaScriptライブラリを動的に読み込み
+      final script = html.ScriptElement()
+        ..src =
+            'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'
+        ..async = true;
+
+      html.document.head!.append(script);
+
+      // スクリプト読み込み完了を待つ
+      await script.onLoad.first;
+
+      // jsPDFを使用してPDF生成（シンプルなJavaScript実行）
+      final textContent =
+          _textController.text.replaceAll('\n', ' ').replaceAll('"', '\\"');
+      final fileName = '学級通信_${DateTime.now().toString().substring(0, 10)}.pdf';
+
+      // JavaScriptコードを文字列として作成し、script要素で実行
+      final jsCode = '''
+        if (typeof window.jspdf !== 'undefined') {
+          const { jsPDF } = window.jspdf;
+          const doc = new jsPDF();
+          
+          const text = "$textContent";
+          const lines = doc.splitTextToSize(text, 180);
+          
+          doc.setFont('helvetica');
+          doc.setFontSize(16);
+          doc.text('学級通信', 20, 20);
+          
+          doc.setFontSize(12);
+          doc.text(lines, 20, 40);
+          
+          doc.save('$fileName');
+        } else {
+          console.error('jsPDF not loaded yet');
+        }
+      ''';
+
+      // script要素でJavaScriptを実行
+      final scriptElement = html.ScriptElement()..text = jsCode;
+      html.document.head!.append(scriptElement);
+
+      // 実行後にscript要素を削除
+      Future.delayed(Duration(milliseconds: 100), () {
+        scriptElement.remove();
+      });
+
+      setState(() {
+        _statusMessage = '📄 PDFファイルをダウンロードしました';
+      });
+    } catch (e) {
+      print('PDF生成エラー: $e');
+      // PDFが失敗した場合はHTMLダウンロード
+      _downloadHtml();
+    }
+  }
+
+  // HTMLファイルダウンロード
   void _downloadHtml() {
     if (_generatedHtml.isEmpty) return;
 
     try {
-      // HTMLファイル生成
-      final htmlContent = '''
+      final fullHtml = '''
 <!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>学級通信 - ${DateTime.now().toString().substring(0, 10)}</title>
-    <style>
-        body { 
-            font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif; 
-            max-width: 800px; 
-            margin: 0 auto; 
-            padding: 20px; 
-            line-height: 1.6;
-        }
-        h1, h2, h3 { color: #2c3e50; }
-        .header { text-align: center; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 20px; }
-        .footer { text-align: center; margin-top: 30px; font-size: 0.9em; color: #7f8c8d; }
-        @media print { body { margin: 0; } }
-    </style>
 </head>
 <body>
-$_generatedHtml
-    <div class="footer">
-        <p>作成日: ${DateTime.now().toString().substring(0, 16)} | 学級通信AI生成システム</p>
-    </div>
+    $_generatedHtml
 </body>
-</html>''';
+</html>
+''';
 
-      // HTMLファイルダウンロード (Web Streams API対応)
-      final bytes = utf8.encode(htmlContent);
-      final anchor = web.HTMLAnchorElement();
-      anchor.href =
-          'data:text/html;charset=utf-8,${Uri.encodeComponent(htmlContent)}';
-      anchor.download =
-          '学級通信_${DateTime.now().toString().substring(0, 10)}.html';
-      anchor.click();
+      final bytes = utf8.encode(fullHtml);
+      final blob = html.Blob([bytes], 'text/html');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+
+      final anchor = html.AnchorElement(href: url)
+        ..setAttribute('download',
+            '学級通信_${DateTime.now().toString().substring(0, 10)}.html')
+        ..click();
+
+      html.Url.revokeObjectUrl(url);
 
       setState(() {
-        _statusMessage = '📄 学級通信をダウンロードしました！';
+        _statusMessage = '📄 HTMLファイルをダウンロードしました';
       });
-
-      print('✅ HTMLダウンロード成功');
     } catch (e) {
       setState(() {
-        _statusMessage = '❌ ダウンロードに失敗しました: $e';
+        _statusMessage = '❌ ダウンロードエラー: $e';
       });
-      print('❌ ダウンロードエラー: $e');
-    }
-  }
-
-  // 録音開始/停止ボタンハンドラ
-  void _toggleRecording() async {
-    if (_isRecording) {
-      // 録音停止
-      final success = await _audioService.stopRecording();
-      if (!success) {
-        setState(() {
-          _statusMessage = '❌ 録音停止に失敗しました';
-        });
-      }
-    } else {
-      // 録音開始
-      final success = await _audioService.startRecording();
-      if (!success) {
-        setState(() {
-          _statusMessage = '❌ 録音開始に失敗しました。マイクの許可を確認してください。';
-        });
-      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Text('🎓 学級通信AI'),
-        backgroundColor: Colors.blue,
+        title: Text('学級通信エディタ'),
+        backgroundColor: Colors.blue[600],
+        foregroundColor: Colors.white,
+        elevation: 2,
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: MediaQuery.of(context).size.height -
-                  kToolbarHeight -
-                  MediaQuery.of(context).padding.top -
-                  MediaQuery.of(context).padding.bottom,
+      body: Row(
+        children: [
+          // 🎤 左サイド: 音声入力エリア
+          Container(
+            width: 400,
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(right: BorderSide(color: Colors.grey[300]!)),
             ),
-            child: Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  SizedBox(height: 10),
-
-                  // シンプルなタイトル
-                  Text(
-                    '🎓 学級通信作成',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 音声入力セクション
+                Text(
+                  '🎤 音声入力',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue[700],
                   ),
-                  SizedBox(height: 20),
+                ),
+                SizedBox(height: 16),
 
-                  // 入力方法選択（シンプル化）
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // 音声入力（中央寄せ）
-                      SizedBox(
-                        width: 280,
-                        child: ElevatedButton.icon(
-                          onPressed: _toggleRecording,
-                          icon: Icon(_isRecording ? Icons.stop : Icons.mic,
-                              size: 28),
-                          label: Text(_isRecording ? '録音停止' : '音声で入力'),
-                          style: ElevatedButton.styleFrom(
-                            minimumSize: Size(double.infinity, 70),
-                            backgroundColor:
-                                _isRecording ? Colors.red : Colors.blue,
-                            foregroundColor: Colors.white,
-                            textStyle: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold),
+                // 録音ボタン
+                Center(
+                  child: GestureDetector(
+                    onTap: _isRecording
+                        ? _audioService.stopRecording
+                        : _audioService.startRecording,
+                    child: Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color:
+                            _isRecording ? Colors.red[500] : Colors.blue[500],
+                        boxShadow: [
+                          BoxShadow(
+                            color: (_isRecording ? Colors.red : Colors.blue)
+                                .withOpacity(0.3),
+                            spreadRadius: 4,
+                            blurRadius: 8,
                           ),
+                        ],
+                      ),
+                      child: Icon(
+                        _isRecording ? Icons.stop : Icons.mic,
+                        size: 50,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+
+                SizedBox(height: 12),
+                Center(
+                  child: Text(
+                    _isRecording ? '録音中...' : 'タップで録音開始',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ),
+
+                SizedBox(height: 24),
+
+                // リアルタイム字幕
+                Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.blue[200]!),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.edit_note,
+                              size: 16, color: Colors.blue[600]),
+                          SizedBox(width: 4),
+                          Text(
+                            'テキスト入力',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue[700],
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 8),
+                      TextField(
+                        controller: _textController,
+                        maxLines: 6,
+                        decoration: InputDecoration(
+                          hintText:
+                              '学級通信の内容を入力してください...\n音声入力からテキストを追加することもできます。',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide.none,
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: EdgeInsets.all(12),
                         ),
+                        style: TextStyle(fontSize: 14),
                       ),
                     ],
                   ),
+                ),
 
-                  SizedBox(height: 20),
+                SizedBox(height: 16),
 
-                  // ステータス表示（シンプル化）
-                  Container(
-                    padding: EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      _statusMessage,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[700],
-                        fontWeight: FontWeight.w500,
-                      ),
-                      textAlign: TextAlign.center,
+                // 生成ボタン
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton.icon(
+                    onPressed:
+                        (_isProcessing || _textController.text.trim().isEmpty)
+                            ? null
+                            : _generateNewsletter,
+                    icon: _isProcessing
+                        ? SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white),
+                          )
+                        : Icon(Icons.auto_awesome),
+                    label: Text(_isProcessing ? 'AI生成中...' : '学級通信を作成する'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange[600],
+                      foregroundColor: Colors.white,
+                      textStyle:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8)),
                     ),
                   ),
+                ),
 
-                  SizedBox(height: 20),
+                SizedBox(height: 12),
 
-                  // 文字入力フィールド（常時表示）
+                // ステータス表示
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _statusMessage,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[700],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+
+                SizedBox(height: 16),
+
+                // AI生成結果情報
+                if (_aiResult != null) ...[
                   Container(
                     padding: EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      border: Border.all(color: Colors.blue[300]!),
-                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.green[50],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.green[200]!),
                     ),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          '📝 内容を入力してください',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue[700],
-                          ),
+                        Row(
+                          children: [
+                            Icon(Icons.check_circle,
+                                color: Colors.green[600], size: 16),
+                            SizedBox(width: 4),
+                            Text(
+                              'AI生成完了',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green[700],
+                                fontSize: 14,
+                              ),
+                            ),
+                            Spacer(),
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.green[200],
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                _aiResult!.qualityScore,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.green[800],
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         SizedBox(height: 8),
-                        TextField(
-                          controller: _textController,
-                          maxLines: 4,
-                          decoration: InputDecoration(
-                            hintText:
-                                '音声録音または文字入力で学級通信の内容を入力...\n例：今日は避難訓練がありました。',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            Column(
+                              children: [
+                                Text('${_aiResult!.characterCount}',
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.bold)),
+                                Text('文字',
+                                    style: TextStyle(
+                                        fontSize: 11, color: Colors.grey[600])),
+                              ],
                             ),
-                            contentPadding: EdgeInsets.all(12),
-                          ),
-                          style: TextStyle(fontSize: 14),
-                          onChanged: (value) {
-                            setState(() {
-                              _textInput = value;
-                              _transcribedText = value; // テキスト入力内容を統一
-                            });
-                          },
+                            Column(
+                              children: [
+                                Text(_aiResult!.processingTimeDisplay,
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.bold)),
+                                Text('処理時間',
+                                    style: TextStyle(
+                                        fontSize: 11, color: Colors.grey[600])),
+                              ],
+                            ),
+                            Column(
+                              children: [
+                                Text(_aiResult!.season,
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.bold)),
+                                Text('季節',
+                                    style: TextStyle(
+                                        fontSize: 11, color: Colors.grey[600])),
+                              ],
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
 
-                  SizedBox(height: 20),
+                  SizedBox(height: 12),
 
-                  // 送信ボタン（明確化・重複防止強化）
-                  if (_textController.text.isNotEmpty &&
-                      !_isProcessing &&
-                      !_isGenerating)
-                    Container(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          print('📤 [BUTTON_CLICK] 送信ボタンがクリックされました');
-                          _generateNewsletter();
-                        },
-                        icon: Icon(Icons.send, size: 20),
-                        label: Text('学級通信を作成する'),
-                        style: ElevatedButton.styleFrom(
-                          minimumSize: Size(double.infinity, 50),
-                          backgroundColor: Colors.orange[600],
-                          foregroundColor: Colors.white,
-                          textStyle: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold),
+                  // アクションボタン
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: (_isGenerating || _isProcessing)
+                              ? null
+                              : _regenerateNewsletter,
+                          icon: Icon(Icons.refresh, size: 16),
+                          label: Text('再生成'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange[600],
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 8),
+                          ),
                         ),
                       ),
-                    ),
-
-                  // 処理中表示
-                  if (_isProcessing)
-                    Container(
-                      padding: EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          CircularProgressIndicator(),
-                          SizedBox(height: 8),
-                          Text('AI が学級通信を作成中...',
-                              style: TextStyle(
-                                  fontSize: 14, color: Colors.orange[700])),
-                        ],
-                      ),
-                    ),
-
-                  // AI生成結果表示
-                  if (_aiResult != null)
-                    Container(
-                      padding: EdgeInsets.all(16),
-                      margin: EdgeInsets.only(top: 20),
-                      decoration: BoxDecoration(
-                        color: Colors.purple[50],
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.purple[300]!),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                '🤖 AI生成結果',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                  color: Colors.purple[700],
-                                ),
-                              ),
-                              Spacer(),
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.purple[200],
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  _aiResult!.qualityScore,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.purple[800],
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _downloadPdf,
+                          icon: Icon(Icons.picture_as_pdf, size: 16),
+                          label: Text('PDF'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.purple[600],
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 8),
                           ),
-                          SizedBox(height: 8),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
 
-                          // 生成情報
-                          Container(
-                            padding: EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.purple[100],
-                              borderRadius: BorderRadius.circular(4),
-                            ),
+          // 📝 右サイド: プレビュー/エディターエリア
+          Expanded(
+            child: Container(
+              padding: EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ヘッダーとツールバー
+                  Row(
+                    children: [
+                      Icon(_showEditor ? Icons.edit : Icons.preview,
+                          color: Colors.blue[600]),
+                      SizedBox(width: 8),
+                      Text(
+                        _showEditor ? 'エディタ' : 'プレビュー',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue[700],
+                        ),
+                      ),
+                      SizedBox(width: 16),
+                      // プレビュー/エディター切り替えボタン
+                      ToggleButtons(
+                        isSelected: [!_showEditor, _showEditor],
+                        onPressed: (index) {
+                          setState(() {
+                            _showEditor = index == 1;
+                          });
+                        },
+                        children: [
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 12),
                             child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
-                                Column(
-                                  children: [
-                                    Text('文字数',
-                                        style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.purple[600])),
-                                    Text('${_aiResult!.characterCount}',
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.bold)),
-                                  ],
-                                ),
-                                Column(
-                                  children: [
-                                    Text('処理時間',
-                                        style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.purple[600])),
-                                    Text(_aiResult!.processingTimeDisplay,
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.bold)),
-                                  ],
-                                ),
-                                Column(
-                                  children: [
-                                    Text('季節',
-                                        style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.purple[600])),
-                                    Text(_aiResult!.season,
-                                        style: TextStyle(
-                                            fontWeight: FontWeight.bold)),
-                                  ],
-                                ),
+                                Icon(Icons.preview, size: 16),
+                                SizedBox(width: 4),
+                                Text('プレビュー'),
                               ],
                             ),
                           ),
-
-                          SizedBox(height: 16),
-
-                          // HTMLプレビュー表示
-                          Text(
-                            '📄 学級通信プレビュー',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: Colors.purple[700],
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 12),
+                            child: Row(
+                              children: [
+                                Icon(Icons.edit, size: 16),
+                                SizedBox(width: 4),
+                                Text('エディター'),
+                              ],
                             ),
                           ),
-                          SizedBox(height: 8),
-
-                          // レスポンシブな高さ計算（画面高さの30%、最大400px、最小200px）
-                          LayoutBuilder(
-                            builder: (context, constraints) {
-                              final screenHeight =
-                                  MediaQuery.of(context).size.height;
-                              final previewHeight =
-                                  (screenHeight * 0.3).clamp(200.0, 400.0);
-
-                              return HtmlPreviewWidget(
-                                htmlContent: _generatedHtml,
-                                height: previewHeight,
-                              );
-                            },
+                        ],
+                        borderRadius: BorderRadius.circular(8),
+                        selectedColor: Colors.white,
+                        fillColor: Colors.blue[600],
+                        color: Colors.blue[600],
+                        borderColor: Colors.blue[300],
+                        selectedBorderColor: Colors.blue[600],
+                      ),
+                      Spacer(),
+                      // ツールバー
+                      Row(
+                        children: [
+                          IconButton(
+                            onPressed: () {/* 元に戻す */},
+                            icon: Icon(Icons.undo, color: Colors.grey[600]),
+                            tooltip: '元に戻す',
                           ),
-
-                          SizedBox(height: 16),
-
-                          // アクションボタン
-                          Row(
-                            children: [
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: (_isGenerating || _isProcessing)
-                                      ? null
-                                      : () {
-                                          print(
-                                              '🔄 [REGENERATE_BUTTON] 再生成ボタンがクリックされました');
-                                          _regenerateNewsletter();
-                                        },
-                                  icon: Icon(Icons.refresh),
-                                  label: Text('🔄 再生成'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.orange[600],
-                                    foregroundColor: Colors.white,
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: 12),
-                              Expanded(
-                                flex: 2,
-                                child: ElevatedButton.icon(
-                                  onPressed: _downloadHtml,
-                                  icon: Icon(Icons.download),
-                                  label: Text('📄 ダウンロード'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.purple[600],
-                                    foregroundColor: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ],
+                          IconButton(
+                            onPressed: () {/* やり直し */},
+                            icon: Icon(Icons.redo, color: Colors.grey[600]),
+                            tooltip: 'やり直し',
+                          ),
+                          SizedBox(width: 8),
+                          ElevatedButton.icon(
+                            onPressed: _downloadHtml,
+                            icon: Icon(Icons.code, size: 16),
+                            label: Text('HTML'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.grey[200],
+                              foregroundColor: Colors.grey[700],
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                            ),
                           ),
                         ],
                       ),
+                    ],
+                  ),
+
+                  SizedBox(height: 16),
+
+                  // プレビュー/エディター表示エリア
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey[300]!),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: _generatedHtml.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.article_outlined,
+                                    size: 64,
+                                    color: Colors.grey[400],
+                                  ),
+                                  SizedBox(height: 16),
+                                  Text(
+                                    '学級通信のタイトルを入力してください',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      color: Colors.grey[600],
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    'ここに学級通信の内容を入力してください...\n\n音声入力からテキストを追加することもできます。',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey[500],
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            )
+                          : ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: _showEditor
+                                  ? QuillEditorWidget(
+                                      initialContent: _generatedHtml,
+                                      height: double.infinity,
+                                      onContentChanged: (html) {
+                                        setState(() {
+                                          _generatedHtml = html;
+                                        });
+                                      },
+                                    )
+                                  : HtmlPreviewWidget(
+                                      htmlContent: _generatedHtml,
+                                      height: double.infinity,
+                                    ),
+                            ),
                     ),
+                  ),
                 ],
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
