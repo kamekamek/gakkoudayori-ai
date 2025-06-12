@@ -1,87 +1,91 @@
-// 学級通信AI - 音声録音機能
-class AudioRecorder {
-  constructor() {
-    this.mediaRecorder = null;
-    this.audioChunks = [];
-    this.isRecording = false;
-  }
+// 学級通信AI - 音声録音システム
+// シンプル・確実・動作重視
 
-  // 音声録音開始
-  async startRecording() {
+let mediaRecorder = null;
+let audioChunks = [];
+let audioStream = null;
+
+// 音声録音開始
+async function startRecording() {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: {
-          sampleRate: 16000,
-          channelCount: 1,
-          echoCancellation: true,
-          noiseSuppression: true
-        } 
-      });
-      
-      this.mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
-      });
-      
-      this.audioChunks = [];
-      
-      this.mediaRecorder.ondataavailable = (event) => {
-        this.audioChunks.push(event.data);
-      };
-      
-      this.mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(this.audioChunks, { type: 'audio/wav' });
-        this.onRecordingComplete(audioBlob);
+        // マイクアクセス許可要求
+        audioStream = await navigator.mediaDevices.getUserMedia({ 
+            audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                sampleRate: 16000
+            } 
+        });
         
-        // Clean up stream
-        stream.getTracks().forEach(track => track.stop());
-      };
-      
-      this.mediaRecorder.start();
-      this.isRecording = true;
-      
-      console.log('音声録音開始');
-      return true;
-      
+        // レコーダー初期化
+        mediaRecorder = new MediaRecorder(audioStream, {
+            mimeType: 'audio/webm;codecs=opus'
+        });
+        
+        audioChunks = [];
+        
+        // データ取得イベント
+        mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                audioChunks.push(event.data);
+            }
+        };
+        
+        // 録音停止イベント  
+        mediaRecorder.onstop = () => {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            sendAudioToFlutter(audioBlob);
+        };
+        
+        // 録音開始
+        mediaRecorder.start();
+        
+        console.log('🎤 録音開始');
+        return true;
+        
     } catch (error) {
-      console.error('音声録音エラー:', error);
-      return false;
+        console.error('❌ 録音開始エラー:', error);
+        return false;
     }
-  }
-
-  // 音声録音停止
-  stopRecording() {
-    if (this.mediaRecorder && this.isRecording) {
-      this.mediaRecorder.stop();
-      this.isRecording = false;
-      console.log('音声録音停止');
-      return true;
-    }
-    return false;
-  }
-
-  // 録音完了時のコールバック（Dartから設定）
-  onRecordingComplete(audioBlob) {
-    // Convert to base64 for Dart
-    const reader = new FileReader();
-    reader.onload = () => {
-      const base64Audio = reader.result.split(',')[1];
-      window.flutterAudioCallback(base64Audio);
-    };
-    reader.readAsDataURL(audioBlob);
-  }
-
-  // 録音状態確認
-  getRecordingState() {
-    return this.isRecording;
-  }
 }
 
-// グローバルインスタンス作成
-window.audioRecorder = new AudioRecorder();
+// 音声録音停止
+function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        
+        // マイクストリーム停止
+        if (audioStream) {
+            audioStream.getTracks().forEach(track => track.stop());
+        }
+        
+        console.log('⏹️ 録音停止');
+        return true;
+    }
+    return false;
+}
 
-// Dart呼び出し用関数
-window.startAudioRecording = () => window.audioRecorder.startRecording();
-window.stopAudioRecording = () => window.audioRecorder.stopRecording();
-window.getRecordingState = () => window.audioRecorder.getRecordingState();
+// Flutter に音声データ送信
+function sendAudioToFlutter(audioBlob) {
+    const reader = new FileReader();
+    reader.onload = function() {
+        const arrayBuffer = reader.result;
+        const uint8Array = new Uint8Array(arrayBuffer);
+        
+        // Flutter側のコールバック呼び出し
+        if (window.flutter_audio_callback) {
+            window.flutter_audio_callback(Array.from(uint8Array));
+        }
+        
+        console.log('📤 音声データ送信完了:', uint8Array.length, 'bytes');
+    };
+    reader.readAsArrayBuffer(audioBlob);
+}
+
+// Flutter からの呼び出し用
+window.audioRecorder = {
+    start: startRecording,
+    stop: stopRecording
+};
 
 console.log('音声録音機能 初期化完了'); 
