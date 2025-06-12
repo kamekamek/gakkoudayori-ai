@@ -431,7 +431,7 @@
     
     <script>
         // Quill.js エディタの初期化と設定
-        const quill = new Quill('#editor', {
+        window.quill = new Quill('#editor', {
             theme: 'snow',
             placeholder: '今日の学級通信を書きましょう...',
             modules: {
@@ -472,9 +472,9 @@
             const day = days[today.getDay()];
             
             const dateString = `${year}年${month}月${date}日（${day}）`;
-            const selection = quill.getSelection();
-            const index = selection ? selection.index : quill.getLength();
-            quill.insertText(index, dateString);
+            const selection = window.quill.getSelection();
+            const index = selection ? selection.index : window.quill.getLength();
+            window.quill.insertText(index, dateString);
         }
 
         // 季節の挨拶文を挿入
@@ -492,9 +492,9 @@
                 greeting = '寒さが厳しい季節となりましたが、子どもたちは元気に登校し、学習に励んでいます。';
             }
 
-            const selection = quill.getSelection();
-            const index = selection ? selection.index : quill.getLength();
-            quill.insertText(index, greeting);
+            const selection = window.quill.getSelection();
+            const index = selection ? selection.index : window.quill.getLength();
+            window.quill.insertText(index, greeting);
         }
 
         // 教科テンプレートを挿入
@@ -512,9 +512,9 @@
 ・
 ・
 `;
-            const selection = quill.getSelection();
-            const index = selection ? selection.index : quill.getLength();
-            quill.insertText(index, template);
+            const selection = window.quill.getSelection();
+            const index = selection ? selection.index : window.quill.getLength();
+            window.quill.insertText(index, template);
         }
 
         // 宿題テンプレートを挿入
@@ -530,9 +530,9 @@
 【提出日】：明日
 【持ち物】：
 `;
-            const selection = quill.getSelection();
-            const index = selection ? selection.index : quill.getLength();
-            quill.insertText(index, template);
+            const selection = window.quill.getSelection();
+            const index = selection ? selection.index : window.quill.getLength();
+            window.quill.insertText(index, template);
         }
 
         // ショートカットキー実装
@@ -622,38 +622,38 @@ F1：このヘルプを表示
                 
                 switch (method) {
                     case 'getHTML':
-                        return quill.root.innerHTML;
+                        return window.quill.root.innerHTML;
                     
                     case 'setHTML':
-                        quill.root.innerHTML = params.html || '';
+                        window.quill.root.innerHTML = params.html || '';
                         return true;
                     
                     case 'getDelta':
-                        return JSON.stringify(quill.getContents());
+                        return JSON.stringify(window.quill.getContents());
                     
                     case 'setDelta':
                         const delta = JSON.parse(params.deltaJson);
-                        quill.setContents(delta);
+                        window.quill.setContents(delta);
                         return true;
                     
                     case 'getText':
-                        return quill.getText();
+                        return window.quill.getText();
                     
                     case 'insertText':
-                        const index = params.index !== undefined ? params.index : quill.getLength();
-                        quill.insertText(index, params.text);
+                        const index = params.index !== undefined ? params.index : window.quill.getLength();
+                        window.quill.insertText(index, params.text);
                         return true;
                     
                     case 'focus':
-                        quill.focus();
+                        window.quill.focus();
                         return true;
                     
                     case 'getSelection':
-                        const range = quill.getSelection();
+                        const range = window.quill.getSelection();
                         return range ? JSON.stringify(range) : null;
                     
                     case 'setSelection':
-                        quill.setSelection(params.index, params.length || 0);
+                        window.quill.setSelection(params.index, params.length || 0);
                         return true;
                     
                     case 'setTheme':
@@ -674,46 +674,46 @@ F1：このヘルプを表示
             
             // 旧来の互換性メソッド（直接呼び出し用）
             getHTML: function() {
-                return quill.root.innerHTML;
+                return window.quill.root.innerHTML;
             },
             
             setHTML: function(html) {
-                quill.root.innerHTML = html;
+                window.quill.root.innerHTML = html;
             },
             
             getDelta: function() {
-                return JSON.stringify(quill.getContents());
+                return JSON.stringify(window.quill.getContents());
             },
             
             setDelta: function(deltaString) {
                 try {
                     const delta = JSON.parse(deltaString);
-                    quill.setContents(delta);
+                    window.quill.setContents(delta);
                 } catch (e) {
                     console.error('Delta parse error:', e);
                 }
             },
             
             getText: function() {
-                return quill.getText();
+                return window.quill.getText();
             },
             
             insertText: function(text, index) {
-                index = index !== undefined ? index : quill.getLength();
-                quill.insertText(index, text);
+                index = index !== undefined ? index : window.quill.getLength();
+                window.quill.insertText(index, text);
             },
             
             focus: function() {
-                quill.focus();
+                window.quill.focus();
             },
             
             getSelection: function() {
-                const range = quill.getSelection();
+                const range = window.quill.getSelection();
                 return range ? JSON.stringify(range) : null;
             },
             
             setSelection: function(index, length) {
-                quill.setSelection(index, length || 0);
+                window.quill.setSelection(index, length || 0);
             },
             
             setTheme: function(themeName) {
@@ -739,13 +739,14 @@ F1：このヘルプを表示
         initializeShortcuts();
 
         // エディタの変更を監視してFlutter側に通知（Quillの初期化後に実行）
-        if (quill && typeof quill.on === 'function') {
-            quill.on('text-change', function(delta, oldDelta, source) {
-                if (source === 'user') {
+        setTimeout(function() {
+            if (window.quill && typeof window.quill.on === 'function') {
+                window.quill.on('text-change', function(delta, oldDelta, source) {
+                    if (source === 'user') {
                     const content = {
-                        html: quill.root.innerHTML,
-                        delta: JSON.stringify(quill.getContents()),
-                        text: quill.getText()
+                        html: window.quill.root.innerHTML,
+                        delta: JSON.stringify(window.quill.getContents()),
+                        text: window.quill.getText()
                     };
                     
                     if (window.flutter_inappwebview) {
@@ -755,7 +756,7 @@ F1：このヘルプを表示
             });
             
             // 選択範囲変更の通知
-            quill.on('selection-change', function(range, oldRange, source) {
+            window.quill.on('selection-change', function(range, oldRange, source) {
                 if (range) {
                     const selection = {
                         index: range.index,
@@ -767,9 +768,10 @@ F1：このヘルプを表示
                     }
                 }
             });
-        } else {
-            console.error('Quill editor not properly initialized');
-        }
+            } else {
+                console.error('Quill editor not properly initialized');
+            }
+        }, 100); // setTimeoutの閉じ括弧
 
         console.log('Quill.js editor with education tools initialized successfully');
     </script>

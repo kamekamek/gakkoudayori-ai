@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'web_audio_recorder.dart';
+import '../../../../core/services/ai_service.dart';
 
 /// 音声入力から学級通信自動生成ウィジェット
 ///
@@ -503,17 +502,33 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget>
 
   Future<void> _processAudioToNewsletter(Uint8List audioBytes) async {
     try {
-      // ステップ1: 音声文字起こし
-      await _transcribeAudio(audioBytes);
-
-      // ステップ2: Gemini APIで学級通信生成
-      await _generateNewsletter();
-
+      // 統合されたAIサービスを使用した完全フロー
       setState(() {
-        _isProcessing = false;
-        _currentStep = '';
-        _progressValue = 1.0;
+        _currentStep = '音声を処理中...';
+        _progressValue = 0.2;
       });
+
+      final result = await AiService.generateNewsletterFromAudio(
+        audioBytes: audioBytes,
+        templateType: 'daily_report',
+        includeGreeting: true,
+        targetAudience: 'parents',
+        season: 'auto',
+        language: 'ja-JP',
+        userDictionary: '運動会,学習発表会,子どもたち,頑張っていました,保護者,先生',
+      );
+
+      if (result['success']) {
+        setState(() {
+          _speechResult = result['data']['transcribe_result']['transcript'];
+          _generatedContent = result['data']['newsletter_html'];
+          _isProcessing = false;
+          _currentStep = '';
+          _progressValue = 1.0;
+        });
+      } else {
+        throw Exception(result['error']);
+      }
 
       _waveController.stop();
     } catch (e) {
@@ -526,81 +541,6 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget>
     }
   }
 
-  Future<void> _transcribeAudio(Uint8List audioBytes) async {
-    setState(() {
-      _currentStep = '音声を文字に変換中...';
-      _progressValue = 0.3;
-    });
-
-    try {
-      var request = http.MultipartRequest(
-        'POST',
-        Uri.parse('http://localhost:8081/api/v1/ai/transcribe'),
-      );
-
-      request.files.add(
-        http.MultipartFile.fromBytes(
-          'audio_file',
-          audioBytes,
-          filename: 'audio.wav',
-        ),
-      );
-
-      request.fields['language'] = 'ja-JP';
-      request.fields['user_dictionary'] = '運動会,学習発表会,子どもたち,頑張っていました,保護者,先生';
-
-      var response = await request.send();
-      var responseData = await response.stream.bytesToString();
-      var jsonData = json.decode(responseData);
-
-      if (jsonData['success']) {
-        setState(() {
-          _speechResult = jsonData['data']['transcript'];
-          _progressValue = 0.6;
-        });
-      } else {
-        throw Exception(jsonData['error']);
-      }
-    } catch (e) {
-      throw Exception('音声認識エラー: $e');
-    }
-  }
-
-  Future<void> _generateNewsletter() async {
-    setState(() {
-      _currentStep = 'AI学級通信を生成中...';
-      _progressValue = 0.8;
-    });
-
-    try {
-      final response = await http.post(
-        Uri.parse('http://localhost:8081/api/v1/ai/generate-newsletter'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'transcribed_text': _speechResult,
-          'template_type': 'daily_report',
-          'include_greeting': true,
-          'target_audience': 'parents',
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        var jsonData = json.decode(response.body);
-        if (jsonData['success']) {
-          setState(() {
-            _generatedContent = jsonData['generated_content'];
-            _progressValue = 1.0;
-          });
-        } else {
-          throw Exception(jsonData['error']);
-        }
-      } else {
-        throw Exception('サーバーエラー: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('学級通信生成エラー: $e');
-    }
-  }
 
   void _showErrorDialog(String title, String message) {
     showDialog(

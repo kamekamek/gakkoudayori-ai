@@ -24,6 +24,8 @@ from speech_recognition_service import (
     get_supported_formats,
     get_default_speech_contexts
 )
+from gemini_api_service import generate_text
+from html_constraint_service import generate_constrained_html
 
 # ログ設定
 logging.basicConfig(level=logging.INFO)
@@ -210,9 +212,69 @@ def get_audio_formats():
 # 学級通信生成エンドポイント
 # ==============================================================================
 
+# ==============================================================================
+# Gemini HTML生成エンドポイント
+# ==============================================================================
+
+@app.route('/api/v1/ai/generate-html', methods=['POST'])
+def generate_html_content():
+    """音声認識結果からGemini APIでHTML生成"""
+    try:
+        # リクエストデータ取得
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No JSON data provided',
+                'error_code': 'MISSING_DATA'
+            }), 400
+        
+        # 必須パラメータチェック
+        transcribed_text = data.get('transcribed_text', '')
+        if not transcribed_text.strip():
+            return jsonify({
+                'success': False,
+                'error': 'Transcribed text is required',
+                'error_code': 'MISSING_TRANSCRIBED_TEXT'
+            }), 400
+        
+        # オプションパラメータ
+        custom_instruction = data.get('custom_instruction', '')
+        season_theme = data.get('season_theme', '')
+        document_type = data.get('document_type', 'class_newsletter')
+        constraints = data.get('constraints', {})
+        
+        # Google Cloud認証情報パス
+        credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', '../secrets/service-account-key.json')
+        project_id = os.getenv('GOOGLE_CLOUD_PROJECT', 'yutori-kyoshitu-ai')
+        
+        # Gemini HTML生成実行
+        result = generate_constrained_html(
+            prompt=transcribed_text,
+            project_id=project_id,
+            credentials_path=credentials_path,
+            custom_instruction=custom_instruction,
+            season_theme=season_theme,
+            document_type=document_type,
+            constraints=constraints
+        )
+        
+        if result['success']:
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 500
+            
+    except Exception as e:
+        logger.error(f"HTML generation endpoint error: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'HTML generation failed: {str(e)}',
+            'error_code': 'HTML_GENERATION_ERROR'
+        }), 500
+
 @app.route('/api/v1/ai/generate-newsletter', methods=['POST'])
 def generate_newsletter():
-    """学級通信自動生成エンドポイント"""
+    """学級通信自動生成エンドポイント（統合版）"""
     try:
         # リクエストデータ取得
         data = request.get_json()
@@ -237,24 +299,53 @@ def generate_newsletter():
         include_greeting = data.get('include_greeting', True)
         target_audience = data.get('target_audience', 'parents')
         season = data.get('season', 'auto')
+        custom_instruction = data.get('custom_instruction', '')
         
         # 認証情報パス
         credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', '../secrets/service-account-key.json')
+        project_id = os.getenv('GOOGLE_CLOUD_PROJECT', 'yutori-kyoshitu-ai')
         
-        # 学級通信生成実行
-        from newsletter_generator import generate_newsletter_from_speech
+        # 季節自動判定
+        if season == 'auto':
+            season = _detect_season_from_text(speech_text)
         
-        result = generate_newsletter_from_speech(
-            speech_text=speech_text,
-            template_type=template_type,
-            include_greeting=include_greeting,
-            target_audience=target_audience,
-            season=season,
-            credentials_path=credentials_path
+        # カスタム指示を含むプロンプト構築
+        newsletter_instruction = f"""
+        形式: {template_type}形式の学級通信
+        対象読者: {target_audience}
+        季節: {season}
+        挨拶文含める: {include_greeting}
+        """
+        if custom_instruction:
+            newsletter_instruction += f"\n追加指示: {custom_instruction}"
+        
+        # 統合されたHTML生成APIを使用
+        result = generate_constrained_html(
+            prompt=speech_text,
+            project_id=project_id,
+            credentials_path=credentials_path,
+            custom_instruction=newsletter_instruction,
+            season_theme=season,
+            document_type='class_newsletter'
         )
         
         if result['success']:
-            return jsonify(result), 200
+            # レスポンス形式を学級通信用に調整
+            newsletter_data = {
+                'success': True,
+                'data': {
+                    'newsletter_html': result['data']['html_content'],
+                    'original_speech': speech_text,
+                    'template_type': template_type,
+                    'season': season,
+                    'processing_time_ms': result['data']['processing_time_ms'],
+                    'generated_at': result['timestamp'],
+                    'word_count': len(result['data']['html_content'].split()),
+                    'character_count': len(result['data']['html_content']),
+                    'ai_metadata': result['data']['ai_metadata']
+                }
+            }
+            return jsonify(newsletter_data), 200
         else:
             return jsonify(result), 500
             
@@ -265,6 +356,44 @@ def generate_newsletter():
             'error': f'Newsletter generation failed: {str(e)}',
             'error_code': 'GENERATION_ERROR'
         }), 500
+
+def _detect_season_from_text(text: str) -> str:
+    """テキストから季節を自動判定"""
+    from datetime import datetime
+    
+    # 現在の月による基本判定
+    current_month = datetime.now().month
+    
+    if 3 <= current_month <= 5:
+        base_season = "spring"
+    elif 6 <= current_month <= 8:
+        base_season = "summer"
+    elif 9 <= current_month <= 11:
+        base_season = "autumn"
+    else:
+        base_season = "winter"
+    
+    # テキスト内のキーワードによる調整
+    spring_keywords = ["桜", "入学", "新学期", "春", "お花見", "暖かく", "芽吹く"]
+    summer_keywords = ["運動会", "プール", "夏休み", "暑い", "七夕", "夏祭り"]
+    autumn_keywords = ["紅葉", "学習発表会", "秋", "文化祭", "涼しく", "収穫"]
+    winter_keywords = ["雪", "寒い", "冬", "クリスマス", "正月", "温かく"]
+    
+    keyword_scores = {
+        "spring": sum(1 for kw in spring_keywords if kw in text),
+        "summer": sum(1 for kw in summer_keywords if kw in text),
+        "autumn": sum(1 for kw in autumn_keywords if kw in text),
+        "winter": sum(1 for kw in winter_keywords if kw in text)
+    }
+    
+    # 最高得点の季節があれば使用、なければ月ベースの季節
+    max_score = max(keyword_scores.values())
+    if max_score > 0:
+        for season, score in keyword_scores.items():
+            if score == max_score:
+                return season
+    
+    return base_season
 
 @app.route('/api/v1/ai/newsletter-templates', methods=['GET'])
 def get_newsletter_templates():

@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../../../firebase_options.dart';
+import '../models/document_data.dart';
+import 'dart:convert';
 
 /// Firebaseサービスを管理するクラス（Web用実装）
 ///
@@ -138,6 +140,233 @@ class FirebaseService {
     } catch (e) {
       debugPrint('FirebaseService: ファイルアップロードエラー - $e');
       rethrow;
+    }
+  }
+
+  // ===============================
+  // 学級通信ドキュメント特化メソッド
+  // ===============================
+
+  /// 学級通信ドキュメントを保存
+  /// 
+  /// Firestore: `/letters/{documentId}` にメタデータ保存
+  /// Storage: `/documents/{documentId}/content.html` と `/documents/{documentId}/delta.json` にコンテンツ保存
+  Future<void> saveDocument(DocumentData document) async {
+    debugPrint('FirebaseService: ドキュメント保存開始 - ${document.documentId}');
+    
+    try {
+      final batch = _firestore.batch();
+      
+      // Firestoreにメタデータ保存
+      final docRef = _firestore.collection('letters').doc(document.documentId);
+      batch.set(docRef, {
+        ...document.toFirestore(),
+        'uid': _auth.currentUser?.uid,
+      });
+      
+      await batch.commit();
+      
+      // Storage にコンテンツ保存（並行処理）
+      final List<Future> uploadTasks = [];
+      
+      if (document.htmlContent != null) {
+        uploadTasks.add(_saveDocumentContent(
+          document.documentId, 
+          'content.html', 
+          document.htmlContent!,
+        ));
+      }
+      
+      if (document.deltaContent != null) {
+        uploadTasks.add(_saveDocumentContent(
+          document.documentId, 
+          'delta.json', 
+          document.deltaContent!,
+        ));
+      }
+      
+      await Future.wait(uploadTasks);
+      debugPrint('FirebaseService: ドキュメント保存成功 - ${document.documentId}');
+    } catch (e) {
+      debugPrint('FirebaseService: ドキュメント保存エラー - $e');
+      rethrow;
+    }
+  }
+
+  /// ドキュメントコンテンツをStorageに保存
+  Future<void> _saveDocumentContent(String documentId, String fileName, String content) async {
+    try {
+      final ref = _storage.ref().child('documents').child(documentId).child(fileName);
+      final bytes = utf8.encode(content);
+      await ref.putData(Uint8List.fromList(bytes));
+      debugPrint('FirebaseService: コンテンツ保存成功 - $fileName');
+    } catch (e) {
+      debugPrint('FirebaseService: コンテンツ保存エラー - $fileName: $e');
+      rethrow;
+    }
+  }
+
+  /// 学級通信ドキュメントを読み込み
+  Future<DocumentData?> loadDocument(String documentId) async {
+    debugPrint('FirebaseService: ドキュメント読み込み開始 - $documentId');
+    
+    try {
+      // Firestoreからメタデータ取得
+      final docSnapshot = await _firestore.collection('letters').doc(documentId).get();
+      
+      if (!docSnapshot.exists) {
+        debugPrint('FirebaseService: ドキュメントが見つかりません - $documentId');
+        return null;
+      }
+      
+      // DocumentDataに変換
+      DocumentData document = DocumentData.fromFirestore(docSnapshot);
+      
+      // Storageからコンテンツ取得（並行処理）
+      final contentFuture = _loadDocumentContent(documentId, 'content.html');
+      final deltaFuture = _loadDocumentContent(documentId, 'delta.json');
+      
+      final results = await Future.wait([contentFuture, deltaFuture]);
+      final htmlContent = results[0];
+      final deltaContent = results[1];
+      
+      // コンテンツを含むドキュメントデータを返却
+      document = document.copyWith(
+        htmlContent: htmlContent,
+        deltaContent: deltaContent,
+      );
+      
+      debugPrint('FirebaseService: ドキュメント読み込み成功 - $documentId');
+      return document;
+    } catch (e) {
+      debugPrint('FirebaseService: ドキュメント読み込みエラー - $e');
+      return null;
+    }
+  }
+
+  /// ドキュメントコンテンツをStorageから読み込み
+  Future<String?> _loadDocumentContent(String documentId, String fileName) async {
+    try {
+      final ref = _storage.ref().child('documents').child(documentId).child(fileName);
+      final bytes = await ref.getData();
+      if (bytes != null) {
+        final content = utf8.decode(bytes);
+        debugPrint('FirebaseService: コンテンツ読み込み成功 - $fileName');
+        return content;
+      }
+      return null;
+    } catch (e) {
+      // ファイルが存在しない場合はnullを返す（エラーログは出力しない）
+      if (e.toString().contains('object-not-found')) {
+        debugPrint('FirebaseService: コンテンツファイル未存在 - $fileName');
+        return null;
+      }
+      debugPrint('FirebaseService: コンテンツ読み込みエラー - $fileName: $e');
+      return null;
+    }
+  }
+
+  /// ユーザーの学級通信ドキュメント一覧を取得
+  Future<List<DocumentData>> getUserDocuments({int limit = 50}) async {
+    debugPrint('FirebaseService: ユーザードキュメント一覧取得開始');
+    
+    try {
+      final currentUid = _auth.currentUser?.uid;
+      if (currentUid == null) {
+        debugPrint('FirebaseService: 未認証ユーザー');
+        return [];
+      }
+      
+      final querySnapshot = await _firestore
+          .collection('letters')
+          .where('uid', isEqualTo: currentUid)
+          .orderBy('updatedAt', descending: true)
+          .limit(limit)
+          .get();
+      
+      final documents = querySnapshot.docs
+          .map((doc) => DocumentData.fromFirestore(doc))
+          .toList();
+      
+      debugPrint('FirebaseService: ユーザードキュメント一覧取得成功 - ${documents.length}件');
+      return documents;
+    } catch (e) {
+      debugPrint('FirebaseService: ユーザードキュメント一覧取得エラー - $e');
+      return [];
+    }
+  }
+
+  /// ドキュメントの状態を更新
+  Future<void> updateDocumentStatus(String documentId, DocumentStatus status) async {
+    debugPrint('FirebaseService: ドキュメント状態更新開始 - $documentId: $status');
+    
+    try {
+      await _firestore.collection('letters').doc(documentId).update({
+        'status': status.value,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      debugPrint('FirebaseService: ドキュメント状態更新成功');
+    } catch (e) {
+      debugPrint('FirebaseService: ドキュメント状態更新エラー - $e');
+      rethrow;
+    }
+  }
+
+  /// ドキュメントを削除
+  Future<void> deleteDocument(String documentId) async {
+    debugPrint('FirebaseService: ドキュメント削除開始 - $documentId');
+    
+    try {
+      final batch = _firestore.batch();
+      
+      // Firestoreのドキュメントを削除
+      final docRef = _firestore.collection('letters').doc(documentId);
+      batch.delete(docRef);
+      
+      await batch.commit();
+      
+      // Storageのファイルを削除（並行処理）
+      final deleteTasks = [
+        _deleteDocumentContent(documentId, 'content.html'),
+        _deleteDocumentContent(documentId, 'delta.json'),
+      ];
+      
+      await Future.wait(deleteTasks);
+      debugPrint('FirebaseService: ドキュメント削除成功 - $documentId');
+    } catch (e) {
+      debugPrint('FirebaseService: ドキュメント削除エラー - $e');
+      rethrow;
+    }
+  }
+
+  /// ドキュメントコンテンツをStorageから削除
+  Future<void> _deleteDocumentContent(String documentId, String fileName) async {
+    try {
+      final ref = _storage.ref().child('documents').child(documentId).child(fileName);
+      await ref.delete();
+      debugPrint('FirebaseService: コンテンツ削除成功 - $fileName');
+    } catch (e) {
+      // ファイルが存在しない場合は無視
+      if (e.toString().contains('object-not-found')) {
+        debugPrint('FirebaseService: コンテンツファイル未存在（削除済み） - $fileName');
+        return;
+      }
+      debugPrint('FirebaseService: コンテンツ削除エラー - $fileName: $e');
+      // 削除エラーは致命的ではないため、エラーをスローしない
+    }
+  }
+
+  /// ドキュメントコンテンツの署名付きURLを取得（共有用）
+  Future<String?> getDocumentShareUrl(String documentId, String fileName) async {
+    try {
+      final ref = _storage.ref().child('documents').child(documentId).child(fileName);
+      // 24時間有効な署名付きURL
+      final url = await ref.getDownloadURL();
+      debugPrint('FirebaseService: 署名付きURL取得成功 - $fileName');
+      return url;
+    } catch (e) {
+      debugPrint('FirebaseService: 署名付きURL取得エラー - $fileName: $e');
+      return null;
     }
   }
 }

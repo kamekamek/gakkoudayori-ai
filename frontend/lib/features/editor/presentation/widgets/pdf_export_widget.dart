@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'dart:convert';
-import 'dart:typed_data';
-import 'dart:html' as html;
+// Web API一時無効化
+// import 'package:web/web.dart' as web;
 import '../../../../core/services/api_service.dart';
 
 /// PDF出力ウィジェット
@@ -121,21 +120,18 @@ class _PDFExportWidgetState extends State<PDFExportWidget>
 
   Future<void> _downloadPDF(String base64Data, String title) async {
     try {
-      // Base64をUint8Listに変換
-      final bytes = base64Decode(base64Data);
-
-      // Blob作成
-      final blob = html.Blob([bytes], 'application/pdf');
-      final url = html.Url.createObjectUrlFromBlob(blob);
-
-      // ダウンロードリンク作成
-      final anchor = html.AnchorElement(href: url)
-        ..setAttribute(
-            'download', '${title}_${DateTime.now().millisecondsSinceEpoch}.pdf')
-        ..click();
-
-      // URLオブジェクト解放
-      html.Url.revokeObjectUrl(url);
+      // TODO: Web API対応が完了するまで一時的にアラート表示
+      // ignore: avoid_web_libraries_in_flutter
+      // Web API一時無効化 - PDF機能は後で実装
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'PDF出力機能は準備中です（データサイズ: ${(base64Data.length / 1024).toStringAsFixed(1)}KB）'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
     } catch (e) {
       throw Exception('PDFダウンロードに失敗しました: $e');
     }

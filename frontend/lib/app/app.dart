@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:yutori_kyoshitu/core/router/app_router.dart';
 import 'package:yutori_kyoshitu/core/theme/app_theme.dart';
-import 'package:yutori_kyoshitu/core/services/firebase_service.dart';
+// import 'package:yutori_kyoshitu/core/services/firebase_service.dart'; // 一時的に無効化
 import 'package:yutori_kyoshitu/features/editor/providers/quill_editor_provider.dart';
 
 /// 学校だよりAIのメインアプリケーションウィジェット
