@@ -95,14 +95,15 @@ def transcribe_audio_file(
         # 音声データ設定
         audio = speech.RecognitionAudio(content=audio_content)
         
-        # 認識設定
+        # 認識設定（最もシンプルな設定に変更）
         config_params = {
             'encoding': encoding,
             'language_code': language_code,
-            'model': 'latest_long',  # 長時間音声用モデル
-            'use_enhanced': enable_enhanced,
-            'enable_automatic_punctuation': enable_punctuation,
-            'enable_word_time_offsets': enable_word_timestamps,
+            # 高度な設定を一時的に無効化
+            # 'model': 'latest_long',
+            # 'use_enhanced': enable_enhanced,
+            # 'enable_automatic_punctuation': enable_punctuation,
+            # 'enable_word_time_offsets': enable_word_timestamps,
         }
         
         # サンプルレートが指定されている場合のみ設定
@@ -146,7 +147,8 @@ def transcribe_audio_file(
             logger.warning("4. Language code mismatch")
             
         for i, result in enumerate(response.results):
-            logger.info(f"Result {i}: {len(result.alternatives)} alternatives, is_final={result.is_final}")
+            # is_finalフィールドは使用しない（互換性のため）
+            logger.info(f"Result {i}: {len(result.alternatives)} alternatives")
             if result.alternatives:
                 alt = result.alternatives[0]
                 logger.info(f"Alternative 0: transcript='{alt.transcript}', confidence={alt.confidence}")
