@@ -100,14 +100,14 @@ class HomePageState extends State<HomePage> {
 
   // 🔥 AI学級通信生成（重複防止強化版）
   Future<void> _generateNewsletter() async {
-    // 重複実行防止チェック
+    // 重複実行防止チェック（デバッグログ強化）
     if (_isGenerating) {
-      print('⚠️ AI生成処理中のため、重複実行をスキップ');
+      print('⚠️ [DUPLICATE_PREVENTION] AI生成処理中のため、重複実行をスキップ');
       return;
     }
 
     if (_isProcessing) {
-      print('⚠️ 他の処理中のため、AI生成をスキップ');
+      print('⚠️ [DUPLICATE_PREVENTION] 他の処理中のため、AI生成をスキップ');
       return;
     }
 
@@ -119,14 +119,17 @@ class HomePageState extends State<HomePage> {
       return;
     }
 
-    // 生成処理開始
-    _isGenerating = true; // 🔥 生成フラグON
+    // 生成処理開始（即座にフラグ設定）
+    print('🚀 [GENERATE_START] AI生成開始要求 - _isGenerating: $_isGenerating');
+    _isGenerating = true; // 🔥 生成フラグON（setStateより先に設定）
+
     setState(() {
       _isProcessing = true;
       _statusMessage = '🤖 AI生成中...（約5秒）';
     });
 
-    print('🤖 AI生成開始 - テキスト: $inputText...');
+    print(
+        '🤖 [GENERATE_EXEC] AI生成実行開始 - テキスト: $inputText... (Flag: $_isGenerating)');
 
     try {
       final result = await _aiService.generateNewsletter(
@@ -141,18 +144,20 @@ class HomePageState extends State<HomePage> {
       });
 
       print(
-          '🎉 AI生成完了 - 文字数: ${result.characterCount}, 時間: ${result.processingTimeDisplay}');
+          '🎉 [GENERATE_SUCCESS] AI生成完了 - 文字数: ${result.characterCount}, 時間: ${result.processingTimeDisplay}');
     } catch (e) {
       setState(() {
         _statusMessage = '❌ AI生成でエラーが発生しました: $e';
       });
-      print('❌ AI生成エラー: $e');
+      print('❌ [GENERATE_ERROR] AI生成エラー: $e');
     } finally {
       // 必ず実行される処理
+      print('🔄 [GENERATE_CLEANUP] 生成処理完了、フラグリセット');
       setState(() {
         _isProcessing = false;
       });
       _isGenerating = false; // 🔥 生成フラグOFF
+      print('✅ [GENERATE_END] フラグリセット完了 - _isGenerating: $_isGenerating');
     }
   }
 
@@ -160,12 +165,19 @@ class HomePageState extends State<HomePage> {
   Future<void> _regenerateNewsletter() async {
     if (_transcribedText.isEmpty) return;
 
+    // 重複防止チェック
+    if (_isGenerating || _isProcessing) {
+      print('⚠️ [REGENERATE_SKIP] 既に処理中のため再生成をスキップ');
+      return;
+    }
+
     setState(() {
       _statusMessage = '🔄 再生成中...';
       _aiResult = null;
       _generatedHtml = '';
     });
 
+    print('🔄 [REGENERATE_START] 再生成開始');
     // 同じ文字起こしテキストで再生成
     await _generateNewsletter();
   }
@@ -370,12 +382,17 @@ $_generatedHtml
 
                   SizedBox(height: 20),
 
-                  // 送信ボタン（明確化）
-                  if (_textController.text.isNotEmpty && !_isProcessing)
+                  // 送信ボタン（明確化・重複防止強化）
+                  if (_textController.text.isNotEmpty &&
+                      !_isProcessing &&
+                      !_isGenerating)
                     Container(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: () => _generateNewsletter(),
+                        onPressed: () {
+                          print('📤 [BUTTON_CLICK] 送信ボタンがクリックされました');
+                          _generateNewsletter();
+                        },
                         icon: Icon(Icons.send, size: 20),
                         label: Text('学級通信を作成する'),
                         style: ElevatedButton.styleFrom(
@@ -529,7 +546,13 @@ $_generatedHtml
                             children: [
                               Expanded(
                                 child: ElevatedButton.icon(
-                                  onPressed: () => _regenerateNewsletter(),
+                                  onPressed: (_isGenerating || _isProcessing)
+                                      ? null
+                                      : () {
+                                          print(
+                                              '🔄 [REGENERATE_BUTTON] 再生成ボタンがクリックされました');
+                                          _regenerateNewsletter();
+                                        },
                                   icon: Icon(Icons.refresh),
                                   label: Text('🔄 再生成'),
                                   style: ElevatedButton.styleFrom(
