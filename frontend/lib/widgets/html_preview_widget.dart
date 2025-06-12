@@ -20,6 +20,9 @@ class HtmlPreviewWidget extends StatefulWidget {
 
 class _HtmlPreviewWidgetState extends State<HtmlPreviewWidget> {
   String? _viewId;
+  web.HTMLIFrameElement? _iframe;
+  String _cachedContent = '';
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -28,10 +31,22 @@ class _HtmlPreviewWidgetState extends State<HtmlPreviewWidget> {
   }
 
   void _initializeHtmlView() {
+    if (_viewId != null && _cachedContent == widget.htmlContent) {
+      // キャッシュされたコンテンツと同じ場合は再作成しない
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
     _viewId = 'html-preview-${DateTime.now().millisecondsSinceEpoch}';
-    
+    _cachedContent = widget.htmlContent;
+
     // HTMLエレメントを作成
-    final iframe = web.HTMLIFrameElement()
+    _iframe = web.HTMLIFrameElement()
+      ..width = '100%'
+      ..height = '${widget.height.toInt()}px'
       ..style.width = '100%'
       ..style.height = '${widget.height}px'
       ..style.border = 'none'
@@ -79,7 +94,7 @@ class _HtmlPreviewWidgetState extends State<HtmlPreviewWidget> {
     </style>
 </head>
 <body>
-    <div class="content">
+    <div class="content" id="main-content">
         ${_extractHtmlContent(widget.htmlContent)}
     </div>
 </body>
@@ -91,23 +106,49 @@ class _HtmlPreviewWidgetState extends State<HtmlPreviewWidget> {
       encoding: Encoding.getByName('utf-8')!,
     ).toString();
 
-    iframe.src = encodedHtml;
+    _iframe!.src = encodedHtml;
+
+    // iframe読み込み完了イベント
+    _iframe!.onLoad.listen((_) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    });
 
     // プラットフォームビューとして登録
     ui_web.platformViewRegistry.registerViewFactory(
       _viewId!,
-      (int viewId) => iframe,
+      (int viewId) => _iframe!,
     );
+  }
+
+  /// 内容を動的に更新（iframe再作成なし）
+  void _updateContent(String newContent) {
+    if (_iframe?.contentWindow != null && newContent != _cachedContent) {
+      try {
+        final contentElement = _iframe!.contentDocument
+            ?.getElementById('main-content') as web.HTMLElement?;
+        if (contentElement != null) {
+          final content = _extractHtmlContent(newContent);
+          contentElement.innerHTML = content as dynamic;
+          _cachedContent = newContent;
+        }
+      } catch (e) {
+        print('📄 [HtmlPreview] 動的更新失敗、iframe再作成: $e');
+        // 動的更新が失敗した場合は再作成
+        _initializeHtmlView();
+      }
+    }
   }
 
   /// HTMLコンテンツから実際のコンテンツ部分を抽出
   String _extractHtmlContent(String htmlContent) {
     // ```html ``` 形式のマークアップを除去
-    String cleaned = htmlContent
-        .replaceAll('```html', '')
-        .replaceAll('```', '')
-        .trim();
-    
+    String cleaned =
+        htmlContent.replaceAll('```html', '').replaceAll('```', '').trim();
+
     return cleaned.isEmpty ? '<p>プレビューコンテンツがありません</p>' : cleaned;
   }
 
@@ -115,7 +156,12 @@ class _HtmlPreviewWidgetState extends State<HtmlPreviewWidget> {
   void didUpdateWidget(HtmlPreviewWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.htmlContent != widget.htmlContent) {
-      _initializeHtmlView();
+      // キャッシュチェックして動的更新を試行
+      if (_iframe != null && _viewId != null) {
+        _updateContent(widget.htmlContent);
+      } else {
+        _initializeHtmlView();
+      }
     }
   }
 
@@ -140,12 +186,39 @@ class _HtmlPreviewWidgetState extends State<HtmlPreviewWidget> {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.grey[300]!),
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: HtmlElementView(
-          viewType: _viewId!,
-        ),
+      child: Stack(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: HtmlElementView(
+              viewType: _viewId!,
+            ),
+          ),
+          if (_isLoading)
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.8),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 8),
+                    Text(
+                      'プレビュー読み込み中...',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
-} 
+}

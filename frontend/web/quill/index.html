@@ -358,26 +358,41 @@
                 const html = quill.root.innerHTML;
                 const wordCount = quill.getText().length;
                 
-                // Flutter側にリアルタイム更新を通知（HtmlElementView対応）
+                // Flutter側にリアルタイム更新を通知（シンプルな文字列形式）
                 try {
-                    if (window.parent && window.parent.onQuillContentChanged) {
-                        window.parent.onQuillContentChanged({
-                            html: html,
-                            delta: quill.getContents(),
-                            wordCount: wordCount,
-                            theme: currentTheme
-                        });
-                    }
+                    window.parent.postMessage('QUILL_HTML:' + html, '*');
                 } catch (e) {
                     console.log('🔗 [QuillBridge] Flutter通信エラー:', e);
                 }
             }
         });
         
+        // メッセージ受信ハンドラ
+        window.addEventListener('message', function(event) {
+            try {
+                const message = event.data;
+                
+                // EXECコマンドの処理
+                if (typeof message === 'string' && message.startsWith('EXEC:')) {
+                    const script = message.substring(5);
+                    eval(script);
+                }
+            } catch (e) {
+                console.log('❌ [QuillBridge] メッセージ処理エラー:', e);
+            }
+        });
+        
         // Flutter側からの関数呼び出し用（Global関数として公開）
         window.quillSetContent = setContent;
-        window.quillGetHtml = getHtmlContent;
-        window.quillGetDelta = getDeltaContent;
+        window.quillGetHtml = function() {
+            const html = quill.root.innerHTML;
+            window.parent.postMessage('QUILL_HTML:' + html, '*');
+            return html;
+        };
+        window.quillGetDelta = function() {
+            const delta = quill.getContents();
+            return JSON.stringify(delta);
+        };
         window.quillClear = clearContent;
         window.quillSwitchTheme = switchTheme;
         
@@ -385,11 +400,9 @@
         window.addEventListener('load', function() {
             updateStatus('✅ Quill.js エディタ初期化完了');
             
-            // Flutter側に準備完了を通知（HtmlElementView対応）
+            // Flutter側に準備完了を通知（シンプルな文字列形式）
             try {
-                if (window.parent && window.parent.onQuillReady) {
-                    window.parent.onQuillReady();
-                }
+                window.parent.postMessage('QUILL_READY', '*');
             } catch (e) {
                 console.log('🔗 [QuillBridge] 初期化通知エラー:', e);
             }
