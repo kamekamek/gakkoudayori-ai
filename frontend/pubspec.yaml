@@ -1,5 +1,5 @@
 name: yutori_kyoshitu
-description: 学校だよりAI - 音声入力で学級通信を自動生成
+description: 学校だよりAI - 音声入力で学級通信を自動生成（リビルド版）
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -10,68 +10,22 @@ dependencies:
   flutter:
     sdk: flutter
   
-  # 基本パッケージ
-  cupertino_icons: ^1.0.6
-  
-  # State Management
-  provider: ^6.0.5
-  
-  # HTTP & API
+  # API呼び出し（STT・Gemini）
   http: ^1.1.0
   
-  # JSON
-  json_annotation: ^4.8.1
-  
-  # UI Components
-  material_design_icons_flutter: ^7.0.7296
-  
-  # File & Storage (Web対応)
-  file_picker: ^8.1.6
-  path_provider: ^2.1.1
-  
-  # Firebase - 最新安定版（dart:js_interop対応済み）
-  firebase_core: ^3.14.0
-  firebase_auth: ^5.5.4
-  cloud_firestore: ^5.6.8
-  firebase_storage: ^12.3.6
-  
-  # Web interop（dart:js_interop対応）
+  # Web Audio API, JavaScript Bridge
   web: ^1.1.0
-  js: ^0.7.1
-  
-  # WebView for Flutter Web
-  webview_flutter_web: ^0.2.3+4
-  webview_flutter_platform_interface: ^2.10.0
-  
-  # Utils
-  uuid: ^4.1.0
-  intl: ^0.18.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   
-  # Testing
-  mockito: ^5.4.4
-  flutter_driver:
-    sdk: flutter
-  integration_test:
-    sdk: flutter
-  html: ^0.15.4
-  
-  # Code Generation
-  build_runner: ^2.4.7
-  json_serializable: ^6.7.1
-  
-  # Linting
+  # コード品質
   flutter_lints: ^6.0.0
 
 flutter:
   uses-material-design: true
   
   assets:
-    - assets/images/
-    - assets/icons/
-    - assets/audio/
-    - assets/data/
+    - assets/audio/    # 音声関連ファイル用
 

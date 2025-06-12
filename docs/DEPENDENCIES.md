@@ -1,171 +1,99 @@
 # 📦 依存関係管理
 
-**最終更新**: 2025-01-17 23:30  
-**Phase**: R (Reset) - 最小構成  
+**最終更新**: 2025-06-12 22:38  
+**方針**: 必要最小限のパッケージのみ使用
 
 ---
 
-## 🎯 **依存関係方針**
+## 🎯 **Phase R 最小依存関係**
 
-### **基本原則**
-1. **最小限主義**: 必要最小限のパッケージのみ使用
-2. **安定性優先**: 実績があり安定したパッケージを選択
-3. **Web互換性**: Flutter Web で確実に動作するもの
-4. **保守性**: メンテナンスされており将来性があるもの
-
----
-
-## 📋 **Phase R 必須パッケージ**
-
-### **Core Dependencies**
+### **pubspec.yaml (最小構成)**
 ```yaml
 dependencies:
   flutter:
     sdk: flutter
-  http: ^1.1.0          # HTTP API呼び出し用
-  web: ^1.1.0           # Web API (Audio等) 用
-```
-
-### **Development Dependencies**
-```yaml
+  http: ^1.1.0      # API呼び出し（STT・Gemini）
+  web: ^1.1.0       # Web Audio API
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^6.0.0  # Lint設定
+  flutter_lints: ^6.0.0
 ```
 
 ---
 
-## ❌ **削除予定パッケージ（複雑化の原因）**
+## 📋 **パッケージ使用目的**
 
-### **状態管理関連**
-- ❌ `provider: ^6.0.5` - 過度に複雑な状態管理
-- ❌ `flutter_riverpod: ^2.4.9` - 同上
+### **production dependencies (2個)**
 
-### **Firebase関連（Phase R後に再検討）**
-- ❌ `firebase_core: ^2.24.2`
-- ❌ `firebase_auth: ^4.15.3`
-- ❌ `cloud_firestore: ^4.13.6`
-- ❌ `firebase_storage: ^11.5.6`
-- ❌ `firebase_analytics: ^10.7.4`
+| パッケージ | バージョン | 使用目的 | Phase |
+|-----------|-----------|----------|-------|
+| `http` | ^1.1.0 | バックエンドAPI呼び出し | R3-R4 |
+| `web` | ^1.1.0 | Web Audio API, JavaScript Bridge | R2 |
 
-### **UI/ウィジェット関連**
-- ❌ `webview_flutter: ^4.4.2` - Quill.js統合で複雑化
-- ❌ `webview_flutter_web: ^0.2.2+4` - 同上
-- ❌ `webview_flutter_platform_interface: ^2.8.0` - 同上
-
-### **ファイル・メディア関連**
-- ❌ `file_picker: ^6.1.1` - 画像機能後回し
-- ❌ `image: ^4.1.3` - 同上
-- ❌ `path_provider: ^2.1.1` - ファイル操作複雑化
-
-### **データ処理関連**
-- ❌ `json_annotation: ^4.8.1` - モデル複雑化
-- ❌ `json_serializable: ^6.7.1` - 同上
-- ❌ `build_runner: ^2.4.7` - 同上
-
-### **その他ユーティリティ**
-- ❌ `uuid: ^4.2.1` - 現状不要
-- ❌ `equatable: ^2.0.5` - モデル比較不要
-- ❌ `go_router: ^12.1.3` - 単一画面につき不要
+### **dev dependencies (2個)**
+| パッケージ | バージョン | 使用目的 | Phase |
+|-----------|-----------|----------|-------|
+| `flutter_test` | SDK | 基本テスト | R5 |
+| `flutter_lints` | ^6.0.0 | コード品質 | 全期間 |
 
 ---
 
-## 🔧 **パッケージ選定理由**
+## ❌ **削除済み依存関係**
 
-### **`http: ^1.1.0`** ✅
-- **用途**: Google Cloud API（STT・Gemini）呼び出し
-- **理由**: 
-  - Flutter標準的なHTTPクライアント
-  - Web対応済み、安定性高い
-  - シンプルなAPI設計
-- **代替案検討**: dio は高機能だが今回は不要
-
-### **`web: ^1.1.0`** ✅  
-- **用途**: Web Audio API、JavaScript連携
-- **理由**:
-  - Web専用API呼び出しに必須
-  - Dart Web標準パッケージ
-  - 軽量、依存関係なし
-- **使用箇所**: 音声録音、ファイルダウンロード
+### **複雑性の原因だったパッケージ**
+- ❌ `provider` - 状態管理（シンプルなStatefulWidgetで十分）
+- ❌ `firebase_*` - Firebase関連（Phase R後に必要に応じて再導入）
+- ❌ `webview_flutter_*` - WebView（Quill.js削除により不要）
+- ❌ `file_picker` - ファイル選択（写真機能は後回し）
+- ❌ `json_annotation` - JSON生成（シンプルなMapで十分）
+- ❌ `material_design_icons_flutter` - アイコン（基本アイコンで十分）
+- ❌ `uuid` - ID生成（不要）
+- ❌ `intl` - 国際化（後回し）
 
 ---
 
-## 🚫 **除外パッケージと理由**
+## 🔄 **段階的依存関係追加計画**
 
-### **Provider系状態管理**
-- **問題**: 小規模アプリには過剰
-- **Phase R方針**: StatefulWidget の setState() で十分
-- **再検討時期**: Phase 2 で機能拡張時
-
-### **Firebase系**
-- **問題**: 認証・データ保存が現状不要
-- **Phase R方針**: ローカルストレージ or HTTP API直接呼び出し
-- **再検討時期**: ユーザー管理必要になった時点
-
-### **WebView系**
-- **問題**: Quill.js統合で複雑化、デバッグ困難
-- **Phase R方針**: 基本HTML生成で十分
-- **再検討時期**: リッチテキストエディタが必要になった時点
-
----
-
-## 📊 **バージョン管理戦略**
-
-### **固定バージョン方針**
+### **Phase R+1 (認証・保存機能)**
 ```yaml
-# ❌ 危険: バージョン範囲指定
-http: ^1.1.0
-
-# ✅ 安全: 固定バージョン（Phase R）
-http: 1.1.0
-web: 1.1.0
+# 必要に応じて追加予定
+firebase_core: ^3.14.0
+firebase_auth: ^5.5.4
 ```
 
-### **理由**
-- Phase R は動作優先、予期しないバージョン更新を避ける
-- 機能拡張時に計画的にバージョンアップ
-- トラブルシューティング時の切り分け容易
-
----
-
-## 🔄 **段階的導入計画**
-
-### **Phase R+1: 基本機能拡張**
+### **Phase R+2 (データ永続化)**
 ```yaml
-# 追加候補
-shared_preferences: ^2.2.2  # 設定保存
-path: ^1.8.3               # パス操作
+# 必要に応じて追加予定
+cloud_firestore: ^5.6.8
+firebase_storage: ^12.3.6
 ```
 
-### **Phase R+2: UI/UX改善**
+### **Phase R+3 (UI強化)**
 ```yaml
-# 追加候補
-flutter_svg: ^2.0.9       # アイコン
-google_fonts: ^6.1.0      # フォント
-```
-
-### **Phase R+3: 高度な機能**
-```yaml
-# 再検討候補
-firebase_core: ^2.24.2    # 必要に応じて
-provider: ^6.0.5          # 状態管理複雑化時
+# 必要に応じて追加予定
+provider: ^6.0.5
+material_design_icons_flutter: ^7.0.7296
 ```
 
 ---
 
-## 🚨 **注意事項**
+## 📝 **依存関係追加ルール**
 
-### **Web特有の制約**
-- `dart:io` 使用不可（ファイル操作制限）
-- ネイティブプラグイン使用不可
-- CORS制約あり（API呼び出し時）
+### **追加前チェックリスト**
+1. ✅ 本当に必要な機能か？
+2. ✅ 標準ライブラリで代替できないか？
+3. ✅ パッケージサイズは適切か？
+4. ✅ メンテナンス状況は良好か？
+5. ✅ 他のパッケージと競合しないか？
 
-### **回避方法**
-- ファイル操作: `web` パッケージのWeb API使用
-- ネイティブ機能: JavaScript Bridge経由
-- CORS: バックエンドでヘッダー設定
+### **禁止事項**
+- 🚫 1つの機能に複数のパッケージを使用
+- 🚫 メンテナンスされていないパッケージの使用
+- 🚫 "念のため"でのパッケージ追加
+- 🚫 ドキュメントが不十分なパッケージの使用
 
 ---
 
-**🎯 Phase R 成功指標**: 依存関係3個以下で音声→HTML変換完全動作 
+**🎯 目標**: 軽量・高速・安定したアプリケーション 
