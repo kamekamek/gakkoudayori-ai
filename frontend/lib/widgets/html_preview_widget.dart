@@ -44,11 +44,12 @@ class _HtmlPreviewWidgetState extends State<HtmlPreviewWidget> {
     _cachedContent = widget.htmlContent;
 
     // HTMLエレメントを作成
+    final safeHeight = widget.height.isFinite ? widget.height : 500.0;
     _iframe = web.HTMLIFrameElement()
       ..width = '100%'
-      ..height = '${widget.height.toInt()}px'
+      ..height = '${safeHeight.toInt()}px'
       ..style.width = '100%'
-      ..style.height = '${widget.height}px'
+      ..style.height = '${safeHeight}px'
       ..style.border = 'none'
       ..style.borderRadius = '8px'
       ..style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
@@ -167,9 +168,11 @@ class _HtmlPreviewWidgetState extends State<HtmlPreviewWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final safeHeight = widget.height.isFinite ? widget.height : 500.0;
+
     if (_viewId == null) {
       return Container(
-        height: widget.height,
+        height: safeHeight,
         decoration: BoxDecoration(
           color: Colors.grey[100],
           borderRadius: BorderRadius.circular(8),
@@ -181,7 +184,7 @@ class _HtmlPreviewWidgetState extends State<HtmlPreviewWidget> {
     }
 
     return Container(
-      height: widget.height,
+      height: safeHeight,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.grey[300]!),
