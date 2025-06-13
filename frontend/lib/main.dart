@@ -6,7 +6,7 @@ import 'dart:ui_web' as ui_web;
 import 'services/audio_service.dart';
 import 'services/ai_service.dart';
 import 'widgets/html_preview_widget.dart';
-import 'widgets/quill_editor_widget.dart';
+import 'widgets/tinymce_editor_widget.dart';
 import 'package:flutter/services.dart';
 import 'dart:html' as html;
 import 'dart:js_interop' as js_interop;
@@ -57,6 +57,9 @@ class HomePageState extends State<HomePage> {
   final TextEditingController _textController = TextEditingController();
   AIGenerationResult? _aiResult;
   String _statusMessage = '🎤 音声録音または文字入力で学級通信を作成してください';
+  
+  // TinyMCEエディタへの参照
+  final GlobalKey _editorKey = GlobalKey();
 
   @override
   void initState() {
@@ -948,9 +951,8 @@ class HomePageState extends State<HomePage> {
                                 builder: (context, constraints) {
                                   final availableHeight = constraints.maxHeight;
                                   return _showEditor
-                                      ? QuillEditorWidget(
-                                          key: ValueKey(
-                                              'quill_editor_${_generatedHtml.hashCode}'),
+                                      ? TinyMCEEditorWidget(
+                                          key: _editorKey,
                                           initialContent: _generatedHtml,
                                           height: availableHeight,
                                           onContentChanged: (html) {
@@ -964,7 +966,7 @@ class HomePageState extends State<HomePage> {
                                           },
                                           onEditorReady: () {
                                             // エディタ準備完了時の処理
-                                            print('✅ エディタ準備完了');
+                                            print('✅ TinyMCEエディタ準備完了');
                                           },
                                         )
                                       : HtmlPreviewWidget(
