@@ -377,7 +377,7 @@ class HomePageState extends State<HomePage> {
 
       // バックエンドPDF生成API呼び出し
       final apiUrl = kDebugMode 
-          ? 'http://localhost:8080/api/v1/ai/generate-pdf'
+          ? 'http://localhost:8081/api/v1/ai/generate-pdf'
           : 'https://asia-northeast1-yutori-kyoshitu.cloudfunctions.net/main/api/v1/ai/generate-pdf';
       
       final response = await http.post(
@@ -397,6 +397,7 @@ class HomePageState extends State<HomePage> {
       );
 
       print('📄 [PDF] API応答 - ステータス: ${response.statusCode}');
+      print('📄 [PDF] API応答本文: ${response.body}');
 
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
@@ -432,7 +433,15 @@ class HomePageState extends State<HomePage> {
           throw Exception('PDF生成失敗: ${responseData['error']}');
         }
       } else {
-        throw Exception('API呼び出し失敗: ${response.statusCode}');
+        // エラー詳細を取得
+        String errorDetails = 'ステータス: ${response.statusCode}';
+        try {
+          final errorResponse = jsonDecode(response.body);
+          errorDetails += ', 詳細: ${errorResponse['error'] ?? response.body}';
+        } catch (e) {
+          errorDetails += ', レスポンス: ${response.body}';
+        }
+        throw Exception('API呼び出し失敗 - $errorDetails');
       }
     } catch (e) {
       print('❌ [PDF] PDF生成エラー: $e');
