@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:web/web.dart' as web;
 import 'dart:convert';
 import 'dart:ui_web' as ui_web;
@@ -358,7 +359,7 @@ class HomePageState extends State<HomePage> {
     await _generateNewsletter();
   }
 
-  // PDFダウンロード機能
+  // PDFダウンロード機能（バックエンドAPI使用）
   Future<void> _downloadPdf() async {
     if (_generatedHtml.isEmpty) {
       setState(() {
@@ -372,58 +373,73 @@ class HomePageState extends State<HomePage> {
     });
 
     try {
-      // HTML to PDF変換用のJavaScriptライブラリを動的に読み込み
-      final script = html.ScriptElement()
-        ..src =
-            'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'
-        ..async = true;
+      print('📄 [PDF] PDF生成開始 - HTMLサイズ: ${_generatedHtml.length}文字');
 
-      html.document.head!.append(script);
+      // バックエンドPDF生成API呼び出し
+      final apiUrl = kDebugMode 
+          ? 'http://localhost:8080/api/v1/ai/generate-pdf'
+          : 'https://asia-northeast1-yutori-kyoshitu.cloudfunctions.net/main/api/v1/ai/generate-pdf';
+      
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'html_content': _generatedHtml,
+          'title': '学級通信',
+          'page_size': 'A4',
+          'margin': '20mm',
+          'include_header': true,
+          'include_footer': true,
+        }),
+      );
 
-      // スクリプト読み込み完了を待つ
-      await script.onLoad.first;
+      print('📄 [PDF] API応答 - ステータス: ${response.statusCode}');
 
-      // jsPDFを使用してPDF生成（シンプルなJavaScript実行）
-      final textContent =
-          _textController.text.replaceAll('\n', ' ').replaceAll('"', '\\"');
-      final fileName = '学級通信_${DateTime.now().toString().substring(0, 10)}.pdf';
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
 
-      // JavaScriptコードを文字列として作成し、script要素で実行
-      final jsCode = '''
-        if (typeof window.jspdf !== 'undefined') {
-          const { jsPDF } = window.jspdf;
-          const doc = new jsPDF();
-          
-          const text = "$textContent";
-          const lines = doc.splitTextToSize(text, 180);
-          
-          doc.setFont('helvetica');
-          doc.setFontSize(16);
-          doc.text('学級通信', 20, 20);
-          
-          doc.setFontSize(12);
-          doc.text(lines, 20, 40);
-          
-          doc.save('$fileName');
+        if (responseData['success'] == true) {
+          // Base64エンコードされたPDFデータを取得
+          final pdfBase64 = responseData['data']['pdf_base64'];
+          final fileSize = responseData['data']['file_size_mb'];
+
+          print('📄 [PDF] PDF生成成功 - ファイルサイズ: ${fileSize}MB');
+
+          // Base64をバイナリに変換
+          final pdfBytes = base64Decode(pdfBase64);
+
+          // Blobを作成してダウンロード
+          final blob = html.Blob([pdfBytes], 'application/pdf');
+          final url = html.Url.createObjectUrlFromBlob(blob);
+
+          final fileName =
+              '学級通信_${DateTime.now().toString().substring(0, 10)}.pdf';
+          final anchor = html.AnchorElement(href: url)
+            ..setAttribute('download', fileName)
+            ..click();
+
+          html.Url.revokeObjectUrl(url);
+
+          setState(() {
+            _statusMessage = '📄 PDFファイルをダウンロードしました (${fileSize}MB)';
+          });
+
+          print('📄 [PDF] ダウンロード完了: $fileName');
         } else {
-          console.error('jsPDF not loaded yet');
+          throw Exception('PDF生成失敗: ${responseData['error']}');
         }
-      ''';
-
-      // script要素でJavaScriptを実行
-      final scriptElement = html.ScriptElement()..text = jsCode;
-      html.document.head!.append(scriptElement);
-
-      // 実行後にscript要素を削除
-      Future.delayed(Duration(milliseconds: 100), () {
-        scriptElement.remove();
-      });
-
-      setState(() {
-        _statusMessage = '📄 PDFファイルをダウンロードしました';
-      });
+      } else {
+        throw Exception('API呼び出し失敗: ${response.statusCode}');
+      }
     } catch (e) {
-      print('PDF生成エラー: $e');
+      print('❌ [PDF] PDF生成エラー: $e');
+      setState(() {
+        _statusMessage = '❌ PDF生成エラー: $e';
+      });
+
       // PDFが失敗した場合はHTMLダウンロード
       _downloadHtml();
     }
@@ -947,6 +963,7 @@ class HomePageState extends State<HomePage> {
                                               'html_preview_${_generatedHtml.hashCode}'),
                                           htmlContent: _generatedHtml,
                                           height: availableHeight,
+                                          onPdfDownload: _downloadPdf,
                                         );
                                 },
                               ),
