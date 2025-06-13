@@ -7,13 +7,11 @@ import 'dart:convert';
 class HtmlPreviewWidget extends StatefulWidget {
   final String htmlContent;
   final double height;
-  final VoidCallback? onPdfDownload;
 
   const HtmlPreviewWidget({
     Key? key,
     required this.htmlContent,
     this.height = 400,
-    this.onPdfDownload,
   }) : super(key: key);
 
   @override
@@ -185,70 +183,45 @@ class _HtmlPreviewWidgetState extends State<HtmlPreviewWidget> {
       );
     }
 
-    return Column(
-      children: [
-        // PDF変換ボタン
-        if (widget.onPdfDownload != null)
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.only(bottom: 8),
-            child: ElevatedButton.icon(
-              onPressed: widget.htmlContent.trim().isEmpty ? null : widget.onPdfDownload,
-              icon: Icon(Icons.picture_as_pdf, size: 18),
-              label: Text('PDFダウンロード'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue[600],
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(6),
+    return Container(
+      height: safeHeight,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: Stack(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: HtmlElementView(
+              viewType: _viewId!,
+            ),
+          ),
+          if (_isLoading)
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.8),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 8),
+                    Text(
+                      'プレビュー読み込み中...',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ),
-        // HTMLプレビュー
-        Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey[300]!),
-            ),
-            child: Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: HtmlElementView(
-                    viewType: _viewId!,
-                  ),
-                ),
-                if (_isLoading)
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.8),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          CircularProgressIndicator(),
-                          SizedBox(height: 8),
-                          Text(
-                            'プレビュー読み込み中...',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
