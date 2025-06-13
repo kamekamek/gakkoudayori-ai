@@ -61,7 +61,8 @@ def transcribe_audio_file(
     enable_enhanced: bool = True,
     enable_punctuation: bool = True,
     enable_word_timestamps: bool = True,
-    speech_contexts: Optional[List[str]] = None
+    speech_contexts: Optional[List[str]] = None,
+    user_id: str = "default"  # ユーザー辞書統合用
 ) -> Dict[str, Any]:
     """
     音声ファイルを文字起こし
@@ -112,8 +113,9 @@ def transcribe_audio_file(
         
         config = speech.RecognitionConfig(**config_params)
         
-        # 学校用語の認識精度向上設定
+        # ユーザー辞書統合による認識精度向上
         if speech_contexts is None:
+            # デフォルトの学校用語
             speech_contexts = [
                 '運動会', '学習発表会', '学級通信', '子どもたち', 
                 '頑張っていました', '先生', '保護者', '授業', 
@@ -126,8 +128,9 @@ def transcribe_audio_file(
             ]
         
         # 音声認識実行
-        logger.info(f"Starting speech recognition. Audio size: {len(audio_content)} bytes")
-        logger.info(f"Config: language={language_code}, sample_rate={sample_rate_hertz}, encoding={encoding}, model=latest_long")
+        logger.info(f"Starting speech recognition. Audio size: {len(audio_content)} bytes, user_id: {user_id}")
+        logger.info(f"Config: language={language_code}, sample_rate={sample_rate_hertz}, encoding={encoding}, contexts: {len(speech_contexts)}")
+        logger.info(f"Speech contexts preview: {speech_contexts[:5] if speech_contexts else 'None'}")
         
         # 音声データの最初の部分をデバッグ用に確認
         if len(audio_content) > 4:

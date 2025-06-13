@@ -7,6 +7,7 @@ import 'services/audio_service.dart';
 import 'services/ai_service.dart';
 import 'widgets/html_preview_widget.dart';
 import 'widgets/tinymce_editor_widget.dart';
+import 'widgets/user_dictionary_widget.dart';
 import 'package:flutter/services.dart';
 import 'dart:html' as html;
 import 'dart:js_interop' as js_interop;
@@ -887,6 +888,32 @@ class HomePageState extends State<HomePage> {
                             onPressed: () {/* やり直し */},
                             icon: Icon(Icons.redo, color: Colors.grey[600]),
                             tooltip: 'やり直し',
+                          ),
+                          SizedBox(width: 8),
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => UserDictionaryWidget(
+                                    userId: 'default', // TODO: 実際のユーザーIDを使用
+                                    onDictionaryUpdated: () {
+                                      // 辞書更新時のコールバック
+                                      setState(() {
+                                        _statusMessage = 'ユーザー辞書が更新されました';
+                                      });
+                                    },
+                                  ),
+                                ),
+                              );
+                            },
+                            icon: Icon(Icons.book, size: 16),
+                            label: Text('辞書'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.indigo[600],
+                              foregroundColor: Colors.white,
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                            ),
                           ),
                           SizedBox(width: 8),
                           ElevatedButton.icon(

@@ -24,6 +24,10 @@ from speech_recognition_service import (
     get_supported_formats,
     get_default_speech_contexts
 )
+from user_dictionary_service import (
+    UserDictionaryService,
+    create_user_dictionary_service
+)
 from gemini_api_service import generate_text
 from html_constraint_service import generate_constrained_html
 
@@ -137,8 +141,11 @@ def transcribe_audio():
         # パラメータ取得
         language_code = request.form.get('language', 'ja-JP')
         sample_rate = int(request.form.get('sample_rate', '48000'))  # 48kHzをデフォルトに
-        custom_contexts = request.form.get('user_dictionary', '')
-        speech_contexts = custom_contexts.split(',') if custom_contexts else None
+        user_id = request.form.get('user_id', 'default')  # ユーザーIDサポート
+        
+        # ユーザー辞書サービス初期化
+        dict_service = create_user_dictionary_service()
+        speech_contexts = dict_service.get_speech_contexts(user_id)
         
         # 認証情報パス
         credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', '../secrets/service-account-key.json')
@@ -148,9 +155,18 @@ def transcribe_audio():
             audio_content=audio_content,
             credentials_path=credentials_path,
             language_code=language_code,
-            sample_rate_hertz=sample_rate,  # パラメータから設定
-            speech_contexts=speech_contexts
+            sample_rate_hertz=sample_rate,
+            speech_contexts=speech_contexts,
+            user_id=user_id
         )
+        
+        # ユーザー辞書でポストプロセシング
+        if result['success']:
+            original_transcript = result['data']['transcript']
+            corrected_transcript, corrections = dict_service.correct_transcription(original_transcript, user_id)
+            result['data']['transcript'] = corrected_transcript
+            result['data']['corrections'] = corrections
+            result['data']['original_transcript'] = original_transcript
         
         if result['success']:
             # API仕様に合わせたレスポンス形式
@@ -158,11 +174,14 @@ def transcribe_audio():
                 'success': True,
                 'data': {
                     'transcript': result['data']['transcript'],
+                    'original_transcript': result['data'].get('original_transcript', ''),
+                    'corrections': result['data'].get('corrections', []),
                     'confidence': result['data']['confidence'],
                     'processing_time_ms': result['data']['processing_time_ms'],
                     'sections': result['data']['sections'],
                     'audio_info': result['data']['audio_info'],
-                    'validation_info': validation_result
+                    'validation_info': validation_result,
+                    'user_dictionary_applied': len(result['data'].get('corrections', [])) > 0
                 }
             }
             return jsonify(response_data)
@@ -180,6 +199,164 @@ def transcribe_audio():
             'success': False,
             'error': f'Transcription failed: {str(e)}',
             'error_type': 'server_error'
+        }), 500
+
+# ==============================================================================
+# ユーザー辞書エンドポイント
+# ==============================================================================
+
+@app.route('/api/v1/dictionary/<user_id>', methods=['GET'])
+def get_user_dictionary(user_id: str):
+    """ユーザー辞書取得"""
+    try:
+        dict_service = create_user_dictionary_service()
+        dictionary = dict_service.get_user_dictionary(user_id)
+        stats = dict_service.get_dictionary_stats(user_id)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'dictionary': dictionary,
+                'stats': stats,
+                'user_id': user_id
+            }
+        })
+    except Exception as e:
+        logger.error(f"Get user dictionary error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/v1/dictionary/<user_id>/terms', methods=['POST'])
+def add_custom_term(user_id: str):
+    """カスタム用語追加"""
+    try:
+        data = request.get_json()
+        term = data.get('term')
+        variations = data.get('variations', [])
+        category = data.get('category', 'custom')
+        
+        if not term:
+            return jsonify({
+                'success': False,
+                'error': 'Term is required'
+            }), 400
+        
+        dict_service = create_user_dictionary_service()
+        success = dict_service.add_custom_term(user_id, term, variations, category)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'data': {
+                    'term': term,
+                    'variations': variations,
+                    'category': category
+                }
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to add custom term'
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"Add custom term error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/v1/dictionary/<user_id>/correct', methods=['POST'])
+def manual_correction(user_id: str):
+    """手動修正記録"""
+    try:
+        data = request.get_json()
+        original = data.get('original')
+        corrected = data.get('corrected')
+        context = data.get('context', '')
+        
+        if not original or not corrected:
+            return jsonify({
+                'success': False,
+                'error': 'Original and corrected text are required'
+            }), 400
+        
+        dict_service = create_user_dictionary_service()
+        success = dict_service.manual_correction(user_id, original, corrected, context)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'data': {
+                    'original': original,
+                    'corrected': corrected,
+                    'context': context,
+                    'learned': True
+                }
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to record correction'
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"Manual correction error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/v1/dictionary/<user_id>/suggest', methods=['POST'])
+def suggest_corrections(user_id: str):
+    """修正候補提案"""
+    try:
+        data = request.get_json()
+        text = data.get('text')
+        
+        if not text:
+            return jsonify({
+                'success': False,
+                'error': 'Text is required'
+            }), 400
+        
+        dict_service = create_user_dictionary_service()
+        suggestions = dict_service.suggest_corrections(text, user_id)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'text': text,
+                'suggestions': suggestions
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Suggest corrections error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/v1/dictionary/<user_id>/stats', methods=['GET'])
+def get_dictionary_stats(user_id: str):
+    """辞書統計情報取得"""
+    try:
+        dict_service = create_user_dictionary_service()
+        stats = dict_service.get_dictionary_stats(user_id)
+        
+        return jsonify({
+            'success': True,
+            'data': stats
+        })
+        
+    except Exception as e:
+        logger.error(f"Get dictionary stats error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
         }), 500
 
 @app.route('/api/v1/ai/formats', methods=['GET'])

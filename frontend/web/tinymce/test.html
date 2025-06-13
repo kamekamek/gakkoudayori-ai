@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TinyMCE テスト</title>
+    
+    <!-- TinyMCE CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/tinymce@6.8.3/tinymce.min.js"></script>
+    
+    <style>
+        body {
+            margin: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>🧪 TinyMCE 読み込みテスト</h1>
+    
+    <div id="status" class="status info">
+        📋 TinyMCEライブラリを読み込み中...
+    </div>
+    
+    <textarea id="test-editor">
+        <h1>テストエディタ</h1>
+        <p>これはTinyMCEのテストです。</p>
+    </textarea>
+    
+    <script>
+        const statusDiv = document.getElementById('status');
+        
+        // TinyMCE読み込み確認
+        console.log('🚀 テストページ開始');
+        console.log('TinyMCE:', typeof tinymce);
+        
+        if (typeof tinymce === 'undefined') {
+            statusDiv.className = 'status error';
+            statusDiv.innerHTML = '❌ TinyMCEライブラリの読み込みに失敗しました';
+            console.error('TinyMCE未定義');
+        } else {
+            statusDiv.className = 'status success';
+            statusDiv.innerHTML = '✅ TinyMCEライブラリ読み込み成功！初期化を開始します...';
+            console.log('TinyMCE読み込み成功');
+            
+            // 簡単な初期化テスト
+            tinymce.init({
+                selector: '#test-editor',
+                height: 300,
+                menubar: false,
+                plugins: ['lists', 'link'],
+                toolbar: 'undo redo | bold italic | bullist numlist',
+                
+                setup: function(editor) {
+                    console.log('エディタセットアップ開始');
+                },
+                
+                init_instance_callback: function(editor) {
+                    console.log('✅ エディタ初期化完了');
+                    statusDiv.innerHTML = '🎉 TinyMCEエディタが正常に初期化されました！';
+                    
+                    // Flutter親フレームにメッセージ送信
+                    if (window.parent && window.parent.postMessage) {
+                        window.parent.postMessage({
+                            type: 'tinymce_ready',
+                            data: { status: 'ready' }
+                        }, '*');
+                        console.log('Flutter側に準備完了メッセージ送信');
+                    }
+                }
+            }).then(function(editors) {
+                console.log('初期化Promise成功:', editors.length);
+            }).catch(function(error) {
+                console.error('初期化Promise失敗:', error);
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = '❌ エディタの初期化に失敗: ' + error.message;
+            });
+        }
+    </script>
+</body>
+</html>
