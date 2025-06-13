@@ -147,13 +147,8 @@ def generate_pdf_from_html(
         logger.info(f"Using font family: {font_family}")
         
         # HTMLドキュメント作成（WeasyPrint 60.x対応）
-        try:
-            # 新しいAPI形式を試す
-            html_doc = HTML(string=full_html)
-        except TypeError:
-            # 古いAPI形式にフォールバック
-            from weasyprint import HTML as WeasyHTML
-            html_doc = WeasyHTML(string=full_html)
+        # WeasyPrint HTMLドキュメント作成
+        html_doc = HTML(string=full_html)
         
         # PDF生成
         html_doc.write_pdf(output_path)
