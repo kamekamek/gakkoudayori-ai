@@ -107,10 +107,13 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
 
   void _initializeIframe() {
     try {
+      // 安全な高さの計算
+      final safeHeight = widget.height.isFinite ? widget.height : 500.0;
+
       // iframeElement作成
       _iframeElement = html.IFrameElement()
         ..width = '100%'
-        ..height = '${widget.height.toInt()}px'
+        ..height = '${safeHeight.toInt()}px'
         ..src = 'quill/index.html'
         ..style.border = 'none'
         ..style.width = '100%'
@@ -259,8 +262,9 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final safeHeight = widget.height.isFinite ? widget.height : 500.0;
     return SizedBox(
-      height: widget.height,
+      height: safeHeight,
       child: _isLoading
           ? Center(child: CircularProgressIndicator())
           : HtmlElementView(viewType: _viewType),

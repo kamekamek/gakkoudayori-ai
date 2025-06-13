@@ -51,6 +51,7 @@ class HomePageState extends State<HomePage> {
   bool _isProcessing = false;
   bool _isGenerating = false;
   bool _showEditor = false; // プレビュー(false) / エディター(true) 切り替え
+  String _inputText = ''; // テキスト入力の状態を明示的に管理
 
   final TextEditingController _textController = TextEditingController();
   AIGenerationResult? _aiResult;
@@ -83,6 +84,7 @@ class HomePageState extends State<HomePage> {
       setState(() {
         _transcribedText = transcript;
         _textController.text = transcript;
+        _inputText = transcript.trim(); // 音声入力時も_inputTextを更新
         _statusMessage = '✅ 文字起こし完了！「学級通信を作成する」ボタンを押してください';
       });
     });
@@ -101,7 +103,8 @@ class HomePageState extends State<HomePage> {
       return;
     }
 
-    final inputText = _textController.text.trim();
+    final inputText =
+        _inputText.isNotEmpty ? _inputText : _textController.text.trim();
     if (inputText.isEmpty) {
       setState(() {
         _statusMessage = '❌ 入力テキストが空です。音声録音または文字入力をしてください。';
@@ -573,6 +576,15 @@ class HomePageState extends State<HomePage> {
                       TextField(
                         controller: _textController,
                         maxLines: 6,
+                        onChanged: (text) {
+                          setState(() {
+                            _inputText = text.trim();
+                            print(
+                                '📝 [TextField] テキスト変更: "$_inputText" (長さ: ${_inputText.length})');
+                            print(
+                                '📝 [TextField] ボタン有効性: ${!(_isProcessing || _inputText.isEmpty)}');
+                          });
+                        },
                         decoration: InputDecoration(
                           hintText:
                               '学級通信の内容を入力してください...\n音声入力からテキストを追加することもできます。',
@@ -593,32 +605,42 @@ class HomePageState extends State<HomePage> {
                 SizedBox(height: 16),
 
                 // 生成ボタン
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton.icon(
-                    onPressed:
-                        (_isProcessing || _textController.text.trim().isEmpty)
+                Builder(
+                  builder: (context) {
+                    final isButtonEnabled =
+                        !(_isProcessing || _inputText.isEmpty);
+                    print(
+                        '🔘 [Button] ビルド時 - テキスト: "$_inputText", 有効: $isButtonEnabled');
+                    return SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton.icon(
+                        onPressed: (_isProcessing || _inputText.isEmpty)
                             ? null
-                            : _generateNewsletter,
-                    icon: _isProcessing
-                        ? SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white),
-                          )
-                        : Icon(Icons.auto_awesome),
-                    label: Text(_isProcessing ? 'AI生成中...' : '学級通信を作成する'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange[600],
-                      foregroundColor: Colors.white,
-                      textStyle:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
-                    ),
-                  ),
+                            : () {
+                                print('🔘 [Button] 学級通信作成ボタンが押されました');
+                                _generateNewsletter();
+                              },
+                        icon: _isProcessing
+                            ? SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white),
+                              )
+                            : Icon(Icons.auto_awesome),
+                        label: Text(_isProcessing ? 'AI生成中...' : '学級通信を作成する'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange[600],
+                          foregroundColor: Colors.white,
+                          textStyle: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                    );
+                  },
                 ),
 
                 SizedBox(height: 12),
@@ -897,32 +919,37 @@ class HomePageState extends State<HomePage> {
                             )
                           : ClipRRect(
                               borderRadius: BorderRadius.circular(8),
-                              child: _showEditor
-                                  ? QuillEditorWidget(
-                                      key: ValueKey(
-                                          'quill_editor_${_generatedHtml.hashCode}'),
-                                      initialContent: _generatedHtml,
-                                      height: double.infinity,
-                                      onContentChanged: (html) {
-                                        if (_editorHtml != html) {
-                                          setState(() {
-                                            _editorHtml = html;
-                                            // エディタの変更をプレビューにも反映
-                                            _generatedHtml = html;
-                                          });
-                                        }
-                                      },
-                                      onEditorReady: () {
-                                        // エディタ準備完了時の処理
-                                        print('✅ エディタ準備完了');
-                                      },
-                                    )
-                                  : HtmlPreviewWidget(
-                                      key: ValueKey(
-                                          'html_preview_${_generatedHtml.hashCode}'),
-                                      htmlContent: _generatedHtml,
-                                      height: double.infinity,
-                                    ),
+                              child: LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final availableHeight = constraints.maxHeight;
+                                  return _showEditor
+                                      ? QuillEditorWidget(
+                                          key: ValueKey(
+                                              'quill_editor_${_generatedHtml.hashCode}'),
+                                          initialContent: _generatedHtml,
+                                          height: availableHeight,
+                                          onContentChanged: (html) {
+                                            if (_editorHtml != html) {
+                                              setState(() {
+                                                _editorHtml = html;
+                                                // エディタの変更をプレビューにも反映
+                                                _generatedHtml = html;
+                                              });
+                                            }
+                                          },
+                                          onEditorReady: () {
+                                            // エディタ準備完了時の処理
+                                            print('✅ エディタ準備完了');
+                                          },
+                                        )
+                                      : HtmlPreviewWidget(
+                                          key: ValueKey(
+                                              'html_preview_${_generatedHtml.hashCode}'),
+                                          htmlContent: _generatedHtml,
+                                          height: availableHeight,
+                                        );
+                                },
+                              ),
                             ),
                     ),
                   ),
