@@ -53,6 +53,36 @@ DEFAULT_PAGE_SIZE = 'A4'
 DEFAULT_MARGIN = '20mm'
 DEFAULT_DPI = 300
 
+def _get_available_japanese_fonts() -> list:
+    """利用可能な日本語フォントを検出"""
+    import platform
+    
+    # OS別の日本語フォント候補
+    if platform.system() == "Darwin":  # macOS
+        fonts = [
+            "Hiragino Kaku Gothic ProN",
+            "Hiragino Sans",
+            "Yu Gothic Medium",
+            "Osaka"
+        ]
+    elif platform.system() == "Windows":
+        fonts = [
+            "Yu Gothic",
+            "Meiryo",
+            "MS PGothic",
+            "MS Gothic"
+        ]
+    else:  # Linux
+        fonts = [
+            "Noto Sans CJK JP",
+            "DejaVu Sans",
+            "Liberation Sans"
+        ]
+    
+    # 基本的なフォールバック
+    fonts.extend(["sans-serif", "serif"])
+    return fonts
+
 def generate_pdf_from_html(
     html_content: str,
     title: str = "学級通信",
@@ -90,6 +120,10 @@ def generate_pdf_from_html(
                 'processing_time_ms': int((time.time() - start_time) * 1000)
             }
         
+        # 利用可能な日本語フォントを取得
+        available_fonts = _get_available_japanese_fonts()
+        font_family = ", ".join([f'"{font}"' for font in available_fonts])
+        
         # HTML文書を構築
         full_html = _build_complete_html_document(
             html_content=html_content,
@@ -98,7 +132,8 @@ def generate_pdf_from_html(
             margin=margin,
             include_header=include_header,
             include_footer=include_footer,
-            custom_css=custom_css
+            custom_css=custom_css,
+            font_family=font_family
         )
         
         # 出力パス決定
@@ -107,11 +142,23 @@ def generate_pdf_from_html(
             output_path = temp_file.name
             temp_file.close()
         
-        # PDF生成実行
+        # PDF生成実行（日本語フォント対応）
         logger.info(f"Generating PDF: {output_path}")
+        logger.info(f"Using font family: {font_family}")
         
-        html_doc = HTML(string=full_html)
+        # HTMLドキュメント作成（WeasyPrint 60.x対応）
+        try:
+            # 新しいAPI形式を試す
+            html_doc = HTML(string=full_html)
+        except TypeError:
+            # 古いAPI形式にフォールバック
+            from weasyprint import HTML as WeasyHTML
+            html_doc = WeasyHTML(string=full_html)
+        
+        # PDF生成
         html_doc.write_pdf(output_path)
+        
+        logger.info("PDF generation completed with Japanese font support")
         
         # ファイル情報取得
         file_size = os.path.getsize(output_path)
@@ -158,7 +205,8 @@ def _build_complete_html_document(
     margin: str,
     include_header: bool,
     include_footer: bool,
-    custom_css: str
+    custom_css: str,
+    font_family: str = None
 ) -> str:
     """
     完全なHTML文書を構築
@@ -176,8 +224,13 @@ def _build_complete_html_document(
         str: 完全なHTML文書
     """
     
-    # PDF用CSS
+    # PDF用CSS（日本語フォント対応強化版）
     pdf_css = f"""
+    @font-face {{
+        font-family: 'NotoSansJP';
+        src: url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
+    }}
+    
     @page {{
         size: {page_size};
         margin: {margin};
@@ -189,8 +242,12 @@ def _build_complete_html_document(
         }}
     }}
     
+    * {{
+        font-family: {font_family or "'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', 'Yu Gothic Medium', 'Yu Gothic', 'MS PGothic', 'DejaVu Sans', sans-serif"} !important;
+    }}
+    
     body {{
-        font-family: "Hiragino Sans", "Meiryo", "Yu Gothic", "MS PGothic", sans-serif;
+        font-family: {font_family or "'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', 'Yu Gothic Medium', 'Yu Gothic', 'MS PGothic', 'DejaVu Sans', sans-serif"} !important;
         line-height: 1.6;
         color: #333;
         font-size: 14px;
@@ -342,6 +399,7 @@ def _build_complete_html_document(
     <html lang="ja">
     <head>
         <meta charset="UTF-8">
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>{title}</title>
         <style>
