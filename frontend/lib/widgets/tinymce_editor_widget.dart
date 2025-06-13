@@ -54,9 +54,13 @@ class _TinyMCEEditorWidgetState extends State<TinyMCEEditorWidget> {
 
   /// iframeを初期化してTinyMCE HTMLファイルを読み込み
   void _initializeIframe() {
+    // TinyMCE HTMLコンテンツをData URLとして埋め込み
+    final htmlContent = _getTinyMCEHtmlContent();
+    final dataUrl = 'data:text/html;charset=utf-8,${Uri.encodeComponent(htmlContent)}';
+    
     // iframeエレメント作成
     _iframeElement = html.IFrameElement()
-      ..src = '/tinymce/index.html'
+      ..src = dataUrl
       ..style.border = 'none'
       ..style.width = '100%'
       ..style.height = '${widget.height}px';
@@ -193,6 +197,110 @@ class _TinyMCEEditorWidgetState extends State<TinyMCEEditorWidget> {
   void insertAIContent(String content) {
     // AIが生成したHTMLコンテンツを挿入
     setContent(content);
+  }
+
+  /// TinyMCE用のHTMLコンテンツを生成
+  String _getTinyMCEHtmlContent() {
+    return '''
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>TinyMCE Editor</title>
+    <script src="https://cdn.jsdelivr.net/npm/tinymce@6.8.3/tinymce.min.js"></script>
+</head>
+<body style="margin:0;padding:10px;font-family:Arial,sans-serif;">
+    <div id="status" style="text-align:center;padding:20px;color:#666;">
+        📝 エディタを読み込み中...
+    </div>
+    
+    <textarea id="editor">
+        <h1>🌸 学級通信 🌸</h1>
+        <p>こんにちは、保護者の皆様。</p>
+        <p>今日は素晴らしい一日でした。子どもたちの笑顔がとても印象的でした。</p>
+        
+        <h2>📚 今日の学習</h2>
+        <ul>
+            <li>国語：漢字の練習をしました</li>
+            <li>算数：かけ算の基礎を学びました</li>
+            <li>体育：みんなで楽しく運動しました</li>
+        </ul>
+        
+        <h2>📝 お知らせ</h2>
+        <p>明日は遠足です。お弁当の準備をお願いします。</p>
+    </textarea>
+
+    <script>
+        console.log('🚀 TinyMCE Data URL版 開始');
+        
+        if (typeof tinymce === 'undefined') {
+            document.getElementById('status').innerHTML = '❌ TinyMCE読み込み失敗';
+            console.error('TinyMCE未定義');
+        } else {
+            console.log('✅ TinyMCE読み込み成功');
+            document.getElementById('status').innerHTML = '✅ 初期化中...';
+            
+            tinymce.init({
+                selector: '#editor',
+                height: 400,
+                menubar: false,
+                plugins: ['lists', 'link', 'paste', 'autoresize'],
+                toolbar: 'undo redo | bold italic | bullist numlist | link',
+                paste_as_text: true,
+                autoresize_bottom_margin: 16,
+                
+                init_instance_callback: function(editor) {
+                    console.log('✅ TinyMCE初期化完了');
+                    document.getElementById('status').style.display = 'none';
+                    
+                    // Flutter側に通知
+                    if (window.parent && window.parent.postMessage) {
+                        window.parent.postMessage({
+                            type: 'tinymce_ready',
+                            data: { status: 'ready' }
+                        }, '*');
+                        console.log('Flutter側に準備完了通知送信');
+                    }
+                    
+                    // コンテンツ変更イベント
+                    editor.on('change keyup', function() {
+                        const content = editor.getContent();
+                        if (window.parent && window.parent.postMessage) {
+                            window.parent.postMessage({
+                                type: 'content_changed',
+                                data: { html: content }
+                            }, '*');
+                        }
+                    });
+                }
+            }).catch(function(error) {
+                console.error('TinyMCE初期化エラー:', error);
+                document.getElementById('status').innerHTML = '❌ 初期化失敗: ' + error.message;
+            });
+        }
+        
+        // メッセージ受信
+        window.addEventListener('message', function(event) {
+            try {
+                const message = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+                
+                if (message.type === 'set_content' && tinymce.activeEditor) {
+                    tinymce.activeEditor.setContent(message.data.html || '');
+                } else if (message.type === 'get_content' && tinymce.activeEditor) {
+                    const content = tinymce.activeEditor.getContent();
+                    window.parent.postMessage({
+                        type: 'content_response',
+                        data: { html: content }
+                    }, '*');
+                }
+            } catch (e) {
+                console.error('メッセージエラー:', e);
+            }
+        });
+    </script>
+</body>
+</html>
+    ''';
   }
 
   @override

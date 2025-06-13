@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>学級通信エディタ - TinyMCE</title>
     
-    <!-- TinyMCE CDN -->
-    <script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/7/tinymce.min.js" referrerpolicy="origin"></script>
+    <!-- TinyMCE CDN (Community版) -->
+    <script src="https://cdn.jsdelivr.net/npm/tinymce@6.8.3/tinymce.min.js"></script>
     
     <style>
         body {
@@ -94,11 +94,23 @@
         let editorInstance = null;
         let currentTheme = 'spring';
         
+        // デバッグ情報
+        console.log('🚀 [TinyMCE] スクリプト開始');
+        console.log('🔍 [TinyMCE] tinymce オブジェクト:', typeof tinymce);
+        
+        // TinyMCE読み込み確認
+        if (typeof tinymce === 'undefined') {
+            console.error('❌ [TinyMCE] TinyMCEライブラリが読み込まれていません');
+            alert('TinyMCEの読み込みに失敗しました。ネットワーク接続を確認してください。');
+        } else {
+            console.log('✅ [TinyMCE] TinyMCEライブラリ読み込み完了');
+        }
+        
         // TinyMCE初期化
         tinymce.init({
             selector: '#tinymce-editor',
             height: 600,
-            language: 'ja',
+            // language: 'ja', // 一時的にコメントアウト
             
             // プラグイン設定
             plugins: [
@@ -206,6 +218,11 @@
             init_instance_callback: function(editor) {
                 console.log('✅ TinyMCEエディタが完全に初期化されました');
             }
+        }).then(function(editors) {
+            console.log('🎯 [TinyMCE] 初期化成功:', editors.length, 'エディタ');
+        }).catch(function(error) {
+            console.error('💥 [TinyMCE] 初期化エラー:', error);
+            alert('エディタの初期化に失敗しました: ' + error.message);
         });
         
         // 季節テーマ適用関数
