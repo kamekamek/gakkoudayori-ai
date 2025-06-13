@@ -972,7 +972,6 @@ class HomePageState extends State<HomePage> {
                                               'html_preview_${_generatedHtml.hashCode}'),
                                           htmlContent: _generatedHtml,
                                           height: availableHeight,
-                                          onPdfDownload: _downloadPdf,
                                         );
                                 },
                               ),
