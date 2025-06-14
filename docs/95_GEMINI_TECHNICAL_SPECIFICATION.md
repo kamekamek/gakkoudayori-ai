@@ -25,10 +25,13 @@
 - 音声認識結果を教師らしい文章に添削
 - 学級通信として適切な構造化JSONデータを生成
 - 季節感や教育的配慮を含む内容改善
+- **スタイル別対応**: クラシック（伝統的）・モダン（インフォグラフィック）
 
 #### **技術仕様**
 - **API**: Google Vertex AI (Gemini 2.0 Flash Experimental)
-- **プロンプトファイル**: `backend/functions/prompts/CLASIC_TENSAKU.md`
+- **プロンプトファイル**: 
+  - クラシック: `backend/functions/prompts/CLASIC_TENSAKU.md`
+  - モダン: `backend/functions/prompts/MODERN_TENSAKU.md` ✅
 - **実装ファイル**: `backend/functions/audio_to_json_service.py`
 - **呼び出し関数**: `convert_speech_to_json()`
 
@@ -68,10 +71,13 @@ top_k = 40                # 候補数制限
 - 構造化JSONから印刷最適化されたHTMLを生成
 - A4サイズでの印刷レイアウト保証
 - アクセシビリティ対応とスマホプレビュー最適化
+- **スタイル別レイアウト**: クラシック（シンプル）・モダン（インフォグラフィック・視覚装飾）
 
 #### **技術仕様**
 - **API**: Google Vertex AI (Gemini 2.0 Flash Experimental)
-- **プロンプトファイル**: `backend/functions/prompts/CLASIC_LAYOUT.md`
+- **プロンプトファイル**: 
+  - クラシック: `backend/functions/prompts/CLASIC_LAYOUT.md`
+  - モダン: `backend/functions/prompts/MODERN_LAYOUT.md` ✅
 - **実装ファイル**: `backend/functions/json_to_graphical_record_service.py`
 - **呼び出し関数**: `convert_json_to_graphical_record()`
 
@@ -87,6 +93,61 @@ top_k = 40                # 候補数制限
 #### **入力・出力**
 - **入力**: 第1エージェントの構造化JSON
 - **出力**: 印刷対応HTML（完全なHTMLドキュメント）
+
+---
+
+## 🎨 **モダンスタイル詳細仕様（v2.3）**
+
+### **モダン添削AI（MODERN_TENSAKU.md）の特徴**
+
+#### **インフォグラフィック対応**
+- **視覚的ヒント生成**: `section_visual_hint`フィールドで装飾指示
+  - `role-list`: 役割分担リスト（アイコン付き）
+  - `emphasis-block`: 強調ブロック（電球アイコン）
+  - `infographic`: インフォグラフィック要素
+- **カラーパレット自動生成**: 季節・テーマに応じた配色
+- **セクション分量判定**: `estimated_length`で改ページ制御
+
+#### **出力JSON拡張フィールド**
+```json
+{
+  "color_scheme": {
+    "primary": "#2E86AB",
+    "secondary": "#A23B72", 
+    "accent": "#F18F01",
+    "background": "#FFFFFF"
+  },
+  "sections": [
+    {
+      "section_visual_hint": "role-list",
+      "estimated_length": "long"
+    }
+  ]
+}
+```
+
+### **モダンレイアウトAI（MODERN_LAYOUT.md）の特徴**
+
+#### **視覚装飾システム**
+- **SVGアイコン**: セクションタイプに応じた自動挿入
+- **カラー適用**: JSON指定の配色を全体に反映
+- **装飾クラス**: 視覚ヒントに応じたCSS適用
+- **印刷堅牢性**: 装飾要素の印刷時最適化
+
+#### **レスポンシブ対応**
+```css
+@media print {
+  .section { box-shadow: none; border-radius: 0; }
+  .role-list { background: none; }
+  .section-title svg { display: none !important; }
+  * { print-color-adjust: exact !important; }
+}
+```
+
+#### **アクセシビリティ強化**
+- **ARIA属性**: `aria-labelledby`, `role="img"`
+- **強制カラーモード対応**: `forced-colors: active`
+- **セマンティックHTML**: 適切な見出し構造
 
 ---
 
@@ -110,9 +171,10 @@ top_k = 40                # 候補数制限
 - **コスト**: 約$0.0004-0.0007（0.04-0.07円）
 
 #### **合計コスト**
-- **1回の生成**: 約$0.0006-0.0011（0.06-0.11円）
-- **月間1,000回使用**: 約$0.6-1.1（60-110円）
-- **年間12,000回使用**: 約$7.2-13.2（720-1,320円）
+- **1回の生成（クラシック）**: 約$0.0006-0.0011（0.06-0.11円）
+- **1回の生成（モダン）**: 約$0.0008-0.0013（0.08-0.13円）※装飾情報追加
+- **月間1,000回使用**: 約$0.6-1.3（60-130円）
+- **年間12,000回使用**: 約$7.2-15.6（720-1,560円）
 
 ### **コスト最適化施策**
 1. **プロンプト最適化**: 不要な説明文を削減
@@ -227,10 +289,13 @@ def handle_gemini_error(error, start_time):
 
 ## 🚀 **今後の拡張計画**
 
-### **Phase 2: 機能拡張**
-- **モダンスタイル**: `MODERN_TENSAKU.md` + `MODERN_LAYOUT.md`
-- **季節テーマ**: 春夏秋冬の専用プロンプト
-- **画像生成**: Imagen APIとの統合
+### **Phase 2: 機能拡張（✅ 一部完了）**
+- **モダンスタイル**: `MODERN_TENSAKU.md` + `MODERN_LAYOUT.md` ✅ **完成済み**
+  - インフォグラフィック対応
+  - 視覚的装飾・アイコン・カラーパレット
+  - 印刷最適化レイアウト
+- **季節テーマ**: 春夏秋冬の専用プロンプト（予定）
+- **画像生成**: Imagen APIとの統合（予定）
 
 ### **Phase 3: 最適化**
 - **プロンプトキャッシュ**: 共通部分のキャッシュ化
@@ -272,6 +337,7 @@ logger.info(f"Gemini API call: model={model_name}, tokens_in={input_tokens}, tok
 - ✅ **プロンプト管理**: ファイルベースでの保守性
 - ✅ **印刷最適化**: A4レイアウト保証
 - ✅ **コスト効率**: 1回0.1円以下の低コスト
+- ✅ **スタイル多様性**: クラシック・モダン両対応 ✅
 
 ### **ビジネス価値**
 - ✅ **ユーザー体験**: 音声入力から10秒で完成
@@ -285,3 +351,55 @@ logger.info(f"Gemini API call: model={model_name}, tokens_in={input_tokens}, tok
 - ⚠️ **品質変動**: AIモデル更新時の出力変化
 
 **推奨**: 定期的な品質チェックとコスト監視の継続実施 
+
+#### **✅ 実装完了：クラシックボタン（2025-06-14）**
+```dart
+// クラシックボタン押下時の処理フロー（Flutter実装）
+Future<void> _generateNewsletterTwoAgent() async {
+  // Step 1: 添削AI（第1エージェント）
+  final jsonResult = await _graphicalRecordService.convertSpeechToJson(
+    transcribedText: inputText,
+    customContext: 'style:$_selectedStyle', // classic/modern
+  );
+  // → CLASIC_TENSAKU.md（v2.2）プロンプトでGemini呼び出し
+  // → 構造化JSON出力
+  
+  // Step 2: レイアウトAI（第2エージェント）
+  final htmlResult = await _graphicalRecordService.convertJsonToGraphicalRecord(
+    jsonData: _structuredJsonData!,
+    template: _selectedStyle == 'classic' ? 'classic_newsletter' : 'modern_newsletter',
+    customStyle: 'newsletter_optimized_for_print',
+  );
+  // → CLASIC_LAYOUT.md（v2.2）プロンプトでGemini呼び出し
+  // → 印刷対応HTML出力（シングルカラム・堅牢設計）
+  
+  // Step 3: 印刷最適化プレビュー表示（A4固定、スマホ対応）
+  _generatedHtml = htmlResult.htmlContent!; // PrintPreviewWidgetで表示
+}
+```
+
+#### **✅ 実装完了：モダンボタン（2025-06-14）**
+```dart
+// モダンボタン押下時の処理フロー（Flutter実装）
+Future<void> _generateNewsletterTwoAgent() async {
+  // Step 1: 添削AI（第1エージェント）
+  final jsonResult = await _graphicalRecordService.convertSpeechToJson(
+    transcribedText: inputText,
+    customContext: 'style:modern', // modernスタイル指定
+  );
+  // → MODERN_TENSAKU.md（v2.3）プロンプトでGemini呼び出し
+  // → インフォグラフィック対応構造化JSON出力
+  
+  // Step 2: レイアウトAI（第2エージェント）
+  final htmlResult = await _graphicalRecordService.convertJsonToGraphicalRecord(
+    jsonData: _structuredJsonData!,
+    template: 'modern_newsletter', // モダンテンプレート指定
+    customStyle: 'newsletter_optimized_for_print',
+  );
+  // → MODERN_LAYOUT.md（v2.3）プロンプトでGemini呼び出し
+  // → インフォグラフィック対応HTML出力（視覚装飾・カラーパレット・SVGアイコン）
+  
+  // Step 3: 印刷最適化プレビュー表示（A4固定、スマホ対応）
+  _generatedHtml = htmlResult.htmlContent!; // PrintPreviewWidgetで表示
+}
+``` 
