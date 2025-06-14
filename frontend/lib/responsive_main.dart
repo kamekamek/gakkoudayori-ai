@@ -173,168 +173,170 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
   }
 
   Widget _buildVoiceInputSection({required bool isCompact}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // タイトル
-        Text(
-          '🎤 音声入力',
-          style: TextStyle(
-            fontSize: isCompact ? 16 : 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.blue[700],
-          ),
-        ),
-        SizedBox(height: isCompact ? 12 : 16),
-
-        // 録音ボタン
-        Center(
-          child: GestureDetector(
-            onTap: _isRecording
-                ? _audioService.stopRecording
-                : _audioService.startRecording,
-            child: Container(
-              width: isCompact ? 80 : 120,
-              height: isCompact ? 80 : 120,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _isRecording ? Colors.red[500] : Colors.blue[500],
-                boxShadow: [
-                  BoxShadow(
-                    color: (_isRecording ? Colors.red : Colors.blue)
-                        .withOpacity(0.3),
-                    spreadRadius: 4,
-                    blurRadius: 8,
-                  ),
-                ],
-              ),
-              child: Icon(
-                _isRecording ? Icons.stop : Icons.mic,
-                size: isCompact ? 35 : 50,
-                color: Colors.white,
-              ),
-            ),
-          ),
-        ),
-
-        SizedBox(height: 8),
-        Center(
-          child: Text(
-            _isRecording ? '録音中...' : 'タップで録音開始',
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // タイトル
+          Text(
+            '🎤 音声入力',
             style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
+              fontSize: isCompact ? 16 : 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.blue[700],
             ),
           ),
-        ),
+          SizedBox(height: isCompact ? 12 : 16),
 
-        SizedBox(height: isCompact ? 16 : 24),
-
-        // テキスト入力
-        Container(
-          padding: EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.blue[50],
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.blue[200]!),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.edit_note, size: 16, color: Colors.blue[600]),
-                  SizedBox(width: 4),
-                  Text(
-                    'テキスト入力',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blue[700],
+          // 録音ボタン
+          Center(
+            child: GestureDetector(
+              onTap: _isRecording
+                  ? _audioService.stopRecording
+                  : _audioService.startRecording,
+              child: Container(
+                width: isCompact ? 80 : 120,
+                height: isCompact ? 80 : 120,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _isRecording ? Colors.red[500] : Colors.blue[500],
+                  boxShadow: [
+                    BoxShadow(
+                      color: (_isRecording ? Colors.red : Colors.blue)
+                          .withOpacity(0.3),
+                      spreadRadius: 4,
+                      blurRadius: 8,
                     ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 8),
-              TextField(
-                controller: _textController,
-                maxLines: isCompact ? 3 : 6,
-                onChanged: (text) {
-                  setState(() {
-                    _inputText = text.trim();
-                  });
-                },
-                decoration: InputDecoration(
-                  hintText: '学級通信の内容を入力してください...',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide.none,
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: EdgeInsets.all(12),
+                  ],
                 ),
-                style: TextStyle(fontSize: 14),
+                child: Icon(
+                  _isRecording ? Icons.stop : Icons.mic,
+                  size: isCompact ? 35 : 50,
+                  color: Colors.white,
+                ),
               ),
-            ],
-          ),
-        ),
-
-        SizedBox(height: 16),
-
-        // 生成ボタン
-        SizedBox(
-          width: double.infinity,
-          height: isCompact ? 44 : 50,
-          child: ElevatedButton.icon(
-            onPressed: (_isProcessing || _inputText.isEmpty)
-                ? null
-                : _generateNewsletter,
-            icon: _isProcessing
-                ? SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white),
-                  )
-                : Icon(Icons.auto_awesome),
-            label: Text(_isProcessing ? 'AI生成中...' : '学級通信を作成する'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange[600],
-              foregroundColor: Colors.white,
-              textStyle: TextStyle(
-                  fontSize: isCompact ? 14 : 16, fontWeight: FontWeight.bold),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
             ),
           ),
-        ),
 
-        SizedBox(height: 12),
-
-        // ステータス表示
-        Container(
-          width: double.infinity,
-          padding: EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.grey[100],
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            _statusMessage,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[700],
+          SizedBox(height: 8),
+          Center(
+            child: Text(
+              _isRecording ? '録音中...' : 'タップで録音開始',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
             ),
-            textAlign: TextAlign.center,
           ),
-        ),
 
-        // デスクトップでのみ表示する詳細情報とボタン
-        if (!isCompact) ...[
+          SizedBox(height: isCompact ? 16 : 24),
+
+          // テキスト入力
+          Container(
+            padding: EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.blue[200]!),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.edit_note, size: 16, color: Colors.blue[600]),
+                    SizedBox(width: 4),
+                    Text(
+                      'テキスト入力',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue[700],
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8),
+                TextField(
+                  controller: _textController,
+                  maxLines: isCompact ? 3 : 6,
+                  onChanged: (text) {
+                    setState(() {
+                      _inputText = text.trim();
+                    });
+                  },
+                  decoration: InputDecoration(
+                    hintText: '学級通信の内容を入力してください...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: EdgeInsets.all(12),
+                  ),
+                  style: TextStyle(fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+
           SizedBox(height: 16),
-          if (_aiResult != null) ..._buildAIResultInfo(),
+
+          // 生成ボタン
+          SizedBox(
+            width: double.infinity,
+            height: isCompact ? 44 : 50,
+            child: ElevatedButton.icon(
+              onPressed: (_isProcessing || _inputText.isEmpty)
+                  ? null
+                  : _generateNewsletter,
+              icon: _isProcessing
+                  ? SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
+                    )
+                  : Icon(Icons.auto_awesome),
+              label: Text(_isProcessing ? 'AI生成中...' : '学級通信を作成する'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange[600],
+                foregroundColor: Colors.white,
+                textStyle: TextStyle(
+                    fontSize: isCompact ? 14 : 16, fontWeight: FontWeight.bold),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ),
+
+          SizedBox(height: 12),
+
+          // ステータス表示
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              _statusMessage,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[700],
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+
+          // デスクトップでのみ表示する詳細情報とボタン
+          if (!isCompact) ...[
+            SizedBox(height: 16),
+            if (_aiResult != null) ..._buildAIResultInfo(),
+          ],
         ],
-      ],
+      ),
     );
   }
 

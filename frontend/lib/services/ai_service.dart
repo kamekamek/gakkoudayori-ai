@@ -14,6 +14,11 @@ class AIService {
     String season = 'auto',
     String customInstruction = '',
   }) async {
+    const String htmlConstraintInstruction =
+        '出力はHTML形式で、<h1>, <h2>, <h3>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <br>タグのみ使用してください。CSSは<style>タグを使わず、各要素のstyle属性に直接記述してください。例: <p style="color: red;">テキスト</p>。不必要な装飾は避け、シンプルで読みやすいレイアウトにしてください。';
+    final fullInstruction =
+        '$customInstruction $htmlConstraintInstruction'.trim();
+
     try {
       print(
           '🤖 AI生成開始 - テキスト: ${transcribedText.substring(0, transcribedText.length > 50 ? 50 : transcribedText.length)}...');
@@ -29,7 +34,7 @@ class AIService {
           'include_greeting': includeGreeting,
           'target_audience': targetAudience,
           'season': season,
-          'custom_instruction': customInstruction,
+          'custom_instruction': fullInstruction,
         }),
       );
 
@@ -111,6 +116,7 @@ class AIGenerationResult {
   final int wordCount;
   final int characterCount;
   final Map<String, dynamic> aiMetadata;
+  final Map<String, dynamic>? validationInfo; // フィルタリング情報を追加
 
   AIGenerationResult({
     required this.newsletterHtml,
@@ -122,9 +128,15 @@ class AIGenerationResult {
     required this.wordCount,
     required this.characterCount,
     required this.aiMetadata,
+    this.validationInfo, // コンストラクタに追加
   });
 
   factory AIGenerationResult.fromJson(Map<String, dynamic> json) {
+    // フィルタリング発生時のログ出力
+    if (json['validation_info'] != null) {
+      print('ℹ️ HTML Validation Info: ${jsonEncode(json['validation_info'])}');
+    }
+
     return AIGenerationResult(
       newsletterHtml: json['newsletter_html'] ?? '',
       originalSpeech: json['original_speech'] ?? '',
@@ -136,8 +148,12 @@ class AIGenerationResult {
       wordCount: json['word_count'] ?? 0,
       characterCount: json['character_count'] ?? 0,
       aiMetadata: json['ai_metadata'] ?? {},
+      validationInfo: json['validation_info'], // JSONからパース
     );
   }
+
+  /// フィルタリングが発生したかどうか
+  bool get wasFiltered => validationInfo != null;
 
   /// 品質スコア計算（文字数ベース）
   String get qualityScore {

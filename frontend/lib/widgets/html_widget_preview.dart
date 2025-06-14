@@ -29,7 +29,7 @@ class _HtmlWidgetPreviewState extends State<HtmlWidgetPreview> {
   @override
   void initState() {
     super.initState();
-    _currentHtml = widget.htmlContent;
+    _currentHtml = _sanitizeHtml(widget.htmlContent);
     _editController =
         TextEditingController(text: _extractTextFromHtml(_currentHtml));
   }
@@ -38,7 +38,7 @@ class _HtmlWidgetPreviewState extends State<HtmlWidgetPreview> {
   void didUpdateWidget(HtmlWidgetPreview oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.htmlContent != widget.htmlContent) {
-      _currentHtml = widget.htmlContent;
+      _currentHtml = _sanitizeHtml(widget.htmlContent);
       if (!_isEditing) {
         _editController.text = _extractTextFromHtml(_currentHtml);
       }
@@ -57,6 +57,30 @@ class _HtmlWidgetPreviewState extends State<HtmlWidgetPreview> {
         .replaceAll(RegExp(r'<[^>]*>'), ' ')
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
+  }
+
+  /// HTMLを制約に合わせてサニタイズ
+  String _sanitizeHtml(String html) {
+    // 禁止されているタグを許可されているタグに変換
+    String sanitized = html
+        .replaceAll(RegExp(r'<u\b[^>]*>(.*?)</u>', dotAll: true),
+            '<strong>\$1</strong>') // <u> → <strong>
+        .replaceAll(RegExp(r'<b\b[^>]*>(.*?)</b>', dotAll: true),
+            '<strong>\$1</strong>') // <b> → <strong>
+        .replaceAll(RegExp(r'<i\b[^>]*>(.*?)</i>', dotAll: true),
+            '<em>\$1</em>') // <i> → <em>
+        .replaceAll(RegExp(r'<div\b[^>]*>(.*?)</div>', dotAll: true),
+            '<p>\$1</p>') // <div> → <p>
+        .replaceAll(RegExp(r'<span\b[^>]*>(.*?)</span>', dotAll: true),
+            '\$1'); // <span> → テキストのみ
+
+    // 禁止された属性を除去（class, id, style, onclick等）
+    sanitized = sanitized.replaceAll(
+        RegExp(
+            r'\s+(class|id|style|onclick|onload|onerror|onmouseover|onmouseout|onfocus|onblur|onsubmit|onchange|onkeydown|onkeyup|onkeypress)="[^"]*"'),
+        '');
+
+    return sanitized;
   }
 
   /// テキストをHTMLに変換（簡易版）
