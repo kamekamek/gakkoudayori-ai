@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>青葉台市立みどりが丘小学校 おたより「梅雨空の下で広がる学び」</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* --- 全体設定 --- */
+        :root {
+            --primary-color: #3B82F6;
+            --secondary-color: #10B981;
+            --accent-color: #F59E0B;
+            --background-color: #F3F4F6;
+            --text-color: #1F2937;
+            --white-color: #FFFFFF;
+            --gray-color: #6B7280;
+        }
+
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.8;
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            /* ページカウンターの初期化 */
+            counter-reset: page;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 40px;
+            background-color: var(--white-color);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border-radius: 12px;
+        }
+
+        /* --- アクセシビリティ対応 --- */
+        /* Windowsのハイコントラストモードなどで、意図しない背景色が適用されるのを防ぎます */
+        @media (forced-colors: active) {
+            .container, .section, .photo-placeholder, .editor-note, .infographic-block {
+                forced-color-adjust: none;
+                background-color: Window;
+                color: WindowText;
+                border-color: WindowText;
+            }
+        }
+
+
+        /* --- ヘッダー --- */
+        .header {
+            text-align: center;
+            border-bottom: 2px solid var(--background-color);
+            padding-bottom: 20px;
+            margin-bottom: 40px;
+        }
+        .header .school-name {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin: 0;
+        }
+        .header .issue-date {
+            font-size: 0.9rem;
+            color: var(--gray-color);
+            margin: 4px 0 16px;
+        }
+        .header .main-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-color);
+            margin: 0;
+            line-height: 1.3;
+        }
+        .header .sub-title {
+            font-size: 1.2rem;
+            color: var(--gray-color);
+            margin: 8px 0 0;
+        }
+
+        /* --- セクション --- */
+        .section {
+            margin-bottom: 40px;
+        }
+        /* 編集者向けコメント: estimated_lengthが'normal'のセクションにはこのクラスを付与し、印刷時の不自然な改ページを防ぎます。 */
+        .section.no-break {
+            page-break-inside: avoid;
+        }
+        /* 編集者向けコメント: estimated_lengthが'long'のセクションは、内容が長いため印刷時に自然に改ページされるよう page-break-inside: avoid; を適用していません。 */
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            padding-bottom: 8px;
+            border-bottom: 3px solid var(--primary-color);
+            margin-top: 0;
+            margin-bottom: 24px;
+        }
+        .section-title::before {
+            content: "■";
+            color: var(--secondary-color);
+            margin-right: 12px;
+            font-size: 1.2rem;
+        }
+        .section-content p {
+            /* 編集者向けコメント: JSON内の改行(\n)をHTMLで正しく表示するための設定です。 */
+            white-space: pre-line;
+            text-align: left;
+            /* 編集者向けコメント: 日本の慣習に合わせ、段落の先頭を1文字下げます。 */
+            text-indent: 1em;
+            margin-top: 0;
+            margin-bottom: 1em;
+        }
+        .section-content p:first-of-type {
+            text-indent: 0; /* 各セクションの最初の段落は字下げしない */
+        }
+
+        /* --- 視覚ヒントに応じた装飾 --- */
+
+        /* 編集者向けコメント: section_visual_hint: "role-list" に対応する装飾です。 */
+        .role-list .section-content {
+            background-color: #F9FAFB;
+            border-left: 5px solid var(--secondary-color);
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .role-list .section-content p {
+            text-indent: 0; /* 装飾ブロック内では字下げしない */
+        }
+
+        /* 編集者向けコメント: section_visual_hint: "infographic" に対応する装飾です。 */
+        .infographic .infographic-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .infographic-block {
+            background-color: var(--white-color);
+            border: 1px solid #E5E7EB;
+            border-left: 5px solid var(--accent-color);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .infographic-block h4 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin: 0 0 12px 0;
+            display: flex;
+            align-items: center;
+            color: var(--accent-color);
+        }
+        /* 編集者向けコメント: SVGアイコンはアクセシビリティのため role="img" と aria-label を付与しています。印刷時は非表示になります。 */
+        .infographic-block h4 svg {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+            fill: currentColor;
+        }
+        .infographic-block p {
+            white-space: pre-line;
+            text-indent: 0;
+            margin: 0;
+        }
+
+        /* --- 写真プレースホルダー --- */
+        .photo-placeholder {
+            page-break-inside: avoid;
+            margin: 24px 0;
+            border: 2px dashed var(--gray-color);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            background-color: #F9FAFB;
+        }
+        .photo-placeholder figcaption {
+            margin-top: 12px;
+            font-size: 0.9rem;
+            color: var(--gray-color);
+            font-style: italic;
+        }
+
+        /* --- 編集後記 --- */
+        .editor-note {
+            page-break-inside: avoid;
+            margin-top: 40px;
+            padding: 24px;
+            background-color: #EFF6FF; /* primary-colorの淡い色 */
+            border-left: 5px solid var(--primary-color);
+            border-radius: 8px;
+        }
+        .editor-note-title {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--primary-color);
+            margin: 0 0 12px 0;
+        }
+        .editor-note p {
+            margin: 0;
+            text-indent: 0;
+        }
+
+        /* --- AIからの改善提案（編集者向け） --- */
+        .enhancement-suggestions {
+            page-break-before: always; /* 提案は別ページに印刷 */
+            margin-top: 40px;
+            padding: 20px;
+            background-color: #FFFBEB; /* accent-colorの淡い色 */
+            border: 1px solid var(--accent-color);
+            border-radius: 8px;
+        }
+        .enhancement-suggestions-title {
+            font-weight: 700;
+            color: var(--accent-color);
+            margin: 0 0 16px 0;
+        }
+        .enhancement-suggestions ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .enhancement-suggestions li {
+            margin-bottom: 8px;
+        }
+
+        /* --- フッター --- */
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            text-align: right;
+            border-top: 2px solid var(--background-color);
+            color: var(--gray-color);
+            position: relative;
+        }
+        .footer .author {
+            margin: 0;
+            font-size: 1rem;
+        }
+        /* 編集者向けコメント: ページ番号はCSSカウンターで自動生成されます。 */
+        .footer .page-number::after {
+            counter-increment: page;
+            content: counter(page);
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.9rem;
+        }
+
+        /* --- 印刷用スタイル --- */
+        /* 編集者向けコメント: 印刷時のレイアウト崩れを防ぎ、色や装飾を正しく再現するための設定です。 */
+        @media print {
+            /* 編集者向けコメント: Chrome, Firefox, Safari等で背景色やテキストカラーが正しく印刷されるようにします。 */
+            @page {
+                size: A4;
+                margin: 2cm;
+            }
+            body {
+                background-color: var(--white-color);
+                color: #000;
+                font-size: 10.5pt; /* 印刷に適したフォントサイズ */
+            }
+            .container {
+                max-width: 100%;
+                margin: 0;
+                padding: 0;
+                box-shadow: none;
+                border-radius: 0;
+            }
+            
+            /* 堅牢性のため、印刷時には一部の装飾を解除または簡略化します */
+            .infographic-block {
+                box-shadow: none;
+                border-radius: 0;
+            }
+            
+            /* 編集者向けコメント: AIからの改善提案は、保護者向けの印刷物には含まれないように非表示にします。 */
+            .enhancement-suggestions {
+                display: none;
+            }
+            
+            /* SVGアイコンは印刷時に非表示にします */
+            .infographic-block h4 svg {
+                display: none;
+            }
+            
+            /* カラー印刷を強制する設定 */
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            
+            /* 編集者向けコメント: v2.3プロンプト要件の「2ページ目以降にページ番号」は純粋なCSSでの堅牢な実装が困難なため、全ページに表示されます。ご了承ください。 */
+        }
+    </style>
+</head>
+<body>
+    <div class="container" role="article" aria-labelledby="main-title">
+        <header class="header">
+            <p class="school-name" aria-label="学校名">青葉台市立みどりが丘小学校</p>
+            <p class="issue-date" aria-label="号数と発行日">第2号 | 2025年6月15日</p>
+            <h1 id="main-title" class="main-title">梅雨空の下で広がる学び</h1>
+            <p class="sub-title">挑戦と協力の6月</p>
+        </header>
+        
+        <main>
+            <section class="section no-break" aria-labelledby="section-title-1">
+                <h2 id="section-title-1" class="section-title">はじめに</h2>
+                <div class="section-content">
+                    <p>保護者の皆様には、日頃より本校の教育活動にご理解とご協力を賜り、心より感謝申し上げます。</p>
+                    <p>梅雨の季節を迎えましたが、子どもたちは日々元気に学校生活を送っております。今月も、子どもたちの健やかな成長を温かく見守っていただけますと幸いです。</p>
+                </div>
+            </section>
+
+            <section class="section no-break" aria-labelledby="section-title-2">
+                <h2 id="section-title-2" class="section-title">運動会の思い出 ～心を一つにした熱戦～</h2>
+                <div class="section-content">
+                    <p>先般、盛大に開催されました運動会では、多くの保護者の皆様にご来場いただき、温かいご声援をありがとうございました。</p>
+                    <p>子どもたちは、リレーや玉入れ、応援合戦など、練習の成果を存分に発揮し、全ての競技に全力で取り組んでいました。特に5年生のリレーでは、途中でバトンパスが乱れる場面もありましたが、仲間同士で励ましの声を掛け合い、最後まで諦めずにバトンをつないだ姿は、見る者に大きな感動を与えてくれました。</p>
+                </div>
+                <figure class="photo-placeholder" role="group" aria-label="写真プレースホルダー">
+                    <figcaption>（ここに写真が入ります）<br>AIによるキャプション案: 全力で走り、バトンをつなぐ5年生</figcaption>
+                </figure>
+            </section>
+            
+            <section class="section no-break role-list" aria-labelledby="section-title-3">
+                <h2 id="section-title-3" class="section-title">自主性を育む学級活動</h2>
+                <div class="section-content">
+                    <p>今月、各クラスでは係活動の見直しを行いました。子どもたち自身が「クラスのために何ができるか」を考え、話し合いを重ねて自分の役割を決定しました。図書係、保健係、給食係など、それぞれの持ち場で責任を果たそうとする姿に、確かな成長を感じます。</p>
+                    <p>また、多くのクラスで掲げられている「みんなで助け合う」という目標を、日々の生活の中で実践しようとする意識が高まっています。</p>
+                </div>
+                 <figure class="photo-placeholder" role="group" aria-label="写真プレースホルダー">
+                    <figcaption>（ここに写真が入ります）<br>AIによるキャプション案: 協力して本の整理をする図書係の子どもたち</figcaption>
+                </figure>
+            </section>
+            
+            <section class="section infographic" aria-labelledby="section-title-4">
+                <h2 id="section-title-4" class="section-title">今後の予定 ～校外学習のお知らせ～</h2>
+                <div class="section-content infographic-container">
+                    <p>6月20日（金）に、校外学習として科学館へ参ります。詳細は以下の通りです。</p>
+                    <div class="infographic-block">
+                        <h4>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" role="img" aria-label="日時アイコン"><path fill-rule="evenodd" d="M6.75 2.25A.75.75 0 0 1 7.5 3v1.5h9V3A.75.75 0 0 1 18 3v1.5h.75a3 3 0 0 1 3 3v11.25a3 3 0 0 1-3 3H5.25a3 3 0 0 1-3-3V7.5a3 3 0 0 1 3-3H6V3a.75.75 0 0 1 .75-.75Zm13.5 9a1.5 1.5 0 0 0-1.5-1.5H5.25a1.5 1.5 0 0 0-1.5 1.5v7.5a1.5 1.5 0 0 0 1.5 1.5h13.5a1.5 1.5 0 0 0 1.5-1.5v-7.5Z" clip-rule="evenodd" /></svg>
+                            日時
+                        </h4>
+                        <p>6月20日（金）<br>集合時間：午前8時20分<br>集合場所：本校昇降口前</p>
+                    </div>
+                    <div class="infographic-block">
+                        <h4>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" role="img" aria-label="持ち物アイコン"><path d="M10.463 2.22 6.22 8.253a5.228 5.228 0 0 0-1.84 3.645V18.75a3 3 0 0 0 3 3h8.25a3 3 0 0 0 3-3v-6.852a5.228 5.228 0 0 0-1.84-3.645L13.537 2.22a3 3 0 0 0-3.074 0Z" /><path d="M9 7.5a.75.75 0 0 1 .75.75V15a.75.75 0 0 1-1.5 0V8.25A.75.75 0 0 1 9 7.5Zm5.25.75a.75.75 0 0 0-1.5 0V15a.75.75 0 0 0 1.5 0V8.25Z" /></svg>
+                            持ち物
+                        </h4>
+                        <p>・お弁当<br>・水筒<br>・雨具（折りたたみ傘など）<br>・ハンカチ、ティッシュ</p>
+                    </div>
+                    <div class="infographic-block">
+                        <h4>
+                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" role="img" aria-label="その他アイコン"><path fill-rule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003ZM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75Zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" clip-rule="evenodd" /></svg>
+                            その他
+                        </h4>
+                        <p>・雨天決行といたします。ただし、当日の天候によっては、見学内容を一部変更する可能性がございますので、ご了承ください。</p>
+                    </div>
+                </div>
+            </section>
+
+            <aside class="editor-note" aria-label="編集後記">
+                <h3 class="editor-note-title">編集後記</h3>
+                <p>雨音が学びのBGMとなるこの季節、子どもたちは運動会という大きな行事を乗り越え、一回りたくましくなりました。最後まで走り抜いたリレーの選手、仲間を支えた応援団、それぞれの立場で輝く姿に、私も多くの力をもらいました。これからも子どもたち一人ひとりが持つ可能性を信じ、挑戦と助け合いの精神を育んで参ります。保護者の皆様におかれましても、季節の変わり目、どうぞご自愛ください。</p>
+            </aside>
+
+            <div class="enhancement-suggestions" aria-label="AIからの改善提案">
+                <h3 class="enhancement-suggestions-title">【編集者向け】AIからの改善提案</h3>
+                <ul>
+                    <li>【校外学習について】欠席する場合の連絡先（電話番号・担当者名）を明記することを推奨します。</li>
+                    <li>【校外学習について】費用（入館料や交通費など）が発生するかどうかを記載すると、より親切です。</li>
+                    <li>【校外学習について】荒天（警報発令時など）の場合の延期・中止の判断基準や連絡方法について追記すると、保護者が安心できます。</li>
+                </ul>
+            </div>
+
+        </main>
+
+        <footer class="footer">
+            <p class="author">校長 田中 一郎</p>
+            <div class="page-number" aria-label="ページ番号"></div>
+        </footer>
+
+    </div>
+</body>
+</html>

@@ -434,7 +434,115 @@ def get_audio_formats():
         }), 500
 
 # ==============================================================================
-# 学級通信生成エンドポイント
+# 新フロー: 音声→JSON→HTMLグラレコ エンドポイント
+# ==============================================================================
+
+@app.route('/api/v1/ai/speech-to-json', methods=['POST'])
+def convert_speech_to_json():
+    """音声認識結果をJSON構造化データに変換"""
+    try:
+        # リクエストデータ取得
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No JSON data provided',
+                'error_code': 'MISSING_DATA'
+            }), 400
+        
+        # 必須パラメータチェック
+        transcribed_text = data.get('transcribed_text', '')
+        if not transcribed_text.strip():
+            return jsonify({
+                'success': False,
+                'error': 'Transcribed text is required',
+                'error_code': 'MISSING_TRANSCRIBED_TEXT'
+            }), 400
+        
+        # オプションパラメータ
+        custom_context = data.get('custom_context', '')
+        
+        # Google Cloud認証情報パス
+        credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', '../secrets/service-account-key.json')
+        project_id = os.getenv('GOOGLE_CLOUD_PROJECT', 'gakkoudayori-ai')
+        
+        # 音声→JSON変換サービスをインポート
+        from audio_to_json_service import convert_speech_to_json
+        
+        # 変換実行
+        result = convert_speech_to_json(
+            transcribed_text=transcribed_text,
+            project_id=project_id,
+            credentials_path=credentials_path,
+            custom_context=custom_context
+        )
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Speech to JSON conversion error: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Internal server error: {str(e)}',
+            'error_code': 'INTERNAL_ERROR'
+        }), 500
+
+
+@app.route('/api/v1/ai/json-to-graphical-record', methods=['POST'])
+def convert_json_to_graphical_record():
+    """JSON構造化データからHTMLグラレコを生成"""
+    try:
+        # リクエストデータ取得
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No JSON data provided',
+                'error_code': 'MISSING_DATA'
+            }), 400
+        
+        # 必須パラメータチェック
+        json_data = data.get('json_data')
+        if not json_data:
+            return jsonify({
+                'success': False,
+                'error': 'JSON data is required',
+                'error_code': 'MISSING_JSON_DATA'
+            }), 400
+        
+        # オプションパラメータ
+        template = data.get('template', 'colorful')
+        custom_style = data.get('custom_style', '')
+        
+        # Google Cloud認証情報パス
+        credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', '../secrets/service-account-key.json')
+        project_id = os.getenv('GOOGLE_CLOUD_PROJECT', 'gakkoudayori-ai')
+        
+        # JSON→HTMLグラレコ変換サービスをインポート
+        from json_to_graphical_record_service import convert_json_to_graphical_record
+        
+        # 変換実行
+        result = convert_json_to_graphical_record(
+            json_data=json_data,
+            project_id=project_id,
+            credentials_path=credentials_path,
+            template=template,
+            custom_style=custom_style
+        )
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"JSON to graphical record conversion error: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Internal server error: {str(e)}',
+            'error_code': 'INTERNAL_ERROR'
+        }), 500
+
+
+# ==============================================================================
+# 学級通信生成エンドポイント（従来フロー）
 # ==============================================================================
 
 # ==============================================================================

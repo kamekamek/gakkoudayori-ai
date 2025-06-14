@@ -3,11 +3,11 @@ import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'services/audio_service.dart';
 import 'services/ai_service.dart';
+import 'services/graphical_record_service.dart';
 import 'widgets/html_preview_widget.dart';
-import 'widgets/inline_editable_preview_widget.dart';
-import 'widgets/simple_html_editor_widget.dart';
-import 'widgets/html_widget_preview.dart';
-import 'widgets/user_dictionary_widget.dart';
+import 'widgets/quill_editor_widget.dart';
+import 'widgets/cross_platform_html_editor.dart';
+
 import 'dart:html' as html;
 import 'package:http/http.dart' as http;
 
@@ -45,18 +45,32 @@ class ResponsiveHomePage extends StatefulWidget {
 class ResponsiveHomePageState extends State<ResponsiveHomePage> {
   final AudioService _audioService = AudioService();
   final AIService _aiService = AIService();
+  final GraphicalRecordService _graphicalRecordService =
+      GraphicalRecordService();
+
+  // フロー切り替え
+  bool _isGraphicalRecordMode = false; // false: 学級通信, true: グラレコ
+
+  // 共通状態
   bool _isRecording = false;
   String _transcribedText = '';
+  bool _isProcessing = false;
+  String _inputText = '';
+  final TextEditingController _textController = TextEditingController();
+  String _statusMessage = '🎤 音声録音または文字入力で学級通信を作成してください';
+
+  // 学級通信モード用
   String _generatedHtml = '';
   String _editorHtml = '';
-  bool _isProcessing = false;
   bool _isGenerating = false;
   bool _showEditor = false;
-  String _inputText = '';
-
-  final TextEditingController _textController = TextEditingController();
   AIGenerationResult? _aiResult;
-  String _statusMessage = '🎤 音声録音または文字入力で学級通信を作成してください';
+
+  // グラレコモード用
+  Map<String, dynamic>? _jsonData;
+  String _graphicalRecordHtml = '';
+  String _selectedTemplate = 'colorful';
+  bool _showJsonEditor = false;
 
   final GlobalKey _editorKey = GlobalKey();
 
@@ -83,9 +97,85 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
         _transcribedText = transcript;
         _textController.text = transcript;
         _inputText = transcript.trim();
-        _statusMessage = '✅ 文字起こし完了！「学級通信を作成する」ボタンを押してください';
+        if (_isGraphicalRecordMode) {
+          _statusMessage = '✅ 文字起こし完了！「JSON変換」ボタンを押してください';
+        } else {
+          _statusMessage = '✅ 文字起こし完了！「学級通信を作成する」ボタンを押してください';
+        }
       });
     });
+
+    // sample.htmlの内容をプレビューに表示
+    print('🚀 [Init] initState完了 - sample.html読み込み開始');
+    _loadSampleHtml();
+  }
+
+  /// sample.htmlの内容を読み込んでプレビューに表示
+  Future<void> _loadSampleHtml() async {
+    try {
+      print('🚀 [Sample] _loadSampleHtml開始');
+
+      // sample.htmlファイルから実際のコンテンツを読み込み
+      final response = await http.get(Uri.parse('sample.html'));
+      String sampleHtml;
+
+      if (response.statusCode == 200) {
+        sampleHtml = response.body;
+        print('✅ [Sample] sample.htmlファイル読み込み成功');
+      } else {
+        // フォールバック: 簡単なHTMLでテスト
+        sampleHtml = '''
+<div style="padding: 20px; font-family: 'Noto Sans JP', sans-serif;">
+  <h1 style="color: #3B82F6; text-align: center; border-bottom: 3px solid #3B82F6; padding-bottom: 10px;">
+    青葉台市立みどりが丘小学校
+  </h1>
+  <h2 style="color: #10B981; margin-top: 20px;">梅雨空の下で広がる学び</h2>
+  <p style="line-height: 1.8; margin: 15px 0;">
+    保護者の皆様には、日頃より本校の教育活動にご理解とご協力を賜り、心より感謝申し上げます。
+  </p>
+  <p style="line-height: 1.8; margin: 15px 0;">
+    梅雨の季節を迎えましたが、子どもたちは日々元気に学校生活を送っております。今月も、子どもたちの健やかな成長を温かく見守っていただけますと幸いです。
+  </p>
+  
+  <div style="background-color: #F9FAFB; border-left: 5px solid #10B981; padding: 20px; border-radius: 8px; margin: 20px 0;">
+    <h3 style="color: #3B82F6; margin-top: 0;">運動会の思い出</h3>
+    <p style="line-height: 1.8; margin: 10px 0;">
+      先般、盛大に開催されました運動会では、多くの保護者の皆様にご来場いただき、温かいご声援をありがとうございました。
+    </p>
+    <p style="line-height: 1.8; margin: 10px 0;">
+      子どもたちは、リレーや玉入れ、応援合戦など、練習の成果を存分に発揮し、全ての競技に全力で取り組んでいました。
+    </p>
+  </div>
+  
+  <div style="background-color: #EFF6FF; border-left: 5px solid #3B82F6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+    <h3 style="color: #3B82F6; margin-top: 0;">編集後記</h3>
+    <p style="line-height: 1.8; margin: 10px 0;">
+      雨音が学びのBGMとなるこの季節、子どもたちは運動会という大きな行事を乗り越え、一回りたくましくなりました。
+    </p>
+  </div>
+  
+  <div style="text-align: right; margin-top: 30px; padding-top: 15px; border-top: 2px solid #F3F4F6;">
+    <p style="margin: 0; color: #6B7280;">校長 田中 一郎</p>
+  </div>
+</div>
+''';
+        print('⚠️ [Sample] sample.htmlファイル読み込み失敗、フォールバック使用');
+      }
+
+      print('🔄 [Sample] setStateでHTMLを設定中...');
+      setState(() {
+        _generatedHtml = sampleHtml;
+        _statusMessage = '📄 サンプル学級通信を表示しています';
+      });
+
+      print('✅ [Sample] sample.htmlをプレビューに読み込み完了');
+      print('📊 [Sample] _generatedHtml長さ: ${_generatedHtml.length}文字');
+    } catch (e) {
+      print('❌ [Sample] sample.html読み込みエラー: $e');
+      setState(() {
+        _statusMessage = '❌ サンプル読み込みエラー: $e';
+      });
+    }
   }
 
   @override
@@ -177,13 +267,62 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // フロー切り替えボタン
+          Container(
+            width: double.infinity,
+            margin: EdgeInsets.only(bottom: 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => setState(() {
+                      _isGraphicalRecordMode = false;
+                      _statusMessage = '🎤 音声録音または文字入力で学級通信を作成してください';
+                    }),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: !_isGraphicalRecordMode
+                          ? Colors.blue[600]
+                          : Colors.grey[300],
+                      foregroundColor: !_isGraphicalRecordMode
+                          ? Colors.white
+                          : Colors.grey[600],
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: Text('📄 学級通信'),
+                  ),
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => setState(() {
+                      _isGraphicalRecordMode = true;
+                      _statusMessage = '🎤 音声録音または文字入力でグラレコを作成してください';
+                    }),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _isGraphicalRecordMode
+                          ? Colors.purple[600]
+                          : Colors.grey[300],
+                      foregroundColor: _isGraphicalRecordMode
+                          ? Colors.white
+                          : Colors.grey[600],
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: Text('🎨 グラレコ'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           // タイトル
           Text(
-            '🎤 音声入力',
+            _isGraphicalRecordMode ? '🎨 グラレコ作成' : '🎤 音声入力',
             style: TextStyle(
               fontSize: isCompact ? 16 : 18,
               fontWeight: FontWeight.bold,
-              color: Colors.blue[700],
+              color: _isGraphicalRecordMode
+                  ? Colors.purple[700]
+                  : Colors.blue[700],
             ),
           ),
           SizedBox(height: isCompact ? 12 : 16),
@@ -282,33 +421,105 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
 
           SizedBox(height: 16),
 
-          // 生成ボタン
-          SizedBox(
-            width: double.infinity,
-            height: isCompact ? 44 : 50,
-            child: ElevatedButton.icon(
-              onPressed: (_isProcessing || _inputText.isEmpty)
-                  ? null
-                  : _generateNewsletter,
-              icon: _isProcessing
-                  ? SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
-                    )
-                  : Icon(Icons.auto_awesome),
-              label: Text(_isProcessing ? 'AI生成中...' : '学級通信を作成する'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange[600],
-                foregroundColor: Colors.white,
-                textStyle: TextStyle(
-                    fontSize: isCompact ? 14 : 16, fontWeight: FontWeight.bold),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
+          // 生成ボタン（フロー別）
+          if (!_isGraphicalRecordMode) ...[
+            // 学級通信モード
+            SizedBox(
+              width: double.infinity,
+              height: isCompact ? 44 : 50,
+              child: ElevatedButton.icon(
+                onPressed: (_isProcessing || _inputText.isEmpty)
+                    ? null
+                    : _generateNewsletter,
+                icon: _isProcessing
+                    ? SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
+                      )
+                    : Icon(Icons.auto_awesome),
+                label: Text(_isProcessing ? 'AI生成中...' : '学級通信を作成する'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange[600],
+                  foregroundColor: Colors.white,
+                  textStyle: TextStyle(
+                      fontSize: isCompact ? 14 : 16,
+                      fontWeight: FontWeight.bold),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                ),
               ),
             ),
-          ),
+          ] else ...[
+            // グラレコモード
+            Column(
+              children: [
+                // JSON変換ボタン
+                SizedBox(
+                  width: double.infinity,
+                  height: isCompact ? 44 : 50,
+                  child: ElevatedButton.icon(
+                    onPressed: (_isProcessing ||
+                            _inputText.isEmpty ||
+                            _jsonData != null)
+                        ? null
+                        : _convertSpeechToJson,
+                    icon: _isProcessing
+                        ? SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white),
+                          )
+                        : Icon(Icons.data_object),
+                    label: Text(_isProcessing ? 'JSON変換中...' : 'JSON変換'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.purple[600],
+                      foregroundColor: Colors.white,
+                      textStyle: TextStyle(
+                          fontSize: isCompact ? 14 : 16,
+                          fontWeight: FontWeight.bold),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8)),
+                    ),
+                  ),
+                ),
+                if (_jsonData != null) ...[
+                  SizedBox(height: 8),
+                  // グラレコ生成ボタン
+                  SizedBox(
+                    width: double.infinity,
+                    height: isCompact ? 44 : 50,
+                    child: ElevatedButton.icon(
+                      onPressed:
+                          (_isProcessing || _graphicalRecordHtml.isNotEmpty)
+                              ? null
+                              : _generateGraphicalRecord,
+                      icon: _isProcessing
+                          ? SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white),
+                            )
+                          : Icon(Icons.palette),
+                      label: Text(_isProcessing ? 'グラレコ生成中...' : 'グラレコ生成'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.teal[600],
+                        foregroundColor: Colors.white,
+                        textStyle: TextStyle(
+                            fontSize: isCompact ? 14 : 16,
+                            fontWeight: FontWeight.bold),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
 
           SizedBox(height: 12),
 
@@ -330,10 +541,139 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
             ),
           ),
 
+          // グラレコモード専用UI
+          if (_isGraphicalRecordMode) ...[
+            // テンプレート選択
+            if (_jsonData != null) ...[
+              SizedBox(height: 16),
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.purple[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.purple[200]!),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.palette,
+                            size: 16, color: Colors.purple[600]),
+                        SizedBox(width: 4),
+                        Text(
+                          'テンプレート選択',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.purple[700],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildTemplateButton(
+                              'colorful', 'カラフル', Colors.red[300]!),
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: _buildTemplateButton(
+                              'monochrome', 'モノクロ', Colors.grey[600]!),
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: _buildTemplateButton(
+                              'pastel', 'パステル', Colors.pink[200]!),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            // JSON表示エリア
+            if (_jsonData != null) ...[
+              SizedBox(height: 16),
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue[200]!),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.data_object,
+                            size: 16, color: Colors.blue[600]),
+                        SizedBox(width: 4),
+                        Text(
+                          'JSON構造化データ',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue[700],
+                          ),
+                        ),
+                        Spacer(),
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _showJsonEditor = !_showJsonEditor;
+                            });
+                          },
+                          child: Text(_showJsonEditor ? '閉じる' : '詳細表示'),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    if (_showJsonEditor) ...[
+                      Container(
+                        width: double.infinity,
+                        height: 200,
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: Colors.grey[300]!),
+                        ),
+                        child: SingleChildScrollView(
+                          child: Text(
+                            const JsonEncoder.withIndent('  ')
+                                .convert(_jsonData),
+                            style: TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 12,
+                              color: Colors.grey[800],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ] else ...[
+                      Text(
+                        'タイトル: ${_jsonData!['title'] ?? 'なし'}',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                      ),
+                      Text(
+                        'セクション数: ${(_jsonData!['sections'] as List?)?.length ?? 0}',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ],
+
           // デスクトップでのみ表示する詳細情報とボタン
           if (!isCompact) ...[
             SizedBox(height: 16),
-            if (_aiResult != null) ..._buildAIResultInfo(),
+            if (_aiResult != null && !_isGraphicalRecordMode)
+              ..._buildAIResultInfo(),
           ],
         ],
       ),
@@ -463,65 +803,75 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           // ヘッダー
-          Row(
-            children: [
-              Icon(_showEditor ? Icons.edit : Icons.preview,
-                  color: Colors.blue[600]),
-              SizedBox(width: 8),
-              Text(
-                _showEditor ? 'インライン編集' : 'プレビュー',
-                style: TextStyle(
-                  fontSize: isMobile ? 16 : 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue[700],
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                Icon(_showEditor ? Icons.edit : Icons.preview,
+                    color: Colors.blue[600]),
+                SizedBox(width: 8),
+                Text(
+                  _showEditor ? 'インライン編集' : 'プレビュー',
+                  style: TextStyle(
+                    fontSize: isMobile ? 16 : 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue[700],
+                  ),
                 ),
-              ),
-              if (!isMobile) ...[
                 SizedBox(width: 16),
-                ToggleButtons(
-                  isSelected: [!_showEditor, _showEditor],
-                  onPressed: (index) {
-                    // プレビューに切り替える前に編集内容を保存
-                    if (index == 0 && _showEditor) {
+                // デスクトップ用の切り替えボタン（1セットのみ）
+                if (!isMobile) ...[
+                  ElevatedButton.icon(
+                    onPressed: () {
                       _saveEditorContent();
-                    }
-                    setState(() {
-                      _showEditor = index == 1;
-                    });
-                  },
-                  children: [
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 12),
-                      child: Row(
-                        children: [
-                          Icon(Icons.preview, size: 16),
-                          SizedBox(width: 4),
-                          Text('プレビュー'),
-                        ],
-                      ),
+                      setState(() {
+                        _showEditor = false;
+                      });
+                    },
+                    icon: Icon(Icons.preview, size: 16),
+                    label: Text('プレビュー'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          !_showEditor ? Colors.blue[600] : Colors.grey[300],
+                      foregroundColor:
+                          !_showEditor ? Colors.white : Colors.grey[700],
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     ),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 12),
-                      child: Row(
-                        children: [
-                          Icon(Icons.edit, size: 16),
-                          SizedBox(width: 4),
-                          Text('編集'),
-                        ],
-                      ),
+                  ),
+                  SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _showEditor = true;
+                      });
+                    },
+                    icon: Icon(Icons.edit, size: 16),
+                    label: Text('編集'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          _showEditor ? Colors.blue[600] : Colors.grey[300],
+                      foregroundColor:
+                          _showEditor ? Colors.white : Colors.grey[700],
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     ),
-                  ],
-                  borderRadius: BorderRadius.circular(8),
-                  selectedColor: Colors.white,
-                  fillColor: Colors.blue[600],
-                  color: Colors.blue[600],
-                  borderColor: Colors.blue[300],
-                  selectedBorderColor: Colors.blue[600],
-                ),
+                  ),
+                  SizedBox(width: 16),
+                  ElevatedButton.icon(
+                    onPressed: _loadSampleHtml,
+                    icon: Icon(Icons.article, size: 16),
+                    label: Text('サンプル'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green[600],
+                      foregroundColor: Colors.white,
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                  ),
+                ],
               ],
-              Spacer(),
-              if (!isMobile) ..._buildToolbar(),
-            ],
+            ),
           ),
 
           // モバイルでのタブ切り替え
@@ -568,6 +918,17 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                 ),
               ],
             ),
+            SizedBox(height: 8),
+            ElevatedButton.icon(
+              onPressed: _loadSampleHtml,
+              icon: Icon(Icons.article, size: 16),
+              label: Text('サンプル学級通信を読み込み'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green[600],
+                foregroundColor: Colors.white,
+                minimumSize: Size(double.infinity, 40),
+              ),
+            ),
           ],
 
           SizedBox(height: 16),
@@ -583,21 +944,36 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
               border: Border.all(color: Colors.grey[300]!),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: _generatedHtml.isEmpty
-                ? Container(
+            child: Builder(
+              builder: (context) {
+                print(
+                    '🔍 [Preview] 表示判定: _generatedHtml.isEmpty=${_generatedHtml.isEmpty}, _graphicalRecordHtml.isEmpty=${_graphicalRecordHtml.isEmpty}');
+                print(
+                    '🔍 [Preview] _generatedHtml長さ: ${_generatedHtml.length}');
+                print(
+                    '🔍 [Preview] _graphicalRecordHtml長さ: ${_graphicalRecordHtml.length}');
+                final isEmpty =
+                    (_generatedHtml.isEmpty && _graphicalRecordHtml.isEmpty);
+
+                if (isEmpty) {
+                  return Container(
                     height: isMobile ? 300 : 400,
                     child: Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            Icons.article_outlined,
+                            _isGraphicalRecordMode
+                                ? Icons.palette_outlined
+                                : Icons.article_outlined,
                             size: 64,
                             color: Colors.grey[400],
                           ),
                           SizedBox(height: 16),
                           Text(
-                            '学級通信を作成してください',
+                            _isGraphicalRecordMode
+                                ? 'グラレコを作成してください'
+                                : '学級通信を作成してください',
                             style: TextStyle(
                               fontSize: 18,
                               color: Colors.grey[600],
@@ -606,7 +982,9 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                           ),
                           SizedBox(height: 8),
                           Text(
-                            '音声入力またはテキスト入力で\n学級通信の内容を入力してください',
+                            _isGraphicalRecordMode
+                                ? '音声入力またはテキスト入力で\nグラレコの内容を入力してください'
+                                : '音声入力またはテキスト入力で\n学級通信の内容を入力してください',
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.grey[500],
@@ -616,81 +994,61 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                         ],
                       ),
                     ),
-                  )
-                : ClipRRect(
+                  );
+                } else {
+                  return ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: HtmlWidgetPreview(
-                      htmlContent: _showEditor
-                          ? (_editorHtml.isNotEmpty
-                              ? _editorHtml
-                              : _generatedHtml)
-                          : _generatedHtml,
-                      height: isMobile ? 600 : 700,
-                      isEditable: _showEditor,
-                      onContentChanged: (html) {
-                        print('🔔 [HtmlWidget] 編集内容変更: ${html.length}文字');
-                        setState(() {
-                          _editorHtml = html;
-                          _generatedHtml = html; // プレビューにも即座に反映
-                          _statusMessage = '📝 編集内容を保存しました（${html.length}文字）';
-                        });
+                    child: Builder(
+                      builder: (context) {
+                        final htmlContent = _isGraphicalRecordMode
+                            ? _graphicalRecordHtml
+                            : (_showEditor
+                                ? (_editorHtml.isNotEmpty
+                                    ? _editorHtml
+                                    : _generatedHtml)
+                                : _generatedHtml);
+                        print(
+                            '🔍 [Preview] QuillEditorWidgetに渡すhtmlContent長さ: ${htmlContent.length}');
+                        print(
+                            '🔍 [Preview] _isGraphicalRecordMode: $_isGraphicalRecordMode');
+                        print('🔍 [Preview] _showEditor: $_showEditor');
+                        // 編集モードかつグラレコモードでない場合のみQuillEditorWidgetを使用
+                        if (_showEditor && !_isGraphicalRecordMode) {
+                          return QuillEditorWidget(
+                            initialContent: htmlContent,
+                            contentFormat: 'html',
+                            height: isMobile ? 600 : 700,
+                            onContentChanged: (html) {
+                              print(
+                                  '🔔 [QuillEditor] 編集内容変更: ${html.length}文字');
+                              setState(() {
+                                _editorHtml = html;
+                                _generatedHtml = html; // プレビューにも即座に反映
+                                _statusMessage =
+                                    '📝 編集内容を保存しました（${html.length}文字）';
+                              });
+                            },
+                            onEditorReady: () {
+                              print('✅ [QuillEditor] エディタ準備完了');
+                            },
+                          );
+                        } else {
+                          // プレビューモードまたはグラレコモードの場合はHtmlPreviewWidgetを使用
+                          return HtmlPreviewWidget(
+                            htmlContent: htmlContent,
+                            height: isMobile ? 600 : 700,
+                          );
+                        }
                       },
                     ),
-                  ),
+                  );
+                }
+              },
+            ),
           ),
         ],
       ),
     );
-  }
-
-  List<Widget> _buildToolbar() {
-    return [
-      IconButton(
-        onPressed: () {},
-        icon: Icon(Icons.undo, color: Colors.grey[600]),
-        tooltip: '元に戻す',
-      ),
-      IconButton(
-        onPressed: () {},
-        icon: Icon(Icons.redo, color: Colors.grey[600]),
-        tooltip: 'やり直し',
-      ),
-      SizedBox(width: 8),
-      ElevatedButton.icon(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => UserDictionaryWidget(
-                userId: 'default',
-                onDictionaryUpdated: () {
-                  setState(() {
-                    _statusMessage = 'ユーザー辞書が更新されました';
-                  });
-                },
-              ),
-            ),
-          );
-        },
-        icon: Icon(Icons.book, size: 16),
-        label: Text('辞書'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.indigo[600],
-          foregroundColor: Colors.white,
-          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        ),
-      ),
-      SizedBox(width: 8),
-      ElevatedButton.icon(
-        onPressed: _downloadHtml,
-        icon: Icon(Icons.code, size: 16),
-        label: Text('HTML'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.grey[200],
-          foregroundColor: Colors.grey[700],
-          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        ),
-      ),
-    ];
   }
 
   // AI生成機能（既存のものを移植）
@@ -1122,5 +1480,165 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
         _statusMessage = '❌ ダウンロードエラー: $e';
       });
     }
+  }
+
+  // ==============================================================================
+  // 新フロー: グラフィックレコーディング関連メソッド
+  // ==============================================================================
+
+  /// 音声認識結果をJSON構造化データに変換
+  Future<void> _convertSpeechToJson() async {
+    if (_inputText.trim().isEmpty) {
+      setState(() {
+        _statusMessage = '❌ 入力テキストが空です';
+      });
+      return;
+    }
+
+    setState(() {
+      _isProcessing = true;
+      _statusMessage = '🤖 音声をJSON構造化データに変換中...';
+    });
+
+    try {
+      final result = await _graphicalRecordService.convertSpeechToJson(
+        transcribedText: _inputText,
+        customContext: '',
+      );
+
+      if (result.success && result.jsonData != null) {
+        setState(() {
+          _jsonData = result.jsonData!;
+          _statusMessage = '✅ JSON変換完了！内容を確認して「グラレコ生成」ボタンを押してください';
+          _showJsonEditor = true;
+        });
+      } else {
+        setState(() {
+          _statusMessage = '❌ JSON変換エラー: ${result.error ?? "Unknown error"}';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _statusMessage = '❌ JSON変換エラー: $e';
+      });
+    } finally {
+      setState(() {
+        _isProcessing = false;
+      });
+    }
+  }
+
+  /// JSON構造化データからHTMLグラレコを生成
+  Future<void> _generateGraphicalRecord() async {
+    if (_jsonData == null) {
+      setState(() {
+        _statusMessage = '❌ JSON構造化データがありません';
+      });
+      return;
+    }
+
+    setState(() {
+      _isProcessing = true;
+      _statusMessage = '🎨 HTMLグラレコ生成中...';
+    });
+
+    try {
+      final result = await _graphicalRecordService.convertJsonToGraphicalRecord(
+        jsonData: _jsonData!,
+        template: _selectedTemplate,
+        customStyle: '',
+      );
+
+      if (result.success && result.htmlContent != null) {
+        setState(() {
+          _graphicalRecordHtml = result.htmlContent!;
+          _statusMessage = '✅ グラレコ生成完了！右側でプレビューを確認してください';
+        });
+      } else {
+        setState(() {
+          _statusMessage = '❌ グラレコ生成エラー: ${result.error ?? "Unknown error"}';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _statusMessage = '❌ グラレコ生成エラー: $e';
+      });
+    } finally {
+      setState(() {
+        _isProcessing = false;
+      });
+    }
+  }
+
+  /// グラレコHTMLをダウンロード
+  void _downloadGraphicalRecord() {
+    if (_graphicalRecordHtml.isEmpty) return;
+
+    try {
+      final bytes = utf8.encode(_graphicalRecordHtml);
+      final blob = html.Blob([bytes], 'text/html');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+
+      final anchor = html.AnchorElement(href: url)
+        ..setAttribute('download',
+            'グラレコ_${DateTime.now().toString().substring(0, 10)}.html')
+        ..click();
+
+      html.Url.revokeObjectUrl(url);
+
+      setState(() {
+        _statusMessage = '📄 グラレコHTMLファイルをダウンロードしました';
+      });
+    } catch (e) {
+      setState(() {
+        _statusMessage = '❌ ダウンロードエラー: $e';
+      });
+    }
+  }
+
+  /// テンプレート選択ボタンを構築
+  Widget _buildTemplateButton(
+      String templateId, String templateName, Color color) {
+    final isSelected = _selectedTemplate == templateId;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedTemplate = templateId;
+        });
+      },
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? color.withOpacity(0.3) : Colors.white,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: isSelected ? color : Colors.grey[300]!,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            SizedBox(height: 4),
+            Text(
+              templateName,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? color : Colors.grey[700],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
