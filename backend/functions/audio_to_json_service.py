@@ -32,18 +32,28 @@ def load_prompt(style: str) -> Optional[str]:
     指定されたスタイルのプロンプトファイルを読み込む
     
     Args:
-        style (str): プロンプトのスタイル (例: "classic")
+        style (str): プロンプトのスタイル (例: "classic", "modern")
         
     Returns:
         Optional[str]: 読み込んだプロンプトの文字列、見つからない場合はNone
     """
-    prompt_filename = f"{style.upper().replace('CLASIC', 'CLASSIC')}_TENSAKU.md"
+    # スタイルに応じてプロンプトファイル名を決定
+    if style.lower() == 'modern':
+        prompt_filename = "MODERN_TENSAKU.md"
+    else:
+        # classic または その他のスタイルはCLASSIC_TENSAKU.mdを使用
+        prompt_filename = "CLASSIC_TENSAKU.md"
+    
     try:
         # スクリプトのディレクトリ基準でパスを解決
         prompt_path = os.path.join(PROMPT_DIR, prompt_filename)
         
         if not os.path.exists(prompt_path):
             logger.error(f"Prompt file not found: {prompt_path}")
+            # モダンプロンプトが見つからない場合はクラシックにフォールバック
+            if style.lower() == 'modern':
+                logger.warning(f"Modern prompt not found, falling back to classic")
+                return load_prompt('classic')
             return None
             
         with open(prompt_path, "r", encoding="utf-8") as f:
@@ -59,7 +69,7 @@ def load_prompt(style: str) -> Optional[str]:
 
 def get_json_schema() -> Dict[str, Any]:
     """
-    学級通信用JSON構造のスキーマを取得（CLASSIC_TENSAKU.md v2.2準拠）
+    学級通信用JSON構造のスキーマを取得（CLASSIC_TENSAKU.md v2.2 + MODERN_TENSAKU.md v2.3準拠）
     
     Returns:
         Dict[str, Any]: JSONスキーマ定義
@@ -138,6 +148,21 @@ def get_json_schema() -> Dict[str, Any]:
                         "content": {
                             "type": "string",
                             "description": "セクションの内容"
+                        },
+                        "emotion": {
+                            "type": "string",
+                            "enum": ["positive", "neutral", "focused", "excited", "calm", "concerned"],
+                            "description": "セクションの感情表現"
+                        },
+                        "section_visual_hint": {
+                            "type": ["string", "null"],
+                            "enum": ["role-list", "emphasis-block", "infographic", null],
+                            "description": "モダンスタイル用の視覚的ヒント"
+                        },
+                        "estimated_length": {
+                            "type": ["string", "null"],
+                            "enum": ["short", "medium", "long", null],
+                            "description": "セクションの推定分量"
                         }
                     },
                     "required": ["type", "content"]

@@ -195,17 +195,29 @@ Future<void> _generateNewsletterTwoAgent() async {
 }
 ```
 
-#### **🚧 未実装：モダンボタン**
-```javascript
-// モダンボタン押下時（今後実装予定）
-modernButton.onClick = async () => {
+#### **✅ 実装完了：モダンボタン（2025-06-14）**
+```dart
+// モダンボタン押下時の処理フロー（Flutter実装）
+Future<void> _generateNewsletterTwoAgent() async {
   // Step 1: 添削AI（第1エージェント）
-  // → MODERN_TENSAKU.md プロンプト（作成予定）
+  final jsonResult = await _graphicalRecordService.convertSpeechToJson(
+    transcribedText: inputText,
+    customContext: 'style:modern', // modernスタイル指定
+  );
+  // → MODERN_TENSAKU.md（v2.3）プロンプトでGemini呼び出し
+  // → インフォグラフィック対応構造化JSON出力
   
-  // Step 2: レイアウトAI（第2エージェント）  
-  // → MODERN_LAYOUT.md プロンプト（作成予定）
+  // Step 2: レイアウトAI（第2エージェント）
+  final htmlResult = await _graphicalRecordService.convertJsonToGraphicalRecord(
+    jsonData: _structuredJsonData!,
+    template: 'modern_newsletter', // モダンテンプレート指定
+    customStyle: 'newsletter_optimized_for_print',
+  );
+  // → MODERN_LAYOUT.md（v2.3）プロンプトでGemini呼び出し
+  // → インフォグラフィック対応HTML出力（視覚装飾・カラーパレット・SVGアイコン）
   
-  // Step 3: 印刷状態プレビュー表示
+  // Step 3: 印刷最適化プレビュー表示（A4固定、スマホ対応）
+  _generatedHtml = htmlResult.htmlContent!; // PrintPreviewWidgetで表示
 }
 ```
 
@@ -248,15 +260,15 @@ modernButton.onClick = async () => {
     ↓
 🤖 【第1エージェント：添削AI】
     ├─ 入力：修正済みテキスト
-    ├─ プロンプト：CLASIC_TENSAKU.md（v2.2）
-    ├─ AI：Gemini 1.5 Pro
-    └─ 出力：構造化JSON（教師らしい語り口調・学級通信構造）
+    ├─ プロンプト：CLASIC_TENSAKU.md（v2.2）/ MODERN_TENSAKU.md（v2.3）
+    ├─ AI：Gemini 2.0 Flash Experimental
+    └─ 出力：構造化JSON（教師らしい語り口調・学級通信構造・インフォグラフィック対応）
     ↓
 🎨 【第2エージェント：レイアウトAI】
     ├─ 入力：構造化JSON
-    ├─ プロンプト：CLASIC_LAYOUT.md（v2.2）
-    ├─ AI：Gemini 1.5 Pro
-    └─ 出力：堅牢HTML（シングルカラム・印刷最適化・アクセシブル）
+    ├─ プロンプト：CLASIC_LAYOUT.md（v2.2）/ MODERN_LAYOUT.md（v2.3）
+    ├─ AI：Gemini 2.0 Flash Experimental
+    └─ 出力：堅牢HTML（シングルカラム・印刷最適化・アクセシブル・インフォグラフィック対応）
     ↓
 👁️ 印刷状態プレビュー表示（A4固定・スマホ対応） → 📄 PDF出力
 ```
@@ -335,9 +347,11 @@ modernButton.onClick = async () => {
 ## 🔄 **更新履歴**
 
 - **2025-06-13**: v2.0作成 - 現在のMVP実装状況を反映
-- **2025-06-14**: **フロントエンド実装完了 + UI簡素化** - 学級通信専用アプリとして完成
+- **2025-06-14**: **フロントエンド実装完了 + UI簡素化 + モダンスタイル実装完了** - 学級通信専用アプリとして完成
   - ✅ 2エージェント連携フロー実装（音声→JSON→HTML）
   - ✅ クラシック/モダンスタイル選択UI実装
+  - ✅ **モダンスタイル完全実装** - MODERN_TENSAKU.md + MODERN_LAYOUT.md プロンプト連携
+  - ✅ **インフォグラフィック対応** - 視覚装飾・カラーパレット・SVGアイコン・印刷最適化
   - ✅ 印刷最適化プレビュー実装（A4固定サイズ、スマホ対応）
   - ✅ CLASIC_TENSAKU.md + CLASIC_LAYOUT.md プロンプト連携
   - ✅ PrintPreviewWidget新規作成（堅牢性重視）

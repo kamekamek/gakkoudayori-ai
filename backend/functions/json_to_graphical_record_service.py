@@ -31,26 +31,26 @@ def load_prompt(template_name: str) -> Optional[str]:
     指定されたテンプレート名のプロンプトファイルを読み込む
     
     Args:
-        template_name (str): テンプレート名 (例: "classic")
+        template_name (str): テンプレート名 (例: "classic", "modern_newsletter")
         
     Returns:
         Optional[str]: 読み込んだプロンプトの文字列、見つからない場合はNone
     """
-    # テンプレート名からファイル名を決定（例: 'colorful' -> 'COLORFUL_LAYOUT.md'）
-    # classic, modernなど、flowドキュメントの指定に合わせる
-    if template_name in ['classic', 'classic_newsletter', 'modern']:
-         prompt_filename = f"CLASSIC_LAYOUT.md"  # classic系は全てCLASSIC_LAYOUT.mdを使用
-    else: # colorful, pastelなどはclassicにフォールバック
-         prompt_filename = f"CLASSIC_LAYOUT.md"
+    # テンプレート名からプロンプトファイル名を決定
+    if template_name in ['modern', 'modern_newsletter']:
+        prompt_filename = "MODERN_LAYOUT.md"
+    else:
+        # classic系やその他はCLASSIC_LAYOUT.mdを使用
+        prompt_filename = "CLASSIC_LAYOUT.md"
 
     try:
         prompt_path = os.path.join(PROMPT_DIR, prompt_filename)
         
         if not os.path.exists(prompt_path):
             logger.error(f"Prompt file not found: {prompt_path}")
-            # フォールバックとしてclassicを試みる
-            if template_name != 'classic':
-                logger.warning(f"Falling back to classic layout prompt.")
+            # モダンプロンプトが見つからない場合はクラシックにフォールバック
+            if template_name in ['modern', 'modern_newsletter']:
+                logger.warning(f"Modern layout prompt not found, falling back to classic")
                 return load_prompt('classic')
             return None
             
@@ -107,6 +107,40 @@ def get_graphical_record_templates() -> Dict[str, Dict[str, Any]]:
             },
             "style": "classic"
         },
+        "modern": {
+            "name": "モダン",
+            "description": "現代的でインフォグラフィック的な学級通信スタイル",
+            "colors": {
+                "primary": "#2E86AB",
+                "secondary": "#A23B72",
+                "accent": "#F18F01",
+                "background": "#FFFFFF",
+                "positive": "#06D6A0",
+                "neutral": "#8D99AE",
+                "focused": "#2E86AB",
+                "excited": "#F18F01",
+                "calm": "#06D6A0",
+                "concerned": "#EF476F"
+            },
+            "style": "modern"
+        },
+        "modern_newsletter": {
+            "name": "モダン学級通信",
+            "description": "学級通信専用の現代的でインフォグラフィック的なスタイル",
+            "colors": {
+                "primary": "#2E86AB",
+                "secondary": "#A23B72",
+                "accent": "#F18F01",
+                "background": "#FFFFFF",
+                "positive": "#06D6A0",
+                "neutral": "#8D99AE",
+                "focused": "#2E86AB",
+                "excited": "#F18F01",
+                "calm": "#06D6A0",
+                "concerned": "#EF476F"
+            },
+            "style": "modern"
+        },
         "colorful": {
             "name": "カラフル",
             "description": "明るい色彩で楽しい雰囲気",
@@ -125,7 +159,7 @@ def get_graphical_record_templates() -> Dict[str, Dict[str, Any]]:
         },
         "monochrome": {
             "name": "モノクロ",
-            "description": "シンプルで落ち着いた印象",
+            "description": "シンプルで落ち着いた印刷",
             "colors": {
                 "primary": "#2C3E50",
                 "secondary": "#34495E",
