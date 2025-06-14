@@ -554,24 +554,54 @@ def generate_newsletter():
             document_type='class_newsletter'
         )
         
-        if result['success']:
-            # レスポンス形式を学級通信用に調整
+        # レスポンスハンドリングを改善
+        html_content = None
+        validation_info = None
+        ai_metadata = None
+        processing_time_ms = 0
+        timestamp = datetime.utcnow().isoformat()
+
+        if result.get('success'):
+            # 完全に成功した場合
+            data = result.get('data', {})
+            html_content = data.get('html_content')
+            validation_info = data.get('validation_info')
+            ai_metadata = data.get('ai_metadata')
+            processing_time_ms = data.get('processing_time_ms', 0)
+            timestamp = result.get('timestamp', timestamp)
+
+        elif result.get('code') == 'HTML_VALIDATION_FILTERING_ERROR':
+            details = result.get('details', {})
+            if 'filtered_html_preview' in details:
+                # フィルタリングはされたが、コンテンツ自体は存在する場合
+                logger.warning(f"HTML validation filtering occurred: {details.get('validation_issues')}")
+                html_content = details['filtered_html_preview']
+                validation_info = details  # フィルタリング情報を詳細として詰める
+                ai_metadata = details.get('ai_metadata', {}) # 部分的なメタデータでも取得
+                processing_time_ms = details.get('processing_time_ms', 0)
+                timestamp = result.get('timestamp', timestamp)
+        
+        if html_content is not None:
+            # 成功レスポンスを構築
             newsletter_data = {
                 'success': True,
                 'data': {
-                    'newsletter_html': result['data']['html_content'],
+                    'newsletter_html': html_content,
                     'original_speech': speech_text,
                     'template_type': template_type,
                     'season': season,
-                    'processing_time_ms': result['data']['processing_time_ms'],
-                    'generated_at': result['timestamp'],
-                    'word_count': len(result['data']['html_content'].split()),
-                    'character_count': len(result['data']['html_content']),
-                    'ai_metadata': result['data']['ai_metadata']
+                    'processing_time_ms': processing_time_ms,
+                    'generated_at': timestamp,
+                    'word_count': len(html_content.split()),
+                    'character_count': len(html_content),
+                    'validation_info': validation_info,
+                    'ai_metadata': ai_metadata
                 }
             }
             return jsonify(newsletter_data), 200
         else:
+            # 上記以外のエラーは従来通り500エラーとして処理
+            logger.error(f"Newsletter generation failed with unhandled error: {result}")
             return jsonify(result), 500
             
     except Exception as e:

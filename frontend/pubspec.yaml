@@ -15,6 +15,10 @@ dependencies:
   
   # Web Audio API, JavaScript Bridge
   web: ^1.1.0
+  
+  # HTML Widget for rendering HTML content
+  flutter_widget_from_html: ^0.15.0
+  flutter_widget_from_html_core: ^0.15.0
 
 dev_dependencies:
   flutter_test:
