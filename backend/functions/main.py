@@ -565,7 +565,8 @@ def handle_json_to_graphical_record():
             project_id=project_id,
             credentials_path=credentials_path,
             template=template,
-            custom_style=custom_style
+            custom_style=custom_style,
+            max_output_tokens=8192  # HTMLが途中で切れないように増加
         )
         
         # サービスからの戻り値がシリアライズ可能か確認
@@ -863,8 +864,8 @@ def generate_pdf():
         title = data.get('title', '学級通信')
         page_size = data.get('page_size', 'A4')
         margin = data.get('margin', '20mm')
-        include_header = data.get('include_header', True)
-        include_footer = data.get('include_footer', True)
+        include_header = data.get('include_header', False)
+        include_footer = data.get('include_footer', False)
         custom_css = data.get('custom_css', '')
         
         # PDF生成実行

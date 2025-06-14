@@ -133,7 +133,45 @@ class GraphicalRecordService {
         },
         body: jsonEncode({
           'html_content': htmlContent,
-          'print_optimization': true,
+          'title': '学級通信',
+          'page_size': 'A4',
+          'margin': '15mm',
+          'include_header': false,
+          'include_footer': false,
+          'custom_css': '''
+            /* PDF出力時の追加調整 - 1ページ収納最適化 */
+            @media print {
+              .a4-sheet {
+                box-shadow: none !important;
+                margin: 0 !important;
+                padding: 10mm !important;
+              }
+              
+              .print-container {
+                box-shadow: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+              }
+              
+              /* フォントサイズとマージンの最適化 */
+              h1 { font-size: 18px !important; margin: 8px 0 !important; }
+              h2 { font-size: 16px !important; margin: 6px 0 !important; }
+              h3 { font-size: 14px !important; margin: 4px 0 !important; }
+              p { font-size: 12px !important; margin: 3px 0 !important; line-height: 1.3 !important; }
+              
+              /* セクション間隔の最適化 */
+              .section { margin-bottom: 8px !important; padding: 8px !important; }
+              .content-section { margin-bottom: 6px !important; padding: 6px !important; }
+              
+              /* ヘッダー・フッターの最適化 */
+              .newsletter-header { margin-bottom: 10px !important; padding: 8px !important; }
+              .footer-note { margin-top: 10px !important; padding: 6px !important; }
+              
+              /* 不要な改ページを防ぐ */
+              * { page-break-inside: avoid !important; }
+              h1, h2, h3 { page-break-after: avoid !important; }
+            }
+          ''',
         }),
       );
 

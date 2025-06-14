@@ -93,25 +93,23 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>学級通信 - 印刷プレビュー</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
-        /* A4印刷最適化CSS - CLASIC_LAYOUT.mdの堅牢性原則準拠 */
+        /* A4印刷最適化CSS - 元のスタイルを最大限保持 */
         
-        /* 基本リセット */
+        /* 基本リセット（最小限） */
         * {
-            margin: 0;
-            padding: 0;
             box-sizing: border-box;
         }
         
         /* A4サイズの固定レイアウト（210mm × 297mm） */
         html, body {
-            font-family: 'Hiragino Sans', 'Yu Gothic', 'Noto Sans JP', sans-serif;
-            font-size: 14px;
-            line-height: 1.6;
-            color: #333;
-            background-color: #ffffff;
+            font-family: 'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic', sans-serif;
             margin: 0;
             padding: 0;
+            background-color: #f5f5f5;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
         }
         
         /* 印刷用コンテナ - A4固定サイズ */
@@ -119,176 +117,116 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
             width: 210mm;
             min-height: 297mm;
             max-width: 210mm;
-            margin: 0 auto;
-            padding: 20mm;
+            margin: 20px auto;
+            padding: 15mm;
             background: white;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            
-            /* 絶対にシングルカラム - 崩れ防止 */
-            display: block !important;
-            float: none !important;
-            position: static !important;
+            position: relative;
         }
         
-        /* スマホでのA4プレビュー対応 - 視認性改善版 */
-        @media (max-width: 768px) {
+        /* 元のa4-sheetクラスがある場合の調整 */
+        .a4-sheet {
+            width: 100% !important;
+            min-height: auto !important;
+            margin: 0 !important;
+            padding: 10mm !important;
+            box-shadow: none !important;
+        }
+        
+        /* フォントサイズとマージンの統一（PDF出力と同じ） */
+        h1 {
+            font-size: 18px !important;
+            margin: 8px 0 !important;
+            line-height: 1.2 !important;
+        }
+        
+        h2 {
+            font-size: 16px !important;
+            margin: 6px 0 !important;
+            line-height: 1.2 !important;
+        }
+        
+        h3 {
+            font-size: 14px !important;
+            margin: 4px 0 !important;
+            line-height: 1.2 !important;
+        }
+        
+        p {
+            font-size: 12px !important;
+            line-height: 1.3 !important;
+            margin: 3px 0 !important;
+        }
+        
+        /* セクション間隔の最適化 */
+        .section {
+            margin-bottom: 8px !important;
+            padding: 8px !important;
+        }
+        
+        .content-section {
+            margin-bottom: 6px !important;
+            padding: 6px !important;
+        }
+        
+        /* ヘッダー・フッターの最適化 */
+        .newsletter-header {
+            margin-bottom: 10px !important;
+            padding: 8px !important;
+        }
+        
+        .footer-note {
+            margin-top: 10px !important;
+            padding: 6px !important;
+        }
+        
+        /* スマホでのA4プレビュー対応 */
+        @media screen and (max-width: 768px) {
             .print-container {
-                /* スマホでは実用的な幅に調整 */
                 width: 100vw;
-                max-width: 100vw;
-                min-width: unset;
-                transform: none; /* 縮小をやめて読みやすさを優先 */
-                transform-origin: unset;
+                min-height: auto;
                 margin: 0;
-                margin-bottom: 0;
-                padding: 16px; /* スマホ用のパディング */
-            }
-            
-            /* スマホでのスクロール対応 */
-            body {
-                overflow-x: auto;
-                overflow-y: auto;
-            }
-            
-            /* スマホ用フォントサイズ調整 */
-            .print-container {
-                font-size: 16px; /* スマホで読みやすいサイズ */
-                line-height: 1.7;
-            }
-            
-            .print-container h1 {
-                font-size: 20px !important;
-            }
-            
-            .print-container h2 {
-                font-size: 18px !important;
-            }
-            
-            .print-container h3 {
-                font-size: 16px !important;
+                padding: 10mm;
+                box-shadow: none;
             }
         }
         
-        /* 印刷時のレイアウト固定 */
+        /* 印刷時の調整 */
         @media print {
+            html, body {
+                background: white !important;
+            }
+            
             .print-container {
                 width: 100% !important;
-                max-width: none !important;
                 margin: 0 !important;
-                padding: 15mm !important;
+                padding: 0 !important;
                 box-shadow: none !important;
-                transform: none !important;
             }
             
-            /* 印刷時の改ページ制御 */
-            .print-container * {
-                page-break-inside: avoid !important;
+            .a4-sheet {
+                box-shadow: none !important;
             }
         }
         
-        /* コンテンツスタイル - 堅牢性重視 */
-        .print-container h1,
-        .print-container h2,
-        .print-container h3 {
-            color: #2c3e50;
-            margin-bottom: 10px;
-            margin-top: 20px;
-            font-weight: bold;
-            line-height: 1.4;
-            
-            /* 見出しの崩れ防止 */
-            display: block !important;
-            float: none !important;
-            clear: both !important;
-        }
-        
-        .print-container h1 {
-            font-size: 18px;
-            border-bottom: 2px solid #3498db;
-            padding-bottom: 5px;
-        }
-        
-        .print-container h2 {
-            font-size: 16px;
-            color: #34495e;
-        }
-        
-        .print-container h3 {
-            font-size: 14px;
-            color: #7f8c8d;
-        }
-        
-        .print-container p {
-            margin-bottom: 10px;
-            text-align: justify;
-            orphans: 3;
-            widows: 3;
-        }
-        
-        .print-container ul,
-        .print-container ol {
-            margin-bottom: 15px;
-            padding-left: 20px;
-        }
-        
-        .print-container li {
-            margin-bottom: 5px;
-        }
-        
-        /* 表・画像の堅牢化 */
-        .print-container table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 15px;
-        }
-        
-        .print-container img {
+        /* 画像の最大幅制限 */
+        img {
             max-width: 100% !important;
             height: auto !important;
-            display: block;
-            margin: 10px auto;
         }
         
-        /* 複雑なレイアウトの強制シンプル化 */
-        .print-container .newsletter-container,
-        .print-container .complex-layout {
-            display: block !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            float: none !important;
-            position: static !important;
-            margin: 0 !important;
-            padding: 0 !important;
+        /* テーブルの改ページ制御 */
+        table {
+            page-break-inside: avoid;
         }
         
-        /* 既存のスタイルを上書きして崩れを防止 */
-        .print-container * {
-            max-width: 100% !important;
-            box-sizing: border-box !important;
+        /* 改ページ制御 */
+        .page-break {
+            page-break-before: always;
         }
         
-        /* フレックス・グリッドレイアウトの無効化 */
-        .print-container .flex-container,
-        .print-container .grid-container {
-            display: block !important;
-        }
-        
-        /* カラム分割の無効化 */
-        .print-container .columns {
-            column-count: 1 !important;
-            column-gap: 0 !important;
-        }
-        
-        /* Loading状態の非表示 */
-        .loading-overlay {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(255,255,255,0.9);
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        .no-break {
+            page-break-inside: avoid;
         }
     </style>
 </head>
@@ -300,25 +238,23 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
     <script>
         // 印刷プレビュー向けの追加処理
         document.addEventListener('DOMContentLoaded', function() {
-            // すべての要素のmax-widthを強制設定
-            const allElements = document.querySelectorAll('*');
-            allElements.forEach(el => {
-                el.style.maxWidth = '100%';
-                el.style.boxSizing = 'border-box';
+            // 画像の最大幅を強制設定
+            const images = document.querySelectorAll('img');
+            images.forEach(img => {
+                img.style.maxWidth = '100%';
+                img.style.height = 'auto';
             });
             
-            // 複雑なレイアウトの強制シンプル化
-            const containers = document.querySelectorAll('.newsletter-container, .flex-container, .grid-container');
-            containers.forEach(container => {
-                container.style.display = 'block';
-                container.style.width = '100%';
-                container.style.float = 'none';
-                container.style.position = 'static';
+            // テーブルの改ページ制御
+            const tables = document.querySelectorAll('table');
+            tables.forEach(table => {
+                table.style.pageBreakInside = 'avoid';
             });
         });
     </script>
 </body>
-</html>''';
+</html>
+    ''';
   }
 
   /// HTMLコンテンツの抽出とサニタイズ

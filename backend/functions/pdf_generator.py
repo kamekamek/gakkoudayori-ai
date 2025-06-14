@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 
 # PDF設定
 DEFAULT_PAGE_SIZE = 'A4'
-DEFAULT_MARGIN = '20mm'
+DEFAULT_MARGIN = '15mm'
 DEFAULT_DPI = 300
 
 def _get_available_japanese_fonts() -> list:
@@ -88,8 +88,8 @@ def generate_pdf_from_html(
     title: str = "学級通信",
     page_size: str = DEFAULT_PAGE_SIZE,
     margin: str = DEFAULT_MARGIN,
-    include_header: bool = True,
-    include_footer: bool = True,
+    include_header: bool = False,
+    include_footer: bool = False,
     custom_css: str = "",
     output_path: Optional[str] = None
 ) -> Dict[str, Any]:
@@ -219,123 +219,104 @@ def _build_complete_html_document(
         str: 完全なHTML文書
     """
     
-    # PDF用CSS（日本語フォント対応強化版）
+    # 元のHTMLコンテンツからスタイルを抽出
+    original_styles = ""
+    if "<style>" in html_content and "</style>" in html_content:
+        start_idx = html_content.find("<style>") + 7
+        end_idx = html_content.find("</style>")
+        original_styles = html_content[start_idx:end_idx]
+    
+    # PDF用CSS（最小限の調整のみ）
     pdf_css = f"""
-    @font-face {{
-        font-family: 'NotoSansJP';
-        src: url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
-    }}
+    /* 日本語フォント対応 */
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
     
     @page {{
         size: {page_size};
         margin: {margin};
-        @top-center {{
-            content: "{title}" counter(page);
-        }}
+        /* ページ番号は2ページ目以降のみ */
         @bottom-center {{
-            content: "生成日: {datetime.now().strftime('%Y年%m月%d日')} - ページ " counter(page);
+            content: counter(page);
+            font-family: 'Noto Sans JP', sans-serif;
+            font-size: 10pt;
+            color: #666;
         }}
     }}
     
-    * {{
-        font-family: {font_family or "'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', 'Yu Gothic Medium', 'Yu Gothic', 'MS PGothic', 'DejaVu Sans', sans-serif"} !important;
+    @page:first {{
+        @bottom-center {{
+            content: none;
+        }}
     }}
     
+    /* 元のスタイルを保持 */
+    {original_styles}
+    
+    /* PDF出力時の微調整のみ */
     body {{
-        font-family: {font_family or "'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', 'Yu Gothic Medium', 'Yu Gothic', 'MS PGothic', 'DejaVu Sans', sans-serif"} !important;
-        line-height: 1.6;
-        color: #333;
-        font-size: 14px;
-        margin: 0;
-        padding: 0;
+        font-family: {font_family or "'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', 'Yu Gothic Medium', 'Yu Gothic', 'MS PGothic', sans-serif"} !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }}
     
+    /* A4シートのマージン調整 */
+    .a4-sheet {{
+        width: 100% !important;
+        min-height: auto !important;
+        margin: 0 !important;
+        padding: 15mm !important;
+        box-shadow: none !important;
+        background: white !important;
+    }}
+    
+    /* プリントコンテナの調整 */
+    .print-container {{
+        width: 100% !important;
+        min-height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+    }}
+    
+    /* フォントサイズの調整（ページ数削減のため） */
     h1 {{
-        font-size: 24px;
-        color: #2c3e50;
-        border-bottom: 3px solid #3498db;
-        padding-bottom: 10px;
-        margin-bottom: 20px;
-        page-break-after: avoid;
+        font-size: 18px !important;
+        margin: 10px 0 !important;
+        line-height: 1.2 !important;
     }}
     
     h2 {{
-        font-size: 20px;
-        color: #34495e;
-        border-left: 5px solid #e74c3c;
-        padding-left: 10px;
-        margin-top: 25px;
-        margin-bottom: 15px;
-        page-break-after: avoid;
+        font-size: 16px !important;
+        margin: 8px 0 !important;
+        line-height: 1.2 !important;
     }}
     
     h3 {{
-        font-size: 18px;
-        color: #555;
-        margin-top: 20px;
-        margin-bottom: 10px;
-        page-break-after: avoid;
+        font-size: 14px !important;
+        margin: 6px 0 !important;
+        line-height: 1.2 !important;
     }}
     
     p {{
-        margin-bottom: 12px;
-        text-align: justify;
+        font-size: 12px !important;
+        line-height: 1.4 !important;
+        margin: 4px 0 !important;
     }}
     
-    ul, ol {{
-        margin-bottom: 15px;
-        padding-left: 25px;
-    }}
-    
-    li {{
-        margin-bottom: 5px;
-    }}
-    
-    strong {{
-        color: #2c3e50;
-        font-weight: bold;
-    }}
-    
-    em {{
-        color: #e74c3c;
-        font-style: italic;
-    }}
-    
-    .newsletter-header {{
-        text-align: center;
-        margin-bottom: 30px;
-        padding: 20px;
-        background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
-        color: white;
-        border-radius: 10px;
-    }}
-    
-    .newsletter-date {{
-        text-align: right;
-        margin-bottom: 20px;
-        font-size: 12px;
-        color: #7f8c8d;
+    /* セクション間のマージン削減 */
+    .section {{
+        margin-bottom: 10px !important;
+        padding: 10px !important;
     }}
     
     .content-section {{
-        margin-bottom: 25px;
-        padding: 15px;
-        border-left: 4px solid #3498db;
-        background-color: #f8f9fa;
+        margin-bottom: 8px !important;
+        padding: 8px !important;
     }}
     
-    .footer-note {{
-        margin-top: 30px;
-        padding: 15px;
-        background-color: #ecf0f1;
-        border-radius: 5px;
-        font-size: 12px;
-        text-align: center;
-        color: #7f8c8d;
-        page-break-inside: avoid;
-    }}
-    
-    /* 印刷時の改ページ制御 */
+    /* 改ページ制御の強化 */
     .page-break {{
         page-break-before: always;
     }}
@@ -344,47 +325,63 @@ def _build_complete_html_document(
         page-break-inside: avoid;
     }}
     
-    /* 季節テーマ */
-    .spring-theme {{
-        --primary-color: #ff9eaa;
-        --secondary-color: #a8e6cf;
+    /* 不要な改ページを防ぐ */
+    h1, h2, h3 {{
+        page-break-after: avoid !important;
+        page-break-inside: avoid !important;
     }}
     
-    .summer-theme {{
-        --primary-color: #51cf66;
-        --secondary-color: #74c0fc;
+    /* 画像の最大幅制限 */
+    img {{
+        max-width: 100% !important;
+        height: auto !important;
     }}
     
-    .autumn-theme {{
-        --primary-color: #e67700;
-        --secondary-color: #ffa94d;
+    /* テーブルの改ページ制御 */
+    table {{
+        page-break-inside: avoid;
     }}
     
-    .winter-theme {{
-        --primary-color: #4dabf7;
-        --secondary-color: #91a7ff;
+    /* ヘッダー・フッターのマージン削減 */
+    .newsletter-header {{
+        margin-bottom: 15px !important;
+        padding: 10px !important;
+    }}
+    
+    .footer-note {{
+        margin-top: 15px !important;
+        padding: 8px !important;
     }}
     
     {custom_css}
     """
     
-    # ヘッダー部分
+    # HTMLコンテンツからstyleタグを除去（重複を防ぐため）
+    clean_html_content = html_content
+    if "<style>" in clean_html_content and "</style>" in clean_html_content:
+        start_idx = clean_html_content.find("<style>")
+        end_idx = clean_html_content.find("</style>") + 8
+        clean_html_content = clean_html_content[:start_idx] + clean_html_content[end_idx:]
+    
+    # 既存のヘッダーがある場合は追加ヘッダーを無効化
+    has_existing_header = any(tag in html_content.lower() for tag in ['<h1', '<header', 'class="newsletter-header"', 'class="a4-sheet"'])
+    
+    # ヘッダー部分（既存ヘッダーがない場合のみ）
     header_content = ""
-    if include_header:
+    if include_header and not has_existing_header:
         header_content = f"""
-        <div class="newsletter-header">
-            <h1>{title}</h1>
-            <div class="newsletter-date">{datetime.now().strftime('%Y年%m月%d日')}</div>
+        <div class="pdf-header" style="text-align: center; margin-bottom: 20px; padding: 10px; border-bottom: 1px solid #ddd;">
+            <h1 style="margin: 0; font-size: 18px; color: #333;">{title}</h1>
+            <div style="font-size: 12px; color: #666; margin-top: 5px;">{datetime.now().strftime('%Y年%m月%d日')}</div>
         </div>
         """
     
-    # フッター部分
+    # フッター部分（控えめに）
     footer_content = ""
     if include_footer:
         footer_content = f"""
-        <div class="footer-note">
-            <p>この学級通信はAIによって自動生成されました。</p>
-            <p>ご質問やご不明な点がございましたら、担任までお気軽にお声かけください。</p>
+        <div class="pdf-footer" style="margin-top: 30px; padding: 10px; border-top: 1px solid #eee; font-size: 10px; text-align: center; color: #999;">
+            <p style="margin: 0;">この学級通信はAIによって自動生成されました。</p>
         </div>
         """
     
@@ -405,7 +402,7 @@ def _build_complete_html_document(
         {header_content}
         
         <div class="content-main">
-            {html_content}
+            {clean_html_content}
         </div>
         
         {footer_content}
@@ -638,8 +635,8 @@ def test_pdf_generation() -> bool:
         result = generate_pdf_from_html(
             html_content=test_html,
             title="テスト学級通信",
-            include_header=True,
-            include_footer=True
+            include_header=False,
+            include_footer=False
         )
         
         if result['success']:

@@ -237,7 +237,7 @@ def convert_json_to_graphical_record(
     custom_style: str = "",
     model_name: str = "gemini-2.0-flash-exp",
     temperature: float = 0.2,
-    max_output_tokens: int = 3072
+    max_output_tokens: int = 8192
 ) -> Dict[str, Any]:
     """
     JSON構造化データからHTMLグラレコを生成
@@ -427,7 +427,7 @@ def validate_and_clean_html(html_content: str) -> Dict[str, Any]:
             if end != -1:
                 html_text = html_text[start:end].strip()
         
-        # DOCTYPE宣言の確認
+        # DOCTYPE宣言の確認・追加
         if not html_text.startswith("<!DOCTYPE html>"):
             if "<html" in html_text:
                 # DOCTYPE宣言を追加
@@ -440,13 +440,49 @@ def validate_and_clean_html(html_content: str) -> Dict[str, Any]:
                     "html": None
                 }
         
-        # 基本的なHTML構造の確認
-        required_tags = ["<html", "</html>", "<head", "</head>", "<body", "</body>"]
-        for tag in required_tags:
-            if tag not in html_text:
+        # 基本的なHTML構造の確認と自動修復
+        required_tags = {
+            "<html": "</html>",
+            "<head": "</head>", 
+            "<body": "</body>"
+        }
+        
+        for open_tag, close_tag in required_tags.items():
+            if open_tag in html_text and close_tag not in html_text:
+                logger.warning(f"Missing closing tag {close_tag}, attempting auto-repair")
+                
+                # 自動修復を試行
+                if close_tag == "</html>":
+                    # </html>タグが欠けている場合、最後に追加
+                    html_text = html_text.rstrip() + "\n</html>"
+                elif close_tag == "</body>":
+                    # </body>タグが欠けている場合、</html>の前に追加
+                    if "</html>" in html_text:
+                        html_text = html_text.replace("</html>", "</body>\n</html>")
+                    else:
+                        html_text = html_text.rstrip() + "\n</body>"
+                elif close_tag == "</head>":
+                    # </head>タグが欠けている場合、<body>の前に追加
+                    if "<body" in html_text:
+                        body_pos = html_text.find("<body")
+                        html_text = html_text[:body_pos] + "</head>\n" + html_text[body_pos:]
+                    else:
+                        # <body>もない場合は、適当な位置に追加
+                        head_content_end = html_text.find(">", html_text.find("<head")) + 1
+                        html_text = html_text[:head_content_end] + "\n</head>" + html_text[head_content_end:]
+        
+        # 再度、必須タグの確認
+        for open_tag, close_tag in required_tags.items():
+            if open_tag not in html_text:
                 return {
                     "valid": False,
-                    "error": f"必須HTMLタグ '{tag}' が見つかりません",
+                    "error": f"必須HTMLタグ '{open_tag}' が見つかりません",
+                    "html": None
+                }
+            if close_tag not in html_text:
+                return {
+                    "valid": False,
+                    "error": f"必須HTMLタグ '{close_tag}' が見つかりません（自動修復失敗）",
                     "html": None
                 }
         
@@ -460,6 +496,11 @@ def validate_and_clean_html(html_content: str) -> Dict[str, Any]:
             # viewport metaタグを追加
             charset_pos = html_text.find('<meta charset="UTF-8">') + len('<meta charset="UTF-8">')
             html_text = html_text[:charset_pos] + '\n    <meta name="viewport" content="width=device-width, initial-scale=1.0">' + html_text[charset_pos:]
+        
+        # HTMLの構造を最終チェック
+        if not _validate_html_structure(html_text):
+            logger.warning("HTML structure validation failed, attempting final repair")
+            html_text = _perform_final_html_repair(html_text)
         
         # 基本的なセキュリティチェック
         dangerous_patterns = ["<script", "javascript:", "onclick=", "onerror="]
@@ -475,11 +516,103 @@ def validate_and_clean_html(html_content: str) -> Dict[str, Any]:
         }
         
     except Exception as e:
+        logger.error(f"HTML validation error: {e}")
         return {
             "valid": False,
             "error": f"HTML検証エラー: {str(e)}",
             "html": None
         }
+
+
+def _validate_html_structure(html_text: str) -> bool:
+    """
+    HTMLの基本構造を検証
+    
+    Args:
+        html_text (str): HTMLテキスト
+        
+    Returns:
+        bool: 構造が正しいかどうか
+    """
+    try:
+        # 基本的なタグの順序をチェック
+        html_pos = html_text.find("<html")
+        head_pos = html_text.find("<head")
+        body_pos = html_text.find("<body")
+        
+        if html_pos == -1 or head_pos == -1 or body_pos == -1:
+            return False
+            
+        # タグの順序が正しいかチェック
+        if not (html_pos < head_pos < body_pos):
+            return False
+            
+        # 閉じタグの存在確認
+        required_close_tags = ["</head>", "</body>", "</html>"]
+        for tag in required_close_tags:
+            if tag not in html_text:
+                return False
+                
+        return True
+        
+    except Exception:
+        return False
+
+
+def _perform_final_html_repair(html_text: str) -> str:
+    """
+    HTMLの最終修復を実行
+    
+    Args:
+        html_text (str): 修復対象のHTML
+        
+    Returns:
+        str: 修復されたHTML
+    """
+    try:
+        # 最低限のHTML構造を保証
+        if not html_text.startswith("<!DOCTYPE html>"):
+            html_text = "<!DOCTYPE html>\n" + html_text
+            
+        # 基本的なタグが欠けている場合の緊急修復
+        if "<html" not in html_text:
+            html_text = "<!DOCTYPE html>\n<html lang=\"ja\">\n" + html_text
+            
+        if "<head" not in html_text:
+            html_start = html_text.find("<html")
+            html_end = html_text.find(">", html_start) + 1
+            html_text = html_text[:html_end] + "\n<head>\n<meta charset=\"UTF-8\">\n<title>学級通信</title>\n</head>" + html_text[html_end:]
+            
+        if "<body" not in html_text:
+            head_end = html_text.find("</head>") + 7
+            html_text = html_text[:head_end] + "\n<body>" + html_text[head_end:]
+            
+        # 閉じタグの追加
+        if "</body>" not in html_text:
+            html_text = html_text.rstrip() + "\n</body>"
+            
+        if "</html>" not in html_text:
+            html_text = html_text.rstrip() + "\n</html>"
+            
+        return html_text
+        
+    except Exception as e:
+        logger.error(f"Final HTML repair failed: {e}")
+        # 最後の手段として、最低限のHTMLテンプレートを返す
+        return f"""<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学級通信</title>
+</head>
+<body>
+    <div>
+        <p>HTMLの生成中にエラーが発生しました。</p>
+        <pre>{html_text[:500]}...</pre>
+    </div>
+</body>
+</html>"""
 
 
 # ==============================================================================
