@@ -6,7 +6,7 @@ set -e
 
 echo "🔥 Firebase CLI設定開始"
 
-PROJECT_ID="yutori-kyoshitu-ai"
+PROJECT_ID="gakkoudayori-ai"
 
 # カラー設定
 RED='\033[0;31m'

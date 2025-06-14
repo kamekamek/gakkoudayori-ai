@@ -7,7 +7,7 @@ set -e  # エラー時に停止
 echo "🔧 Google Cloud Platform CLI設定開始"
 
 # プロジェクト設定
-PROJECT_ID="yutori-kyoshitu-ai"
+PROJECT_ID="gakkoudayori-ai"
 REGION="asia-northeast1"
 ZONE="asia-northeast1-a"
 

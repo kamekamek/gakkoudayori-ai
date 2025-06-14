@@ -45,7 +45,7 @@ class TestGeminiClient:
         """各テストの前に実行される初期化"""
         # テスト用のパス（実際のファイルは必要ない）
         self.credentials_path = "./test_credentials.json"
-        self.project_id = "yutori-kyoshitu-ai"
+        self.project_id = "gakkoudayori-ai"
         self.model_name = "gemini-1.5-pro"
         self.location = "us-central1"
 
@@ -82,7 +82,7 @@ class TestGeminiTextGeneration:
         """各テストの前に実行される初期化"""
         # テスト用のパス（実際のファイルは必要ない）
         self.credentials_path = "./test_credentials.json"
-        self.project_id = "yutori-kyoshitu-ai"
+        self.project_id = "gakkoudayori-ai"
         self.model_name = "gemini-1.5-pro"
         self.location = "us-central1"
         
@@ -190,7 +190,7 @@ class TestGeminiConnection:
         """各テストの前に実行される初期化"""
         # テスト用のパス（実際のファイルは必要ない）
         self.credentials_path = "./test_credentials.json"
-        self.project_id = "yutori-kyoshitu-ai"
+        self.project_id = "gakkoudayori-ai"
         self.model_name = "gemini-1.5-pro"
         self.location = "us-central1"
 

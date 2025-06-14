@@ -54,7 +54,7 @@ class TestGCPAuthentication:
     def setup_method(self):
         """各テストの前に実行される初期化"""
         self.credentials_path = "../secrets/service-account-key.json"
-        self.project_id = "yutori-kyoshitu-ai"
+        self.project_id = "gakkoudayori-ai"
 
     def test_initialize_gcp_credentials_success(self):
         """GCP認証情報の初期化成功テスト"""
@@ -98,7 +98,7 @@ class TestVertexAIConnection:
     def setup_method(self):
         """各テストの前に実行される初期化"""
         self.credentials_path = "../secrets/service-account-key.json"
-        self.project_id = "yutori-kyoshitu-ai"
+        self.project_id = "gakkoudayori-ai"
 
     def test_get_vertex_ai_client_success(self):
         """Vertex AIクライアント取得成功テスト"""
@@ -143,7 +143,7 @@ class TestSpeechToTextConnection:
     def setup_method(self):
         """各テストの前に実行される初期化"""
         self.credentials_path = "../secrets/service-account-key.json"
-        self.project_id = "yutori-kyoshitu-ai"
+        self.project_id = "gakkoudayori-ai"
 
     def test_get_speech_client_success(self):
         """Speech-to-Textクライアント取得成功テスト"""
@@ -187,7 +187,7 @@ class TestGCPIntegration:
     def setup_method(self):
         """各テストの前に実行される初期化"""
         self.credentials_path = "../secrets/service-account-key.json"
-        self.project_id = "yutori-kyoshitu-ai"
+        self.project_id = "gakkoudayori-ai"
 
     def test_all_gcp_connections_success(self):
         """全GCP接続統合テスト（成功）"""
@@ -250,7 +250,7 @@ class TestGCPErrorHandling:
         """クォータ超過エラーテスト"""
         # 現在の実装では初期化レベルのテストなので、クォータエラーは発生しない
         # 代わりに、初期化が成功することを確認
-        result = test_vertex_ai_connection("yutori-kyoshitu-ai", "../secrets/service-account-key.json")
+        result = test_vertex_ai_connection("gakkoudayori-ai", "../secrets/service-account-key.json")
         assert result['success'] is True
         assert 'model_info' in result
 

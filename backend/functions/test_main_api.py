@@ -21,7 +21,7 @@ class TestMainAPIEndpoints:
         """各テストの前に実行される初期化"""
         self.client = app.test_client()
         self.test_credentials_path = "./test_credentials.json"
-        self.test_project_id = "yutori-kyoshitu-ai"
+        self.test_project_id = "gakkoudayori-ai"
 
     def test_health_endpoint(self):
         """ヘルスチェックエンドポイントテスト"""
