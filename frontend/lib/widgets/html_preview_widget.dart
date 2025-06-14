@@ -11,7 +11,7 @@ class HtmlPreviewWidget extends StatefulWidget {
   const HtmlPreviewWidget({
     Key? key,
     required this.htmlContent,
-    this.height = 400,
+    required this.height,
   }) : super(key: key);
 
   @override
@@ -69,9 +69,8 @@ class _HtmlPreviewWidgetState extends State<HtmlPreviewWidget> {
             font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif; 
             line-height: 1.6;
             background-color: #fafafa;
-            height: 100%;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
+            height: auto;
+            overflow: visible;
         }
         
         body {
@@ -109,7 +108,7 @@ class _HtmlPreviewWidgetState extends State<HtmlPreviewWidget> {
             border-radius: 8px; 
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             margin-bottom: 20px;
-            min-height: calc(100vh - 40px);
+            min-height: auto;
             box-sizing: border-box;
         }
         
