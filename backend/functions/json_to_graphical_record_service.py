@@ -38,8 +38,8 @@ def load_prompt(template_name: str) -> Optional[str]:
     """
     # テンプレート名からファイル名を決定（例: 'colorful' -> 'COLORFUL_LAYOUT.md'）
     # classic, modernなど、flowドキュメントの指定に合わせる
-    if template_name in ['classic', 'modern']:
-         prompt_filename = f"{template_name.upper()}_LAYOUT.md"
+    if template_name in ['classic', 'classic_newsletter', 'modern']:
+         prompt_filename = f"CLASSIC_LAYOUT.md"  # classic系は全てCLASSIC_LAYOUT.mdを使用
     else: # colorful, pastelなどはclassicにフォールバック
          prompt_filename = f"CLASSIC_LAYOUT.md"
 
@@ -73,6 +73,40 @@ def get_graphical_record_templates() -> Dict[str, Dict[str, Any]]:
         Dict[str, Dict[str, Any]]: テンプレート定義
     """
     return {
+        "classic": {
+            "name": "クラシック",
+            "description": "伝統的な学級通信スタイル",
+            "colors": {
+                "primary": "#2c3e50",
+                "secondary": "#3498db",
+                "accent": "#e74c3c",
+                "background": "#ffffff",
+                "positive": "#27AE60",
+                "neutral": "#95A5A6",
+                "focused": "#3498DB",
+                "excited": "#E74C3C",
+                "calm": "#16A085",
+                "concerned": "#E67E22"
+            },
+            "style": "classic"
+        },
+        "classic_newsletter": {
+            "name": "クラシック学級通信",
+            "description": "学級通信専用の伝統的なスタイル",
+            "colors": {
+                "primary": "#2c3e50",
+                "secondary": "#3498db",
+                "accent": "#e74c3c",
+                "background": "#ffffff",
+                "positive": "#27AE60",
+                "neutral": "#95A5A6",
+                "focused": "#3498DB",
+                "excited": "#E74C3C",
+                "calm": "#16A085",
+                "concerned": "#E67E22"
+            },
+            "style": "classic"
+        },
         "colorful": {
             "name": "カラフル",
             "description": "明るい色彩で楽しい雰囲気",
