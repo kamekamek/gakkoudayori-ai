@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'services/audio_service.dart';
 import 'services/ai_service.dart';
 import 'services/graphical_record_service.dart';
 import 'widgets/html_preview_widget.dart';
 import 'widgets/quill_editor_widget.dart';
-import 'widgets/cross_platform_html_editor.dart';
 
 import 'dart:html' as html;
 import 'package:http/http.dart' as http;
@@ -115,66 +115,52 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
     try {
       print('🚀 [Sample] _loadSampleHtml開始');
 
-      // sample.htmlファイルから実際のコンテンツを読み込み
-      final response = await http.get(Uri.parse('sample.html'));
-      String sampleHtml;
+      // Flutterアセットからsample.htmlを読み込み（UTF-8保証）
+      final String sampleHtml = await rootBundle.loadString('web/sample.html');
+      print('✅ [Sample] sample.htmlアセット読み込み成功');
 
-      if (response.statusCode == 200) {
-        sampleHtml = response.body;
-        print('✅ [Sample] sample.htmlファイル読み込み成功');
-      } else {
-        // フォールバック: 簡単なHTMLでテスト
-        sampleHtml = '''
-<div style="padding: 20px; font-family: 'Noto Sans JP', sans-serif;">
-  <h1 style="color: #3B82F6; text-align: center; border-bottom: 3px solid #3B82F6; padding-bottom: 10px;">
-    青葉台市立みどりが丘小学校
-  </h1>
-  <h2 style="color: #10B981; margin-top: 20px;">梅雨空の下で広がる学び</h2>
-  <p style="line-height: 1.8; margin: 15px 0;">
-    保護者の皆様には、日頃より本校の教育活動にご理解とご協力を賜り、心より感謝申し上げます。
-  </p>
-  <p style="line-height: 1.8; margin: 15px 0;">
-    梅雨の季節を迎えましたが、子どもたちは日々元気に学校生活を送っております。今月も、子どもたちの健やかな成長を温かく見守っていただけますと幸いです。
-  </p>
-  
-  <div style="background-color: #F9FAFB; border-left: 5px solid #10B981; padding: 20px; border-radius: 8px; margin: 20px 0;">
-    <h3 style="color: #3B82F6; margin-top: 0;">運動会の思い出</h3>
-    <p style="line-height: 1.8; margin: 10px 0;">
-      先般、盛大に開催されました運動会では、多くの保護者の皆様にご来場いただき、温かいご声援をありがとうございました。
-    </p>
-    <p style="line-height: 1.8; margin: 10px 0;">
-      子どもたちは、リレーや玉入れ、応援合戦など、練習の成果を存分に発揮し、全ての競技に全力で取り組んでいました。
-    </p>
-  </div>
-  
-  <div style="background-color: #EFF6FF; border-left: 5px solid #3B82F6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-    <h3 style="color: #3B82F6; margin-top: 0;">編集後記</h3>
-    <p style="line-height: 1.8; margin: 10px 0;">
-      雨音が学びのBGMとなるこの季節、子どもたちは運動会という大きな行事を乗り越え、一回りたくましくなりました。
-    </p>
-  </div>
-  
-  <div style="text-align: right; margin-top: 30px; padding-top: 15px; border-top: 2px solid #F3F4F6;">
-    <p style="margin: 0; color: #6B7280;">校長 田中 一郎</p>
-  </div>
-</div>
-''';
-        print('⚠️ [Sample] sample.htmlファイル読み込み失敗、フォールバック使用');
-      }
-
-      print('🔄 [Sample] setStateでHTMLを設定中...');
       setState(() {
         _generatedHtml = sampleHtml;
         _statusMessage = '📄 サンプル学級通信を表示しています';
       });
 
       print('✅ [Sample] sample.htmlをプレビューに読み込み完了');
-      print('📊 [Sample] _generatedHtml長さ: ${_generatedHtml.length}文字');
+      print('📊 [Sample] _generatedHtml長さ: ${sampleHtml.length}文字');
     } catch (e) {
       print('❌ [Sample] sample.html読み込みエラー: $e');
-      setState(() {
-        _statusMessage = '❌ サンプル読み込みエラー: $e';
-      });
+
+      // フォールバック: HTTP経由で読み込み
+      try {
+        print('🔄 [Sample] HTTP経由でフォールバック読み込み開始');
+        final response = await http.get(
+          Uri.parse('sample.html'),
+          headers: {
+            'Accept':
+                'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Charset': 'UTF-8',
+          },
+        );
+
+        if (response.statusCode == 200) {
+          final String sampleHtml = utf8.decode(response.bodyBytes);
+          print('✅ [Sample] HTTP経由でsample.html読み込み成功');
+
+          setState(() {
+            _generatedHtml = sampleHtml;
+            _statusMessage = '📄 サンプル学級通信を表示しています';
+          });
+
+          print('✅ [Sample] HTTP経由sample.html読み込み完了');
+          print('📊 [Sample] _generatedHtml長さ: ${sampleHtml.length}文字');
+        } else {
+          throw Exception('HTTP Status: ${response.statusCode}');
+        }
+      } catch (httpError) {
+        print('❌ [Sample] HTTP経由読み込みも失敗: $httpError');
+        setState(() {
+          _statusMessage = '❌ サンプル読み込みエラー: $e';
+        });
+      }
     }
   }
 
