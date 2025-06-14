@@ -196,7 +196,7 @@ class AudioService {
       print('📄 [AudioService] 音声データサイズ: ${audioBytes.length} bytes');
 
       // バックエンドAPIのエンドポイント（本番環境では適切なURLに変更）
-      const apiUrl = 'http://localhost:8080/api/v1/ai/transcribe';
+      const apiUrl = 'http://localhost:8081/api/v1/ai/transcribe';
 
       // マルチパートフォームデータとして送信
       final request = http.MultipartRequest('POST', Uri.parse(apiUrl));

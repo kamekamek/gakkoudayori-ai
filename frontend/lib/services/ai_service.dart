@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 
 /// Gemini Pro AI文章生成サービス
 class AIService {
-  static const String _baseUrl = 'http://localhost:8080/api/v1/ai';
+  static const String _baseUrl = 'http://localhost:8081/api/v1/ai';
 
   /// 学級通信HTML生成
   Future<AIGenerationResult> generateNewsletter({

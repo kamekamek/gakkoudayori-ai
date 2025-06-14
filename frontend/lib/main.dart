@@ -25,6 +25,7 @@ class YutoriKyoshituApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
+        fontFamily: 'Noto Sans JP',
       ),
       home: HomePage(),
       debugShowCheckedModeBanner: false,
