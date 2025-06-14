@@ -63,14 +63,31 @@ class _HtmlPreviewWidgetState extends State<HtmlPreviewWidget> {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>学級通信プレビュー</title>
     <style>
-        body { 
+        html, body {
+            margin: 0;
+            padding: 0;
             font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif; 
-            max-width: 800px; 
-            margin: 0 auto; 
-            padding: 20px; 
             line-height: 1.6;
             background-color: #fafafa;
+            height: 100%;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
+        
+        body {
+            padding: 10px;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 8px;
+            }
+            .content {
+                padding: 15px !important;
+                margin: 0 !important;
+            }
+        }
+        
         h1, h2, h3 { color: #2c3e50; }
         .header { 
             text-align: center; 
@@ -88,9 +105,24 @@ class _HtmlPreviewWidgetState extends State<HtmlPreviewWidget> {
         }
         .content { 
             background: white; 
-            padding: 30px; 
-            border-radius: 10px; 
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+            padding: 20px;
+            border-radius: 8px; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            min-height: calc(100vh - 40px);
+            box-sizing: border-box;
+        }
+        
+        /* 長いコンテンツ用のスクロール改善 */
+        .newsletter-container {
+            width: 100% !important;
+            max-width: none !important;
+            margin: 0 !important;
+        }
+        
+        /* モバイル対応のスクロール改善 */
+        * {
+            box-sizing: border-box;
         }
     </style>
 </head>

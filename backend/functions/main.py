@@ -55,6 +55,19 @@ def init_firebase():
         logger.error(f"Firebase initialization failed: {e}")
         return False
 
+def get_firestore_client():
+    """Firestoreクライアント取得"""
+    try:
+        if firebase_initialized:
+            from firebase_admin import firestore
+            return firestore.client()
+        else:
+            logger.warning("Firebase not initialized, returning None firestore client")
+            return None
+    except Exception as e:
+        logger.error(f"Failed to get Firestore client: {e}")
+        return None
+
 # アプリケーション起動時にFirebase初期化
 firebase_initialized = init_firebase()
 
@@ -144,7 +157,8 @@ def transcribe_audio():
         user_id = request.form.get('user_id', 'default')  # ユーザーIDサポート
         
         # ユーザー辞書サービス初期化
-        dict_service = create_user_dictionary_service()
+        firestore_client = get_firestore_client()
+        dict_service = create_user_dictionary_service(firestore_client)
         speech_contexts = dict_service.get_speech_contexts(user_id)
         
         # 認証情報パス
@@ -209,7 +223,8 @@ def transcribe_audio():
 def get_user_dictionary(user_id: str):
     """ユーザー辞書取得"""
     try:
-        dict_service = create_user_dictionary_service()
+        firestore_client = get_firestore_client()
+        dict_service = create_user_dictionary_service(firestore_client)
         dictionary = dict_service.get_user_dictionary(user_id)
         stats = dict_service.get_dictionary_stats(user_id)
         
@@ -232,19 +247,45 @@ def get_user_dictionary(user_id: str):
 def add_custom_term(user_id: str):
     """カスタム用語追加"""
     try:
+        logger.info(f"Add custom term called for user_id: {user_id}")
+        
+        # JSONデータ取得
         data = request.get_json()
+        if not data:
+            logger.error("No JSON data provided")
+            return jsonify({
+                'success': False,
+                'error': 'No JSON data provided'
+            }), 400
+        
+        logger.info(f"Request data: {data}")
+        
         term = data.get('term')
         variations = data.get('variations', [])
         category = data.get('category', 'custom')
         
         if not term:
+            logger.error("Term is required but not provided")
             return jsonify({
                 'success': False,
                 'error': 'Term is required'
             }), 400
         
-        dict_service = create_user_dictionary_service()
+        # 辞書サービス初期化
+        logger.info("Creating user dictionary service...")
+        
+        # Firestoreクライアント取得
+        from firebase_admin import firestore
+        firestore_client = firestore.client() if firebase_initialized else None
+        logger.info(f"Firestore client: {firestore_client}")
+        
+        dict_service = create_user_dictionary_service(firestore_client)
+        logger.info(f"Dictionary service created: {type(dict_service)}")
+        
+        # カスタム用語追加
+        logger.info(f"Adding custom term: {term} with variations: {variations}")
         success = dict_service.add_custom_term(user_id, term, variations, category)
+        logger.info(f"Add custom term result: {success}")
         
         if success:
             return jsonify({
@@ -256,16 +297,18 @@ def add_custom_term(user_id: str):
                 }
             })
         else:
+            logger.error("Failed to add custom term - service returned False")
             return jsonify({
                 'success': False,
                 'error': 'Failed to add custom term'
             }), 500
             
     except Exception as e:
-        logger.error(f"Add custom term error: {e}")
+        logger.error(f"Add custom term error: {e}", exc_info=True)
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': str(e),
+            'error_type': type(e).__name__
         }), 500
 
 @app.route('/api/v1/dictionary/<user_id>/correct', methods=['POST'])
@@ -283,7 +326,8 @@ def manual_correction(user_id: str):
                 'error': 'Original and corrected text are required'
             }), 400
         
-        dict_service = create_user_dictionary_service()
+        firestore_client = get_firestore_client()
+        dict_service = create_user_dictionary_service(firestore_client)
         success = dict_service.manual_correction(user_id, original, corrected, context)
         
         if success:
@@ -322,7 +366,8 @@ def suggest_corrections(user_id: str):
                 'error': 'Text is required'
             }), 400
         
-        dict_service = create_user_dictionary_service()
+        firestore_client = get_firestore_client()
+        dict_service = create_user_dictionary_service(firestore_client)
         suggestions = dict_service.suggest_corrections(text, user_id)
         
         return jsonify({
@@ -344,7 +389,8 @@ def suggest_corrections(user_id: str):
 def get_dictionary_stats(user_id: str):
     """辞書統計情報取得"""
     try:
-        dict_service = create_user_dictionary_service()
+        firestore_client = get_firestore_client()
+        dict_service = create_user_dictionary_service(firestore_client)
         stats = dict_service.get_dictionary_stats(user_id)
         
         return jsonify({
@@ -720,3 +766,41 @@ def api(req: https_fn.Request) -> https_fn.Response:
 if __name__ == '__main__':
     # ローカル開発モード
     app.run(debug=True, host='0.0.0.0', port=8080)
+
+# デバッグ用エンドポイント
+@app.route('/api/v1/debug/dictionary', methods=['GET'])
+def debug_dictionary():
+    """辞書サービスのデバッグ情報"""
+    try:
+        logger.info("Debug dictionary service called")
+        
+        # サービス初期化テスト
+        firestore_client = get_firestore_client()
+        dict_service = create_user_dictionary_service(firestore_client)
+        logger.info(f"Dictionary service created: {type(dict_service)}")
+        
+        # デフォルトユーザーの辞書取得テスト
+        default_dict = dict_service.get_user_dictionary("default")
+        logger.info(f"Default dictionary entries: {len(default_dict)}")
+        
+        # 統計情報取得テスト
+        stats = dict_service.get_dictionary_stats("default")
+        logger.info(f"Dictionary stats: {stats}")
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'service_initialized': True,
+                'default_dictionary_size': len(default_dict),
+                'stats': stats,
+                'firebase_initialized': firebase_initialized
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Debug dictionary error: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'error_type': type(e).__name__
+        }), 500
