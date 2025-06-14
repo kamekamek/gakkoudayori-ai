@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:web/web.dart' as web;
 import 'dart:convert';
-import 'dart:ui_web' as ui_web;
 import 'services/audio_service.dart';
 import 'services/ai_service.dart';
 import 'widgets/html_preview_widget.dart';
-import 'widgets/tinymce_editor_widget.dart';
+import 'widgets/inline_editable_preview_widget.dart';
 import 'widgets/user_dictionary_widget.dart';
-import 'package:flutter/services.dart';
 import 'dart:html' as html;
-import 'dart:js_interop' as js_interop;
 import 'package:http/http.dart' as http;
 
 /// 学級通信AI - 音声入力システム（完全版）
@@ -58,8 +54,8 @@ class HomePageState extends State<HomePage> {
   final TextEditingController _textController = TextEditingController();
   AIGenerationResult? _aiResult;
   String _statusMessage = '🎤 音声録音または文字入力で学級通信を作成してください';
-  
-  // TinyMCEエディタへの参照
+
+  // インライン編集エディタへの参照
   final GlobalKey _editorKey = GlobalKey();
 
   @override
@@ -380,10 +376,10 @@ class HomePageState extends State<HomePage> {
       print('📄 [PDF] PDF生成開始 - HTMLサイズ: ${_generatedHtml.length}文字');
 
       // バックエンドPDF生成API呼び出し
-      final apiUrl = kDebugMode 
+      final apiUrl = kDebugMode
           ? 'http://localhost:8081/api/v1/ai/generate-pdf'
           : 'https://asia-northeast1-yutori-kyoshitu.cloudfunctions.net/main/api/v1/ai/generate-pdf';
-      
+
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {
@@ -830,7 +826,7 @@ class HomePageState extends State<HomePage> {
                           color: Colors.blue[600]),
                       SizedBox(width: 8),
                       Text(
-                        _showEditor ? 'エディタ' : 'プレビュー',
+                        _showEditor ? 'インライン編集' : 'プレビュー',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -863,7 +859,7 @@ class HomePageState extends State<HomePage> {
                               children: [
                                 Icon(Icons.edit, size: 16),
                                 SizedBox(width: 4),
-                                Text('エディター'),
+                                Text('編集'),
                               ],
                             ),
                           ),
@@ -978,9 +974,9 @@ class HomePageState extends State<HomePage> {
                                 builder: (context, constraints) {
                                   final availableHeight = constraints.maxHeight;
                                   return _showEditor
-                                      ? TinyMCEEditorWidget(
+                                      ? InlineEditablePreviewWidget(
                                           key: _editorKey,
-                                          initialContent: _generatedHtml,
+                                          htmlContent: _generatedHtml,
                                           height: availableHeight,
                                           onContentChanged: (html) {
                                             if (_editorHtml != html) {
@@ -990,10 +986,6 @@ class HomePageState extends State<HomePage> {
                                                 _generatedHtml = html;
                                               });
                                             }
-                                          },
-                                          onEditorReady: () {
-                                            // エディタ準備完了時の処理
-                                            print('✅ TinyMCEエディタ準備完了');
                                           },
                                         )
                                       : HtmlPreviewWidget(
