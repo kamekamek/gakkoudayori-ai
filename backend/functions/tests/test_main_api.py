@@ -53,7 +53,7 @@ class TestMainAPIEndpoints:
                 'html_content': '<h1>テスト学級通信</h1><p>今日の出来事について</p>',
                 'processing_time_ms': 1500,
                 'ai_metadata': {
-                    'model': 'gemini-1.5-pro',
+                    'model': 'gemini-2.0-flash-exp',
                     'word_count': 10,
                     'usage': {
                         'total_token_count': 100
@@ -108,7 +108,7 @@ class TestMainAPIEndpoints:
                 'html_content': '<h1>学級通信</h1><p>運動会の練習頑張りました</p>',
                 'processing_time_ms': 2000,
                 'ai_metadata': {
-                    'model': 'gemini-1.5-pro',
+                    'model': 'gemini-2.0-flash-exp',
                     'word_count': 15,
                     'usage': {
                         'total_token_count': 150
@@ -151,7 +151,7 @@ class TestMainAPIEndpoints:
             'data': {
                 'html_content': '<h1>春の学級通信</h1>',
                 'processing_time_ms': 1000,
-                'ai_metadata': {'model': 'gemini-1.5-pro'}
+                'ai_metadata': {'model': 'gemini-2.0-flash-exp'}
             },
             'timestamp': '2025-01-13T10:00:00'
         }

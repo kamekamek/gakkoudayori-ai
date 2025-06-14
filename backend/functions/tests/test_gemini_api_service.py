@@ -46,7 +46,7 @@ class TestGeminiClient:
         # テスト用のパス（実際のファイルは必要ない）
         self.credentials_path = "./test_credentials.json"
         self.project_id = "gakkoudayori-ai"
-        self.model_name = "gemini-1.5-pro"
+        self.model_name = "gemini-2.0-flash-exp"
         self.location = "us-central1"
 
     def test_get_gemini_client_success(self):
@@ -83,7 +83,7 @@ class TestGeminiTextGeneration:
         # テスト用のパス（実際のファイルは必要ない）
         self.credentials_path = "./test_credentials.json"
         self.project_id = "gakkoudayori-ai"
-        self.model_name = "gemini-1.5-pro"
+        self.model_name = "gemini-2.0-flash-exp"
         self.location = "us-central1"
         
         # モックレスポンス用のサンプル
@@ -191,7 +191,7 @@ class TestGeminiConnection:
         # テスト用のパス（実際のファイルは必要ない）
         self.credentials_path = "./test_credentials.json"
         self.project_id = "gakkoudayori-ai"
-        self.model_name = "gemini-1.5-pro"
+        self.model_name = "gemini-2.0-flash-exp"
         self.location = "us-central1"
 
     @patch('gemini_api_service.get_gemini_client')
@@ -273,7 +273,7 @@ class TestGeminiErrorHandling:
 
     def test_handle_model_not_found_error(self):
         """モデル未発見エラーハンドリングテスト"""
-        error_msg = "Model not found: gemini-1.5-pro"
+        error_msg = "Model not found: gemini-2.0-flash-exp"
         error = Exception(error_msg)
         
         result = handle_gemini_error(error)

@@ -58,7 +58,7 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
 
     // A4印刷最適化HTMLコンテンツを作成
     final printOptimizedHtml = _createPrintOptimizedHtml(widget.htmlContent);
-    
+
     final encodedHtml = Uri.dataFromString(
       printOptimizedHtml,
       mimeType: 'text/html',
@@ -85,7 +85,7 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
   /// 94_USER_FLOW_DESIGN.mdの印刷要件に準拠した堅牢なレイアウト
   String _createPrintOptimizedHtml(String htmlContent) {
     final cleanedContent = _extractHtmlContent(htmlContent);
-    
+
     return '''
 <!DOCTYPE html>
 <html lang="ja">
@@ -323,10 +323,8 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
 
   /// HTMLコンテンツの抽出とサニタイズ
   String _extractHtmlContent(String htmlContent) {
-    String cleaned = htmlContent
-        .replaceAll('```html', '')
-        .replaceAll('```', '')
-        .trim();
+    String cleaned =
+        htmlContent.replaceAll('```html', '').replaceAll('```', '').trim();
 
     if (cleaned.isEmpty) {
       return '<p style="text-align: center; color: #999; margin: 50px 0;">プレビューコンテンツがありません</p>';
@@ -337,17 +335,13 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
 
   /// 動的コンテンツ更新
   void _updatePrintContent(String newContent) {
-    if (_iframe?.contentWindow != null && newContent != _cachedContent) {
+    if (newContent != _cachedContent) {
       try {
-        final contentElement = _iframe!.contentDocument
-            ?.getElementById('main-content') as web.HTMLElement?;
-        if (contentElement != null) {
-          final content = _extractHtmlContent(newContent);
-          contentElement.innerHTML = content as dynamic;
-          _cachedContent = newContent;
-        }
+        // CORSエラーを避けるため、iframe全体を再作成
+        print('🖨️ [PrintPreview] コンテンツ更新のためiframe再作成');
+        _initializePrintPreview();
       } catch (e) {
-        print('🖨️ [PrintPreview] 動的更新失敗、iframe再作成: $e');
+        print('🖨️ [PrintPreview] 動的更新失敗: $e');
         _initializePrintPreview();
       }
     }
@@ -408,7 +402,7 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
               viewType: _viewId!,
             ),
           ),
-          
+
           // モバイル用の操作ヒント
           if (isMobile && widget.enableMobilePrintView)
             Positioned(
@@ -430,7 +424,7 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
                 ),
               ),
             ),
-          
+
           // ローディングオーバーレイ
           if (_isLoading)
             Container(

@@ -44,7 +44,7 @@ def generate_constrained_html(
     season_theme: str = "",
     document_type: str = "class_newsletter",
     constraints: Dict[str, Any] = None,
-    model_name: str = "gemini-1.5-pro",
+    model_name: str = "gemini-1.5-flash",
     temperature: float = 0.2,
     max_output_tokens: int = 1024,
     top_k: int = 40,
