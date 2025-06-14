@@ -425,7 +425,7 @@ def generate_html_content():
         
         # Google Cloud認証情報パス
         credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', '../secrets/service-account-key.json')
-        project_id = os.getenv('GOOGLE_CLOUD_PROJECT', 'yutori-kyoshitu-ai')
+        project_id = os.getenv('GOOGLE_CLOUD_PROJECT', 'gakkoudayori-ai')
         
         # Gemini HTML生成実行
         result = generate_constrained_html(
@@ -482,7 +482,7 @@ def generate_newsletter():
         
         # 認証情報パス
         credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', '../secrets/service-account-key.json')
-        project_id = os.getenv('GOOGLE_CLOUD_PROJECT', 'yutori-kyoshitu-ai')
+        project_id = os.getenv('GOOGLE_CLOUD_PROJECT', 'gakkoudayori-ai')
         
         # 季節自動判定
         if season == 'auto':

@@ -19,7 +19,7 @@ import google.generativeai as genai
 logger = logging.getLogger(__name__)
 
 # Gemini設定
-PROJECT_ID = "yutori-kyoshitu-ai"
+PROJECT_ID = "gakkoudayori-ai"
 LOCATION = "us-central1"
 MODEL_NAME = "gemini-1.5-pro"
 
