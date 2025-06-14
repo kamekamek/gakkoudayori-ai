@@ -229,4 +229,4 @@ tmux-*.log
 # - 設定例ファイル（.env.example, config.example.yaml等）
 # - ドキュメント（docs/）
 # - テスト用モックデータ（test/fixtures/）
-
+.firebase/*
