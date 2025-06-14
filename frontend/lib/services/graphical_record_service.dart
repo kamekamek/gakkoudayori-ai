@@ -139,37 +139,122 @@ class GraphicalRecordService {
           'include_header': false,
           'include_footer': false,
           'custom_css': '''
-            /* PDF出力時の追加調整 - 1ページ収納最適化 */
-            @media print {
-              .a4-sheet {
-                box-shadow: none !important;
+            /* プレビューと完全一致のCSS - PrintPreviewWidgetと統一 */
+            
+            /* 基本リセット（最小限） */
+            * {
+                box-sizing: border-box;
+            }
+            
+            /* A4サイズの固定レイアウト（210mm × 297mm） */
+            html, body {
+                font-family: 'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic', sans-serif !important;
+                margin: 0;
+                padding: 0;
+                background-color: white;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            /* 印刷用コンテナ - A4固定サイズ */
+            .print-container {
+                width: 210mm;
+                min-height: 297mm;
+                max-width: 210mm;
+                margin: 0 auto;
+                padding: 15mm;
+                background: white;
+                position: relative;
+            }
+            
+            /* 元のa4-sheetクラスがある場合の調整 */
+            .a4-sheet {
+                width: 100% !important;
+                min-height: auto !important;
                 margin: 0 !important;
                 padding: 10mm !important;
-              }
-              
-              .print-container {
                 box-shadow: none !important;
-                margin: 0 !important;
-                padding: 0 !important;
-              }
-              
-              /* フォントサイズとマージンの最適化 */
-              h1 { font-size: 18px !important; margin: 8px 0 !important; }
-              h2 { font-size: 16px !important; margin: 6px 0 !important; }
-              h3 { font-size: 14px !important; margin: 4px 0 !important; }
-              p { font-size: 12px !important; margin: 3px 0 !important; line-height: 1.3 !important; }
-              
-              /* セクション間隔の最適化 */
-              .section { margin-bottom: 8px !important; padding: 8px !important; }
-              .content-section { margin-bottom: 6px !important; padding: 6px !important; }
-              
-              /* ヘッダー・フッターの最適化 */
-              .newsletter-header { margin-bottom: 10px !important; padding: 8px !important; }
-              .footer-note { margin-top: 10px !important; padding: 6px !important; }
-              
-              /* 不要な改ページを防ぐ */
-              * { page-break-inside: avoid !important; }
-              h1, h2, h3 { page-break-after: avoid !important; }
+            }
+            
+            /* フォントサイズとマージンの統一（プレビューと同じ） */
+            h1 {
+                font-size: 18px !important;
+                margin: 8px 0 !important;
+                line-height: 1.2 !important;
+            }
+            
+            h2 {
+                font-size: 16px !important;
+                margin: 6px 0 !important;
+                line-height: 1.2 !important;
+            }
+            
+            h3 {
+                font-size: 14px !important;
+                margin: 4px 0 !important;
+                line-height: 1.2 !important;
+            }
+            
+            p {
+                font-size: 12px !important;
+                line-height: 1.3 !important;
+                margin: 3px 0 !important;
+            }
+            
+            /* セクション間隔の最適化 */
+            .section {
+                margin-bottom: 8px !important;
+                padding: 8px !important;
+            }
+            
+            .content-section {
+                margin-bottom: 6px !important;
+                padding: 6px !important;
+            }
+            
+            /* ヘッダー・フッターの最適化 */
+            .newsletter-header {
+                margin-bottom: 10px !important;
+                padding: 8px !important;
+            }
+            
+            .footer-note {
+                margin-top: 10px !important;
+                padding: 6px !important;
+            }
+            
+            /* 画像の最大幅制限 */
+            img {
+                max-width: 100% !important;
+                height: auto !important;
+            }
+            
+            /* テーブルの改ページ制御 */
+            table {
+                page-break-inside: avoid;
+            }
+            
+            /* 改ページ制御 */
+            .page-break {
+                page-break-before: always;
+            }
+            
+            .no-break {
+                page-break-inside: avoid;
+            }
+            
+            /* PDF出力時の追加調整 */
+            @media print {
+                .print-container {
+                    width: 100% !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    box-shadow: none !important;
+                }
+                
+                .a4-sheet {
+                    box-shadow: none !important;
+                }
             }
           ''',
         }),
