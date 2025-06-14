@@ -54,31 +54,89 @@ class _InlineEditablePreviewWidgetState
 
   /// メッセージ通信をセットアップ
   void _setupMessageListener() {
+    print('🔧 [InlineEdit] メッセージリスナー設定開始');
+
+    // 方法1: 標準のpostMessage
     _messageHandler = (html.Event event) {
       final messageEvent = event as html.MessageEvent;
 
       try {
         final data = messageEvent.data;
-        final message = data is String ? jsonDecode(data) : data;
+        print('🔍 [InlineEdit] postMessage受信 - データ型: ${data.runtimeType}');
+        print('🔍 [InlineEdit] postMessage受信 - データ内容: $data');
 
-        if (message is Map<String, dynamic>) {
+        Map<String, dynamic>? message;
+
+        if (data is String) {
+          print('🔍 [InlineEdit] 文字列データをJSON解析中...');
+          message = jsonDecode(data) as Map<String, dynamic>;
+        } else if (data is Map) {
+          print('🔍 [InlineEdit] マップデータを直接使用...');
+          message = Map<String, dynamic>.from(data);
+        } else {
+          print('❌ [InlineEdit] 未対応のデータ型: ${data.runtimeType}');
+          return;
+        }
+
+        if (message != null) {
+          print('🔍 [InlineEdit] 解析済みメッセージ: $message');
           _handleMessage(message);
         }
       } catch (e) {
         print('❌ [InlineEdit] メッセージ解析エラー: $e');
+        print('❌ [InlineEdit] 元データ: ${messageEvent.data}');
       }
     };
 
     html.window.addEventListener('message', _messageHandler!);
+    print('✅ [InlineEdit] postMessage リスナー設定完了');
+
+    // 方法2: カスタムイベント
+    final customEventHandler = (html.Event event) {
+      try {
+        final customEvent = event as html.CustomEvent;
+        final data = customEvent.detail;
+        print('🔍 [InlineEdit] CustomEvent受信 - データ: $data');
+
+        if (data is Map) {
+          final message = Map<String, dynamic>.from(data);
+          print('🔍 [InlineEdit] CustomEvent解析済み: $message');
+          _handleMessage(message);
+        }
+      } catch (e) {
+        print('❌ [InlineEdit] CustomEvent解析エラー: $e');
+      }
+    };
+
+    html.window.addEventListener('flutter-message', customEventHandler);
+    print('✅ [InlineEdit] CustomEvent リスナー設定完了');
+
+    print('🎯 [InlineEdit] 全てのメッセージリスナー設定完了');
   }
 
   /// iframe内からのメッセージを処理
   void _handleMessage(Map<String, dynamic> message) {
+    print('🔍 [InlineEdit] メッセージ処理開始: ${message['type']}');
+
     switch (message['type']) {
       case 'content_changed':
-        final newContent = message['data']?['html'] as String?;
+        print('🔍 [InlineEdit] content_changed メッセージ受信');
+        final data = message['data'];
+        print('🔍 [InlineEdit] data部分: $data');
+        final newContent = data?['html'] as String?;
+        print('🔍 [InlineEdit] 抽出されたHTML: ${newContent?.length ?? 0}文字');
+
         if (newContent != null && widget.onContentChanged != null) {
-          widget.onContentChanged!(newContent);
+          // HTMLコンテンツをクリーンアップしてから通知
+          final cleanedContent = _cleanEditedContent(newContent);
+          print('🔔 [InlineEdit] 編集内容を親ウィジェットに通知: ${cleanedContent.length}文字');
+          print(
+              '🔔 [InlineEdit] クリーンアップ後の内容プレビュー: ${cleanedContent.substring(0, cleanedContent.length > 100 ? 100 : cleanedContent.length)}...');
+          widget.onContentChanged!(cleanedContent);
+        } else {
+          print('❌ [InlineEdit] newContentがnullまたはonContentChangedがnull');
+          print('❌ [InlineEdit] newContent: $newContent');
+          print('❌ [InlineEdit] onContentChanged: ${widget.onContentChanged}');
         }
         break;
 
@@ -432,7 +490,9 @@ class _InlineEditablePreviewWidgetState
                 const newContent = element.innerHTML;
                 if (newContent !== originalContent) {
                     // 変更をFlutter側に通知
-                    notifyContentChange();
+                    setTimeout(() => {
+                        notifyContentChange();
+                    }, 100); // 短い遅延でDOMの確実な更新を待つ
                 }
             } else {
                 // キャンセル: 元の内容に戻す
@@ -454,17 +514,55 @@ class _InlineEditablePreviewWidgetState
         }
         
         function notifyContentChange() {
-            const content = document.getElementById('main-content').innerHTML;
-            notifyFlutter('content_changed', { html: content });
+            // 完全なHTMLコンテンツを取得
+            const fullContent = document.getElementById('main-content').outerHTML;
+            console.log('📝 [InlineEdit] 内容変更通知:', fullContent.length + '文字');
+            notifyFlutter('content_changed', { html: fullContent });
         }
         
         function notifyFlutter(type, data) {
-            if (window.parent && window.parent.postMessage) {
-                window.parent.postMessage({
-                    type: type,
-                    data: data
-                }, '*');
+            const message = {
+                type: type,
+                data: data
+            };
+            
+            console.log('🚀 [InlineEdit] メッセージ送信開始:', message);
+            
+            // 方法1: window.parent
+            try {
+                if (window.parent && window.parent.postMessage) {
+                    window.parent.postMessage(message, '*');
+                    console.log('✅ [InlineEdit] window.parent.postMessage 送信完了');
+                }
+            } catch (e) {
+                console.error('❌ [InlineEdit] window.parent.postMessage エラー:', e);
             }
+            
+            // 方法2: window.top
+            try {
+                if (window.top && window.top.postMessage && window.top !== window) {
+                    window.top.postMessage(message, '*');
+                    console.log('✅ [InlineEdit] window.top.postMessage 送信完了');
+                }
+            } catch (e) {
+                console.error('❌ [InlineEdit] window.top.postMessage エラー:', e);
+            }
+            
+            // 方法3: カスタムイベント（Flutter Web用）
+            try {
+                const customEvent = new CustomEvent('flutter-message', {
+                    detail: message
+                });
+                window.dispatchEvent(customEvent);
+                if (window.parent && window.parent !== window) {
+                    window.parent.dispatchEvent(customEvent);
+                }
+                console.log('✅ [InlineEdit] CustomEvent 送信完了');
+            } catch (e) {
+                console.error('❌ [InlineEdit] CustomEvent エラー:', e);
+            }
+            
+            console.log('🏁 [InlineEdit] 全ての送信方法を試行完了');
         }
         
         // 外部からのメッセージ受信
@@ -516,6 +614,28 @@ class _InlineEditablePreviewWidgetState
         htmlContent.replaceAll('```html', '').replaceAll('```', '').trim();
 
     return cleaned.isEmpty ? '<p class="editable">コンテンツがありません</p>' : cleaned;
+  }
+
+  /// 編集されたHTMLコンテンツをクリーンアップ
+  String _cleanEditedContent(String editedContent) {
+    // outerHTMLから必要な部分だけを抽出
+    String cleaned = editedContent;
+
+    // <div class="content" id="main-content">...</div> の部分からinnerHTMLを取得
+    final contentMatch = RegExp(r'<div[^>]*id="main-content"[^>]*>(.*?)</div>',
+            multiLine: true, dotAll: true)
+        .firstMatch(cleaned);
+
+    if (contentMatch != null) {
+      cleaned = contentMatch.group(1) ?? cleaned;
+    }
+
+    // editableクラスを除去（プレビュー用）
+    cleaned = cleaned.replaceAll(' class="editable"', '');
+    cleaned = cleaned.replaceAll('class="editable" ', '');
+    cleaned = cleaned.replaceAll('class="editable"', '');
+
+    return cleaned.trim();
   }
 
   /// 外部からコンテンツを更新

@@ -5,6 +5,8 @@ import 'services/audio_service.dart';
 import 'services/ai_service.dart';
 import 'widgets/html_preview_widget.dart';
 import 'widgets/inline_editable_preview_widget.dart';
+import 'widgets/simple_html_editor_widget.dart';
+import 'widgets/html_widget_preview.dart';
 import 'widgets/user_dictionary_widget.dart';
 import 'dart:html' as html;
 import 'package:http/http.dart' as http;
@@ -615,30 +617,23 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                   )
                 : ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: _showEditor
-                        ? InlineEditablePreviewWidget(
-                            key: _editorKey,
-                            htmlContent: _editorHtml.isNotEmpty
-                                ? _editorHtml
-                                : _generatedHtml,
-                            height: isMobile ? 600 : 700,
-                            onContentChanged: (html) {
-                              if (_editorHtml != html) {
-                                setState(() {
-                                  _editorHtml = html;
-                                  // リアルタイムでプレビューにも反映（オプション）
-                                  // _generatedHtml = html;
-                                });
-                                print('📝 [編集] 内容変更: ${html.length}文字');
-                              }
-                            },
-                          )
-                        : HtmlPreviewWidget(
-                            key: ValueKey(
-                                'html_preview_${_generatedHtml.hashCode}'),
-                            htmlContent: _generatedHtml,
-                            height: isMobile ? 600 : 700,
-                          ),
+                    child: HtmlWidgetPreview(
+                      htmlContent: _showEditor
+                          ? (_editorHtml.isNotEmpty
+                              ? _editorHtml
+                              : _generatedHtml)
+                          : _generatedHtml,
+                      height: isMobile ? 600 : 700,
+                      isEditable: _showEditor,
+                      onContentChanged: (html) {
+                        print('🔔 [HtmlWidget] 編集内容変更: ${html.length}文字');
+                        setState(() {
+                          _editorHtml = html;
+                          _generatedHtml = html; // プレビューにも即座に反映
+                          _statusMessage = '📝 編集内容を保存しました（${html.length}文字）';
+                        });
+                      },
+                    ),
                   ),
           ),
         ],
@@ -700,14 +695,20 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
   /// 編集モードから戻る前に最新の編集内容を保存
   void _saveEditorContent() {
     // 編集モードの時に、最新のHTMLコンテンツを確実に保存
-    if (_showEditor && _editorHtml.isNotEmpty) {
-      setState(() {
-        _generatedHtml = _editorHtml;
-        _statusMessage = '💾 編集内容をプレビューに反映しました（${_editorHtml.length}文字）';
-      });
-      print('🔄 [状態管理] 編集内容をプレビューに反映: ${_editorHtml.length}文字');
-    } else if (_showEditor && _editorHtml.isEmpty) {
-      print('⚠️ [状態管理] 編集内容が空のため保存をスキップ');
+    if (_showEditor) {
+      if (_editorHtml.isNotEmpty) {
+        setState(() {
+          _generatedHtml = _editorHtml;
+          _statusMessage = '💾 編集内容をプレビューに反映しました（${_editorHtml.length}文字）';
+        });
+        print('🔄 [状態管理] 編集内容をプレビューに反映: ${_editorHtml.length}文字');
+      } else {
+        // 編集内容が空の場合でも、InlineEditablePreviewWidgetから最新の内容を取得を試行
+        print('⚠️ [状態管理] 編集内容が空です。現在の表示内容を保持します。');
+        setState(() {
+          _statusMessage = '⚠️ 編集内容が検出されませんでした。プレビューモードに切り替えます。';
+        });
+      }
     } else {
       print('ℹ️ [状態管理] 編集モードではないため保存をスキップ');
     }
