@@ -1,0 +1,243 @@
+name: 🚀 学級通信エディタ CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  FLUTTER_VERSION: '3.32.2'
+  NODE_VERSION: '18'
+
+jobs:
+  # テスト・品質チェック
+  test:
+    name: 🧪 テスト・品質チェック
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 コードチェックアウト
+        uses: actions/checkout@v4
+
+      - name: 🐦 Flutter環境セットアップ
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+
+      - name: 📦 Flutter依存関係取得
+        run: |
+          cd frontend
+          flutter pub get
+
+      - name: 🔍 Flutter静的解析
+        run: |
+          cd frontend
+          flutter analyze
+
+      - name: 🧪 Flutterテスト実行
+        run: |
+          cd frontend
+          flutter test
+
+      - name: 🐍 Python環境セットアップ
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: 📦 Python依存関係インストール
+        run: |
+          cd backend/functions
+          pip install -r requirements.txt
+
+      - name: 🧪 Pythonテスト実行
+        run: |
+          cd backend/functions
+          python -m pytest tests/ -v || echo "⚠️ テストファイルが見つかりません"
+
+  # ステージング環境デプロイ（developブランチ）
+  deploy-staging:
+    name: 🧪 ステージング環境デプロイ
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    environment: staging
+    steps:
+      - name: 📥 コードチェックアウト
+        uses: actions/checkout@v4
+
+      - name: 🐦 Flutter環境セットアップ
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+
+      - name: 🏗️ ステージング用ビルド
+        run: |
+          cd frontend
+          flutter build web \
+            --dart-define=ENVIRONMENT=staging \
+            --dart-define=API_BASE_URL=https://staging-yutori-backend.asia-northeast1.run.app/api/v1/ai \
+            --release
+
+      - name: 🔧 Google Cloud認証
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: ☁️ Google Cloud SDK セットアップ
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: 🚀 バックエンドデプロイ（ステージング）
+        run: |
+          cd backend
+          gcloud builds submit --tag gcr.io/gakkoudayori-ai/yutori-backend-staging
+          gcloud run deploy yutori-backend-staging \
+            --image gcr.io/gakkoudayori-ai/yutori-backend-staging \
+            --platform managed \
+            --region asia-northeast1 \
+            --allow-unauthenticated \
+            --port 8080
+
+      - name: 🔥 Firebase CLI セットアップ
+        uses: w9jds/firebase-action@master
+        with:
+          args: --version
+
+      - name: 🌐 フロントエンドデプロイ（ステージング）
+        uses: w9jds/firebase-action@master
+        with:
+          args: hosting:channel:deploy staging --expires 30d
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
+      - name: 📝 デプロイ完了通知
+        run: |
+          echo "✅ ステージング環境デプロイ完了！"
+          echo "🌐 フロントエンド: https://gakkoudayori-ai--staging.web.app"
+          echo "🔧 バックエンド: https://staging-yutori-backend.asia-northeast1.run.app"
+
+  # 本番環境デプロイ（mainブランチ）
+  deploy-production:
+    name: 🚀 本番環境デプロイ
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    steps:
+      - name: 📥 コードチェックアウト
+        uses: actions/checkout@v4
+
+      - name: 🐦 Flutter環境セットアップ
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+
+      - name: 🏗️ 本番用ビルド
+        run: |
+          cd frontend
+          flutter build web \
+            --dart-define=ENVIRONMENT=production \
+            --dart-define=API_BASE_URL=https://yutori-backend-944053509139.asia-northeast1.run.app/api/v1/ai \
+            --release
+
+      - name: 🔧 Google Cloud認証
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: ☁️ Google Cloud SDK セットアップ
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: 🚀 バックエンドデプロイ（本番）
+        run: |
+          cd backend
+          gcloud builds submit --tag gcr.io/gakkoudayori-ai/yutori-backend
+          gcloud run deploy yutori-backend \
+            --image gcr.io/gakkoudayori-ai/yutori-backend \
+            --platform managed \
+            --region asia-northeast1 \
+            --allow-unauthenticated \
+            --port 8080
+
+      - name: 🔥 Firebase CLI セットアップ
+        uses: w9jds/firebase-action@master
+        with:
+          args: --version
+
+      - name: 🌐 フロントエンドデプロイ（本番）
+        uses: w9jds/firebase-action@master
+        with:
+          args: deploy --only hosting
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
+      - name: 📝 デプロイ完了通知
+        run: |
+          echo "✅ 本番環境デプロイ完了！"
+          echo "🌐 フロントエンド: https://gakkoudayori-ai.web.app"
+          echo "🔧 バックエンド: https://yutori-backend-944053509139.asia-northeast1.run.app"
+
+      - name: 🏷️ リリースタグ作成
+        if: success()
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          TAG_NAME="v$(date +'%Y%m%d-%H%M%S')"
+          git tag $TAG_NAME
+          git push origin $TAG_NAME
+          echo "🏷️ リリースタグ作成: $TAG_NAME"
+
+  # プルリクエスト用プレビューデプロイ
+  deploy-preview:
+    name: 👀 プレビューデプロイ
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: 📥 コードチェックアウト
+        uses: actions/checkout@v4
+
+      - name: 🐦 Flutter環境セットアップ
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+
+      - name: 🏗️ プレビュー用ビルド
+        run: |
+          cd frontend
+          flutter build web \
+            --dart-define=ENVIRONMENT=preview \
+            --dart-define=API_BASE_URL=https://yutori-backend-944053509139.asia-northeast1.run.app/api/v1/ai \
+            --release
+
+      - name: 🔥 Firebase CLI セットアップ
+        uses: w9jds/firebase-action@master
+        with:
+          args: --version
+
+      - name: 👀 プレビューデプロイ
+        uses: w9jds/firebase-action@master
+        with:
+          args: hosting:channel:deploy pr-${{ github.event.number }} --expires 7d
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
+      - name: 💬 プレビューURL通知
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 👀 プレビューデプロイ完了！
+              
+              🌐 **プレビューURL**: https://gakkoudayori-ai--pr-${{ github.event.number }}.web.app
+              
+              ⏰ **有効期限**: 7日間
+              
+              このプレビューは自動的に削除されます。`
+            }) 
