@@ -285,16 +285,15 @@ def convert_json_to_graphical_record(
         # 必須HTML構造に関する注意：プロンプトファイルに完全なHTML構造が含まれていることを前提とする
         # そのため、ここでのハードコードされたHTMLスニペットは不要
 
-        # プロンプトに変数を埋め込む
-        system_prompt = system_prompt_template.format(
-            template_name=template_info.get('name', 'N/A'),
-            template_style=template_info.get('style', 'N/A'),
-            template_description=template_info.get('description', 'N/A'),
-            colors=json.dumps(template_info.get('colors', {}), indent=2, ensure_ascii=False),
-            emotion_icons=json.dumps(emotion_icons, indent=2, ensure_ascii=False),
-            section_icons=json.dumps(section_icons, indent=2, ensure_ascii=False),
-            title=json_data.get("title", "無題の学級通信") # titleをJSONデータから取得
-        )
+        # プロンプトに変数を埋め込む（format()の代わりにreplace()を使用してCSS変数との衝突を回避）
+        system_prompt = system_prompt_template
+        system_prompt = system_prompt.replace('{{template_name}}', template_info.get('name', 'N/A'))
+        system_prompt = system_prompt.replace('{{template_style}}', template_info.get('style', 'N/A'))
+        system_prompt = system_prompt.replace('{{template_description}}', template_info.get('description', 'N/A'))
+        system_prompt = system_prompt.replace('{{colors}}', json.dumps(template_info.get('colors', {}), indent=2, ensure_ascii=False))
+        system_prompt = system_prompt.replace('{{emotion_icons}}', json.dumps(emotion_icons, indent=2, ensure_ascii=False))
+        system_prompt = system_prompt.replace('{{section_icons}}', json.dumps(section_icons, indent=2, ensure_ascii=False))
+        system_prompt = system_prompt.replace('{{title}}', json_data.get("title", "無題の学級通信"))
 
         user_prompt = f"""
 以下のJSONデータをHTMLに変換してください。
