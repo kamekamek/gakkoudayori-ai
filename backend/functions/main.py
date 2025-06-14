@@ -863,7 +863,7 @@ def generate_pdf():
         # オプションパラメータ
         title = data.get('title', '学級通信')
         page_size = data.get('page_size', 'A4')
-        margin = data.get('margin', '20mm')
+        margin = data.get('margin', '15mm')  # プレビューと統一
         include_header = data.get('include_header', False)
         include_footer = data.get('include_footer', False)
         custom_css = data.get('custom_css', '')

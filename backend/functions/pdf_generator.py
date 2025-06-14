@@ -54,30 +54,34 @@ DEFAULT_MARGIN = '15mm'
 DEFAULT_DPI = 300
 
 def _get_available_japanese_fonts() -> list:
-    """利用可能な日本語フォントを検出"""
+    """利用可能な日本語フォントを検出 - プレビューと統一"""
     import platform
     
-    # OS別の日本語フォント候補
+    # プレビューと統一したフォント設定
+    fonts = [
+        "Noto Sans JP",
+        "Hiragino Sans", 
+        "Yu Gothic"
+    ]
+    
+    # OS別の追加フォント候補（フォールバック用）
     if platform.system() == "Darwin":  # macOS
-        fonts = [
+        fonts.extend([
             "Hiragino Kaku Gothic ProN",
-            "Hiragino Sans",
-            "Yu Gothic Medium",
             "Osaka"
-        ]
+        ])
     elif platform.system() == "Windows":
-        fonts = [
-            "Yu Gothic",
+        fonts.extend([
             "Meiryo",
             "MS PGothic",
             "MS Gothic"
-        ]
+        ])
     else:  # Linux
-        fonts = [
+        fonts.extend([
             "Noto Sans CJK JP",
             "DejaVu Sans",
             "Liberation Sans"
-        ]
+        ])
     
     # 基本的なフォールバック
     fonts.extend(["sans-serif", "serif"])
@@ -228,7 +232,7 @@ def _build_complete_html_document(
     
     # PDF用CSS（最小限の調整のみ）
     pdf_css = f"""
-    /* 日本語フォント対応 */
+    /* 日本語フォント対応 - プレビューと統一 */
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
     
     @page {{
@@ -252,26 +256,26 @@ def _build_complete_html_document(
     /* 元のスタイルを保持 */
     {original_styles}
     
-    /* PDF出力時の微調整のみ */
+    /* PDF出力時の調整 - プレビューと統一 */
     body {{
-        font-family: {font_family or "'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', 'Yu Gothic Medium', 'Yu Gothic', 'MS PGothic', sans-serif"} !important;
+        font-family: 'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic', sans-serif !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
         margin: 0 !important;
         padding: 0 !important;
     }}
     
-    /* A4シートのマージン調整 */
+    /* A4シートのマージン調整 - プレビューと統一 */
     .a4-sheet {{
         width: 100% !important;
         min-height: auto !important;
         margin: 0 !important;
-        padding: 15mm !important;
+        padding: 10mm !important;
         box-shadow: none !important;
         background: white !important;
     }}
     
-    /* プリントコンテナの調整 */
+    /* プリントコンテナの調整 - プレビューと統一 */
     .print-container {{
         width: 100% !important;
         min-height: auto !important;
@@ -280,40 +284,40 @@ def _build_complete_html_document(
         box-shadow: none !important;
     }}
     
-    /* フォントサイズの調整（ページ数削減のため） */
+    /* フォントサイズの調整 - プレビューと完全統一 */
     h1 {{
         font-size: 18px !important;
-        margin: 10px 0 !important;
+        margin: 8px 0 !important;
         line-height: 1.2 !important;
     }}
     
     h2 {{
         font-size: 16px !important;
-        margin: 8px 0 !important;
+        margin: 6px 0 !important;
         line-height: 1.2 !important;
     }}
     
     h3 {{
         font-size: 14px !important;
-        margin: 6px 0 !important;
+        margin: 4px 0 !important;
         line-height: 1.2 !important;
     }}
     
     p {{
         font-size: 12px !important;
-        line-height: 1.4 !important;
-        margin: 4px 0 !important;
+        line-height: 1.3 !important;
+        margin: 3px 0 !important;
     }}
     
-    /* セクション間のマージン削減 */
+    /* セクション間のマージン - プレビューと統一 */
     .section {{
-        margin-bottom: 10px !important;
-        padding: 10px !important;
+        margin-bottom: 8px !important;
+        padding: 8px !important;
     }}
     
     .content-section {{
-        margin-bottom: 8px !important;
-        padding: 8px !important;
+        margin-bottom: 6px !important;
+        padding: 6px !important;
     }}
     
     /* 改ページ制御の強化 */
@@ -342,15 +346,15 @@ def _build_complete_html_document(
         page-break-inside: avoid;
     }}
     
-    /* ヘッダー・フッターのマージン削減 */
+    /* ヘッダー・フッターのマージン - プレビューと統一 */
     .newsletter-header {{
-        margin-bottom: 15px !important;
-        padding: 10px !important;
+        margin-bottom: 10px !important;
+        padding: 8px !important;
     }}
     
     .footer-note {{
-        margin-top: 15px !important;
-        padding: 8px !important;
+        margin-top: 10px !important;
+        padding: 6px !important;
     }}
     
     {custom_css}
