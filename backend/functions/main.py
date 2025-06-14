@@ -460,6 +460,7 @@ def convert_speech_to_json():
             }), 400
         
         # オプションパラメータ
+        style = data.get('style', 'classic')
         custom_context = data.get('custom_context', '')
         
         # Google Cloud認証情報パス
@@ -474,6 +475,7 @@ def convert_speech_to_json():
             transcribed_text=transcribed_text,
             project_id=project_id,
             credentials_path=credentials_path,
+            style=style,
             custom_context=custom_context
         )
         
@@ -511,7 +513,7 @@ def convert_json_to_graphical_record():
             }), 400
         
         # オプションパラメータ
-        template = data.get('template', 'colorful')
+        template = data.get('template', 'classic')
         custom_style = data.get('custom_style', '')
         
         # Google Cloud認証情報パス

@@ -6,6 +6,7 @@ import 'services/audio_service.dart';
 import 'services/ai_service.dart';
 import 'services/graphical_record_service.dart';
 import 'widgets/html_preview_widget.dart';
+import 'widgets/print_preview_widget.dart';
 import 'widgets/quill_editor_widget.dart';
 
 import 'dart:html' as html;
@@ -59,12 +60,15 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
   final TextEditingController _textController = TextEditingController();
   String _statusMessage = '🎤 音声録音または文字入力で学級通信を作成してください';
 
-  // 学級通信モード用
+  // 学級通信モード用 - 2エージェント対応
   String _generatedHtml = '';
   String _editorHtml = '';
   bool _isGenerating = false;
   bool _showEditor = false;
   AIGenerationResult? _aiResult;
+  String _selectedStyle = 'classic'; // classic or modern
+  Map<String, dynamic>? _structuredJsonData; // 第1エージェントの出力
+  bool _showStyleButtons = false; // スタイル選択ボタンの表示
 
   // グラレコモード用
   Map<String, dynamic>? _jsonData;
@@ -97,10 +101,11 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
         _transcribedText = transcript;
         _textController.text = transcript;
         _inputText = transcript.trim();
+        _showStyleButtons = true; // 文字起こし完了後にスタイル選択ボタンを表示
         if (_isGraphicalRecordMode) {
           _statusMessage = '✅ 文字起こし完了！「JSON変換」ボタンを押してください';
         } else {
-          _statusMessage = '✅ 文字起こし完了！「学級通信を作成する」ボタンを押してください';
+          _statusMessage = '✅ 文字起こし完了！スタイルを選択して学級通信を作成してください';
         }
       });
     });
@@ -320,8 +325,8 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                   ? _audioService.stopRecording
                   : _audioService.startRecording,
               child: Container(
-                width: isCompact ? 80 : 120,
-                height: isCompact ? 80 : 120,
+                width: isCompact ? 100 : 120, // スマホでタッチしやすいサイズに拡大
+                height: isCompact ? 100 : 120,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: _isRecording ? Colors.red[500] : Colors.blue[500],
@@ -336,7 +341,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                 ),
                 child: Icon(
                   _isRecording ? Icons.stop : Icons.mic,
-                  size: isCompact ? 35 : 50,
+                  size: isCompact ? 45 : 50, // アイコンサイズも拡大
                   color: Colors.white,
                 ),
               ),
@@ -348,7 +353,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
             child: Text(
               _isRecording ? '録音中...' : 'タップで録音開始',
               style: TextStyle(
-                fontSize: 12,
+                fontSize: isCompact ? 14 : 12, // スマホで読みやすいサイズに
                 color: Colors.grey[600],
               ),
             ),
@@ -397,9 +402,9 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                     ),
                     filled: true,
                     fillColor: Colors.white,
-                    contentPadding: EdgeInsets.all(12),
+                    contentPadding: EdgeInsets.all(isCompact ? 16 : 12), // スマホでタッチしやすく
                   ),
-                  style: TextStyle(fontSize: 14),
+                  style: TextStyle(fontSize: isCompact ? 16 : 14), // スマホで読みやすく
                 ),
               ],
             ),
@@ -407,36 +412,154 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
 
           SizedBox(height: 16),
 
-          // 生成ボタン（フロー別）
-          if (!_isGraphicalRecordMode) ...[
-            // 学級通信モード
-            SizedBox(
-              width: double.infinity,
-              height: isCompact ? 44 : 50,
-              child: ElevatedButton.icon(
-                onPressed: (_isProcessing || _inputText.isEmpty)
-                    ? null
-                    : _generateNewsletter,
-                icon: _isProcessing
-                    ? SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
-                      )
-                    : Icon(Icons.auto_awesome),
-                label: Text(_isProcessing ? 'AI生成中...' : '学級通信を作成する'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange[600],
-                  foregroundColor: Colors.white,
-                  textStyle: TextStyle(
-                      fontSize: isCompact ? 14 : 16,
-                      fontWeight: FontWeight.bold),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
-                ),
+          // スタイル選択ボタン（学級通信モードのみ）
+          if (!_isGraphicalRecordMode && _showStyleButtons && _inputText.isNotEmpty) ...[
+            Container(
+              padding: EdgeInsets.all(12),
+              margin: EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue[200]!),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.palette, size: 16, color: Colors.blue[600]),
+                      SizedBox(width: 4),
+                      Text(
+                        'スタイル選択',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue[700],
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              _selectedStyle = 'classic';
+                            });
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _selectedStyle == 'classic'
+                                ? Colors.orange[600]
+                                : Colors.grey[300],
+                            foregroundColor: _selectedStyle == 'classic'
+                                ? Colors.white
+                                : Colors.grey[700],
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(Icons.article, size: 20),
+                              SizedBox(height: 4),
+                              Text('📜 クラシック', style: TextStyle(fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              _selectedStyle = 'modern';
+                            });
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _selectedStyle == 'modern'
+                                ? Colors.purple[600]
+                                : Colors.grey[300],
+                            foregroundColor: _selectedStyle == 'modern'
+                                ? Colors.white
+                                : Colors.grey[700],
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(Icons.auto_awesome, size: 20),
+                              SizedBox(height: 4),
+                              Text('🌟 モダン', style: TextStyle(fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
+          ],
+
+          // 生成ボタン（フロー別）
+          if (!_isGraphicalRecordMode) ...[
+            // 学級通信モード - 2エージェント処理ボタン
+            if (_showStyleButtons && _inputText.isNotEmpty) ...[
+              SizedBox(
+                width: double.infinity,
+                height: isCompact ? 44 : 50,
+                child: ElevatedButton.icon(
+                  onPressed: (_isProcessing || _inputText.isEmpty)
+                      ? null
+                      : _generateNewsletterTwoAgent,
+                  icon: _isProcessing
+                      ? SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
+                        )
+                      : Icon(Icons.auto_awesome),
+                  label: Text(_isProcessing ? 'AI生成中...' : '${_selectedStyle == 'classic' ? 'クラシック' : 'モダン'}学級通信を作成'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _selectedStyle == 'classic' 
+                        ? Colors.orange[600] 
+                        : Colors.purple[600],
+                    foregroundColor: Colors.white,
+                    textStyle: TextStyle(
+                        fontSize: isCompact ? 14 : 16,
+                        fontWeight: FontWeight.bold),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ),
+            ] else ...[
+              // まだスタイル選択前または入力がない場合の旧ボタン（互換性のため）
+              SizedBox(
+                width: double.infinity,
+                height: isCompact ? 44 : 50,
+                child: ElevatedButton.icon(
+                  onPressed: (_isProcessing || _inputText.isEmpty)
+                      ? null
+                      : () {
+                          setState(() {
+                            _showStyleButtons = true;
+                            _statusMessage = 'スタイルを選択してください';
+                          });
+                        },
+                  icon: Icon(Icons.auto_awesome),
+                  label: Text('学級通信を作成する'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange[600],
+                    foregroundColor: Colors.white,
+                    textStyle: TextStyle(
+                        fontSize: isCompact ? 14 : 16,
+                        fontWeight: FontWeight.bold),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ),
+            ],
           ] else ...[
             // グラレコモード
             Column(
@@ -520,7 +643,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
             child: Text(
               _statusMessage,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: isCompact ? 14 : 12, // スマホで読みやすく
                 color: Colors.grey[700],
               ),
               textAlign: TextAlign.center,
@@ -923,8 +1046,8 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
           Container(
             width: double.infinity,
             constraints: BoxConstraints(
-              minHeight: isMobile ? 300 : 400,
-              maxHeight: isMobile ? 600 : 700,
+              minHeight: isMobile ? 400 : 400, // スマホでも十分な高さを確保
+              maxHeight: isMobile ? 800 : 700, // スマホでもスクロール可能な十分な高さ
             ),
             decoration: BoxDecoration(
               border: Border.all(color: Colors.grey[300]!),
@@ -1019,11 +1142,21 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                             },
                           );
                         } else {
-                          // プレビューモードまたはグラレコモードの場合はHtmlPreviewWidgetを使用
-                          return HtmlPreviewWidget(
-                            htmlContent: htmlContent,
-                            height: isMobile ? 600 : 700,
-                          );
+                          // プレビューモードまたはグラレコモードの場合は印刷最適化プレビューを使用
+                          if (_isGraphicalRecordMode) {
+                            // グラレコモードは従来のHtmlPreviewWidget
+                            return HtmlPreviewWidget(
+                              htmlContent: htmlContent,
+                              height: isMobile ? 600 : 700,
+                            );
+                          } else {
+                            // 学級通信は印刷最適化プレビュー
+                            return PrintPreviewWidget(
+                              htmlContent: htmlContent,
+                              height: isMobile ? 600 : 700,
+                              enableMobilePrintView: true,
+                            );
+                          }
                         }
                       },
                     ),
@@ -1060,6 +1193,71 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
     }
   }
 
+  // 新しい2エージェント処理フロー
+  Future<void> _generateNewsletterTwoAgent() async {
+    if (_isGenerating || _isProcessing) return;
+
+    final inputText =
+        _inputText.isNotEmpty ? _inputText : _textController.text.trim();
+    if (inputText.isEmpty) {
+      setState(() {
+        _statusMessage = '❌ 入力テキストが空です。音声録音または文字入力をしてください。';
+      });
+      return;
+    }
+
+    _isGenerating = true;
+    setState(() {
+      _isProcessing = true;
+      _statusMessage = '🤖 第1エージェント：音声をJSON構造化中...（約3秒）';
+    });
+
+    try {
+      // 第1エージェント：音声→JSON構造化（CLASIC_TENSAKU.mdプロンプト使用）
+      final jsonResult = await _graphicalRecordService.convertSpeechToJson(
+        transcribedText: inputText,
+        customContext: 'style:$_selectedStyle', // クラシック/モダンの指定
+      );
+
+      if (!jsonResult.success || jsonResult.jsonData == null) {
+        throw Exception('第1エージェント処理失敗: ${jsonResult.error}');
+      }
+
+      setState(() {
+        _structuredJsonData = jsonResult.jsonData!;
+        _statusMessage = '🎨 第2エージェント：JSONからHTML生成中...（約3秒）';
+      });
+
+      // 第2エージェント：JSON→HTML（CLASIC_LAYOUT.mdプロンプト使用）
+      final htmlResult = await _graphicalRecordService.convertJsonToGraphicalRecord(
+        jsonData: _structuredJsonData!,
+        template: _selectedStyle == 'classic' ? 'classic_newsletter' : 'modern_newsletter',
+        customStyle: 'newsletter_optimized_for_print', // 印刷最適化指定
+      );
+
+      if (!htmlResult.success || htmlResult.htmlContent == null) {
+        throw Exception('第2エージェント処理失敗: ${htmlResult.error}');
+      }
+
+      setState(() {
+        _generatedHtml = htmlResult.htmlContent!;
+        _editorHtml = ''; // 新しいAI生成時は編集状態をリセット
+        _statusMessage = '🎉 2エージェント処理完了！印刷最適化された学級通信をプレビューで確認してください';
+        _showEditor = false;
+      });
+    } catch (e) {
+      setState(() {
+        _statusMessage = '❌ AI生成でエラーが発生しました: $e';
+      });
+    } finally {
+      setState(() {
+        _isProcessing = false;
+      });
+      _isGenerating = false;
+    }
+  }
+
+  // 旧来の互換性のための1エージェント処理（デバッグ用）
   Future<void> _generateNewsletter() async {
     if (_isGenerating || _isProcessing) return;
 
@@ -1363,7 +1561,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
     }
 
     setState(() {
-      _statusMessage = '📄 PDF生成中...';
+      _statusMessage = '📄 印刷最適化PDF生成中...';
     });
 
     try {
@@ -1381,9 +1579,12 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
           'html_content': _generatedHtml,
           'title': '学級通信',
           'page_size': 'A4',
-          'margin': '20mm',
-          'include_header': true,
-          'include_footer': true,
+          'margin': '15mm', // 印刷最適化: より狭いマージン
+          'include_header': false, // 印刷最適化: ヘッダー/フッターはコンテンツ内で制御
+          'include_footer': false,
+          'print_optimization': true, // 新しいフラグ: 印刷最適化モード
+          'single_column_layout': true, // 強制シングルカラム
+          'mobile_print_compatible': true, // モバイル印刷互換性
         }),
       );
 
@@ -1406,7 +1607,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
           html.Url.revokeObjectUrl(url);
 
           setState(() {
-            _statusMessage = '📄 PDFファイルをダウンロードしました (${fileSize}MB)';
+            _statusMessage = '📄 印刷最適化PDFファイルをダウンロードしました (${fileSize}MB)';
           });
         } else {
           throw Exception('PDF生成失敗: ${responseData['error']}');

@@ -18,6 +18,39 @@ from gemini_api_service import generate_text
 # ロギング設定
 logger = logging.getLogger(__name__)
 
+# プロンプトディレクトリを定数として定義
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROMPT_DIR = os.path.join(BASE_DIR, "prompts")
+
+
+# ==============================================================================
+# プロンプト読み込みヘルパー
+# ==============================================================================
+def load_prompt(style: str) -> Optional[str]:
+    """
+    指定されたスタイルのプロンプトファイルを読み込む
+    
+    Args:
+        style (str): プロンプトのスタイル (例: "classic")
+        
+    Returns:
+        Optional[str]: 読み込んだプロンプトの文字列、見つからない場合はNone
+    """
+    prompt_filename = f"{style.upper().replace('CLASIC', 'CLASSIC')}_TENSAKU.md"
+    try:
+        # スクリプトのディレクトリ基準でパスを解決
+        prompt_path = os.path.join(PROMPT_DIR, prompt_filename)
+        
+        if not os.path.exists(prompt_path):
+            logger.error(f"Prompt file not found: {prompt_path}")
+            return None
+            
+        with open(prompt_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except Exception as e:
+        logger.error(f"Error loading prompt file {prompt_filename}: {e}")
+        return None
+
 
 # ==============================================================================
 # JSON構造定義
@@ -106,6 +139,7 @@ def convert_speech_to_json(
     transcribed_text: str,
     project_id: str,
     credentials_path: str,
+    style: str = "classic",
     custom_context: str = "",
     model_name: str = "gemini-1.5-pro",
     temperature: float = 0.3,
@@ -118,6 +152,7 @@ def convert_speech_to_json(
         transcribed_text (str): 音声認識結果のテキスト
         project_id (str): Google CloudプロジェクトID
         credentials_path (str): サービスアカウントキーファイルのパス
+        style (str): 使用するプロンプトのスタイル
         custom_context (str): 追加のコンテキスト情報
         model_name (str): 使用するGeminiモデル
         temperature (float): 生成の多様性
@@ -133,82 +168,24 @@ def convert_speech_to_json(
         # JSONスキーマを取得
         json_schema = get_json_schema()
         
-        # プロンプト構築 - CLASIC_TENSAKU.mdを統合
-        system_prompt = f"""
-# 添削AIエージェント用システムプロンプト設計（v2.2）
+        # プロンプトをファイルから読み込み
+        system_prompt_template = load_prompt(style)
+        if not system_prompt_template:
+            return {
+                "success": False,
+                "error": {
+                    "code": "PROMPT_LOADING_FAILED",
+                    "message": f"Style '{style}'のプロンプトファイルの読み込みに失敗しました。",
+                    "processing_time_ms": int((time.time() - start_time) * 1000),
+                    "timestamp": timestamp
+                }
+            }
 
-# 堅牢性・実用性・アクセシビリティ・日本語印刷最適化版
-
----
-
-## ■ 役割
-
-- 音声認識結果を受け取り、**印刷物として絶対に破綻しない構造化JSON**を生成する。
-- **最優先事項は「堅牢性」**。いかなるコンテンツ量・入力内容でもレイアウトが崩壊しないことを絶対的に保証する。
-- 学級通信として適切で、教育現場で実用的な構造化データを作成する。
-
----
-
-## ■ システムプロンプト
-
-あなたは「学校だよりAI」の添削エージェントです。以下の要件を**絶対に厳守**してください。
-
-### 【最重要原則】
-
-- **堅牢性の徹底**: あなたの最大の使命は、**絶対に崩れないレイアウト**につながる構造化データを生成することです。
-- **教育現場の実用性**: 学校の先生が実際に使える、親しみやすい学級通信の内容を生成してください。
-
-### 【要件】
-
-1. **バージョン**: このプロンプトのバージョンは `2.2` です。
-2. **入力**: 音声認識で得られたテキスト
-3. **出力**: 以下のJSONスキーマに厳密に従った構造化データ
-
-```json
-{json.dumps(json_schema, indent=2, ensure_ascii=False)}
-```
-
-4. **内容の改善・添削**:
-   - 教師らしい語り口調に自然にリライト
-   - 保護者が読んで温かみを感じる表現に調整
-   - 子どもたちの様子を具体的で生き生きとした描写に
-   - 季節感や行事との関連を適切に盛り込む
-
-5. **構造化ルール**:
-   - **セクション分類**: 内容を適切なtype（activity, learning, event, discussion, announcement）に分類
-   - **感情分析**: 各セクションの雰囲気をemotion（positive, neutral, focused, excited, calm, concerned）で表現
-   - **参加者抽出**: 「子どもたち」「3年生」「全員」などの参加者情報を抽出
-   - **ハイライト抽出**: 重要なポイントや成果を3-5個抽出
-   - **次のアクション**: 今後の予定や課題があれば抽出
-
-6. **品質基準**:
-   - 文章は自然で読みやすく、教育的配慮がある
-   - 子どもの成長や学びを前向きに表現
-   - 保護者にとって安心感のある内容
-   - 学級の雰囲気が伝わる具体的な描写
-
-7. **技術的要件**:
-   - 出力は有効なJSONのみ（説明文は不要）
-   - 日本語の内容を適切に処理・保持
-   - 不明な情報は適切なデフォルト値を使用
-   - 日付推定: 明示的な日付がない場合は今日の日付を使用
-
-## 追加コンテキスト
-{custom_context if custom_context else "特になし"}
-
----
-
-## ■ 品質チェックリスト
-
-- [ ] JSONスキーマに完全準拠しているか？
-- [ ] 教師らしい温かみのある表現になっているか？
-- [ ] 子どもたちの様子が具体的に描写されているか？
-- [ ] 保護者が読んで安心・共感できる内容か？
-- [ ] セクション分類が適切に行われているか？
-- [ ] 感情分析が的確に反映されているか？
-- [ ] 重要なポイントがハイライトとして抽出されているか？
-- [ ] 今後のアクションが適切に整理されているか？
-"""
+        # プロンプトに変数を埋め込む
+        system_prompt = system_prompt_template.format(
+            json_schema=json.dumps(json_schema, indent=2, ensure_ascii=False),
+            custom_context=custom_context if custom_context else "特になし"
+        )
 
         user_prompt = f"""
 以下の音声認識テキストをJSONに変換してください：
@@ -222,7 +199,7 @@ def convert_speech_to_json(
 
         full_prompt = f"{system_prompt}\n\n{user_prompt}"
         
-        logger.info(f"Converting speech to JSON. Text length: {len(transcribed_text)} chars")
+        logger.info(f"Converting speech to JSON. Text length: {len(transcribed_text)} chars. Style: {style}")
         
         # Gemini APIで変換実行
         api_response = generate_text(
