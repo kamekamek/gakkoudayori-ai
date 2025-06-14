@@ -4,8 +4,10 @@ import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'services/audio_service.dart';
 import 'services/graphical_record_service.dart';
+import 'services/user_dictionary_service.dart';
 import 'widgets/html_preview_widget.dart';
 import 'widgets/print_preview_widget.dart';
+import 'widgets/user_dictionary_widget.dart';
 
 import 'dart:html' as html;
 import 'package:http/http.dart' as http;
@@ -45,6 +47,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
   final AudioService _audioService = AudioService();
   final GraphicalRecordService _graphicalRecordService =
       GraphicalRecordService();
+  final UserDictionaryService _userDictionaryService = UserDictionaryService();
 
   // --- 状態変数 ---
   // 共通
@@ -58,7 +61,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
   // 学級通信モード用 (2エージェント対応)
   String _generatedHtml = '';
   bool _isGenerating = false;
-  String _selectedStyle = 'classic'; // 'classic' or 'modern'
+  String _selectedStyle = ''; // 初期状態では何も選択されていない
   Map<String, dynamic>? _structuredJsonData; // 第1エージェントの出力
   bool _showStyleButtons = false; // スタイル選択ボタンの表示制御
 
@@ -80,13 +83,29 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
       });
     });
 
-    _audioService.setOnTranscriptionCompleted((transcript) {
+    _audioService.setOnTranscriptionCompleted((transcript) async {
       setState(() {
-        _transcribedText = transcript;
-        _textController.text = transcript;
-        _inputText = transcript.trim();
+        _statusMessage = '🔧 ユーザー辞書で誤変換を修正中...';
+      });
+
+      // ユーザー辞書で文字起こし結果を修正
+      final correctionResult =
+          await _userDictionaryService.correctTranscription(
+        transcript: transcript,
+      );
+
+      setState(() {
+        _transcribedText = correctionResult.correctedText;
+        _textController.text = correctionResult.correctedText;
+        _inputText = correctionResult.correctedText.trim();
         _showStyleButtons = true; // 文字起こし完了後にスタイル選択ボタンを表示
-        _statusMessage = '✅ 文字起こし完了！スタイルを選択して「学級通信を作成する」ボタンを押してください';
+
+        if (correctionResult.hasCorrections) {
+          _statusMessage =
+              '✅ 文字起こし完了！${correctionResult.correctionCount}件の誤変換を修正しました。スタイルを選択して「学級通信を作成する」ボタンを押してください';
+        } else {
+          _statusMessage = '✅ 文字起こし完了！スタイルを選択して「学級通信を作成する」ボタンを押してください';
+        }
       });
     });
 
@@ -132,6 +151,14 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
         backgroundColor: Colors.blue[600],
         foregroundColor: Colors.white,
         elevation: 2,
+        actions: [
+          IconButton(
+            onPressed: _openUserDictionary,
+            icon: Icon(Icons.book),
+            tooltip: 'ユーザー辞書管理',
+          ),
+          SizedBox(width: 8),
+        ],
       ),
       body: isMobile ? _buildMobileLayout() : _buildDesktopLayout(),
       floatingActionButton: isMobile && _generatedHtml.isNotEmpty
@@ -430,15 +457,32 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                   ),
                 ),
                 Spacer(),
-                ElevatedButton.icon(
-                  onPressed: _loadSampleHtml,
-                  icon: Icon(Icons.description, size: 16),
-                  label: Text('サンプル表示'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal,
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
+                Row(
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: _openUserDictionary,
+                      icon: Icon(Icons.book, size: 16),
+                      label: Text('辞書管理'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange[600],
+                        foregroundColor: Colors.white,
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    ElevatedButton.icon(
+                      onPressed: _loadSampleHtml,
+                      icon: Icon(Icons.description, size: 16),
+                      label: Text('サンプル表示'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.teal,
+                        foregroundColor: Colors.white,
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -584,5 +628,22 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
         _statusMessage = '❌ PDFの生成に失敗しました: $e';
       });
     }
+  }
+
+  /// ユーザー辞書管理画面を開く
+  void _openUserDictionary() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => UserDictionaryWidget(
+          userId: 'default', // 現在はデフォルトユーザー
+          onDictionaryUpdated: () {
+            // 辞書更新時の処理（必要に応じて）
+            setState(() {
+              _statusMessage = '✅ ユーザー辞書が更新されました';
+            });
+          },
+        ),
+      ),
+    );
   }
 }

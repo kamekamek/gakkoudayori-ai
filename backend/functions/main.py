@@ -312,8 +312,44 @@ def add_custom_term(user_id: str):
         }), 500
 
 @app.route('/api/v1/dictionary/<user_id>/correct', methods=['POST'])
+def correct_transcription(user_id: str):
+    """文字起こし結果をユーザー辞書で修正"""
+    try:
+        data = request.get_json()
+        transcript = data.get('transcript')
+        
+        if not transcript:
+            return jsonify({
+                'success': False,
+                'error': 'Transcript is required'
+            }), 400
+        
+        firestore_client = get_firestore_client()
+        dict_service = create_user_dictionary_service(firestore_client)
+        
+        # 文字起こし結果を辞書で修正
+        corrected_text, corrections = dict_service.correct_transcription(transcript, user_id)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'original_text': transcript,
+                'corrected_text': corrected_text,
+                'corrections': corrections,
+                'processing_time_ms': 0  # 簡易実装のため0固定
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Transcription correction error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/v1/dictionary/<user_id>/learn', methods=['POST'])
 def manual_correction(user_id: str):
-    """手動修正記録"""
+    """手動修正記録（学習用）"""
     try:
         data = request.get_json()
         original = data.get('original')
