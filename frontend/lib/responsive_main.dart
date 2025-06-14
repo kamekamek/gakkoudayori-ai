@@ -49,8 +49,8 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
   final GraphicalRecordService _graphicalRecordService =
       GraphicalRecordService();
 
-  // フロー切り替え
-  bool _isGraphicalRecordMode = false; // false: 学級通信, true: グラレコ
+  // 学級通信専用モード（グラレコ機能削除）
+  bool _isGraphicalRecordMode = false; // 常にfalse（学級通信のみ）
 
   // 共通状態
   bool _isRecording = false;
@@ -70,11 +70,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
   Map<String, dynamic>? _structuredJsonData; // 第1エージェントの出力
   bool _showStyleButtons = false; // スタイル選択ボタンの表示
 
-  // グラレコモード用
-  Map<String, dynamic>? _jsonData;
-  String _graphicalRecordHtml = '';
-  String _selectedTemplate = 'colorful';
-  bool _showJsonEditor = false;
+  // 削除済み：グラレコモード用の変数
 
   final GlobalKey _editorKey = GlobalKey();
 
@@ -102,11 +98,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
         _textController.text = transcript;
         _inputText = transcript.trim();
         _showStyleButtons = true; // 文字起こし完了後にスタイル選択ボタンを表示
-        if (_isGraphicalRecordMode) {
-          _statusMessage = '✅ 文字起こし完了！「JSON変換」ボタンを押してください';
-        } else {
-          _statusMessage = '✅ 文字起こし完了！スタイルを選択して学級通信を作成してください';
-        }
+        _statusMessage = '✅ 文字起こし完了！スタイルを選択して学級通信を作成してください';
       });
     });
 
@@ -258,47 +250,26 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // フロー切り替えボタン
+          // 学級通信専用タイトル
           Container(
             width: double.infinity,
             margin: EdgeInsets.only(bottom: 16),
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.blue[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.blue[200]!),
+            ),
             child: Row(
               children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => setState(() {
-                      _isGraphicalRecordMode = false;
-                      _statusMessage = '🎤 音声録音または文字入力で学級通信を作成してください';
-                    }),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: !_isGraphicalRecordMode
-                          ? Colors.blue[600]
-                          : Colors.grey[300],
-                      foregroundColor: !_isGraphicalRecordMode
-                          ? Colors.white
-                          : Colors.grey[600],
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    child: Text('📄 学級通信'),
-                  ),
-                ),
+                Icon(Icons.article, color: Colors.blue[600], size: 24),
                 SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => setState(() {
-                      _isGraphicalRecordMode = true;
-                      _statusMessage = '🎤 音声録音または文字入力でグラレコを作成してください';
-                    }),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _isGraphicalRecordMode
-                          ? Colors.purple[600]
-                          : Colors.grey[300],
-                      foregroundColor: _isGraphicalRecordMode
-                          ? Colors.white
-                          : Colors.grey[600],
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    child: Text('🎨 グラレコ'),
+                Text(
+                  '📄 学級通信作成',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue[700],
                   ),
                 ),
               ],
@@ -307,13 +278,11 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
 
           // タイトル
           Text(
-            _isGraphicalRecordMode ? '🎨 グラレコ作成' : '🎤 音声入力',
+            '🎤 音声入力',
             style: TextStyle(
               fontSize: isCompact ? 16 : 18,
               fontWeight: FontWeight.bold,
-              color: _isGraphicalRecordMode
-                  ? Colors.purple[700]
-                  : Colors.blue[700],
+              color: Colors.blue[700],
             ),
           ),
           SizedBox(height: isCompact ? 12 : 16),
@@ -412,8 +381,8 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
 
           SizedBox(height: 16),
 
-          // スタイル選択ボタン（学級通信モードのみ）
-          if (!_isGraphicalRecordMode && _showStyleButtons && _inputText.isNotEmpty) ...[
+          // スタイル選択ボタン
+          if (_showStyleButtons && _inputText.isNotEmpty) ...[
             Container(
               padding: EdgeInsets.all(12),
               margin: EdgeInsets.only(bottom: 16),
@@ -499,10 +468,8 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
             ),
           ],
 
-          // 生成ボタン（フロー別）
-          if (!_isGraphicalRecordMode) ...[
-            // 学級通信モード - 2エージェント処理ボタン
-            if (_showStyleButtons && _inputText.isNotEmpty) ...[
+          // 学級通信生成ボタン
+          if (_showStyleButtons && _inputText.isNotEmpty) ...[
               SizedBox(
                 width: double.infinity,
                 height: isCompact ? 44 : 50,
@@ -560,75 +527,6 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                 ),
               ),
             ],
-          ] else ...[
-            // グラレコモード
-            Column(
-              children: [
-                // JSON変換ボタン
-                SizedBox(
-                  width: double.infinity,
-                  height: isCompact ? 44 : 50,
-                  child: ElevatedButton.icon(
-                    onPressed: (_isProcessing ||
-                            _inputText.isEmpty ||
-                            _jsonData != null)
-                        ? null
-                        : _convertSpeechToJson,
-                    icon: _isProcessing
-                        ? SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white),
-                          )
-                        : Icon(Icons.data_object),
-                    label: Text(_isProcessing ? 'JSON変換中...' : 'JSON変換'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.purple[600],
-                      foregroundColor: Colors.white,
-                      textStyle: TextStyle(
-                          fontSize: isCompact ? 14 : 16,
-                          fontWeight: FontWeight.bold),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
-                    ),
-                  ),
-                ),
-                if (_jsonData != null) ...[
-                  SizedBox(height: 8),
-                  // グラレコ生成ボタン
-                  SizedBox(
-                    width: double.infinity,
-                    height: isCompact ? 44 : 50,
-                    child: ElevatedButton.icon(
-                      onPressed:
-                          (_isProcessing || _graphicalRecordHtml.isNotEmpty)
-                              ? null
-                              : _generateGraphicalRecord,
-                      icon: _isProcessing
-                          ? SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white),
-                            )
-                          : Icon(Icons.palette),
-                      label: Text(_isProcessing ? 'グラレコ生成中...' : 'グラレコ生成'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.teal[600],
-                        foregroundColor: Colors.white,
-                        textStyle: TextStyle(
-                            fontSize: isCompact ? 14 : 16,
-                            fontWeight: FontWeight.bold),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ],
 
           SizedBox(height: 12),
 
@@ -650,138 +548,11 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
             ),
           ),
 
-          // グラレコモード専用UI
-          if (_isGraphicalRecordMode) ...[
-            // テンプレート選択
-            if (_jsonData != null) ...[
-              SizedBox(height: 16),
-              Container(
-                padding: EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.purple[50],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.purple[200]!),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.palette,
-                            size: 16, color: Colors.purple[600]),
-                        SizedBox(width: 4),
-                        Text(
-                          'テンプレート選択',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.purple[700],
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildTemplateButton(
-                              'colorful', 'カラフル', Colors.red[300]!),
-                        ),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: _buildTemplateButton(
-                              'monochrome', 'モノクロ', Colors.grey[600]!),
-                        ),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: _buildTemplateButton(
-                              'pastel', 'パステル', Colors.pink[200]!),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-
-            // JSON表示エリア
-            if (_jsonData != null) ...[
-              SizedBox(height: 16),
-              Container(
-                padding: EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.blue[50],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue[200]!),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.data_object,
-                            size: 16, color: Colors.blue[600]),
-                        SizedBox(width: 4),
-                        Text(
-                          'JSON構造化データ',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue[700],
-                          ),
-                        ),
-                        Spacer(),
-                        TextButton(
-                          onPressed: () {
-                            setState(() {
-                              _showJsonEditor = !_showJsonEditor;
-                            });
-                          },
-                          child: Text(_showJsonEditor ? '閉じる' : '詳細表示'),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 8),
-                    if (_showJsonEditor) ...[
-                      Container(
-                        width: double.infinity,
-                        height: 200,
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: Colors.grey[300]!),
-                        ),
-                        child: SingleChildScrollView(
-                          child: Text(
-                            const JsonEncoder.withIndent('  ')
-                                .convert(_jsonData),
-                            style: TextStyle(
-                              fontFamily: 'monospace',
-                              fontSize: 12,
-                              color: Colors.grey[800],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ] else ...[
-                      Text(
-                        'タイトル: ${_jsonData!['title'] ?? 'なし'}',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[700]),
-                      ),
-                      Text(
-                        'セクション数: ${(_jsonData!['sections'] as List?)?.length ?? 0}',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[700]),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ],
 
           // デスクトップでのみ表示する詳細情報とボタン
           if (!isCompact) ...[
             SizedBox(height: 16),
-            if (_aiResult != null && !_isGraphicalRecordMode)
+            if (_aiResult != null)
               ..._buildAIResultInfo(),
           ],
         ],
@@ -1072,17 +843,13 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            _isGraphicalRecordMode
-                                ? Icons.palette_outlined
-                                : Icons.article_outlined,
+                            Icons.article_outlined,
                             size: 64,
                             color: Colors.grey[400],
                           ),
                           SizedBox(height: 16),
                           Text(
-                            _isGraphicalRecordMode
-                                ? 'グラレコを作成してください'
-                                : '学級通信を作成してください',
+                            '学級通信を作成してください',
                             style: TextStyle(
                               fontSize: 18,
                               color: Colors.grey[600],
@@ -1091,9 +858,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                           ),
                           SizedBox(height: 8),
                           Text(
-                            _isGraphicalRecordMode
-                                ? '音声入力またはテキスト入力で\nグラレコの内容を入力してください'
-                                : '音声入力またはテキスト入力で\n学級通信の内容を入力してください',
+                            '音声入力またはテキスト入力で\n学級通信の内容を入力してください',
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.grey[500],
@@ -1109,20 +874,18 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                     borderRadius: BorderRadius.circular(8),
                     child: Builder(
                       builder: (context) {
-                        final htmlContent = _isGraphicalRecordMode
-                            ? _graphicalRecordHtml
-                            : (_showEditor
-                                ? (_editorHtml.isNotEmpty
-                                    ? _editorHtml
-                                    : _generatedHtml)
-                                : _generatedHtml);
+                        final htmlContent = _showEditor
+                            ? (_editorHtml.isNotEmpty
+                                ? _editorHtml
+                                : _generatedHtml)
+                            : _generatedHtml;
                         print(
                             '🔍 [Preview] QuillEditorWidgetに渡すhtmlContent長さ: ${htmlContent.length}');
                         print(
                             '🔍 [Preview] _isGraphicalRecordMode: $_isGraphicalRecordMode');
                         print('🔍 [Preview] _showEditor: $_showEditor');
-                        // 編集モードかつグラレコモードでない場合のみQuillEditorWidgetを使用
-                        if (_showEditor && !_isGraphicalRecordMode) {
+                        // 編集モードの場合のみQuillEditorWidgetを使用
+                        if (_showEditor) {
                           return QuillEditorWidget(
                             initialContent: htmlContent,
                             contentFormat: 'html',
@@ -1142,21 +905,12 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                             },
                           );
                         } else {
-                          // プレビューモードまたはグラレコモードの場合は印刷最適化プレビューを使用
-                          if (_isGraphicalRecordMode) {
-                            // グラレコモードは従来のHtmlPreviewWidget
-                            return HtmlPreviewWidget(
-                              htmlContent: htmlContent,
-                              height: isMobile ? 600 : 700,
-                            );
-                          } else {
-                            // 学級通信は印刷最適化プレビュー
-                            return PrintPreviewWidget(
-                              htmlContent: htmlContent,
-                              height: isMobile ? 600 : 700,
-                              enableMobilePrintView: true,
-                            );
-                          }
+                          // プレビューモードは印刷最適化プレビューを使用
+                          return PrintPreviewWidget(
+                            htmlContent: htmlContent,
+                            height: isMobile ? 600 : 700,
+                            enableMobilePrintView: true,
+                          );
                         }
                       },
                     ),
@@ -1669,163 +1423,5 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
     }
   }
 
-  // ==============================================================================
-  // 新フロー: グラフィックレコーディング関連メソッド
-  // ==============================================================================
-
-  /// 音声認識結果をJSON構造化データに変換
-  Future<void> _convertSpeechToJson() async {
-    if (_inputText.trim().isEmpty) {
-      setState(() {
-        _statusMessage = '❌ 入力テキストが空です';
-      });
-      return;
-    }
-
-    setState(() {
-      _isProcessing = true;
-      _statusMessage = '🤖 音声をJSON構造化データに変換中...';
-    });
-
-    try {
-      final result = await _graphicalRecordService.convertSpeechToJson(
-        transcribedText: _inputText,
-        customContext: '',
-      );
-
-      if (result.success && result.jsonData != null) {
-        setState(() {
-          _jsonData = result.jsonData!;
-          _statusMessage = '✅ JSON変換完了！内容を確認して「グラレコ生成」ボタンを押してください';
-          _showJsonEditor = true;
-        });
-      } else {
-        setState(() {
-          _statusMessage = '❌ JSON変換エラー: ${result.error ?? "Unknown error"}';
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _statusMessage = '❌ JSON変換エラー: $e';
-      });
-    } finally {
-      setState(() {
-        _isProcessing = false;
-      });
-    }
-  }
-
-  /// JSON構造化データからHTMLグラレコを生成
-  Future<void> _generateGraphicalRecord() async {
-    if (_jsonData == null) {
-      setState(() {
-        _statusMessage = '❌ JSON構造化データがありません';
-      });
-      return;
-    }
-
-    setState(() {
-      _isProcessing = true;
-      _statusMessage = '🎨 HTMLグラレコ生成中...';
-    });
-
-    try {
-      final result = await _graphicalRecordService.convertJsonToGraphicalRecord(
-        jsonData: _jsonData!,
-        template: _selectedTemplate,
-        customStyle: '',
-      );
-
-      if (result.success && result.htmlContent != null) {
-        setState(() {
-          _graphicalRecordHtml = result.htmlContent!;
-          _statusMessage = '✅ グラレコ生成完了！右側でプレビューを確認してください';
-        });
-      } else {
-        setState(() {
-          _statusMessage = '❌ グラレコ生成エラー: ${result.error ?? "Unknown error"}';
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _statusMessage = '❌ グラレコ生成エラー: $e';
-      });
-    } finally {
-      setState(() {
-        _isProcessing = false;
-      });
-    }
-  }
-
-  /// グラレコHTMLをダウンロード
-  void _downloadGraphicalRecord() {
-    if (_graphicalRecordHtml.isEmpty) return;
-
-    try {
-      final bytes = utf8.encode(_graphicalRecordHtml);
-      final blob = html.Blob([bytes], 'text/html');
-      final url = html.Url.createObjectUrlFromBlob(blob);
-
-      final anchor = html.AnchorElement(href: url)
-        ..setAttribute('download',
-            'グラレコ_${DateTime.now().toString().substring(0, 10)}.html')
-        ..click();
-
-      html.Url.revokeObjectUrl(url);
-
-      setState(() {
-        _statusMessage = '📄 グラレコHTMLファイルをダウンロードしました';
-      });
-    } catch (e) {
-      setState(() {
-        _statusMessage = '❌ ダウンロードエラー: $e';
-      });
-    }
-  }
-
-  /// テンプレート選択ボタンを構築
-  Widget _buildTemplateButton(
-      String templateId, String templateName, Color color) {
-    final isSelected = _selectedTemplate == templateId;
-
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedTemplate = templateId;
-        });
-      },
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-        decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.3) : Colors.white,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(
-            color: isSelected ? color : Colors.grey[300]!,
-            width: isSelected ? 2 : 1,
-          ),
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 20,
-              height: 20,
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-            SizedBox(height: 4),
-            Text(
-              templateName,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? color : Colors.grey[700],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  // 削除済み：グラフィックレコーディング関連メソッド
 }

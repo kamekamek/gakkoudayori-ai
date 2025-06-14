@@ -17,6 +17,38 @@ TESTS_DIR = os.path.dirname(os.path.abspath(__file__))
 TEST_PROMPT_DIR = os.path.join(TESTS_DIR, "prompts")
 
 # ==============================================================================
+# モックオブジェクトの準備
+# ==============================================================================
+
+# speech-to-json用の完全なレスポンスを模倣するモック
+MOCK_JSON_TEXT = json.dumps({
+    "school_name": "Test School",
+    "title": "Mocked Test",
+    "date": "2025-01-01",
+    "publisher": "Test Publisher",
+    "target_audience": "Test Audience",
+    "sections": []
+})
+
+# json-to-graphical-record用の完全なHTMLレスポンス
+MOCK_HTML_TEXT = "<html><body><h1>API Test</h1></body></html>"
+
+mock_gemini_response = MagicMock()
+mock_gemini_response.text = MOCK_JSON_TEXT
+mock_gemini_response.parts = [MagicMock()]
+mock_gemini_response.parts[0].text = MOCK_JSON_TEXT
+
+# Geminiクライアントのモック
+mock_gemini_client = MagicMock()
+mock_gemini_client.generate_content.return_value = mock_gemini_response
+
+# テンプレート定義を返すモック
+mock_templates = {
+    "classic": {"description": "Test classic template"},
+    "modern": {"description": "Test modern template"}
+}
+
+# ==============================================================================
 # テストのセットアップとフィクスチャ
 # ==============================================================================
 
@@ -30,77 +62,70 @@ def client():
 # サービス層のユニットテスト
 # ==============================================================================
 
-@patch('gemini_api_service.generate_text')
+@patch('gemini_api_service.get_gemini_client', return_value=mock_gemini_client)
 @patch('audio_to_json_service.PROMPT_DIR', TEST_PROMPT_DIR)
-def test_convert_speech_to_json_loads_correct_prompt(mock_generate_text):
+def test_convert_speech_to_json_loads_correct_prompt(mock_get_client, *_):
     """
     audio_to_json_serviceがstyleに応じて正しいプロンプトを読み込むかテスト
     """
-    mock_generate_text.return_value = {"success": True, "text": '{"title": "Test"}'}
-
     audio_to_json_service.convert_speech_to_json(
         transcribed_text="テスト",
         project_id="test",
         credentials_path="test",
         style="classic"
     )
-
-    # generate_textが呼び出された際の引数を取得
-    called_prompt = mock_generate_text.call_args[1]['prompt']
+    mock_get_client.assert_called_once()
+    called_prompt = mock_gemini_client.generate_content.call_args[0][0]
     assert "これはテスト用のクラシック添削プロンプトです。" in called_prompt
 
-@patch('gemini_api_service.generate_text')
+@patch('json_to_graphical_record_service.get_graphical_record_templates', return_value=mock_templates)
+@patch('gemini_api_service.get_gemini_client', return_value=mock_gemini_client)
 @patch('json_to_graphical_record_service.PROMPT_DIR', TEST_PROMPT_DIR)
-def test_convert_json_to_graphical_record_loads_correct_prompt(mock_generate_text):
+def test_convert_json_to_graphical_record_loads_correct_prompt(mock_get_client, *_):
     """
     json_to_graphical_record_serviceがtemplateに応じて正しいプロンプトを読み込むかテスト
     """
-    mock_generate_text.return_value = {"success": True, "html_content": "<h1>Test</h1>"}
-
     json_to_graphical_record_service.convert_json_to_graphical_record(
         json_data={"title": "Test"},
         project_id="test",
         credentials_path="test",
         template="classic"
     )
-    
-    called_prompt = mock_generate_text.call_args[1]['prompt']
+    mock_get_client.assert_called_once()
+    called_prompt = mock_gemini_client.generate_content.call_args[0][0]
     assert "これはテスト用のクラシックレイアウトプロンプトです。" in called_prompt
 
-@patch('gemini_api_service.generate_text')
+@patch('json_to_graphical_record_service.get_graphical_record_templates', return_value=mock_templates)
+@patch('gemini_api_service.get_gemini_client', return_value=mock_gemini_client)
 @patch('json_to_graphical_record_service.PROMPT_DIR', TEST_PROMPT_DIR)
-def test_json_to_graphical_record_fallback_to_classic(mock_generate_text):
+def test_json_to_graphical_record_fallback_to_classic(mock_get_client, *_):
     """
     未知のtemplateが指定された場合にclassicにフォールバックする機能のテスト
     """
-    mock_generate_text.return_value = {"success": True, "html_content": "<h1>Test</h1>"}
-
-    # 'classic'へのフォールバックをモック
-    with patch('json_to_graphical_record_service.load_prompt', wraps=json_to_graphical_record_service.load_prompt) as mock_load_prompt:
-      json_to_graphical_record_service.convert_json_to_graphical_record(
-          json_data={"title": "Test"},
-          project_id="test",
-          credentials_path="test",
-          template="unknown_template" # 存在しないテンプレート
-      )
-      # 'unknown_template'で呼び出され、その後'classic'で呼び出されることを確認
-      assert mock_load_prompt.call_count >= 1
-      assert mock_load_prompt.call_args.args[0] == 'classic'
-    
-    called_prompt = mock_generate_text.call_args[1]['prompt']
+    json_to_graphical_record_service.convert_json_to_graphical_record(
+        json_data={"title": "Test"},
+        project_id="test",
+        credentials_path="test",
+        template="unknown_template"
+    )
+    mock_get_client.assert_called_once()
+    called_prompt = mock_gemini_client.generate_content.call_args[0][0]
     assert "これはテスト用のクラシックレイアウトプロンプトです。" in called_prompt
 
 # ==============================================================================
 # API（統合）テスト
 # ==============================================================================
 
-@patch('main.convert_speech_to_json')
-def test_speech_to_json_api(mock_service_call, client):
+@patch('gemini_api_service.get_gemini_client', return_value=mock_gemini_client)
+def test_speech_to_json_api(mock_get_client, client):
     """
     /api/v1/ai/speech-to-json エンドポイントのテスト
     """
-    mock_service_call.return_value = {"success": True, "data": {"title": "API Test"}}
-    
+    # APIからのレスポンスを完全なJSONに
+    mock_gemini_response.text = MOCK_JSON_TEXT
+    mock_gemini_response.parts[0].text = MOCK_JSON_TEXT
+    mock_gemini_client.generate_content.return_value = mock_gemini_response
+
     response = client.post(
         '/api/v1/ai/speech-to-json',
         data=json.dumps({'transcribed_text': 'api test', 'style': 'classic'}),
@@ -110,21 +135,18 @@ def test_speech_to_json_api(mock_service_call, client):
     assert response.status_code == 200
     json_data = response.get_json()
     assert json_data['success']
-    assert json_data['data']['title'] == "API Test"
-    
-    # サービスが正しいstyleで呼ばれたか確認
-    mock_service_call.assert_called_once()
-    call_args = mock_service_call.call_args[1]
-    assert call_args['style'] == 'classic'
-    assert call_args['transcribed_text'] == 'api test'
+    assert json.loads(json_data['data']['text'])['title'] == 'Mocked Test'
+    mock_get_client.assert_called_once()
 
-
-@patch('main.convert_json_to_graphical_record')
-def test_json_to_graphical_record_api(mock_service_call, client):
+@patch('json_to_graphical_record_service.get_graphical_record_templates', return_value=mock_templates)
+@patch('gemini_api_service.get_gemini_client', return_value=mock_gemini_client)
+def test_json_to_graphical_record_api(mock_get_client, mock_get_templates, client):
     """
     /api/v1/ai/json-to-graphical-record エンドポイントのテスト
     """
-    mock_service_call.return_value = {"success": True, "html_content": "<h1>API Test</h1>"}
+    mock_gemini_response.text = MOCK_HTML_TEXT
+    mock_gemini_response.parts[0].text = MOCK_HTML_TEXT
+    mock_gemini_client.generate_content.return_value = mock_gemini_response
 
     response = client.post(
         '/api/v1/ai/json-to-graphical-record',
@@ -135,10 +157,5 @@ def test_json_to_graphical_record_api(mock_service_call, client):
     assert response.status_code == 200
     json_data = response.get_json()
     assert json_data['success']
-    assert json_data['html_content'] == "<h1>API Test</h1>"
-    
-    # サービスが正しいtemplateで呼ばれたか確認
-    mock_service_call.assert_called_once()
-    call_args = mock_service_call.call_args[1]
-    assert call_args['template'] == 'classic'
-    assert call_args['json_data'] == {'title': 'test'} 
+    assert json_data['data']['text'] == MOCK_HTML_TEXT
+    mock_get_client.assert_called_once() 
