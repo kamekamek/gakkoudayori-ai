@@ -491,7 +491,7 @@ def convert_speech_to_json():
 
 
 @app.route('/api/v1/ai/json-to-graphical-record', methods=['POST'])
-def convert_json_to_graphical_record():
+def handle_json_to_graphical_record():
     """JSON構造化データからHTMLグラレコを生成"""
     try:
         # リクエストデータ取得
@@ -532,14 +532,27 @@ def convert_json_to_graphical_record():
             custom_style=custom_style
         )
         
-        return jsonify(result)
-        
+        # サービスからの戻り値がシリアライズ可能か確認
+        if not isinstance(result, dict) or 'success' not in result:
+             logger.error(f"Invalid response from service: {result}")
+             raise TypeError("Service returned a non-serializable object")
+
+        if result.get("success"):
+            return jsonify(result), 200
+        else:
+            # エラーレスポンスもJSONとして返す
+            error_info = result.get("error", {"code": "UNKNOWN_ERROR", "message": "An unknown error occurred"})
+            return jsonify({"success": False, "error": error_info}), 400
+
     except Exception as e:
-        logger.error(f"JSON to graphical record conversion error: {e}")
+        logger.error(f"JSON to graphical record conversion error: {e}", exc_info=True)
+        # 予期せぬ例外をキャッチして500エラーを返す
         return jsonify({
-            'success': False,
-            'error': f'Internal server error: {str(e)}',
-            'error_code': 'INTERNAL_ERROR'
+            "success": False,
+            "error": {
+                "code": "INTERNAL_SERVER_ERROR",
+                "message": str(e)
+            }
         }), 500
 
 

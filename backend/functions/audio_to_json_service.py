@@ -9,7 +9,8 @@ import os
 import logging
 import time
 import json
-from typing import Dict, Any, List, Optional
+import re
+from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
 
 # Gemini API関連
@@ -135,6 +136,28 @@ def get_json_schema() -> Dict[str, Any]:
 # 音声→JSON変換機能
 # ==============================================================================
 
+def extract_json_from_response(response_text: str) -> Optional[str]:
+    """
+    AIの応答からJSONコードブロックを抽出する
+    """
+    # ```json ... ``` ブロックを探す
+    match = re.search(r'```json\s*(\{.*?\})\s*```', response_text, re.DOTALL)
+    if match:
+        return match.group(1)
+    
+    # ``` ... ``` ブロックを探す
+    match = re.search(r'```\s*(\{.*?\})\s*```', response_text, re.DOTALL)
+    if match:
+        return match.group(1)
+
+    # JSONオブジェクトそのものを探す
+    if response_text.strip().startswith('{'):
+        return response_text
+
+    logger.warning("No JSON block found in the response.")
+    return None
+
+
 def convert_speech_to_json(
     transcribed_text: str,
     project_id: str,
@@ -228,24 +251,27 @@ def convert_speech_to_json(
         generated_text = api_response.get("data", {}).get("text", "")
         ai_metadata = api_response.get("data", {}).get("ai_metadata", {})
         
-        # JSON抽出・検証
-        json_result = extract_and_validate_json(generated_text)
+        # JSONをパース
+        response_text = generated_text
         
-        if not json_result["valid"]:
-            logger.error(f"Invalid JSON generated: {json_result['error']}")
-            return {
-                "success": False,
-                "error": {
-                    "code": "INVALID_JSON",
-                    "message": "生成されたJSONが無効です",
-                    "details": {
-                        "validation_error": json_result["error"],
-                        "generated_text": generated_text[:500] + "..." if len(generated_text) > 500 else generated_text,
-                        "processing_time_ms": int((time.time() - start_time) * 1000),
-                        "timestamp": timestamp
-                    }
-                }
-            }
+        # 応答からJSON部分のみを抽出
+        json_string = extract_json_from_response(response_text)
+        if not json_string:
+            logger.error("Failed to extract JSON from AI response.")
+            return {"success": False, "error": {"code": "JSON_EXTRACTION_FAILED", "message": "AIの応答からJSONを抽出できませんでした。"}}
+
+        try:
+            # 抽出した文字列をJSONとしてパース
+            generated_json = json.loads(json_string)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to decode extracted JSON: {e}")
+            return {"success": False, "error": {"code": "JSON_DECODE_ERROR", "message": str(e)}}
+
+        # バリデーション
+        is_valid, error_message = validate_generated_json(generated_json)
+        if not is_valid:
+            logger.error(f"Invalid JSON generated: {error_message}")
+            return {"success": False, "error": {"code": "JSON_VALIDATION_ERROR", "message": error_message}}
         
         # 成功レスポンス
         processing_time = time.time() - start_time
@@ -253,14 +279,14 @@ def convert_speech_to_json(
         return {
             "success": True,
             "data": {
-                "json_data": json_result["data"],
+                "json_data": generated_json,
                 "source_text": transcribed_text,
                 "ai_metadata": ai_metadata,
                 "validation_info": {
                     "schema_valid": True,
-                    "sections_count": len(json_result["data"].get("sections", [])),
-                    "highlights_count": len(json_result["data"].get("highlights", [])),
-                    "overall_mood": json_result["data"].get("overall_mood", "neutral")
+                    "sections_count": len(generated_json.get("sections", [])),
+                    "highlights_count": len(generated_json.get("highlights", [])),
+                    "overall_mood": generated_json.get("overall_mood", "neutral")
                 },
                 "processing_time_ms": int(processing_time * 1000),
                 "timestamp": timestamp
@@ -268,133 +294,47 @@ def convert_speech_to_json(
         }
         
     except Exception as e:
-        logger.error(f"Speech to JSON conversion failed: {e}")
-        return {
-            "success": False,
-            "error": {
-                "code": "CONVERSION_ERROR",
-                "message": f"音声→JSON変換中にエラーが発生しました: {str(e)}",
-                "details": {
-                    "error_type": type(e).__name__,
-                    "processing_time_ms": int((time.time() - start_time) * 1000),
-                    "timestamp": timestamp
-                }
-            }
-        }
+        logger.error(f"Speech to JSON conversion failed: {e}", exc_info=True)
+        return {"success": False, "error": {"code": "UNKNOWN_ERROR", "message": str(e)}}
 
 
 # ==============================================================================
 # JSON検証・抽出機能
 # ==============================================================================
 
-def extract_and_validate_json(text: str) -> Dict[str, Any]:
+def validate_generated_json(json_data: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
     """
-    テキストからJSONを抽出し、スキーマに対して検証
+    生成されたJSONデータを検証
     
     Args:
-        text (str): JSON含有テキスト
+        json_data (Dict[str, Any]): 生成されたJSONデータ
         
     Returns:
-        Dict[str, Any]: 検証結果
+        Tuple[bool, Optional[str]]: 検証結果とエラーメッセージ
     """
     try:
-        # JSONブロックを抽出（```json ... ``` または { ... }）
-        json_text = text.strip()
-        
-        # コードブロック形式の場合
-        if "```json" in json_text:
-            start = json_text.find("```json") + 7
-            end = json_text.find("```", start)
-            if end != -1:
-                json_text = json_text[start:end].strip()
-        elif "```" in json_text:
-            start = json_text.find("```") + 3
-            end = json_text.find("```", start)
-            if end != -1:
-                json_text = json_text[start:end].strip()
-        
-        # JSON部分のみを抽出（最初の{から最後の}まで）
-        start_brace = json_text.find("{")
-        if start_brace == -1:
-            return {
-                "valid": False,
-                "error": "JSON開始ブレース '{' が見つかりません",
-                "data": None
-            }
-        
-        # 対応する閉じブレースを見つける
-        brace_count = 0
-        end_brace = -1
-        for i in range(start_brace, len(json_text)):
-            if json_text[i] == "{":
-                brace_count += 1
-            elif json_text[i] == "}":
-                brace_count -= 1
-                if brace_count == 0:
-                    end_brace = i
-                    break
-        
-        if end_brace == -1:
-            return {
-                "valid": False,
-                "error": "JSON終了ブレース '}' が見つかりません",
-                "data": None
-            }
-        
-        json_text = json_text[start_brace:end_brace + 1]
-        
-        # JSONパース
-        parsed_json = json.loads(json_text)
-        
         # 基本的なスキーマ検証
         schema = get_json_schema()
         required_fields = schema.get("required", [])
         
         for field in required_fields:
-            if field not in parsed_json:
-                return {
-                    "valid": False,
-                    "error": f"必須フィールド '{field}' が不足しています",
-                    "data": None
-                }
+            if field not in json_data:
+                return False, f"必須フィールド '{field}' が不足しています"
         
         # sectionsの検証
-        if "sections" in parsed_json:
-            for i, section in enumerate(parsed_json["sections"]):
+        if "sections" in json_data:
+            for i, section in enumerate(json_data["sections"]):
                 if not isinstance(section, dict):
-                    return {
-                        "valid": False,
-                        "error": f"sections[{i}] は辞書である必要があります",
-                        "data": None
-                    }
+                    return False, f"sections[{i}] は辞書である必要があります"
                 
                 section_required = ["type", "title", "content", "emotion"]
                 for req_field in section_required:
                     if req_field not in section:
-                        return {
-                            "valid": False,
-                            "error": f"sections[{i}] に必須フィールド '{req_field}' が不足しています",
-                            "data": None
-                        }
+                        return False, f"sections[{i}] に必須フィールド '{req_field}' が不足しています"
         
-        return {
-            "valid": True,
-            "error": None,
-            "data": parsed_json
-        }
-        
-    except json.JSONDecodeError as e:
-        return {
-            "valid": False,
-            "error": f"JSON解析エラー: {str(e)}",
-            "data": None
-        }
+        return True, None
     except Exception as e:
-        return {
-            "valid": False,
-            "error": f"JSON検証エラー: {str(e)}",
-            "data": None
-        }
+        return False, f"JSON検証エラー: {str(e)}"
 
 
 # ==============================================================================
