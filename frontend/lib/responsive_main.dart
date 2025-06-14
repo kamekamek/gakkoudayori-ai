@@ -161,7 +161,10 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
           child: _buildVoiceInputSection(isCompact: true),
         ),
         Expanded(
-          child: _buildPreviewEditorSection(),
+          child: SingleChildScrollView(
+            physics: AlwaysScrollableScrollPhysics(),
+            child: _buildPreviewEditorSection(),
+          ),
         ),
       ],
     );
@@ -450,6 +453,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
       padding: EdgeInsets.all(isMobile ? 12 : 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           // ヘッダー
           Row(
@@ -552,69 +556,74 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
           SizedBox(height: 16),
 
           // プレビュー/エディター表示エリア
-          Expanded(
+          Container(
+            constraints: BoxConstraints(
+              minHeight: isMobile ? 400 : 500,
+              maxHeight: isMobile ? double.infinity : 800,
+            ),
             child: Container(
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.grey[300]!),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: _generatedHtml.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.article_outlined,
-                            size: 64,
-                            color: Colors.grey[400],
-                          ),
-                          SizedBox(height: 16),
-                          Text(
-                            '学級通信を作成してください',
-                            style: TextStyle(
-                              fontSize: 18,
-                              color: Colors.grey[600],
-                              fontWeight: FontWeight.w500,
+                  ? Container(
+                      height: isMobile ? 300 : 400,
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.article_outlined,
+                              size: 64,
+                              color: Colors.grey[400],
                             ),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            '音声入力またはテキスト入力で\n学級通信の内容を入力してください',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[500],
+                            SizedBox(height: 16),
+                            Text(
+                              '学級通信を作成してください',
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
+                            SizedBox(height: 8),
+                            Text(
+                              '音声入力またはテキスト入力で\n学級通信の内容を入力してください',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[500],
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
                       ),
                     )
                   : ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          final availableHeight = constraints.maxHeight;
-                          return _showEditor
-                              ? InlineEditablePreviewWidget(
-                                  key: _editorKey,
-                                  htmlContent: _generatedHtml,
-                                  height: availableHeight,
-                                  onContentChanged: (html) {
-                                    if (_editorHtml != html) {
-                                      setState(() {
-                                        _editorHtml = html;
-                                        _generatedHtml = html;
-                                      });
-                                    }
-                                  },
-                                )
-                              : HtmlPreviewWidget(
-                                  key: ValueKey(
-                                      'html_preview_${_generatedHtml.hashCode}'),
-                                  htmlContent: _generatedHtml,
-                                  height: availableHeight,
-                                );
-                        },
+                      child: Container(
+                        height: isMobile ? 600 : 700,
+                        child: _showEditor
+                            ? InlineEditablePreviewWidget(
+                                key: _editorKey,
+                                htmlContent: _generatedHtml,
+                                height: isMobile ? 600 : 700,
+                                onContentChanged: (html) {
+                                  if (_editorHtml != html) {
+                                    setState(() {
+                                      _editorHtml = html;
+                                      _generatedHtml = html;
+                                    });
+                                  }
+                                },
+                              )
+                            : HtmlPreviewWidget(
+                                key: ValueKey(
+                                    'html_preview_${_generatedHtml.hashCode}'),
+                                htmlContent: _generatedHtml,
+                                height: isMobile ? 600 : 700,
+                              ),
                       ),
                     ),
             ),
@@ -773,12 +782,14 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
   .newsletter-container {
     margin: 0;
     border-radius: 0;
+    max-width: 100%;
+    overflow-x: hidden;
   }
   
   .newsletter-header {
     flex-direction: column;
     text-align: center;
-    padding: 20px !important;
+    padding: 15px !important;
   }
   
   .date-info {
@@ -787,17 +798,38 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
   }
   
   .newsletter-content {
-    padding: 20px !important;
+    padding: 15px !important;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
   }
   
   .footer-content {
     flex-direction: column !important;
     text-align: center;
+    padding: 15px !important;
   }
   
   .signature {
     text-align: center !important;
     margin-top: 10px;
+  }
+  
+  /* モバイルでの読みやすさ向上 */
+  .newsletter-content h1 {
+    font-size: 18px !important;
+  }
+  
+  .newsletter-content h2 {
+    font-size: 16px !important;
+  }
+  
+  .newsletter-content h3 {
+    font-size: 14px !important;
+  }
+  
+  .newsletter-content p, .newsletter-content li {
+    font-size: 14px !important;
+    line-height: 1.6 !important;
   }
 }
 
