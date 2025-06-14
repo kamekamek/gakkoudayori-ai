@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../config/app_config.dart';
 
 /// グラフィックレコーディング（グラレコ）生成サービス
 /// 新フロー: 音声→JSON→HTMLグラレコ
 class GraphicalRecordService {
-  static const String _baseUrl = 'http://localhost:8081/api/v1/ai';
+  static String get _baseUrl => AppConfig.apiBaseUrl;
 
   /// 音声認識結果をJSON構造化データに変換
   Future<SpeechToJsonResult> convertSpeechToJson({

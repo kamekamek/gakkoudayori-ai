@@ -917,8 +917,11 @@ def api(req: https_fn.Request) -> https_fn.Response:
 
 # ローカル開発用
 if __name__ == '__main__':
-    # ローカル開発モード
-    app.run(debug=True, host='0.0.0.0', port=8080)
+    # 本番環境とローカル開発の両方に対応
+    import os
+    port = int(os.environ.get('PORT', 8080))
+    debug = os.environ.get('FLASK_ENV') != 'production'
+    app.run(debug=debug, host='0.0.0.0', port=port)
 
 # デバッグ用エンドポイント
 @app.route('/api/v1/debug/dictionary', methods=['GET'])
