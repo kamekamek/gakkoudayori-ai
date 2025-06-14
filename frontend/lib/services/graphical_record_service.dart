@@ -120,6 +120,48 @@ class GraphicalRecordService {
       ),
     ];
   }
+
+  /// HTMLコンテンツをPDFに変換
+  Future<PdfConversionResult> convertHtmlToPdf(String htmlContent) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/generate-pdf'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'html_content': htmlContent,
+          'print_optimization': true,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          final pdfBase64 = data['data']['pdf_base64'];
+          return PdfConversionResult(
+              success: true, pdfData: base64Decode(pdfBase64));
+        } else {
+          return PdfConversionResult(
+              success: false, error: data['error'] ?? 'Backend error');
+        }
+      } else {
+        return PdfConversionResult(
+            success: false, error: 'Server error: ${response.statusCode}');
+      }
+    } catch (e) {
+      return PdfConversionResult(success: false, error: 'Network error: $e');
+    }
+  }
+}
+
+class PdfConversionResult {
+  final bool success;
+  final List<int>? pdfData;
+  final String? error;
+
+  PdfConversionResult({required this.success, this.pdfData, this.error});
 }
 
 /// 音声→JSON変換結果

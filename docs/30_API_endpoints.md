@@ -197,7 +197,7 @@ GET /api/v1/documents/{document_id}
     "season_theme": "spring",
     "ai_metadata": {
       "generated_at": "2025-01-09T09:00:00Z",
-      "model_version": "gemini-1.5-pro",
+      "model_version": "gemini-2.0-flash-exp",
       "processing_time_ms": 1200
     }
   }
@@ -335,7 +335,7 @@ POST /api/v1/ai/generate-html
       }
     ],
     "ai_metadata": {
-      "model": "gemini-1.5-pro",
+      "model": "gemini-2.0-flash-exp",
       "processing_time_ms": 800,
       "word_count": 450,
       "confidence": 0.92

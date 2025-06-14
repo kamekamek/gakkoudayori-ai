@@ -59,7 +59,7 @@ def load_prompt(style: str) -> Optional[str]:
 
 def get_json_schema() -> Dict[str, Any]:
     """
-    グラレコ用JSON構造のスキーマを取得
+    学級通信用JSON構造のスキーマを取得（CLASSIC_TENSAKU.md v2.2準拠）
     
     Returns:
         Dict[str, Any]: JSONスキーマ定義
@@ -67,14 +67,59 @@ def get_json_schema() -> Dict[str, Any]:
     return {
         "type": "object",
         "properties": {
-            "title": {
+            "school_name": {
                 "type": "string",
-                "description": "グラレコのタイトル"
+                "description": "学校名"
             },
-            "date": {
+            "grade": {
                 "type": "string",
-                "format": "date",
-                "description": "日付 (YYYY-MM-DD形式)"
+                "description": "発行対象学年"
+            },
+            "issue": {
+                "type": "string",
+                "description": "号数"
+            },
+            "issue_date": {
+                "type": "string",
+                "description": "発行日"
+            },
+            "author": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "title": {"type": "string"}
+                },
+                "required": ["name", "title"]
+            },
+            "main_title": {
+                "type": "string",
+                "description": "メインタイトル"
+            },
+            "sub_title": {
+                "type": ["string", "null"],
+                "description": "サブタイトル"
+            },
+            "season": {
+                "type": "string",
+                "description": "季節"
+            },
+            "theme": {
+                "type": "string",
+                "description": "テーマ"
+            },
+            "color_scheme": {
+                "type": "object",
+                "properties": {
+                    "primary": {"type": "string"},
+                    "secondary": {"type": "string"},
+                    "accent": {"type": "string"},
+                    "background": {"type": "string"}
+                },
+                "required": ["primary", "secondary", "accent", "background"]
+            },
+            "color_scheme_source": {
+                "type": "string",
+                "description": "カラースキームの根拠"
             },
             "sections": {
                 "type": "array",
@@ -83,52 +128,77 @@ def get_json_schema() -> Dict[str, Any]:
                     "properties": {
                         "type": {
                             "type": "string",
-                            "enum": ["activity", "learning", "event", "discussion", "announcement"],
+                            "enum": ["greeting", "main", "event", "announcement", "ending"],
                             "description": "セクションの種類"
                         },
                         "title": {
-                            "type": "string",
+                            "type": ["string", "null"],
                             "description": "セクションのタイトル"
                         },
                         "content": {
                             "type": "string",
                             "description": "セクションの内容"
-                        },
-                        "emotion": {
-                            "type": "string",
-                            "enum": ["positive", "neutral", "focused", "excited", "calm", "concerned"],
-                            "description": "感情・雰囲気"
-                        },
-                        "participants": {
-                            "type": "array",
-                            "items": {"type": "string"},
-                            "description": "参加者・対象者"
-                        },
-                        "time": {
-                            "type": "string",
-                            "description": "時間帯（任意）"
                         }
                     },
-                    "required": ["type", "title", "content", "emotion"]
+                    "required": ["type", "content"]
                 }
             },
-            "highlights": {
+            "photo_placeholders": {
+                "type": "object",
+                "properties": {
+                    "count": {"type": "number"},
+                    "suggested_positions": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "section_type": {"type": "string"},
+                                "position": {"type": "string"},
+                                "caption_suggestion": {"type": "string"}
+                            }
+                        }
+                    }
+                }
+            },
+            "enhancement_suggestions": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "重要なポイント・ハイライト"
+                "description": "改善提案"
             },
-            "next_actions": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": "次のアクション・予定"
+            "has_editor_note": {
+                "type": "boolean",
+                "description": "編集者注記の有無"
             },
-            "overall_mood": {
-                "type": "string",
-                "enum": ["positive", "neutral", "mixed", "energetic", "calm"],
-                "description": "全体的な雰囲気"
+            "editor_note": {
+                "type": ["string", "null"],
+                "description": "編集者注記"
+            },
+            "layout_suggestion": {
+                "type": "object",
+                "properties": {
+                    "page_count": {"type": "number"},
+                    "columns": {"type": "number"},
+                    "column_ratio": {"type": "string"},
+                    "blocks": {
+                        "type": "array",
+                        "items": {"type": "string"}
+                    }
+                }
+            },
+            "meta_reasoning": {
+                "type": "object",
+                "properties": {
+                    "title_reason": {"type": "string"},
+                    "issue_reason": {"type": "string"},
+                    "grade_reason": {"type": "string"},
+                    "author_reason": {"type": "string"},
+                    "sectioning_strategy_reason": {"type": "string"},
+                    "season_reason": {"type": "string"},
+                    "color_reason": {"type": "string"}
+                }
             }
         },
-        "required": ["title", "date", "sections", "highlights"]
+        "required": ["school_name", "grade", "issue", "issue_date", "author", "main_title", "season", "theme", "sections"]
     }
 
 
@@ -164,7 +234,7 @@ def convert_speech_to_json(
     credentials_path: str,
     style: str = "classic",
     custom_context: str = "",
-    model_name: str = "gemini-1.5-pro",
+    model_name: str = "gemini-2.0-flash-exp",
     temperature: float = 0.3,
     max_output_tokens: int = 2048
 ) -> Dict[str, Any]:
@@ -204,11 +274,12 @@ def convert_speech_to_json(
                 }
             }
 
-        # プロンプトに変数を埋め込む
-        system_prompt = system_prompt_template.format(
-            json_schema=json.dumps(json_schema, indent=2, ensure_ascii=False),
-            custom_context=custom_context if custom_context else "特になし"
-        )
+        # プロンプトをそのまま使用（v2.2プロンプトは完全な形式）
+        system_prompt = system_prompt_template
+        
+        # カスタムコンテキストがある場合は追加
+        if custom_context and custom_context.strip():
+            system_prompt += f"\n\n### 追加指示\n{custom_context}"
 
         user_prompt = f"""
 以下の音声認識テキストをJSONに変換してください：
@@ -343,50 +414,84 @@ def validate_generated_json(json_data: Dict[str, Any]) -> Tuple[bool, Optional[s
 
 def generate_sample_json() -> Dict[str, Any]:
     """
-    テスト用のサンプルJSONデータを生成
+    テスト用のサンプルJSONデータを生成（CLASSIC_TENSAKU.md v2.2準拠）
     
     Returns:
         Dict[str, Any]: サンプルJSONデータ
     """
     return {
-        "title": "今日の学級の様子",
-        "date": datetime.now().strftime("%Y-%m-%d"),
+        "school_name": "○○小学校",
+        "grade": "第3学年",
+        "issue": "第1号",
+        "issue_date": datetime.now().strftime("%Y年%m月%d日"),
+        "author": {
+            "name": "○○校長",
+            "title": "校長"
+        },
+        "main_title": "今日の学級の様子",
+        "sub_title": None,
+        "season": "春",
+        "theme": "新学期の始まり",
+        "color_scheme": {
+            "primary": "#2c3e50",
+            "secondary": "#3498db",
+            "accent": "#e74c3c",
+            "background": "#ffffff"
+        },
+        "color_scheme_source": "春の新緑をイメージした清潔感のある配色",
         "sections": [
             {
-                "type": "activity",
-                "title": "朝の会",
-                "content": "みんな元気に挨拶ができました。今日の係活動の確認も行いました。",
-                "emotion": "positive",
-                "participants": ["全員"],
-                "time": "8:30-8:45"
+                "type": "greeting",
+                "title": "はじめに",
+                "content": "新学期が始まり、子どもたちの元気な声が学校に響いています。"
             },
             {
-                "type": "learning",
+                "type": "main",
+                "title": "朝の会の様子",
+                "content": "みんな元気に挨拶ができました。今日の係活動の確認も行いました。"
+            },
+            {
+                "type": "main",
                 "title": "算数の授業",
-                "content": "九九の練習をしました。7の段が難しそうでしたが、みんな頑張って覚えようとしていました。",
-                "emotion": "focused",
-                "participants": ["3年生"],
-                "time": "9:00-9:45"
+                "content": "九九の練習をしました。7の段が難しそうでしたが、みんな頑張って覚えようとしていました。"
             },
             {
-                "type": "event",
-                "title": "給食の時間",
-                "content": "今日のメニューはカレーライスでした。みんなおいしそうに食べていました。",
-                "emotion": "excited",
-                "participants": ["全員"],
-                "time": "12:15-13:00"
+                "type": "ending",
+                "title": "おわりに",
+                "content": "今後ともご協力をお願いいたします。"
             }
         ],
-        "highlights": [
-            "元気な挨拶ができた",
-            "九九の練習に集中して取り組んだ",
-            "給食を楽しく食べた"
+        "photo_placeholders": {
+            "count": 2,
+            "suggested_positions": [
+                {
+                    "section_type": "main",
+                    "position": "end_of_section",
+                    "caption_suggestion": "朝の会の様子"
+                }
+            ]
+        },
+        "enhancement_suggestions": [
+            "明日の持ち物について追記することを推奨",
+            "保護者への連絡事項があれば追加"
         ],
-        "next_actions": [
-            "明日は運動会の練習",
-            "7の段の復習"
-        ],
-        "overall_mood": "positive"
+        "has_editor_note": False,
+        "editor_note": None,
+        "layout_suggestion": {
+            "page_count": 1,
+            "columns": 1,
+            "column_ratio": "1:1",
+            "blocks": ["header", "sections", "footer"]
+        },
+        "meta_reasoning": {
+            "title_reason": "日常の学級活動を報告する内容のため",
+            "issue_reason": "新学期最初の発行のため第1号と推論",
+            "grade_reason": "3年生の活動内容が含まれているため",
+            "author_reason": "一般的な学級通信は校長発行のため",
+            "sectioning_strategy_reason": "挨拶、メイン活動2点、締めの構成で分割",
+            "season_reason": "新学期の時期のため春と判断",
+            "color_reason": "春の新緑と清潔感を表現"
+        }
     }
 
 

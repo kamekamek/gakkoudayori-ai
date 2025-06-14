@@ -4,6 +4,13 @@
 ポート8081で起動（Flutter Webが8080を使用中のため）
 """
 
+import sys
+import os
+
+# 現在のディレクトリをPythonパスに追加
+current_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, current_dir)
+
 from main import app
 
 if __name__ == '__main__':
