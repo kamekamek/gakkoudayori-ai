@@ -50,7 +50,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
       GraphicalRecordService();
 
   // 学級通信専用モード（グラレコ機能削除）
-  bool _isGraphicalRecordMode = false; // 常にfalse（学級通信のみ）
+  static const bool _isGraphicalRecordMode = false; // 常にfalse（学級通信のみ）
 
   // 共通状態
   bool _isRecording = false;
@@ -72,7 +72,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
 
   // 削除済み：グラレコモード用の変数
 
-  final GlobalKey _editorKey = GlobalKey();
+  // 削除済み：未使用の_editorKey
 
   @override
   void initState() {
@@ -302,7 +302,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                   boxShadow: [
                     BoxShadow(
                       color: (_isRecording ? Colors.red : Colors.blue)
-                          .withOpacity(0.3),
+                          .withValues(alpha: 0.3),
                       spreadRadius: 4,
                       blurRadius: 8,
                     ),
@@ -827,13 +827,10 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
             child: Builder(
               builder: (context) {
                 print(
-                    '🔍 [Preview] 表示判定: _generatedHtml.isEmpty=${_generatedHtml.isEmpty}, _graphicalRecordHtml.isEmpty=${_graphicalRecordHtml.isEmpty}');
+                    '🔍 [Preview] 表示判定: _generatedHtml.isEmpty=${_generatedHtml.isEmpty}');
                 print(
                     '🔍 [Preview] _generatedHtml長さ: ${_generatedHtml.length}');
-                print(
-                    '🔍 [Preview] _graphicalRecordHtml長さ: ${_graphicalRecordHtml.length}');
-                final isEmpty =
-                    (_generatedHtml.isEmpty && _graphicalRecordHtml.isEmpty);
+                final isEmpty = _generatedHtml.isEmpty;
 
                 if (isEmpty) {
                   return Container(
@@ -881,8 +878,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                             : _generatedHtml;
                         print(
                             '🔍 [Preview] QuillEditorWidgetに渡すhtmlContent長さ: ${htmlContent.length}');
-                        print(
-                            '🔍 [Preview] _isGraphicalRecordMode: $_isGraphicalRecordMode');
+                        print('🔍 [Preview] 学級通信専用モード');
                         print('🔍 [Preview] _showEditor: $_showEditor');
                         // 編集モードの場合のみQuillEditorWidgetを使用
                         if (_showEditor) {

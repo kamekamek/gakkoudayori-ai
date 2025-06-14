@@ -31,7 +31,7 @@ MOCK_JSON_TEXT = json.dumps({
 })
 
 # json-to-graphical-record用の完全なHTMLレスポンス
-MOCK_HTML_TEXT = "<html><body><h1>API Test</h1></body></html>"
+MOCK_HTML_TEXT = "<html><head></head><body><h1>API Test</h1></body></html>"
 
 mock_gemini_response = MagicMock()
 mock_gemini_response.text = MOCK_JSON_TEXT
