@@ -156,12 +156,12 @@ def get_json_schema() -> Dict[str, Any]:
                         },
                         "section_visual_hint": {
                             "type": ["string", "null"],
-                            "enum": ["role-list", "emphasis-block", "infographic", null],
+                            "enum": ["role-list", "emphasis-block", "infographic", None],
                             "description": "モダンスタイル用の視覚的ヒント"
                         },
                         "estimated_length": {
                             "type": ["string", "null"],
-                            "enum": ["short", "medium", "long", null],
+                            "enum": ["short", "medium", "long", None],
                             "description": "セクションの推定分量"
                         }
                     },
