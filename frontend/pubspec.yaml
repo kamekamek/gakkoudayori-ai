@@ -35,4 +35,5 @@ flutter:
   
   assets:
     - assets/audio/    # 音声関連ファイル用
+    - web/sample.html  # サンプル学級通信
 
