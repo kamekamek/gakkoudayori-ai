@@ -16,7 +16,7 @@ class InlineEditablePreviewWidget extends StatefulWidget {
   const InlineEditablePreviewWidget({
     Key? key,
     required this.htmlContent,
-    this.height = 400,
+    required this.height,
     this.onContentChanged,
   }) : super(key: key);
 
@@ -199,7 +199,7 @@ class _InlineEditablePreviewWidgetState
             box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
             position: relative;
             margin-bottom: 20px;
-            min-height: calc(100vh - 40px);
+            min-height: auto;
             box-sizing: border-box;
         }
         

@@ -96,7 +96,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 768;
-    
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
@@ -106,26 +106,26 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
         elevation: 2,
       ),
       body: isMobile ? _buildMobileLayout() : _buildDesktopLayout(),
-      floatingActionButton: isMobile && _generatedHtml.isNotEmpty 
-        ? Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              FloatingActionButton(
-                onPressed: _downloadPdf,
-                backgroundColor: Colors.purple[600],
-                heroTag: "pdf",
-                child: Icon(Icons.picture_as_pdf, color: Colors.white),
-              ),
-              SizedBox(height: 8),
-              FloatingActionButton(
-                onPressed: _regenerateNewsletter,
-                backgroundColor: Colors.orange[600],
-                heroTag: "regenerate",
-                child: Icon(Icons.refresh, color: Colors.white),
-              ),
-            ],
-          )
-        : null,
+      floatingActionButton: isMobile && _generatedHtml.isNotEmpty
+          ? Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                FloatingActionButton(
+                  onPressed: _downloadPdf,
+                  backgroundColor: Colors.purple[600],
+                  heroTag: "pdf",
+                  child: Icon(Icons.picture_as_pdf, color: Colors.white),
+                ),
+                SizedBox(height: 8),
+                FloatingActionButton(
+                  onPressed: _regenerateNewsletter,
+                  backgroundColor: Colors.orange[600],
+                  heroTag: "regenerate",
+                  child: Icon(Icons.refresh, color: Colors.white),
+                ),
+              ],
+            )
+          : null,
     );
   }
 
@@ -386,7 +386,8 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                     Text('${_aiResult!.characterCount}',
                         style: TextStyle(fontWeight: FontWeight.bold)),
                     Text('文字',
-                        style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                        style:
+                            TextStyle(fontSize: 11, color: Colors.grey[600])),
                   ],
                 ),
                 Column(
@@ -394,7 +395,8 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                     Text(_aiResult!.processingTimeDisplay,
                         style: TextStyle(fontWeight: FontWeight.bold)),
                     Text('処理時間',
-                        style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                        style:
+                            TextStyle(fontSize: 11, color: Colors.grey[600])),
                   ],
                 ),
                 Column(
@@ -402,7 +404,8 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                     Text(_aiResult!.season,
                         style: TextStyle(fontWeight: FontWeight.bold)),
                     Text('季節',
-                        style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                        style:
+                            TextStyle(fontSize: 11, color: Colors.grey[600])),
                   ],
                 ),
               ],
@@ -448,7 +451,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
   Widget _buildPreviewEditorSection() {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 768;
-    
+
     return Container(
       padding: EdgeInsets.all(isMobile ? 12 : 20),
       child: Column(
@@ -474,6 +477,10 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                 ToggleButtons(
                   isSelected: [!_showEditor, _showEditor],
                   onPressed: (index) {
+                    // プレビューに切り替える前に編集内容を保存
+                    if (index == 0 && _showEditor) {
+                      _saveEditorContent();
+                    }
                     setState(() {
                       _showEditor = index == 1;
                     });
@@ -521,6 +528,8 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () {
+                      // 編集モードから戻る前に、最新の編集内容を保存
+                      _saveEditorContent();
                       setState(() {
                         _showEditor = false;
                       });
@@ -528,8 +537,10 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                     icon: Icon(Icons.preview, size: 16),
                     label: Text('プレビュー'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: !_showEditor ? Colors.blue[600] : Colors.grey[300],
-                      foregroundColor: !_showEditor ? Colors.white : Colors.grey[700],
+                      backgroundColor:
+                          !_showEditor ? Colors.blue[600] : Colors.grey[300],
+                      foregroundColor:
+                          !_showEditor ? Colors.white : Colors.grey[700],
                     ),
                   ),
                 ),
@@ -544,8 +555,10 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                     icon: Icon(Icons.edit, size: 16),
                     label: Text('編集'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _showEditor ? Colors.blue[600] : Colors.grey[300],
-                      foregroundColor: _showEditor ? Colors.white : Colors.grey[700],
+                      backgroundColor:
+                          _showEditor ? Colors.blue[600] : Colors.grey[300],
+                      foregroundColor:
+                          _showEditor ? Colors.white : Colors.grey[700],
                     ),
                   ),
                 ),
@@ -557,76 +570,76 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
 
           // プレビュー/エディター表示エリア
           Container(
+            width: double.infinity,
             constraints: BoxConstraints(
-              minHeight: isMobile ? 400 : 500,
-              maxHeight: isMobile ? double.infinity : 800,
+              minHeight: isMobile ? 300 : 400,
+              maxHeight: isMobile ? 600 : 700,
             ),
-            child: Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey[300]!),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: _generatedHtml.isEmpty
-                  ? Container(
-                      height: isMobile ? 300 : 400,
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.article_outlined,
-                              size: 64,
-                              color: Colors.grey[400],
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey[300]!),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: _generatedHtml.isEmpty
+                ? Container(
+                    height: isMobile ? 300 : 400,
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.article_outlined,
+                            size: 64,
+                            color: Colors.grey[400],
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            '学級通信を作成してください',
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.w500,
                             ),
-                            SizedBox(height: 16),
-                            Text(
-                              '学級通信を作成してください',
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.grey[600],
-                                fontWeight: FontWeight.w500,
-                              ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            '音声入力またはテキスト入力で\n学級通信の内容を入力してください',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[500],
                             ),
-                            SizedBox(height: 8),
-                            Text(
-                              '音声入力またはテキスト入力で\n学級通信の内容を入力してください',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[500],
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  : ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        height: isMobile ? 600 : 700,
-                        child: _showEditor
-                            ? InlineEditablePreviewWidget(
-                                key: _editorKey,
-                                htmlContent: _generatedHtml,
-                                height: isMobile ? 600 : 700,
-                                onContentChanged: (html) {
-                                  if (_editorHtml != html) {
-                                    setState(() {
-                                      _editorHtml = html;
-                                      _generatedHtml = html;
-                                    });
-                                  }
-                                },
-                              )
-                            : HtmlPreviewWidget(
-                                key: ValueKey(
-                                    'html_preview_${_generatedHtml.hashCode}'),
-                                htmlContent: _generatedHtml,
-                                height: isMobile ? 600 : 700,
-                              ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
                     ),
-            ),
+                  )
+                : ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: _showEditor
+                        ? InlineEditablePreviewWidget(
+                            key: _editorKey,
+                            htmlContent: _editorHtml.isNotEmpty
+                                ? _editorHtml
+                                : _generatedHtml,
+                            height: isMobile ? 600 : 700,
+                            onContentChanged: (html) {
+                              if (_editorHtml != html) {
+                                setState(() {
+                                  _editorHtml = html;
+                                  // リアルタイムでプレビューにも反映（オプション）
+                                  // _generatedHtml = html;
+                                });
+                                print('📝 [編集] 内容変更: ${html.length}文字');
+                              }
+                            },
+                          )
+                        : HtmlPreviewWidget(
+                            key: ValueKey(
+                                'html_preview_${_generatedHtml.hashCode}'),
+                            htmlContent: _generatedHtml,
+                            height: isMobile ? 600 : 700,
+                          ),
+                  ),
           ),
         ],
       ),
@@ -684,10 +697,27 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
   }
 
   // AI生成機能（既存のものを移植）
+  /// 編集モードから戻る前に最新の編集内容を保存
+  void _saveEditorContent() {
+    // 編集モードの時に、最新のHTMLコンテンツを確実に保存
+    if (_showEditor && _editorHtml.isNotEmpty) {
+      setState(() {
+        _generatedHtml = _editorHtml;
+        _statusMessage = '💾 編集内容をプレビューに反映しました（${_editorHtml.length}文字）';
+      });
+      print('🔄 [状態管理] 編集内容をプレビューに反映: ${_editorHtml.length}文字');
+    } else if (_showEditor && _editorHtml.isEmpty) {
+      print('⚠️ [状態管理] 編集内容が空のため保存をスキップ');
+    } else {
+      print('ℹ️ [状態管理] 編集モードではないため保存をスキップ');
+    }
+  }
+
   Future<void> _generateNewsletter() async {
     if (_isGenerating || _isProcessing) return;
 
-    final inputText = _inputText.isNotEmpty ? _inputText : _textController.text.trim();
+    final inputText =
+        _inputText.isNotEmpty ? _inputText : _textController.text.trim();
     if (inputText.isEmpty) {
       setState(() {
         _statusMessage = '❌ 入力テキストが空です。音声録音または文字入力をしてください。';
@@ -702,10 +732,12 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
     });
 
     try {
-      final result = await _aiService.generateNewsletter(transcribedText: inputText);
+      final result =
+          await _aiService.generateNewsletter(transcribedText: inputText);
       setState(() {
         _aiResult = result;
         _generatedHtml = _createStylishHtml(result.newsletterHtml);
+        _editorHtml = ''; // 新しいAI生成時は編集状態をリセット
         _statusMessage = '🎉 AI生成完了！プレビューまたはエディターで確認してください';
         _showEditor = false;
       });
@@ -729,6 +761,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
       _statusMessage = '🔄 再生成中...';
       _aiResult = null;
       _generatedHtml = '';
+      _editorHtml = ''; // 再生成時も編集状態をリセット
     });
 
     await _generateNewsletter();
@@ -1017,7 +1050,8 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
           final blob = html.Blob([pdfBytes], 'application/pdf');
           final url = html.Url.createObjectUrlFromBlob(blob);
 
-          final fileName = '学級通信_${DateTime.now().toString().substring(0, 10)}.pdf';
+          final fileName =
+              '学級通信_${DateTime.now().toString().substring(0, 10)}.pdf';
           final anchor = html.AnchorElement(href: url)
             ..setAttribute('download', fileName)
             ..click();
