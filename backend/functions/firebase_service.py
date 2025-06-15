@@ -83,7 +83,10 @@ def get_credentials_from_secret_manager():
         return credentials
         
     except Exception as e:
-        logger.warning(f"Failed to get credentials from Secret Manager: {e}")
+        logger.error(f"Failed to get credentials from Secret Manager: {e}")
+        logger.error(f"Exception type: {type(e).__name__}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
         return None
 
 

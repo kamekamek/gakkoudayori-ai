@@ -1,6 +1,6 @@
 # 学級通信エディタ - 環境管理Makefile
 
-.PHONY: help dev prod staging build-dev build-prod deploy-frontend deploy-backend deploy-staging deploy-preview ci-setup test lint format reset-dev
+.PHONY: help dev prod staging build-dev build-prod deploy deploy-frontend deploy-backend deploy-all deploy-staging deploy-preview ci-setup test lint format reset-dev
 
 # デフォルトターゲット
 help:
@@ -18,11 +18,11 @@ help:
 	@echo "  make format       - コードフォーマット"
 	@echo ""
 	@echo "🚀 デプロイ:"
+	@echo "  make deploy           - 全体デプロイ（推奨）"
 	@echo "  make deploy-frontend  - フロントエンドをFirebase Hostingにデプロイ"
 	@echo "  make deploy-backend   - バックエンドをCloud Runにデプロイ"
 	@echo "  make deploy-staging   - ステージング環境にデプロイ"
 	@echo "  make deploy-preview   - プレビュー環境にデプロイ"
-	@echo "  make deploy-all       - フロントエンド・バックエンド両方デプロイ"
 	@echo ""
 	@echo "⚙️ CI/CD:"
 	@echo "  make ci-setup     - CI/CD環境セットアップ"
@@ -103,19 +103,22 @@ deploy-frontend: build-prod
 # バックエンドデプロイ
 deploy-backend:
 	@echo "📤 バックエンドをCloud Runにデプロイ中..."
-	cd backend && gcloud builds submit --tag gcr.io/gakkoudayori-ai/yutori-backend
-	gcloud run deploy yutori-backend \
-		--image gcr.io/gakkoudayori-ai/yutori-backend \
-		--platform managed \
-		--region asia-northeast1 \
+	cd backend/functions && gcloud run deploy yutori-backend \
+		--source=. \
+		--region=asia-northeast1 \
 		--allow-unauthenticated \
-		--port 8080
+		--memory=2Gi \
+		--timeout=300 \
+		--set-env-vars="ENVIRONMENT=production"
 
-# 全体デプロイ
-deploy-all: deploy-backend deploy-frontend
+# 全体デプロイ（推奨）
+deploy: deploy-backend deploy-frontend
 	@echo "✅ 全体デプロイ完了！"
 	@echo "🌐 フロントエンド: https://gakkoudayori-ai.web.app"
 	@echo "🔧 バックエンド: https://yutori-backend-944053509139.asia-northeast1.run.app"
+
+# 全体デプロイ（別名）
+deploy-all: deploy
 
 # プレビューデプロイ（プルリクエスト用）
 deploy-preview:
