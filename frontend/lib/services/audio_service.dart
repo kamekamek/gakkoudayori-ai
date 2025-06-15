@@ -2,6 +2,7 @@ import 'dart:html' as html;
 import 'dart:js' as js;
 import 'dart:js_util' as js_util;
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 
@@ -39,52 +40,52 @@ class AudioService {
   void initializeJavaScriptBridge() {
     // JavaScript側からの録音開始通知
     js.context['onRecordingStarted'] = js.allowInterop(() {
-      print('🎤 [AudioService] 録音開始通知受信');
+      if (kDebugMode) debugPrint('🎤 [AudioService] 録音開始通知受信');
       _isRecording = true;
       _onRecordingStateChanged?.call(true);
     });
 
     // JavaScript側からの録音停止通知
     js.context['onRecordingStopped'] = js.allowInterop(() {
-      print('⏹️ [AudioService] 録音停止通知受信');
+      if (kDebugMode) debugPrint('⏹️ [AudioService] 録音停止通知受信');
       _isRecording = false;
       _onRecordingStateChanged?.call(false);
     });
 
     // JavaScript側からの音声データ受信
     js.context['onAudioRecorded'] = js.allowInterop((data) {
-      print('✅ [AudioService] 音声データ受信');
+      if (kDebugMode) debugPrint('✅ [AudioService] 音声データ受信');
       try {
         final audioData = data['audioData'] as String;
         final size = data['size'] as num;
         final duration = data['duration'] as num;
 
-        print('📊 音声データ: ${size}bytes, ${duration}ms');
+        if (kDebugMode) debugPrint('📊 音声データ: ${size}bytes, ${duration}ms');
         _onAudioRecorded?.call(audioData);
 
         // 自動的に文字起こし処理を実行
         _performSpeechToText(audioData);
       } catch (e) {
-        print('❌ [AudioService] 音声データ処理エラー: $e');
+        if (kDebugMode) debugPrint('❌ [AudioService] 音声データ処理エラー: $e');
       }
     });
 
-    print('🔗 [AudioService] JavaScript Bridge初期化完了');
+    if (kDebugMode) debugPrint('🔗 [AudioService] JavaScript Bridge初期化完了');
   }
 
   /// 録音開始
   Future<bool> startRecording() async {
     try {
-      print('🎤 [AudioService] 録音開始要求');
+      if (kDebugMode) debugPrint('🎤 [AudioService] 録音開始要求');
 
       // JavaScript側の録音開始関数を呼び出し
-      print('🔗 [AudioService] JavaScript関数呼び出し開始');
+      if (kDebugMode) debugPrint('🔗 [AudioService] JavaScript関数呼び出し開始');
       final jsResult = js.context.callMethod('startRecording');
-      print('🔗 [AudioService] Promise待機開始');
+      if (kDebugMode) debugPrint('🔗 [AudioService] Promise待機開始');
 
       // JavaScript関数の戻り値をチェック
       if (jsResult == null) {
-        print('❌ [AudioService] JavaScript関数が null を返しました');
+        if (kDebugMode) debugPrint('❌ [AudioService] JavaScript関数が null を返しました');
         return false;
       }
 
@@ -92,25 +93,25 @@ class AudioService {
       bool result;
       if (js_util.hasProperty(jsResult, 'then')) {
         // Promiseの場合
-        print('🔗 [AudioService] Promise検出 - 非同期待機中');
+        if (kDebugMode) debugPrint('🔗 [AudioService] Promise検出 - 非同期待機中');
         result = await js_util.promiseToFuture<bool>(jsResult);
       } else {
         // 同期的な戻り値の場合
-        print('🔗 [AudioService] 同期的戻り値検出');
+        if (kDebugMode) debugPrint('🔗 [AudioService] 同期的戻り値検出');
         result = jsResult as bool;
       }
 
-      print('🔗 [AudioService] 最終結果: $result');
+      if (kDebugMode) debugPrint('🔗 [AudioService] 最終結果: $result');
 
       if (result == true) {
-        print('✅ [AudioService] 録音開始成功');
+        if (kDebugMode) debugPrint('✅ [AudioService] 録音開始成功');
         return true;
       } else {
-        print('❌ [AudioService] 録音開始失敗 - 戻り値: $result');
+        if (kDebugMode) debugPrint('❌ [AudioService] 録音開始失敗 - 戻り値: $result');
         return false;
       }
     } catch (e) {
-      print('❌ [AudioService] 録音開始エラー: $e');
+      if (kDebugMode) debugPrint('❌ [AudioService] 録音開始エラー: $e');
       return false;
     }
   }
@@ -118,20 +119,20 @@ class AudioService {
   /// 録音停止
   Future<bool> stopRecording() async {
     try {
-      print('⏹️ [AudioService] 録音停止要求');
+      if (kDebugMode) debugPrint('⏹️ [AudioService] 録音停止要求');
 
       // JavaScript側の録音停止関数を呼び出し（同期処理なのでそのまま）
       final result = js.context.callMethod('stopRecording');
 
       if (result == true) {
-        print('✅ [AudioService] 録音停止成功');
+        if (kDebugMode) debugPrint('✅ [AudioService] 録音停止成功');
         return true;
       } else {
-        print('❌ [AudioService] 録音停止失敗');
+        if (kDebugMode) debugPrint('❌ [AudioService] 録音停止失敗');
         return false;
       }
     } catch (e) {
-      print('❌ [AudioService] 録音停止エラー: $e');
+      if (kDebugMode) debugPrint('❌ [AudioService] 録音停止エラー: $e');
       return false;
     }
   }
@@ -143,12 +144,12 @@ class AudioService {
       final mediaDevices = html.window.navigator.mediaDevices;
       if (mediaDevices != null) {
         await mediaDevices.getUserMedia({'audio': true});
-        print('✅ [AudioService] マイクアクセス許可済み');
+        if (kDebugMode) debugPrint('✅ [AudioService] マイクアクセス許可済み');
         return true;
       }
       return false;
     } catch (e) {
-      print('❌ [AudioService] マイクアクセス許可なし: $e');
+      if (kDebugMode) debugPrint('❌ [AudioService] マイクアクセス許可なし: $e');
       return false;
     }
   }
@@ -165,9 +166,9 @@ class AudioService {
         ..click();
 
       html.Url.revokeObjectUrl(url);
-      print('💾 [AudioService] 音声ファイルダウンロード: $filename');
+      if (kDebugMode) debugPrint('💾 [AudioService] 音声ファイルダウンロード: $filename');
     } catch (e) {
-      print('❌ [AudioService] ファイルダウンロードエラー: $e');
+      if (kDebugMode) debugPrint('❌ [AudioService] ファイルダウンロードエラー: $e');
     }
   }
 
@@ -181,20 +182,20 @@ class AudioService {
     // JavaScript側のクリーンアップ
     try {
       js.context.callMethod('audioRecorder.cleanup');
-      print('🧹 [AudioService] リソース解放完了');
+      if (kDebugMode) debugPrint('🧹 [AudioService] リソース解放完了');
     } catch (e) {
-      print('⚠️ [AudioService] クリーンアップエラー: $e');
+      if (kDebugMode) debugPrint('⚠️ [AudioService] クリーンアップエラー: $e');
     }
   }
 
   /// 音声データを文字起こしAPIに送信
   Future<void> _performSpeechToText(String base64AudioData) async {
     try {
-      print('🎙️ [AudioService] 文字起こし処理開始...');
+      if (kDebugMode) debugPrint('🎙️ [AudioService] 文字起こし処理開始...');
 
       // Base64データをデコードしてバイナリデータに変換
       final audioBytes = base64Decode(base64AudioData);
-      print('📄 [AudioService] 音声データサイズ: ${audioBytes.length} bytes');
+      if (kDebugMode) debugPrint('📄 [AudioService] 音声データサイズ: ${audioBytes.length} bytes');
 
       // バックエンドAPIのエンドポイント（環境変数から取得）
       final apiUrl = '${AppConfig.apiBaseUrl}/transcribe';
@@ -212,7 +213,7 @@ class AudioService {
       request.fields['sample_rate'] = '48000'; // WebM Opus形式に合わせて48kHzに変更
       request.fields['user_dictionary'] = '学級通信,運動会,学習発表会,子どもたち,先生,授業';
 
-      print('📤 [AudioService] Speech-to-Text API呼び出し中...');
+      if (kDebugMode) debugPrint('📤 [AudioService] Speech-to-Text API呼び出し中...');
       final response = await request.send();
       final responseData = await response.stream.bytesToString();
 
@@ -222,22 +223,22 @@ class AudioService {
           final transcript = jsonData['data']['transcript'] as String;
           final confidence = jsonData['data']['confidence'] as double;
 
-          print('✅ [AudioService] 文字起こし成功');
-          print('📝 [AudioService] 結果: $transcript');
-          print(
+          if (kDebugMode) debugPrint('✅ [AudioService] 文字起こし成功');
+          if (kDebugMode) debugPrint('📝 [AudioService] 結果: $transcript');
+          if (kDebugMode) debugPrint(
               '🎯 [AudioService] 信頼度: ${(confidence * 100).toStringAsFixed(1)}%');
 
           // 文字起こし完了をコールバックで通知
           _onTranscriptionCompleted?.call(transcript);
         } else {
-          print('❌ [AudioService] 文字起こしAPIエラー: ${jsonData['error']}');
+          if (kDebugMode) debugPrint('❌ [AudioService] 文字起こしAPIエラー: ${jsonData['error']}');
         }
       } else {
-        print('❌ [AudioService] HTTPエラー: ${response.statusCode}');
-        print('📄 [AudioService] レスポンス: $responseData');
+        if (kDebugMode) debugPrint('❌ [AudioService] HTTPエラー: ${response.statusCode}');
+        if (kDebugMode) debugPrint('📄 [AudioService] レスポンス: $responseData');
       }
     } catch (e) {
-      print('❌ [AudioService] 文字起こし処理エラー: $e');
+      if (kDebugMode) debugPrint('❌ [AudioService] 文字起こし処理エラー: $e');
     }
   }
 }

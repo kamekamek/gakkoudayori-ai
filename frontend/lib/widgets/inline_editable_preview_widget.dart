@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:web/web.dart' as web;
 import 'dart:ui_web' as ui_web;
@@ -54,7 +55,7 @@ class _InlineEditablePreviewWidgetState
 
   /// メッセージ通信をセットアップ
   void _setupMessageListener() {
-    print('🔧 [InlineEdit] メッセージリスナー設定開始');
+    if (kDebugMode) debugPrint('🔧 [InlineEdit] メッセージリスナー設定開始');
 
     // 方法1: 標準のpostMessage
     _messageHandler = (html.Event event) {
@@ -62,81 +63,81 @@ class _InlineEditablePreviewWidgetState
 
       try {
         final data = messageEvent.data;
-        print('🔍 [InlineEdit] postMessage受信 - データ型: ${data.runtimeType}');
-        print('🔍 [InlineEdit] postMessage受信 - データ内容: $data');
+        if (kDebugMode) debugPrint('🔍 [InlineEdit] postMessage受信 - データ型: ${data.runtimeType}');
+        if (kDebugMode) debugPrint('🔍 [InlineEdit] postMessage受信 - データ内容: $data');
 
         Map<String, dynamic>? message;
 
         if (data is String) {
-          print('🔍 [InlineEdit] 文字列データをJSON解析中...');
+          if (kDebugMode) debugPrint('🔍 [InlineEdit] 文字列データをJSON解析中...');
           message = jsonDecode(data) as Map<String, dynamic>;
         } else if (data is Map) {
-          print('🔍 [InlineEdit] マップデータを直接使用...');
+          if (kDebugMode) debugPrint('🔍 [InlineEdit] マップデータを直接使用...');
           message = Map<String, dynamic>.from(data);
         } else {
-          print('❌ [InlineEdit] 未対応のデータ型: ${data.runtimeType}');
+          if (kDebugMode) debugPrint('❌ [InlineEdit] 未対応のデータ型: ${data.runtimeType}');
           return;
         }
 
         if (message != null) {
-          print('🔍 [InlineEdit] 解析済みメッセージ: $message');
+          if (kDebugMode) debugPrint('🔍 [InlineEdit] 解析済みメッセージ: $message');
           _handleMessage(message);
         }
       } catch (e) {
-        print('❌ [InlineEdit] メッセージ解析エラー: $e');
-        print('❌ [InlineEdit] 元データ: ${messageEvent.data}');
+        if (kDebugMode) debugPrint('❌ [InlineEdit] メッセージ解析エラー: $e');
+        if (kDebugMode) debugPrint('❌ [InlineEdit] 元データ: ${messageEvent.data}');
       }
     };
 
     html.window.addEventListener('message', _messageHandler!);
-    print('✅ [InlineEdit] postMessage リスナー設定完了');
+    if (kDebugMode) debugPrint('✅ [InlineEdit] postMessage リスナー設定完了');
 
     // 方法2: カスタムイベント
     final customEventHandler = (html.Event event) {
       try {
         final customEvent = event as html.CustomEvent;
         final data = customEvent.detail;
-        print('🔍 [InlineEdit] CustomEvent受信 - データ: $data');
+        if (kDebugMode) debugPrint('🔍 [InlineEdit] CustomEvent受信 - データ: $data');
 
         if (data is Map) {
           final message = Map<String, dynamic>.from(data);
-          print('🔍 [InlineEdit] CustomEvent解析済み: $message');
+          if (kDebugMode) debugPrint('🔍 [InlineEdit] CustomEvent解析済み: $message');
           _handleMessage(message);
         }
       } catch (e) {
-        print('❌ [InlineEdit] CustomEvent解析エラー: $e');
+        if (kDebugMode) debugPrint('❌ [InlineEdit] CustomEvent解析エラー: $e');
       }
     };
 
     html.window.addEventListener('flutter-message', customEventHandler);
-    print('✅ [InlineEdit] CustomEvent リスナー設定完了');
+    if (kDebugMode) debugPrint('✅ [InlineEdit] CustomEvent リスナー設定完了');
 
-    print('🎯 [InlineEdit] 全てのメッセージリスナー設定完了');
+    if (kDebugMode) debugPrint('🎯 [InlineEdit] 全てのメッセージリスナー設定完了');
   }
 
   /// iframe内からのメッセージを処理
   void _handleMessage(Map<String, dynamic> message) {
-    print('🔍 [InlineEdit] メッセージ処理開始: ${message['type']}');
+    if (kDebugMode) debugPrint('🔍 [InlineEdit] メッセージ処理開始: ${message['type']}');
 
     switch (message['type']) {
       case 'content_changed':
-        print('🔍 [InlineEdit] content_changed メッセージ受信');
+        if (kDebugMode) debugPrint('🔍 [InlineEdit] content_changed メッセージ受信');
         final data = message['data'];
-        print('🔍 [InlineEdit] data部分: $data');
+        if (kDebugMode) debugPrint('🔍 [InlineEdit] data部分: $data');
         final newContent = data?['html'] as String?;
-        print('🔍 [InlineEdit] 抽出されたHTML: ${newContent?.length ?? 0}文字');
+        if (kDebugMode) debugPrint('🔍 [InlineEdit] 抽出されたHTML: ${newContent?.length ?? 0}文字');
 
         if (newContent != null && widget.onContentChanged != null) {
           // HTMLコンテンツをクリーンアップしてから通知
           final cleanedContent = _cleanEditedContent(newContent);
-          print('🔔 [InlineEdit] 編集内容を親ウィジェットに通知: ${cleanedContent.length}文字');
-          print(
+          if (kDebugMode) debugPrint('🔔 [InlineEdit] 編集内容を親ウィジェットに通知: ${cleanedContent.length}文字');
+          if (kDebugMode) debugPrint(
               '🔔 [InlineEdit] クリーンアップ後の内容プレビュー: ${cleanedContent.substring(0, cleanedContent.length > 100 ? 100 : cleanedContent.length)}...');
           widget.onContentChanged!(cleanedContent);
         } else {
-          print('❌ [InlineEdit] newContentがnullまたはonContentChangedがnull');
-          print('❌ [InlineEdit] newContent: $newContent');
-          print('❌ [InlineEdit] onContentChanged: ${widget.onContentChanged}');
+          if (kDebugMode) debugPrint('❌ [InlineEdit] newContentがnullまたはonContentChangedがnull');
+          if (kDebugMode) debugPrint('❌ [InlineEdit] newContent: $newContent');
+          if (kDebugMode) debugPrint('❌ [InlineEdit] onContentChanged: ${widget.onContentChanged}');
         }
         break;
 
@@ -150,7 +151,7 @@ class _InlineEditablePreviewWidgetState
         break;
 
       default:
-        print('🔍 [InlineEdit] 未知のメッセージタイプ: ${message['type']}');
+        if (kDebugMode) debugPrint('🔍 [InlineEdit] 未知のメッセージタイプ: ${message['type']}');
     }
   }
 
@@ -653,7 +654,7 @@ class _InlineEditablePreviewWidgetState
             .postMessage(js_util.jsify(jsonDecode(message)), '*'.toJS);
         _cachedContent = newContent;
       } catch (e) {
-        print('❌ [InlineEdit] コンテンツ更新エラー: $e');
+        if (kDebugMode) debugPrint('❌ [InlineEdit] コンテンツ更新エラー: $e');
       }
     }
   }

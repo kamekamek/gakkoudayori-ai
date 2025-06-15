@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 
@@ -130,7 +131,7 @@ class _HtmlWidgetPreviewState extends State<HtmlWidgetPreview> {
       widget.onContentChanged!(newHtml);
     }
 
-    print('📝 [HtmlWidget] 編集内容保存: ${newHtml.length}文字');
+    if (kDebugMode) debugPrint('📝 [HtmlWidget] 編集内容保存: ${newHtml.length}文字');
   }
 
   void _cancelEdit() {
@@ -262,7 +263,7 @@ class _HtmlWidgetPreviewState extends State<HtmlWidgetPreview> {
           return null;
         },
         onTapUrl: (url) {
-          print('🔗 リンクタップ: $url');
+          if (kDebugMode) debugPrint('🔗 リンクタップ: $url');
           return true;
         },
       ),

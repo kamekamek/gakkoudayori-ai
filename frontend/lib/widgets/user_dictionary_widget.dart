@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -199,7 +200,7 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
         }
       }
     } catch (e) {
-      print('修正記録エラー: $e');
+      if (kDebugMode) debugPrint('修正記録エラー: $e');
     }
   }
 

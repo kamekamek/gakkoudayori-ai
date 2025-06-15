@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../services/platform_service.dart';
 import 'html_widget_preview.dart';
 
 /// クロスプラットフォーム対応HTMLエディタ

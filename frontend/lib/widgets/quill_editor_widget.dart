@@ -1,8 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'dart:convert';
 import 'dart:html' as html;
 import 'dart:ui_web' as ui_web;
-import 'dart:js' as js;
 
 /// Quill.js WYSIWYGエディタウィジェット (Flutter Web版)
 /// HtmlElementViewとiframeを使用してQuill.js HTMLファイルを表示
@@ -72,7 +71,7 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
             }
           }
         } catch (e) {
-          print('❌ [QuillEditor] メッセージ処理エラー: $e');
+          if (kDebugMode) debugPrint('❌ [QuillEditor] メッセージ処理エラー: $e');
         }
       }
     };
@@ -91,7 +90,7 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
     if (mounted) {
       _currentContent = html;
       widget.onContentChanged?.call(html);
-      print('📝 [QuillEditor] 内容更新: ${html.length}文字');
+      if (kDebugMode) debugPrint('📝 [QuillEditor] 内容更新: ${html.length}文字');
     }
   }
 
@@ -101,7 +100,7 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
         _isLoading = false;
       });
       widget.onEditorReady?.call();
-      print('📝 [QuillBridge] Quill.js 準備完了');
+      if (kDebugMode) debugPrint('📝 [QuillBridge] Quill.js 準備完了');
     }
   }
 
@@ -121,7 +120,7 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
 
       // iframe読み込み完了イベント
       _iframeElement.onLoad.listen((_) {
-        print('✅ [QuillEditor] iframe読み込み完了');
+        if (kDebugMode) debugPrint('✅ [QuillEditor] iframe読み込み完了');
         _initializeContent();
         // ローディング状態は QUILL_READY メッセージで制御
       });
@@ -132,9 +131,9 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
         (int viewId) => _iframeElement,
       );
 
-      print('🔗 [QuillEditor] iframe初期化完了');
+      if (kDebugMode) debugPrint('🔗 [QuillEditor] iframe初期化完了');
     } catch (e) {
-      print('❌ [QuillEditor] iframe初期化エラー: $e');
+      if (kDebugMode) debugPrint('❌ [QuillEditor] iframe初期化エラー: $e');
     }
   }
 
@@ -157,7 +156,7 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
     try {
       final iframeWindow = _iframeElement.contentWindow;
       if (iframeWindow == null) {
-        print('❌ [QuillEditor] iframe window取得失敗');
+        if (kDebugMode) debugPrint('❌ [QuillEditor] iframe window取得失敗');
         return;
       }
 
@@ -170,9 +169,9 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
       // 直接スクリプト実行（より安定）
       iframeWindow.postMessage("EXEC:$script", "*");
 
-      print('📝 [QuillEditor] 内容設定完了 ($format形式)');
+      if (kDebugMode) debugPrint('📝 [QuillEditor] 内容設定完了 ($format形式)');
     } catch (e) {
-      print('❌ [QuillEditor] 内容設定エラー: $e');
+      if (kDebugMode) debugPrint('❌ [QuillEditor] 内容設定エラー: $e');
     }
   }
 
@@ -188,7 +187,7 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
       // 現在の内容を返す（非同期で更新される）
       return _currentContent;
     } catch (e) {
-      print('❌ [QuillEditor] HTML取得エラー: $e');
+      if (kDebugMode) debugPrint('❌ [QuillEditor] HTML取得エラー: $e');
       return '';
     }
   }
@@ -202,7 +201,7 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
       // TODO: postMessageでDelta取得を実装
       return '';
     } catch (e) {
-      print('❌ [QuillEditor] Delta取得エラー: $e');
+      if (kDebugMode) debugPrint('❌ [QuillEditor] Delta取得エラー: $e');
       return '';
     }
   }
@@ -215,9 +214,9 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
 
       iframeWindow.postMessage("EXEC:window.quillClear();", "*");
 
-      print('🗑️ [QuillEditor] 内容クリア完了');
+      if (kDebugMode) debugPrint('🗑️ [QuillEditor] 内容クリア完了');
     } catch (e) {
-      print('❌ [QuillEditor] クリアエラー: $e');
+      if (kDebugMode) debugPrint('❌ [QuillEditor] クリアエラー: $e');
     }
   }
 
@@ -230,16 +229,16 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
       iframeWindow.postMessage("EXEC:window.quillSwitchTheme('$theme');", "*");
 
       _currentTheme = theme;
-      print('🎨 [QuillEditor] テーマ変更: $theme');
+      if (kDebugMode) debugPrint('🎨 [QuillEditor] テーマ変更: $theme');
     } catch (e) {
-      print('❌ [QuillEditor] テーマ変更エラー: $e');
+      if (kDebugMode) debugPrint('❌ [QuillEditor] テーマ変更エラー: $e');
     }
   }
 
   /// PDF生成要求処理
   void _requestPdfGeneration(String html) {
     // PDF生成機能は Phase R3-C で実装予定
-    print('📄 [QuillEditor] PDF生成要求受信 - HTML文字数: ${html.length}');
+    if (kDebugMode) debugPrint('📄 [QuillEditor] PDF生成要求受信 - HTML文字数: ${html.length}');
 
     // 将来的にはPDFサービスに送信
     // PdfService.generateFromHtml(html);

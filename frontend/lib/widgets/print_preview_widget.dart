@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:web/web.dart' as web;
 import 'dart:ui_web' as ui_web;
@@ -274,10 +275,10 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
     if (newContent != _cachedContent) {
       try {
         // CORSエラーを避けるため、iframe全体を再作成
-        print('🖨️ [PrintPreview] コンテンツ更新のためiframe再作成');
+        if (kDebugMode) debugPrint('🖨️ [PrintPreview] コンテンツ更新のためiframe再作成');
         _initializePrintPreview();
       } catch (e) {
-        print('🖨️ [PrintPreview] 動的更新失敗: $e');
+        if (kDebugMode) debugPrint('🖨️ [PrintPreview] 動的更新失敗: $e');
         _initializePrintPreview();
       }
     }
