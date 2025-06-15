@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:web/web.dart' as web;
 import 'dart:ui_web' as ui_web;
@@ -168,7 +169,7 @@ class _HtmlPreviewWidgetState extends State<HtmlPreviewWidget> {
           _cachedContent = newContent;
         }
       } catch (e) {
-        print('📄 [HtmlPreview] 動的更新失敗、iframe再作成: $e');
+        if (kDebugMode) debugPrint('📄 [HtmlPreview] 動的更新失敗、iframe再作成: $e');
         // 動的更新が失敗した場合は再作成
         _initializeHtmlView();
       }

@@ -106,23 +106,18 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
     });
 
     // sample.htmlの内容をプレビューに表示
-    debugPrint('🚀 [Init] initState完了 - sample.html読み込み開始');
     _loadSampleHtml();
   }
 
   /// sample.htmlの内容を読み込んでプレビューに表示
   Future<void> _loadSampleHtml() async {
     try {
-      debugPrint('🚀 [Sample] _loadSampleHtml開始');
       final String sampleHtml = await rootBundle.loadString('web/sample.html');
-      debugPrint('✅ [Sample] sample.htmlアセット読み込み成功');
       setState(() {
         _generatedHtml = sampleHtml;
         _statusMessage = '📄 サンプル学級通信を表示しています';
       });
-      debugPrint('✅ [Sample] sample.htmlをプレビューに読み込み完了');
     } catch (e) {
-      debugPrint('❌ [Sample] sample.html読み込みエラー: $e');
       setState(() {
         _statusMessage = '❌ サンプル読み込みエラー: $e';
       });
@@ -147,14 +142,6 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
         backgroundColor: Colors.blue[600],
         foregroundColor: Colors.white,
         elevation: 2,
-        actions: [
-          IconButton(
-            onPressed: _openUserDictionary,
-            icon: Icon(Icons.book),
-            tooltip: 'ユーザー辞書管理',
-          ),
-          SizedBox(width: 8),
-        ],
       ),
       body: isMobile ? _buildMobileLayout() : _buildDesktopLayout(),
       floatingActionButton: isMobile && _generatedHtml.isNotEmpty
@@ -200,24 +187,54 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
   }
 
   Widget _buildMobileLayout() {
-    return Column(
-      children: [
-        Container(
-          width: double.infinity,
-          padding: EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
+    return DefaultTabController(
+      length: 2,
+      child: Column(
+        children: [
+          // タブバー
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
+            ),
+            child: TabBar(
+              labelColor: Colors.blue[700],
+              unselectedLabelColor: Colors.grey[600],
+              indicatorColor: Colors.blue[600],
+              indicatorWeight: 3,
+              labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              tabs: [
+                Tab(
+                  icon: Icon(Icons.mic, size: 20),
+                  text: '音声入力',
+                ),
+                Tab(
+                  icon: Icon(Icons.preview, size: 20),
+                  text: 'プレビュー',
+                ),
+              ],
+            ),
           ),
-          child: _buildVoiceInputSection(isCompact: true),
-        ),
-        Expanded(
-          child: SingleChildScrollView(
-            physics: AlwaysScrollableScrollPhysics(),
-            child: _buildPreviewEditorSection(),
+          // タブコンテンツ
+          Expanded(
+            child: TabBarView(
+              children: [
+                // 音声入力タブ
+                Container(
+                  color: Colors.white,
+                  padding: EdgeInsets.all(16),
+                  child: _buildVoiceInputSection(isCompact: true),
+                ),
+                // プレビュータブ
+                Container(
+                  color: Colors.grey[50],
+                  child: _buildPreviewEditorSection(),
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -258,7 +275,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                 height: 120,
                 decoration: BoxDecoration(
                   color:
-                      (_isRecording ? Colors.red : Colors.blue).withAlpha(30),
+                      (_isRecording ? Colors.red : Colors.blue).withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: _isRecording ? Colors.red[300]! : Colors.blue[300]!,
@@ -298,6 +315,24 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
               ),
               filled: true,
               fillColor: Colors.grey[100],
+            ),
+          ),
+          SizedBox(height: 16),
+          // 辞書管理ボタン
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _openUserDictionary,
+              icon: Icon(Icons.book, size: 20),
+              label: Text('ユーザー辞書管理'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange[600],
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
             ),
           ),
           SizedBox(height: 16),
@@ -454,32 +489,16 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                   ),
                 ),
                 Spacer(),
-                Row(
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: _openUserDictionary,
-                      icon: Icon(Icons.book, size: 16),
-                      label: Text('辞書管理'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange[600],
-                        foregroundColor: Colors.white,
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    ElevatedButton.icon(
-                      onPressed: _loadSampleHtml,
-                      icon: Icon(Icons.description, size: 16),
-                      label: Text('サンプル表示'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.teal,
-                        foregroundColor: Colors.white,
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      ),
-                    ),
-                  ],
+                ElevatedButton.icon(
+                  onPressed: _loadSampleHtml,
+                  icon: Icon(Icons.description, size: 16),
+                  label: Text('サンプル表示'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal,
+                    foregroundColor: Colors.white,
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
                 ),
               ],
             ),
@@ -610,8 +629,8 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
       if (result.success && result.pdfData != null) {
         final blob = html.Blob([result.pdfData!], 'application/pdf');
         final url = html.Url.createObjectUrlFromBlob(blob);
-        html.AnchorElement(href: url)
-          ..setAttribute("download", "GakkyuTsuushin.pdf")
+        final anchor = html.AnchorElement(href: url)
+          ..setAttribute('download', 'GakkyuTsuushin.pdf')
           ..click();
         html.Url.revokeObjectUrl(url);
         setState(() {
@@ -621,7 +640,6 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
         throw Exception(result.error ?? 'PDF data is null.');
       }
     } catch (e) {
-      debugPrint('❌ PDF生成/ダウンロードエラー: $e');
       setState(() {
         _statusMessage = '❌ PDFの生成に失敗しました: $e';
       });

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 
@@ -21,7 +22,7 @@ class AIService {
         '$customInstruction $htmlConstraintInstruction'.trim();
 
     try {
-      print(
+      if (kDebugMode) debugPrint(
           '🤖 AI生成開始 - テキスト: ${transcribedText.substring(0, transcribedText.length > 50 ? 50 : transcribedText.length)}...');
 
       final response = await http.post(
@@ -39,14 +40,14 @@ class AIService {
         }),
       );
 
-      print('🤖 AI生成レスポンス - ステータス: ${response.statusCode}');
+      if (kDebugMode) debugPrint('🤖 AI生成レスポンス - ステータス: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
         if (data['success'] == true) {
           final result = AIGenerationResult.fromJson(data['data']);
-          print(
+          if (kDebugMode) debugPrint(
               '✅ AI生成成功 - 文字数: ${result.characterCount}文字, 時間: ${result.processingTimeMs}ms');
           return result;
         } else {
@@ -57,7 +58,7 @@ class AIService {
         throw Exception('API Error: ${errorData['error'] ?? 'Unknown error'}');
       }
     } catch (e) {
-      print('❌ AI生成エラー: $e');
+      if (kDebugMode) debugPrint('❌ AI生成エラー: $e');
       throw Exception('AI文章生成に失敗しました: $e');
     }
   }
@@ -71,7 +72,7 @@ class AIService {
     Map<String, dynamic> constraints = const {},
   }) async {
     try {
-      print('🤖 カスタムHTML生成開始');
+      if (kDebugMode) debugPrint('🤖 カスタムHTML生成開始');
 
       final response = await http.post(
         Uri.parse('$_baseUrl/generate-html'),
@@ -100,7 +101,7 @@ class AIService {
         throw Exception('API Error: ${errorData['error'] ?? 'Unknown error'}');
       }
     } catch (e) {
-      print('❌ カスタムHTML生成エラー: $e');
+      if (kDebugMode) debugPrint('❌ カスタムHTML生成エラー: $e');
       throw Exception('HTML生成に失敗しました: $e');
     }
   }
@@ -135,7 +136,7 @@ class AIGenerationResult {
   factory AIGenerationResult.fromJson(Map<String, dynamic> json) {
     // フィルタリング発生時のログ出力
     if (json['validation_info'] != null) {
-      print('ℹ️ HTML Validation Info: ${jsonEncode(json['validation_info'])}');
+      if (kDebugMode) debugPrint('ℹ️ HTML Validation Info: ${jsonEncode(json['validation_info'])}');
     }
 
     return AIGenerationResult(

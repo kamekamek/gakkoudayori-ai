@@ -1,5 +1,5 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 /// シンプルなHTML編集ウィジェット
 /// HtmlElementViewの代替として、軽量で確実な編集機能を提供
@@ -88,7 +88,7 @@ class _SimpleHtmlEditorWidgetState extends State<SimpleHtmlEditorWidget> {
         _isModified = false;
       });
 
-      print('📝 [SimpleEditor] 編集内容保存: ${htmlContent.length}文字');
+      if (kDebugMode) debugPrint('📝 [SimpleEditor] 編集内容保存: ${htmlContent.length}文字');
 
       // 保存完了のフィードバック
       ScaffoldMessenger.of(context).showSnackBar(

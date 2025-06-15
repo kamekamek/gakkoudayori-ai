@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 
@@ -90,7 +91,7 @@ class UserDictionaryService {
       final data = jsonDecode(response.body);
       return response.statusCode == 200 && data['success'] == true;
     } catch (e) {
-      print('手動修正記録エラー: $e');
+      if (kDebugMode) debugPrint('手動修正記録エラー: $e');
       return false;
     }
   }
@@ -111,7 +112,7 @@ class UserDictionaryService {
       }
       return null;
     } catch (e) {
-      print('辞書統計取得エラー: $e');
+      if (kDebugMode) debugPrint('辞書統計取得エラー: $e');
       return null;
     }
   }
