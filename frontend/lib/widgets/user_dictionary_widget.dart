@@ -25,17 +25,17 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
   bool _isLoading = false;
   String _errorMessage = '';
   final UserDictionaryService _dictionaryService = UserDictionaryService();
-  
+
   // 辞書データ
-  Map<String, dynamic> _dictionaryData = {};
-  Map<String, dynamic> _stats = {};
+  final Map<String, dynamic> _dictionaryData = {};
+  final Map<String, dynamic> _stats = {};
   List<UserDictionaryEntry> _customTerms = [];
-  
+
   // 新規用語追加用
   final TextEditingController _termController = TextEditingController();
   final TextEditingController _variationsController = TextEditingController();
   String _selectedCategory = 'student_name';
-  
+
   // カテゴリ定義
   final Map<String, String> _categories = {
     'student_name': '児童・生徒名',
@@ -92,14 +92,14 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
   Future<void> _addCustomTerm() async {
     final term = _termController.text.trim();
     final variationsText = _variationsController.text.trim();
-    
+
     if (term.isEmpty) {
       _showErrorDialog('用語を入力してください');
       return;
     }
 
     // バリエーションを分割（カンマ区切り）
-    final variations = variationsText.isNotEmpty 
+    final variations = variationsText.isNotEmpty
         ? variationsText.split(',').map((v) => v.trim()).toList()
         : <String>[];
 
@@ -121,7 +121,7 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
       _variationsController.clear();
       _loadDictionary(); // 辞書を再読み込み
       widget.onDictionaryUpdated?.call();
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -202,8 +202,9 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
   /// 手動修正を記録
   Future<void> _recordCorrection(String original, String corrected) async {
     try {
-      final apiUrl = '${AppConfig.apiBaseUrl.replaceAll('/api/v1/ai', '')}/api/v1/dictionary/${widget.userId}/correct';
-      
+      final apiUrl =
+          '${AppConfig.apiBaseUrl.replaceAll('/api/v1/ai', '')}/api/v1/dictionary/${widget.userId}/correct';
+
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {'Content-Type': 'application/json'},
@@ -213,7 +214,7 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
           'context': '',
         }),
       );
-      
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success']) {
@@ -281,7 +282,8 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
               ),
               SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: _selectedCategory, // entryToEdit.category should be used here if _selectedCategory is not updated before build
+                value:
+                    _selectedCategory, // entryToEdit.category should be used here if _selectedCategory is not updated before build
                 decoration: InputDecoration(
                   labelText: 'カテゴリ',
                   border: OutlineInputBorder(),
@@ -311,7 +313,7 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
           ElevatedButton(
             onPressed: () {
               // Call method to update term
-              _updateTermInDialog(entryToEdit); 
+              _updateTermInDialog(entryToEdit);
               Navigator.of(context).pop();
             },
             child: Text('保存'),
@@ -345,7 +347,8 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
     });
 
     try {
-      await _dictionaryService.updateTerm(widget.userId, oldEntry.term, newEntry);
+      await _dictionaryService.updateTerm(
+          widget.userId, oldEntry.term, newEntry);
       _termController.clear();
       _variationsController.clear();
       _loadDictionary();
@@ -494,7 +497,8 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                               ),
                               SizedBox(height: 12),
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceAround,
                                 children: [
                                   _buildStatItem(
                                     '総用語数',
@@ -517,9 +521,9 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                           ),
                         ),
                       ),
-                      
+
                       SizedBox(height: 16),
-                      
+
                       // 用語追加ボタン
                       SizedBox(
                         width: double.infinity,
@@ -534,9 +538,9 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                           ),
                         ),
                       ),
-                      
+
                       SizedBox(height: 16),
-                      
+
                       // カスタム用語リスト
                       Expanded(
                         child: Card(
@@ -562,7 +566,8 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                                 child: _customTerms.isEmpty
                                     ? Center(
                                         child: Column(
-                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
                                           children: [
                                             Icon(
                                               Icons.library_books_outlined,
@@ -595,24 +600,31 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                                           final term = _customTerms[index];
                                           return ListTile(
                                             leading: CircleAvatar(
-                                              backgroundColor: _getCategoryColor(term.category),
+                                              backgroundColor:
+                                                  _getCategoryColor(
+                                                      term.category),
                                               child: Text(
                                                 _getCategoryIcon(term.category),
-                                                style: TextStyle(color: Colors.white),
+                                                style: TextStyle(
+                                                    color: Colors.white),
                                               ),
                                             ),
                                             title: Text(
                                               term.term,
-                                              style: TextStyle(fontWeight: FontWeight.bold),
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.bold),
                                             ),
                                             subtitle: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
                                               children: [
                                                 if (term.variations.isNotEmpty)
-                                                  Text('読み: ${term.variations.join(', ')}'),
+                                                  Text(
+                                                      '読み: ${term.variations.join(', ')}'),
                                                 Text(
                                                   // '${_categories[term.category] ?? 'その他'} • 使用回数: ${term.usageCount}回',
-                                                  '${_categories[term.category] ?? 'その他'}',
+                                                  _categories[term.category] ??
+                                                      'その他',
                                                   style: TextStyle(
                                                     fontSize: 12,
                                                     color: Colors.grey[600],
@@ -626,7 +638,8 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                                                   value: 'edit',
                                                   child: Row(
                                                     children: [
-                                                      Icon(Icons.edit, size: 16),
+                                                      Icon(Icons.edit,
+                                                          size: 16),
                                                       SizedBox(width: 8),
                                                       Text('編集'),
                                                     ],
@@ -636,20 +649,25 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                                                   value: 'delete',
                                                   child: Row(
                                                     children: [
-                                                      Icon(Icons.delete, size: 16, color: Colors.red),
+                                                      Icon(Icons.delete,
+                                                          size: 16,
+                                                          color: Colors.red),
                                                       SizedBox(width: 8),
-                                                      Text('削除', style: TextStyle(color: Colors.red)),
+                                                      Text('削除',
+                                                          style: TextStyle(
+                                                              color:
+                                                                  Colors.red)),
                                                     ],
                                                   ),
                                                 ),
                                               ],
                                               onSelected: (value) {
-                                                 if (value == 'edit') {
-                                                   _showEditTermDialog(term);
-                                                 } else if (value == 'delete') {
-                                                   _deleteTerm(term);
-                                                 }
-                                               },
+                                                if (value == 'edit') {
+                                                  _showEditTermDialog(term);
+                                                } else if (value == 'delete') {
+                                                  _deleteTerm(term);
+                                                }
+                                              },
                                             ),
                                           );
                                         },
