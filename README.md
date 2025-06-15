@@ -82,7 +82,7 @@ FastAPI Backend (バックエンド)
 
 **🎬 新規参加者**
 1. [📚 ドキュメント一覧](docs/README.md) - 全体ナビゲーション
-2. [📏 ハッカソンルール](docs/hackason_rule.md) - 制約・要件理解
+2. [📏 ハッカソンルール](docs/HACKASON_RULES.md) - 制約・要件理解
 3. [🏆 プロジェクト完了報告](docs/archive/PROJECT_COMPLETION_SUMMARY.md) - 最終成果物
 
 **💻 開発者**
@@ -186,7 +186,7 @@ GEMINI_API_KEY=your_gemini_api_key_here
 - **開発手順**: [開発ガイド](docs/development_guide.md)参照
 - **技術仕様**: [システム設計](docs/system_architecture.md)参照  
 - **プロジェクト履歴**: [完了報告書](docs/archive/PROJECT_COMPLETION_SUMMARY.md)参照
-- **ハッカソン要件**: [ハッカソンルール](docs/hackason_rule.md)参照
+- **ハッカソン要件**: [ハッカソンルール](docs/HACKASON_RULES.md)参照
 
 ---
 
