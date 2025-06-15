@@ -98,13 +98,29 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
 
       - name: 🚀 バックエンドイメージビルド（ステージング）
+        id: build_staging
         run: |
           cd backend/functions # Dockerfileがあるディレクトリに移動
-          BUILD_ID=$(gcloud builds submit --tag gcr.io/gakkoudayori-ai/yutori-backend-staging:latest . \
-            --async --format="value(id)")
-          echo "Build ID: $BUILD_ID"
-          echo "Waiting for build to complete..."
-          gcloud builds wait $BUILD_ID --region=global
+          BUILD_ID=$(gcloud builds submit --tag gcr.io/gakkoudayori-ai/yutori-backend-staging:latest . --async --format="value(id)")
+          echo "BUILD_ID=$BUILD_ID" >> $GITHUB_OUTPUT
+          echo "Build submitted with ID: $BUILD_ID"
+
+      - name: ⏳ バックエンドビルド完了待機（ステージング）
+        run: |
+          BUILD_ID=${{ steps.build_staging.outputs.BUILD_ID }}
+          echo "Waiting for build $BUILD_ID to complete..."
+          while true; do
+            STATUS=$(gcloud builds describe $BUILD_ID --format="value(status)")
+            if [[ "$STATUS" == "SUCCESS" ]]; then
+              echo "Build $BUILD_ID succeeded."
+              break
+            elif [[ "$STATUS" == "FAILURE" || "$STATUS" == "INTERNAL_ERROR" || "$STATUS" == "TIMEOUT" ]]; then
+              echo "Build $BUILD_ID failed with status: $STATUS"
+              exit 1
+            fi
+            echo "Current build status: $STATUS. Waiting 10 seconds..."
+            sleep 10
+          done
 
       - name: 🚀 バックエンドデプロイ（ステージング）
         run: |
@@ -124,40 +140,6 @@ jobs:
           channelId: staging
           expires: 30d
           projectId: gakkoudayori-ai
-
-      - name: 🔔 LINEデプロイ通知 (ステージング成功 - Messaging API)
-        if: success()
-        run: |
-          MESSAGE_TEXT="🚀 ステージング環境へのデプロイが完了しました！\nプロジェクト: ${{ github.repository }}\nブランチ: ${{ github.ref_name }}\nコミット: '${{ github.sha }}'\n実行者: ${{ github.actor }}\nURL: https://gakkoudayori-ai--staging.web.app"
-          curl -X POST \
-          -H "Authorization: Bearer ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}" \
-          -H "Content-Type: application/json" \
-          -d "{\
-            \"to\": \"${{ secrets.LINE_TARGET_GROUP_ID }}\",\
-            \"messages\":[\
-                {\
-                    \"type\":\"text\",\
-                    \"text\":\"$MESSAGE_TEXT\"\
-                }\
-            ]\
-          }" https://api.line.me/v2/bot/message/push
-
-      - name: 🔔 LINEデプロイ通知 (ステージング失敗 - Messaging API)
-        if: failure()
-        run: |
-          MESSAGE_TEXT="🚨 ステージング環境へのデプロイに失敗しました。\nプロジェクト: ${{ github.repository }}\nブランチ: ${{ github.ref_name }}\nコミット: '${{ github.sha }}'\n実行者: ${{ github.actor }}\n詳細: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          curl -X POST \
-          -H "Authorization: Bearer ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}" \
-          -H "Content-Type: application/json" \
-          -d "{\
-            \"to\": \"${{ secrets.LINE_TARGET_GROUP_ID }}\",\
-            \"messages\":[\
-                {\
-                    \"type\":\"text\",\
-                    \"text\":\"$MESSAGE_TEXT\"\
-                }\
-            ]\
-          }" https://api.line.me/v2/bot/message/push
 
   # 本番環境デプロイ（mainブランチ）
   deploy-production:
@@ -193,13 +175,29 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
 
       - name: 🚀 バックエンドイメージビルド（本番）
+        id: build_production
         run: |
           cd backend/functions # Dockerfileがあるディレクトリに移動
-          BUILD_ID=$(gcloud builds submit --tag gcr.io/gakkoudayori-ai/yutori-backend:latest . \
-            --async --format="value(id)")
-          echo "Build ID: $BUILD_ID"
-          echo "Waiting for build to complete..."
-          gcloud builds wait $BUILD_ID --region=global
+          BUILD_ID=$(gcloud builds submit --tag gcr.io/gakkoudayori-ai/yutori-backend:latest . --async --format="value(id)")
+          echo "BUILD_ID=$BUILD_ID" >> $GITHUB_OUTPUT
+          echo "Build submitted with ID: $BUILD_ID"
+
+      - name: ⏳ バックエンドビルド完了待機（本番）
+        run: |
+          BUILD_ID=${{ steps.build_production.outputs.BUILD_ID }}
+          echo "Waiting for build $BUILD_ID to complete..."
+          while true; do
+            STATUS=$(gcloud builds describe $BUILD_ID --format="value(status)")
+            if [[ "$STATUS" == "SUCCESS" ]]; then
+              echo "Build $BUILD_ID succeeded."
+              break
+            elif [[ "$STATUS" == "FAILURE" || "$STATUS" == "INTERNAL_ERROR" || "$STATUS" == "TIMEOUT" ]]; then
+              echo "Build $BUILD_ID failed with status: $STATUS"
+              exit 1
+            fi
+            echo "Current build status: $STATUS. Waiting 10 seconds..."
+            sleep 10
+          done
 
       - name: 🚀 バックエンドデプロイ（本番）
         run: |
