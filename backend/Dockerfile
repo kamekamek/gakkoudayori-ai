@@ -5,9 +5,18 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # システムパッケージの更新とインストール
+# WeasyPrintと日本語フォント対応のためのライブラリを追加
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
+    libpango-1.0-0 \
+    libpangoft2-1.0-0 \
+    libfontconfig1 \
+    libcairo2 \
+    libgdk-pixbuf2.0-0 \
+    libgtk-3-0 \
+    fonts-noto-cjk \
+    fonts-noto-cjk-extra \
     && rm -rf /var/lib/apt/lists/*
 
 # Pythonの依存関係をコピーしてインストール

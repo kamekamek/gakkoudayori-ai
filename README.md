@@ -98,24 +98,26 @@ Cloud Run (FastAPI)
 git clone https://github.com/kamekamek/yutorikyoshitu.git
 cd yutorikyoshitu
 
-# 2. Flutter環境
-cd frontend
-flutter pub get
-flutter run -d chrome
+# 2. 環境設定確認
+./scripts/check_env.sh
 
-# 3. Python環境 
-cd ../backend
-pip install -r requirements.txt
-uvicorn main:app --reload
+# 3. APIキー設定
+export GEMINI_API_KEY=your_api_key_here
+export SPEECH_TO_TEXT_API_KEY=your_api_key_here
 
-# 4. Google Cloud設定
-gcloud auth login
-gcloud config set project YOUR_PROJECT_ID
-
-# 5. 開発品質ツール設定
-pip install pre-commit
-pre-commit install
+# 4. 開発環境起動
+make dev
+# または
+./scripts/deploy.sh dev all
 ```
+
+### 📚 詳細なセットアップガイド
+
+初心者向けの詳細なデプロイ手順は以下のドキュメントを参照してください：
+
+- **[🚀 デプロイガイド](docs/deployment_guide.md)** - 初心者向け完全ガイド
+- **[🔐 環境変数設定](docs/environment_setup.md)** - APIキー・シークレット設定詳細
+- **[🛠️ 便利スクリプト](scripts/)** - 自動化されたデプロイ・確認ツール
 
 ### 🔄 CI/CD パイプライン
 
