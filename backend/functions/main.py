@@ -91,7 +91,7 @@ def hello_world():
     """ヘルスチェックエンドポイント"""
     return jsonify({
         'status': 'ok',
-        'service': 'yutori-kyoshitu-backend',
+        'service': 'gakkoudayori-ai-backend',
         'timestamp': datetime.utcnow().isoformat(),
         'firebase_initialized': firebase_initialized
     })

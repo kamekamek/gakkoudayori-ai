@@ -1,5 +1,5 @@
-name: yutori_kyoshitu
-description: 学校だよりAI - 音声入力で学級通信を自動生成（リビルド版）
+name: gakkoudayori_ai
+description: 学校だよりAI - 音声入力システム
 publish_to: 'none'
 version: 1.0.0+1
 
