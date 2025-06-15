@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音声録音テスト - AudioWorkletNode対応</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .status {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .record-btn {
+            background: #007AFF;
+            color: white;
+        }
+        .record-btn:hover {
+            background: #0056CC;
+        }
+        .record-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .stop-btn {
+            background: #FF3B30;
+            color: white;
+        }
+        .stop-btn:hover {
+            background: #D70015;
+        }
+        .info-btn {
+            background: #34C759;
+            color: white;
+        }
+        .info-btn:hover {
+            background: #248A3D;
+        }
+        .reset-btn {
+            background: #FF9500;
+            color: white;
+        }
+        .reset-btn:hover {
+            background: #CC7700;
+        }
+        .log {
+            background: #000;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        .device-info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .recording {
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 音声録音テスト</h1>
+        <p style="text-align: center; color: #666;">iOS 18.5 AudioWorkletNode対応版</p>
+        
+        <div class="device-info">
+            <h3>📱 デバイス情報</h3>
+            <div id="deviceInfo">読み込み中...</div>
+        </div>
+        
+        <div class="status">
+            <div id="status">初期化中...</div>
+        </div>
+        
+        <div class="controls">
+            <button id="recordBtn" class="record-btn">🎤 録音開始</button>
+            <button id="stopBtn" class="stop-btn" disabled>⏹️ 録音停止</button>
+            <button id="infoBtn" class="info-btn">📊 状態確認</button>
+            <button id="resetBtn" class="reset-btn">🔄 リセット</button>
+        </div>
+        
+        <div class="log" id="log"></div>
+    </div>
+
+    <script src="audio.js"></script>
+    <script>
+        let isRecording = false;
+        const logElement = document.getElementById('log');
+        const statusElement = document.getElementById('status');
+        const deviceInfoElement = document.getElementById('deviceInfo');
+        const recordBtn = document.getElementById('recordBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        
+        // ログ出力関数
+        function addLog(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logLine = `[${timestamp}] ${message}`;
+            logElement.textContent += logLine + '\n';
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(logLine);
+        }
+        
+        // 状態更新
+        function updateStatus() {
+            const status = window.getAudioRecorderStatus();
+            statusElement.textContent = JSON.stringify(status, null, 2);
+        }
+        
+        // デバイス情報表示
+        function updateDeviceInfo() {
+            const info = {
+                userAgent: navigator.userAgent,
+                platform: navigator.platform,
+                audioWorkletSupported: !!(window.AudioContext && window.AudioContext.prototype.audioWorklet),
+                mediaRecorderSupported: !!window.MediaRecorder,
+                httpsConnection: location.protocol === 'https:',
+                hostname: location.hostname
+            };
+            deviceInfoElement.textContent = JSON.stringify(info, null, 2);
+        }
+        
+        // Flutter側コールバック設定
+        window.onRecordingStarted = () => {
+            addLog('✅ 録音開始通知受信');
+            isRecording = true;
+            recordBtn.disabled = true;
+            recordBtn.classList.add('recording');
+            stopBtn.disabled = false;
+            updateStatus();
+        };
+        
+        window.onRecordingStopped = () => {
+            addLog('✅ 録音停止通知受信');
+            isRecording = false;
+            recordBtn.disabled = false;
+            recordBtn.classList.remove('recording');
+            stopBtn.disabled = true;
+            updateStatus();
+        };
+        
+        window.onAudioRecorded = (data) => {
+            addLog(`✅ 音声データ受信: ${data.size}bytes, ${data.duration}ms`);
+            addLog(`📄 Base64データ長: ${data.audioData.length}文字`);
+        };
+        
+        // ボタンイベント
+        recordBtn.addEventListener('click', async () => {
+            addLog('🎤 録音開始ボタンクリック');
+            try {
+                const result = await window.startRecording();
+                addLog(`📊 録音開始結果: ${result}`);
+                if (!result) {
+                    addLog('❌ 録音開始失敗');
+                }
+            } catch (error) {
+                addLog(`❌ 録音開始エラー: ${error.message}`);
+            }
+        });
+        
+        stopBtn.addEventListener('click', () => {
+            addLog('⏹️ 録音停止ボタンクリック');
+            try {
+                const result = window.stopRecording();
+                addLog(`📊 録音停止結果: ${result}`);
+            } catch (error) {
+                addLog(`❌ 録音停止エラー: ${error.message}`);
+            }
+        });
+        
+        document.getElementById('infoBtn').addEventListener('click', () => {
+            addLog('📊 状態確認ボタンクリック');
+            updateStatus();
+            const status = window.getAudioRecorderStatus();
+            addLog(`📊 現在の状態: ${JSON.stringify(status)}`);
+        });
+        
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            addLog('🔄 リセットボタンクリック');
+            try {
+                const result = window.resetAudioRecorder();
+                addLog(`📊 リセット結果: ${result}`);
+                updateStatus();
+            } catch (error) {
+                addLog(`❌ リセットエラー: ${error.message}`);
+            }
+        });
+        
+        // 初期化
+        document.addEventListener('DOMContentLoaded', () => {
+            addLog('🚀 ページ読み込み完了');
+            updateDeviceInfo();
+            updateStatus();
+            
+            // 定期的な状態更新
+            setInterval(updateStatus, 2000);
+        });
+        
+        // エラーハンドリング
+        window.addEventListener('error', (event) => {
+            addLog(`❌ JavaScript エラー: ${event.error.message}`);
+        });
+        
+        window.addEventListener('unhandledrejection', (event) => {
+            addLog(`❌ Promise エラー: ${event.reason}`);
+        });
+    </script>
+</body>
+</html> 
