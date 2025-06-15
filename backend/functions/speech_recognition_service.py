@@ -27,22 +27,35 @@ logger = logging.getLogger(__name__)
 # 音声認識コア機能
 # ==============================================================================
 
-def initialize_speech_client(credentials_path: str) -> Optional[speech.SpeechClient]:
+def initialize_speech_client(credentials_path: str = None) -> Optional[speech.SpeechClient]:
     """
     Speech-to-Textクライアントを初期化
     
     Args:
-        credentials_path (str): サービスアカウントキーファイルのパス
+        credentials_path (str, optional): サービスアカウントキーファイルのパス
         
     Returns:
         Optional[speech.SpeechClient]: 初期化されたクライアント、失敗時はNone
     """
     try:
-        # 環境変数に認証情報を設定
-        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_path
+        # Cloud Run環境ではデフォルト認証を使用
+        if credentials_path and os.path.exists(credentials_path):
+            # 開発環境の場合は認証ファイルを設定
+            os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_path
+            logger.info(f"Using credentials file: {credentials_path}")
+        else:
+            # Cloud Run環境ではデフォルト認証を使用
+            logger.info("Using default credentials (Cloud Run environment)")
         
-        # Speech-to-Textクライアント作成
-        client = speech.SpeechClient()
+        # Speech-to-Textクライアント作成（Cloud Run環境ではデフォルト認証を自動使用）
+        from google.auth import default
+        try:
+            # デフォルト認証を明示的に使用
+            credentials, project = default()
+            client = speech.SpeechClient(credentials=credentials)
+        except Exception:
+            # フォールバック: 認証情報なしで作成（Cloud Run環境で自動認証）
+            client = speech.SpeechClient()
         
         logger.info("Speech-to-Text client initialized successfully")
         return client
@@ -54,7 +67,7 @@ def initialize_speech_client(credentials_path: str) -> Optional[speech.SpeechCli
 
 def transcribe_audio_file(
     audio_content: bytes,
-    credentials_path: str,
+    credentials_path: str = None,
     language_code: str = "ja-JP",
     sample_rate_hertz: int = None,  # サンプルレートを自動検出に変更
     encoding: speech.RecognitionConfig.AudioEncoding = speech.RecognitionConfig.AudioEncoding.WEBM_OPUS,  # WEBM_OPUSに変更

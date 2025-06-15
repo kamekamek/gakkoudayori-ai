@@ -1,14 +1,12 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter/foundation.dart';
+import '../config/app_config.dart';
 
 /// フロントエンド用ユーザー辞書サービス
 /// バックエンドのユーザー辞書APIと連携して文字起こし結果を修正
 class UserDictionaryService {
   static String get _baseUrl {
-    return kDebugMode
-        ? 'http://localhost:8081'
-        : 'https://asia-northeast1-yutori-kyoshitu.cloudfunctions.net/main';
+    return AppConfig.apiBaseUrl.replaceAll('/api/v1/ai', '');
   }
 
   /// 文字起こし結果をユーザー辞書で修正

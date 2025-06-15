@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 # Google Cloud認証基盤
 # ==============================================================================
 
-def initialize_gcp_credentials(credentials_path: str) -> bool:
+def initialize_gcp_credentials(credentials_path: str = None) -> bool:
     """
     Google Cloud認証情報を初期化
     
@@ -42,13 +42,14 @@ def initialize_gcp_credentials(credentials_path: str) -> bool:
         bool: 初期化が成功したかどうか
     """
     try:
-        # ファイル存在確認
-        if not os.path.exists(credentials_path):
-            logger.error(f"Credentials file not found: {credentials_path}")
-            return False
-        
-        # 環境変数に設定
-        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_path
+        # Cloud Run環境ではデフォルト認証を使用
+        if credentials_path and os.path.exists(credentials_path):
+            # 開発環境: 認証ファイルを使用
+            os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_path
+            logger.info(f"Using credentials file: {credentials_path}")
+        else:
+            # Cloud Run環境: デフォルト認証を使用
+            logger.info("Using default credentials (Cloud Run environment)")
         
         # 認証情報をテスト
         credentials, project = default()

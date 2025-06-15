@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../config/app_config.dart';
 
 /// Gemini Pro AI文章生成サービス
 class AIService {
-  static const String _baseUrl = 'http://localhost:8081/api/v1/ai';
+  static String get _baseUrl => AppConfig.apiBaseUrl;
 
   /// 学級通信HTML生成
   Future<AIGenerationResult> generateNewsletter({
