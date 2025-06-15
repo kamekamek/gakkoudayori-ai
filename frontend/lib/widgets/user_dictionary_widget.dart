@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../config/app_config.dart';
+import '../services/user_dictionary_service.dart';
 
 /// ユーザー辞書管理ウィジェット
 /// 教師が固有名詞や学校専用用語を登録・管理できるUI
@@ -23,11 +24,12 @@ class UserDictionaryWidget extends StatefulWidget {
 class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
   bool _isLoading = false;
   String _errorMessage = '';
+  final UserDictionaryService _dictionaryService = UserDictionaryService();
   
   // 辞書データ
   Map<String, dynamic> _dictionaryData = {};
   Map<String, dynamic> _stats = {};
-  List<dynamic> _customTerms = [];
+  List<UserDictionaryEntry> _customTerms = [];
   
   // 新規用語追加用
   final TextEditingController _termController = TextEditingController();
@@ -65,43 +67,19 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
     });
 
     try {
-      final apiUrl = '${AppConfig.apiBaseUrl.replaceAll('/api/v1/ai', '')}/api/v1/dictionary/${widget.userId}';
-      
-      final response = await http.get(Uri.parse(apiUrl));
-      
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success']) {
-          setState(() {
-            _dictionaryData = data['data']['dictionary'];
-            _stats = data['data']['stats'];
-            
-            // カスタム用語のリストを作成
-            _customTerms = [];
-            _dictionaryData.forEach((term, variations) {
-              if (variations is Map && variations.containsKey('category')) {
-                _customTerms.add({
-                  'term': term,
-                  'variations': variations['variations'] ?? [],
-                  'category': variations['category'] ?? 'custom',
-                  'usage_count': variations['usage_count'] ?? 0,
-                });
-              }
-            });
-          });
-        } else {
-          setState(() {
-            _errorMessage = data['error'] ?? '辞書の読み込みに失敗しました';
-          });
-        }
-      } else {
-        setState(() {
-          _errorMessage = 'サーバーエラー: ${response.statusCode}';
-        });
-      }
+      final terms = await _dictionaryService.getTerms(widget.userId);
+      // TODO: 統計情報の取得も行う場合は、別途 _dictionaryService.getDictionaryStats() を呼び出す
+      // final stats = await _dictionaryService.getDictionaryStats(widget.userId);
+
+      setState(() {
+        _customTerms = terms;
+        // if (stats != null) {
+        //   _stats = stats;
+        // }
+      });
     } catch (e) {
       setState(() {
-        _errorMessage = '通信エラー: $e';
+        _errorMessage = '辞書の読み込み中にエラーが発生しました: $e';
       });
     } finally {
       setState(() {
@@ -130,45 +108,94 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
     });
 
     try {
-      final apiUrl = '${AppConfig.apiBaseUrl.replaceAll('/api/v1/ai', '')}/api/v1/dictionary/${widget.userId}/terms';
-      
-      final response = await http.post(
-        Uri.parse(apiUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'term': term,
-          'variations': variations,
-          'category': _selectedCategory,
-        }),
+      final newEntry = UserDictionaryEntry(
+        term: term,
+        variations: variations,
+        category: _selectedCategory,
       );
+
+      await _dictionaryService.addTerm(widget.userId, newEntry);
+
+      // 成功時の処理
+      _termController.clear();
+      _variationsController.clear();
+      _loadDictionary(); // 辞書を再読み込み
+      widget.onDictionaryUpdated?.call();
       
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success']) {
-          // 成功時の処理
-          _termController.clear();
-          _variationsController.clear();
-          _loadDictionary(); // 辞書を再読み込み
-          widget.onDictionaryUpdated?.call();
-          
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('「$term」を辞書に追加しました'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Error in _addCustomTerm: $e');
+      }
+      if (mounted) {
+        _showErrorDialog('用語の追加中にエラーが発生しました: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  /// 用語を削除
+  Future<void> _deleteTerm(UserDictionaryEntry entry) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('削除確認'),
+        content: Text('「${entry.term}」を削除しますか？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('キャンセル'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('削除', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      setState(() {
+        _isLoading = true;
+      });
+      try {
+        await _dictionaryService.deleteTerm(widget.userId, entry.term);
+        _loadDictionary(); // 辞書を再読み込み
+        widget.onDictionaryUpdated?.call();
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('「$term」を辞書に追加しました'),
+              content: Text('「${entry.term}」を削除しました'),
               backgroundColor: Colors.green,
             ),
           );
-        } else {
-          _showErrorDialog(data['error'] ?? '用語の追加に失敗しました');
         }
-      } else {
-        _showErrorDialog('サーバーエラー: ${response.statusCode}');
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('Error in _deleteTerm: $e');
+        }
+        if (mounted) {
+          _showErrorDialog('用語の削除中にエラーが発生しました: $e');
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       }
-    } catch (e) {
-      _showErrorDialog('通信エラー: $e');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
     }
   }
 
@@ -218,6 +245,133 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
         ],
       ),
     );
+  }
+
+  void _showEditTermDialog(UserDictionaryEntry entryToEdit) {
+    _termController.text = entryToEdit.term;
+    _variationsController.text = entryToEdit.variations.join(', ');
+    _selectedCategory = entryToEdit.category;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('用語を編集'),
+        content: SizedBox(
+          width: 400,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _termController,
+                decoration: InputDecoration(
+                  labelText: '用語（例: 田中太郎）',
+                  hintText: '正しい表記を入力してください',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: _variationsController,
+                decoration: InputDecoration(
+                  labelText: '読み方・バリエーション（カンマ区切り）',
+                  hintText: 'たなかたろう, タナカタロウ, 田中',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 2,
+              ),
+              SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: _selectedCategory, // entryToEdit.category should be used here if _selectedCategory is not updated before build
+                decoration: InputDecoration(
+                  labelText: 'カテゴリ',
+                  border: OutlineInputBorder(),
+                ),
+                items: _categories.entries.map((entry) {
+                  return DropdownMenuItem<String>(
+                    value: entry.key,
+                    child: Text(entry.value),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() {
+                      _selectedCategory = value;
+                    });
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('キャンセル'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              // Call method to update term
+              _updateTermInDialog(entryToEdit); 
+              Navigator.of(context).pop();
+            },
+            child: Text('保存'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _updateTermInDialog(UserDictionaryEntry oldEntry) async {
+    final term = _termController.text.trim();
+    final variationsText = _variationsController.text.trim();
+
+    if (term.isEmpty) {
+      _showErrorDialog('用語を入力してください');
+      return;
+    }
+
+    final variations = variationsText.isNotEmpty
+        ? variationsText.split(',').map((v) => v.trim()).toList()
+        : <String>[];
+
+    final newEntry = UserDictionaryEntry(
+      term: term,
+      variations: variations,
+      category: _selectedCategory,
+    );
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await _dictionaryService.updateTerm(widget.userId, oldEntry.term, newEntry);
+      _termController.clear();
+      _variationsController.clear();
+      _loadDictionary();
+      widget.onDictionaryUpdated?.call();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('「${newEntry.term}」に更新しました'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Error in _updateTermInDialog: $e');
+      }
+      if (mounted) {
+        _showErrorDialog('用語の更新中にエラーが発生しました: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   void _showAddTermDialog() {
@@ -441,23 +595,24 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                                           final term = _customTerms[index];
                                           return ListTile(
                                             leading: CircleAvatar(
-                                              backgroundColor: _getCategoryColor(term['category']),
+                                              backgroundColor: _getCategoryColor(term.category),
                                               child: Text(
-                                                _getCategoryIcon(term['category']),
+                                                _getCategoryIcon(term.category),
                                                 style: TextStyle(color: Colors.white),
                                               ),
                                             ),
                                             title: Text(
-                                              term['term'],
+                                              term.term,
                                               style: TextStyle(fontWeight: FontWeight.bold),
                                             ),
                                             subtitle: Column(
                                               crossAxisAlignment: CrossAxisAlignment.start,
                                               children: [
-                                                if (term['variations'].isNotEmpty)
-                                                  Text('読み: ${term['variations'].join(', ')}'),
+                                                if (term.variations.isNotEmpty)
+                                                  Text('読み: ${term.variations.join(', ')}'),
                                                 Text(
-                                                  '${_categories[term['category']] ?? 'その他'} • 使用回数: ${term['usage_count']}回',
+                                                  // '${_categories[term.category] ?? 'その他'} • 使用回数: ${term.usageCount}回',
+                                                  '${_categories[term.category] ?? 'その他'}',
                                                   style: TextStyle(
                                                     fontSize: 12,
                                                     color: Colors.grey[600],
@@ -489,30 +644,12 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                                                 ),
                                               ],
                                               onSelected: (value) {
-                                                if (value == 'delete') {
-                                                  // 削除確認ダイアログ
-                                                  showDialog(
-                                                    context: context,
-                                                    builder: (context) => AlertDialog(
-                                                      title: Text('削除確認'),
-                                                      content: Text('「${term['term']}」を削除しますか？'),
-                                                      actions: [
-                                                        TextButton(
-                                                          onPressed: () => Navigator.pop(context),
-                                                          child: Text('キャンセル'),
-                                                        ),
-                                                        TextButton(
-                                                          onPressed: () {
-                                                            Navigator.pop(context);
-                                                            // TODO: 削除API呼び出し
-                                                          },
-                                                          child: Text('削除', style: TextStyle(color: Colors.red)),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  );
-                                                }
-                                              },
+                                                 if (value == 'edit') {
+                                                   _showEditTermDialog(term);
+                                                 } else if (value == 'delete') {
+                                                   _deleteTerm(term);
+                                                 }
+                                               },
                                             ),
                                           );
                                         },
