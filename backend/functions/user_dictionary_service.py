@@ -305,6 +305,107 @@ class UserDictionaryService:
         except Exception as e:
             logger.error(f"Failed to add custom term: {e}")
             return False
+
+    def update_custom_term(self, user_id: str, term: str, variations: List[str], category: str = "custom") -> bool:
+        """
+        カスタム用語を更新
+        
+        Args:
+            user_id (str): ユーザーID
+            term (str): 更新対象の用語
+            variations (List[str]): 新しい読み方のバリエーション
+            category (str): 新しいカテゴリ
+            
+        Returns:
+            bool: 成功可否
+        """
+        try:
+            if not self.db:
+                logger.warning("Firestore client not available")
+                return False
+            
+            doc_ref = self.db.collection('user_dictionaries').document(user_id)
+            doc = doc_ref.get()
+            
+            if not doc.exists:
+                logger.warning(f"User dictionary not found for user {user_id}")
+                return False
+                
+            data = doc.to_dict()
+            if 'custom_terms' not in data or term not in data['custom_terms']:
+                logger.warning(f"Term '{term}' not found in user dictionary for user {user_id}")
+                return False
+            
+            # 用語更新
+            term_obj = DictionaryTerm(
+                term=term,
+                variations=variations,
+                category=category,
+                phonetic_key=self.phonetic_matcher.get_phonetic_key(term),
+                # created_at は既存のものを維持、last_used は更新時に設定も可能
+                created_at=datetime.fromisoformat(data['custom_terms'][term]['created_at']) if data['custom_terms'][term].get('created_at') else datetime.now(),
+                last_used=datetime.now() # 更新時にも last_used を更新する例
+            )
+            data['custom_terms'][term] = term_obj.to_dict()
+            data['updated_at'] = datetime.now()
+            
+            doc_ref.set(data)
+            
+            cache_key = f"dict_{user_id}"
+            if cache_key in self.cache:
+                del self.cache[cache_key]
+            
+            logger.info(f"Custom term updated: {term} -> {variations}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to update custom term: {e}")
+            return False
+
+    def delete_custom_term(self, user_id: str, term: str) -> bool:
+        """
+        カスタム用語を削除
+        
+        Args:
+            user_id (str): ユーザーID
+            term (str): 削除対象の用語
+            
+        Returns:
+            bool: 成功可否
+        """
+        try:
+            if not self.db:
+                logger.warning("Firestore client not available")
+                return False
+            
+            doc_ref = self.db.collection('user_dictionaries').document(user_id)
+            doc = doc_ref.get()
+            
+            if not doc.exists:
+                logger.warning(f"User dictionary not found for user {user_id}")
+                return False
+                
+            data = doc.to_dict()
+            if 'custom_terms' not in data or term not in data['custom_terms']:
+                logger.warning(f"Term '{term}' not found in user dictionary for user {user_id}")
+                return False
+            
+            # 用語削除
+            del data['custom_terms'][term]
+            data['updated_at'] = datetime.now()
+            
+            doc_ref.set(data)
+            
+            cache_key = f"dict_{user_id}"
+            if cache_key in self.cache:
+                del self.cache[cache_key]
+            
+            logger.info(f"Custom term deleted: {term}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to delete custom term: {e}")
+            return False
     
     def get_speech_contexts(self, user_id: str = "default") -> List[str]:
         """

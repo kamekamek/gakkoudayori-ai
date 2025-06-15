@@ -28,12 +28,12 @@
 
 ## 1. API基本情報
 
-### 1.1 ベースURL
+### 1.1 ベースURL - 🔴 実装に基づく更新
 
 | 環境 | ベースURL |
 |------|----------|
-| 開発環境 | `https://yutori-api-dev.a.run.app` |
-| 本番環境 | `https://yutori-api.a.run.app` |
+| ローカル開発 | `http://localhost:8081` |
+| 本番環境 | `https://yutori-backend-944053509139.asia-northeast1.run.app` |
 
 ### 1.2 認証方式
 
@@ -77,198 +77,34 @@ Authorization: Bearer <token>
 
 ---
 
-## 2. 認証・ユーザー管理
+## ❌ 2. 認証・ユーザー管理（未実装）
 
-### 2.1 ユーザー情報取得
+以下の機能は現在未実装です：
 
-```http
-GET /api/v1/user/profile
-```
+- `GET /api/v1/user/profile` - ユーザー情報取得
+- `PUT /api/v1/user/profile` - ユーザー設定更新
 
-**レスポンス**:
-```json
-{
-  "success": true,
-  "data": {
-    "uid": "user123",
-    "email": "teacher@school.ed.jp",
-    "display_name": "田中 太郎",
-    "school_name": "○○小学校",
-    "class_name": "3年1組",
-    "created_at": "2025-01-01T00:00:00Z",
-    "updated_at": "2025-01-09T10:30:00Z",
-    "settings": {
-      "default_season": "spring",
-      "auto_save_interval": 30
-    }
-  }
-}
-```
-
-### 2.2 ユーザー設定更新
-
-```http
-PUT /api/v1/user/profile
-```
-
-**リクエスト**:
-```json
-{
-  "display_name": "田中 太郎",
-  "school_name": "○○小学校",
-  "class_name": "3年1組",
-  "settings": {
-    "default_season": "autumn",
-    "auto_save_interval": 60
-  }
-}
-```
-
-**レスポンス**:
-```json
-{
-  "success": true,
-  "data": {
-    "message": "プロフィールを更新しました"
-  }
-}
-```
+**実装方針**: 現在はFirebase Authenticationによる認証のみで、詳細なプロフィール管理は未実装。
 
 ---
 
-## 3. ドキュメント管理
+## ❌ 3. ドキュメント管理（未実装）
 
-### 3.1 ドキュメント一覧取得
+以下の機能は現在未実装です：
 
-```http
-GET /api/v1/documents?status=draft&limit=20&offset=0
-```
+- `GET /api/v1/documents` - ドキュメント一覧取得
+- `GET /api/v1/documents/{document_id}` - ドキュメント詳細取得
+- `POST /api/v1/documents` - ドキュメント作成
+- `PUT /api/v1/documents/{document_id}` - ドキュメント更新
+- `DELETE /api/v1/documents/{document_id}` - ドキュメント削除
 
-**クエリパラメータ**:
-| パラメータ | 型 | 必須 | 説明 |
-|-----------|---|------|------|
-| `status` | string | ❌ | `draft`, `published`, `archived` |
-| `limit` | integer | ❌ | 取得件数（デフォルト: 20, 最大: 100） |
-| `offset` | integer | ❌ | オフセット（デフォルト: 0） |
-| `search` | string | ❌ | タイトル・内容での検索 |
-
-**レスポンス**:
-```json
-{
-  "success": true,
-  "data": {
-    "documents": [
-      {
-        "id": "doc_123",
-        "title": "3年1組 学級通信 第5号",
-        "status": "draft",
-        "created_at": "2025-01-09T09:00:00Z",
-        "updated_at": "2025-01-09T10:30:00Z",
-        "preview_text": "今日は運動会の練習をしました...",
-        "word_count": 450,
-        "season_theme": "spring"
-      }
-    ],
-    "total_count": 45,
-    "has_more": true
-  }
-}
-```
-
-### 3.2 ドキュメント詳細取得
-
-```http
-GET /api/v1/documents/{document_id}
-```
-
-**レスポンス**:
-```json
-{
-  "success": true,
-  "data": {
-    "id": "doc_123",
-    "title": "3年1組 学級通信 第5号",
-    "status": "draft",
-    "html_content": "<h1>学級通信 第5号</h1><p>皆さんこんにちは...</p>",
-    "delta_json": "{\"ops\":[{\"insert\":\"学級通信 第5号\"},{\"attributes\":{\"header\":1},\"insert\":\"\\n\"}]}",
-    "created_at": "2025-01-09T09:00:00Z",
-    "updated_at": "2025-01-09T10:30:00Z",
-    "word_count": 450,
-    "season_theme": "spring",
-    "ai_metadata": {
-      "generated_at": "2025-01-09T09:00:00Z",
-      "model_version": "gemini-2.0-flash-exp",
-      "processing_time_ms": 1200
-    }
-  }
-}
-```
-
-### 3.3 ドキュメント作成
-
-```http
-POST /api/v1/documents
-```
-
-**リクエスト**:
-```json
-{
-  "title": "学級通信 6月号",
-  "html_content": "<h1>学級通信 6月号</h1><p>内容...</p>",
-  "delta_json": "{\"ops\":[...]}",
-  "season_theme": "summer",
-  "status": "draft"
-}
-```
-
-**レスポンス**:
-```json
-{
-  "success": true,
-  "data": {
-    "id": "doc_456",
-    "message": "ドキュメントを作成しました"
-  }
-}
-```
-
-### 3.4 ドキュメント更新
-
-```http
-PUT /api/v1/documents/{document_id}
-```
-
-**リクエスト**:
-```json
-{
-  "title": "学級通信 6月号（修正版）",
-  "html_content": "<h1>学級通信 6月号</h1><p>修正された内容...</p>",
-  "delta_json": "{\"ops\":[...]}",
-  "status": "published"
-}
-```
-
-### 3.5 ドキュメント削除
-
-```http
-DELETE /api/v1/documents/{document_id}
-```
-
-**レスポンス**:
-```json
-{
-  "success": true,
-  "data": {
-    "message": "ドキュメントを削除しました"
-  }
-}
-```
+**実装方針**: 現在はセッションベースの一時的な処理のみで、永続化されたドキュメント管理機能は未実装。
 
 ---
 
-## 4. AI機能
+## 4. AI機能 - 🔴 実装状況に基づく更新
 
-### 4.1 音声文字起こし
+### 4.1 音声文字起こし ✅ 実装済み
 
 ```http
 POST /api/v1/ai/transcribe
@@ -276,32 +112,114 @@ POST /api/v1/ai/transcribe
 
 **リクエスト** (multipart/form-data):
 ```
-audio_file: <audio_file.wav>
-language: "ja-JP"
-user_dictionary: ["運動会", "学習発表会", "田中太郎"]
+audio_file: <audio_file.webm>  # WebM/Opus形式（48kHz対応）
+user_id: "user123"
 ```
 
 **レスポンス**:
 ```json
 {
-  "success": true,
-  "data": {
-    "transcript": "今日は運動会の練習をしました。子どもたちはとても頑張っていました。",
-    "confidence": 0.95,
-    "processing_time_ms": 1200,
-    "sections": [
-      {
-        "title": "運動会練習について",
-        "content": "今日は運動会の練習をしました。",
-        "start_time": 0,
-        "end_time": 3.5
-      }
-    ]
+  "transcription": "今日は運動会の練習をしました。子どもたちはとても頑張っていました。",
+  "confidence": 0.95,
+  "corrected_text": "今日は運動会の練習をしました。子どもたちはとても頑張っていました。",
+  "corrections": [],
+  "audio_metadata": {
+    "duration_seconds": 15.5,
+    "format": "webm",
+    "sample_rate": 48000
   }
 }
 ```
 
-### 4.2 HTML生成
+### 4.2 音声フォーマット一覧 ✅ 実装済み
+
+```http
+GET /api/v1/ai/formats
+```
+
+**レスポンス**:
+```json
+{
+  "supported_formats": {
+    "webm": {
+      "codec": "opus",
+      "sample_rates": [48000],
+      "recommended": true
+    },
+    "wav": {
+      "sample_rates": [16000, 44100, 48000],
+      "recommended": false
+    }
+  }
+}
+```
+
+### 4.3 新フロー: 音声→JSON構造化 ✅ 実装済み
+
+```http
+POST /api/v1/ai/speech-to-json
+```
+
+**リクエスト**:
+```json
+{
+  "transcription": "今日は運動会の練習をしました。子どもたちはとても頑張っていました。",
+  "theme": "CLASSIC",
+  "user_id": "user123"
+}
+```
+
+**レスポンス**:
+```json
+{
+  "structured_data": {
+    "title": "運動会練習について",
+    "sections": [
+      {
+        "heading": "練習の様子",
+        "content": "子どもたちはとても頑張っていました",
+        "type": "narrative"
+      }
+    ],
+    "mood": "positive",
+    "season": "spring"
+  },
+  "processing_time_ms": 1200
+}
+```
+
+### 4.4 新フロー: JSON→HTMLグラレコ生成 ✅ 実装済み
+
+```http
+POST /api/v1/ai/json-to-graphical-record
+```
+
+**リクエスト**:
+```json
+{
+  "json_data": {
+    "title": "運動会練習について",
+    "sections": [{
+      "heading": "練習の様子",
+      "content": "子どもたちはとても頑張っていました",
+      "type": "narrative"
+    }]
+  },
+  "template_name": "colorful",
+  "user_id": "user123"
+}
+```
+
+**レスポンス**:
+```json
+{
+  "html_content": "<div class='newsletter-container colorful-theme'>...</div>",
+  "template_used": "colorful",
+  "processing_time_ms": 800
+}
+```
+
+### 4.5 従来フロー: HTML生成（制約付き） ✅ 実装済み
 
 ```http
 POST /api/v1/ai/generate-html
@@ -310,241 +228,232 @@ POST /api/v1/ai/generate-html
 **リクエスト**:
 ```json
 {
-  "transcript": "今日は運動会の練習をしました。子どもたちはとても頑張っていました。",
-  "custom_instruction": "やさしい語り口で",
-  "season_theme": "spring",
-  "document_type": "class_newsletter",
-  "constraints": {
-    "allowed_tags": ["h1", "h2", "h3", "p", "ul", "ol", "li", "strong", "em", "br"],
-    "max_word_count": 800
-  }
+  "text_content": "今日は運動会の練習をしました。子どもたちはとても頑張っていました。",
+  "additional_instructions": "やさしい語り口で",
+  "user_id": "user123"
 }
 ```
 
 **レスポンス**:
 ```json
 {
-  "success": true,
-  "data": {
-    "html_content": "<h1>学級通信 6月号</h1><h2>運動会練習について</h2><p>今日は運動会の練習をしました...</p>",
-    "delta_json": "{\"ops\":[{\"insert\":\"学級通信 6月号\"},{\"attributes\":{\"header\":1},\"insert\":\"\\n\"}]}",
-    "sections": [
-      {
-        "title": "運動会練習について",
-        "type": "content"
-      }
-    ],
-    "ai_metadata": {
-      "model": "gemini-2.0-flash-exp",
-      "processing_time_ms": 800,
-      "word_count": 450,
-      "confidence": 0.92
-    }
-  }
+  "html_content": "<h1>学級通信</h1><h2>運動会練習について</h2><p>今日は運動会の練習をしました...</p>",
+  "filtered_content": "<h1>学級通信</h1><h2>運動会練習について</h2><p>今日は運動会の練習をしました...</p>",
+  "filter_info": {
+    "removed_tags": [],
+    "filtered": false
+  },
+  "processing_time_ms": 800
 }
 ```
 
-### 4.3 AI補助機能
+### 4.6 学級通信生成（統合版） ✅ 実装済み
 
 ```http
-POST /api/v1/ai/assist
+POST /api/v1/ai/generate-newsletter
 ```
 
 **リクエスト**:
 ```json
 {
-  "action": "rewrite",
-  "selected_text": "今日は運動会の練習をしました。",
-  "instruction": "もっと詳しく書いて",
-  "context": {
-    "document_title": "学級通信 6月号",
-    "surrounding_text": "...前後の文脈..."
-  }
+  "transcription": "今日は運動会の練習をしました。",
+  "season": "spring",
+  "additional_instructions": "やさしい語り口で",
+  "user_id": "user123"
 }
 ```
 
-**アクション種別**:
-| アクション | 説明 |
-|-----------|------|
-| `rewrite` | 文章をリライト |
-| `expand` | 内容を詳しく展開 |
-| `summarize` | 要約 |
-| `generate_heading` | 見出し生成 |
-| `add_greeting` | 挨拶文追加 |
-| `add_schedule` | 予定表追加 |
+### 4.7 ニューズレターテンプレート一覧 ✅ 実装済み
+
+```http
+GET /api/v1/ai/newsletter-templates
+```
 
 **レスポンス**:
 ```json
 {
-  "success": true,
-  "data": {
-    "suggestions": [
-      {
-        "text": "本日は運動会に向けた練習を行いました。子どもたちは真剣に取り組み、素晴らしい成長を見せてくれました。",
-        "confidence": 0.95,
-        "explanation": "より詳細で丁寧な表現に変更しました"
-      },
-      {
-        "text": "今日の運動会練習では、リレーとダンスの練習を中心に行いました。",
-        "confidence": 0.88,
-        "explanation": "具体的な練習内容を追加しました"
-      }
-    ],
-    "original_text": "今日は運動会の練習をしました。",
-    "processing_time_ms": 600
+  "templates": [
+    {
+      "id": "spring_basic",
+      "name": "春の基本テンプレート",
+      "season": "spring"
+    }
+  ]
+}
+```
+
+## 🔴 5. ユーザー辞書機能 - 新たに実装済み
+
+### 5.1 ユーザー辞書取得 ✅ 実装済み
+
+```http
+GET /api/v1/dictionary/{user_id}
+```
+
+**レスポンス**:
+```json
+{
+  "default_terms": {
+    "運動会": ["うんどうかい", "ウンドウカイ"]
+  },
+  "custom_terms": {
+    "田中太郎": ["たなかたろう", "タナカタロウ"]
+  },
+  "stats": {
+    "total_terms": 209,
+    "custom_terms_count": 1,
+    "last_updated": "2025-01-09T10:30:00Z"
   }
 }
+```
+
+### 5.2 カスタム用語追加 ✅ 実装済み
+
+```http
+POST /api/v1/dictionary/{user_id}/terms
+```
+
+**リクエスト**:
+```json
+{
+  "term": "田中太郎",
+  "pronunciations": ["たなかたろう", "タナカタロウ"]
+}
+```
+
+### 5.3 用語更新・削除 ✅ 実装済み
+
+```http
+PUT /api/v1/dictionary/{user_id}/terms/{term_name}
+DELETE /api/v1/dictionary/{user_id}/terms/{term_name}
+```
+
+### 5.4 音声認識修正・学習機能 ✅ 実装済み
+
+```http
+POST /api/v1/dictionary/{user_id}/correct
+POST /api/v1/dictionary/{user_id}/learn
+POST /api/v1/dictionary/{user_id}/suggest
+```
+
+### 5.5 辞書統計情報 ✅ 実装済み
+
+```http
+GET /api/v1/dictionary/{user_id}/stats
 ```
 
 ---
 
-## 5. 出力・配信
+## 6. PDF生成・管理 - 🔴 実装状況に基づく更新
 
-### 5.1 PDF生成
+### 6.1 PDF生成 ✅ 実装済み
 
 ```http
-POST /api/v1/export/pdf
+POST /api/v1/ai/generate-pdf
 ```
 
 **リクエスト**:
 ```json
 {
-  "document_id": "doc_123",
-  "format_options": {
-    "page_size": "A4",
-    "margin": "20mm",
-    "include_header": true,
-    "include_footer": true,
-    "season_theme": "spring"
-  }
+  "html_content": "<h1>学級通信</h1><p>内容...</p>",
+  "filename": "newsletter_2025_06",
+  "user_id": "user123"
 }
 ```
 
 **レスポンス**:
 ```json
 {
-  "success": true,
-  "data": {
-    "pdf_url": "https://storage.googleapis.com/yutori-storage/documents/doc_123/output.pdf",
-    "expires_at": "2025-01-10T10:30:00Z",
-    "file_size_bytes": 245760,
-    "processing_time_ms": 2000
-  }
+  "pdf_data": "<base64_encoded_pdf_content>",
+  "filename": "newsletter_2025_06.pdf",
+  "file_size_bytes": 245760,
+  "processing_time_ms": 2000
 }
 ```
 
-### 5.2 Google Drive保存
+### 6.2 PDF情報取得 ✅ 実装済み
 
 ```http
-POST /api/v1/export/drive
-```
-
-**リクエスト**:
-```json
-{
-  "document_id": "doc_123",
-  "drive_folder_id": "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms",
-  "file_name": "学級通信_第5号_2025年6月"
-}
+GET /api/v1/ai/pdf-info/{pdf_id}
 ```
 
 **レスポンス**:
 ```json
 {
-  "success": true,
-  "data": {
-    "drive_file_id": "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms",
-    "drive_link": "https://drive.google.com/file/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/view",
-    "shared_link": "https://drive.google.com/file/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/view?usp=sharing"
-  }
+  "pdf_id": "pdf_123",
+  "filename": "newsletter_2025_06.pdf",
+  "created_at": "2025-01-09T10:30:00Z",
+  "file_size_bytes": 245760,
+  "status": "ready"
 }
 ```
 
-### 5.3 Google Classroom投稿
+### ❌ 未実装機能（将来実装予定）
 
-```http
-POST /api/v1/export/classroom
-```
+以下の機能は現在未実装です：
 
-**リクエスト**:
-```json
-{
-  "document_id": "doc_123",
-  "course_id": "123456789",
-  "post_options": {
-    "title": "学級通信 第5号",
-    "description": "6月の学級通信をお届けします",
-    "schedule_time": "2025-06-15T08:00:00Z"
-  }
-}
-```
-
-**レスポンス**:
-```json
-{
-  "success": true,
-  "data": {
-    "post_id": "CgkI4_DY8gEQdhIKCMjjj7CFAhCtAQ",
-    "classroom_link": "https://classroom.google.com/c/123456789/p/CgkI4_DY8gEQdhIKCMjjj7CFAhCtAQ/details",
-    "scheduled_time": "2025-06-15T08:00:00Z"
-  }
-}
-```
+- `POST /api/v1/export/drive` - Google Drive保存
+- `POST /api/v1/export/classroom` - Google Classroom投稿
 
 ---
 
-## 6. システム・ユーティリティ
+## 7. システム・ユーティリティ - 🔴 実装状況に基づく更新
 
-### 6.1 ヘルスチェック
+### 7.1 ルートヘルスチェック ✅ 実装済み
 
 ```http
-GET /api/v1/health
+GET /
 ```
 
 **レスポンス**:
 ```json
 {
-  "success": true,
-  "data": {
-    "status": "healthy",
-    "version": "1.0.0",
-    "environment": "production",
-    "services": {
-      "database": "healthy",
-      "storage": "healthy",
-      "ai": "healthy",
-      "auth": "healthy"
-    },
-    "timestamp": "2025-01-09T10:30:00Z"
-  }
+  "message": "ゆとり職員室 API Server is running",
+  "status": "healthy",
+  "timestamp": "2025-01-09T10:30:00Z"
 }
 ```
 
-### 6.2 使用統計
+### 7.2 詳細ヘルスチェック ✅ 実装済み
 
 ```http
-GET /api/v1/usage/stats
+GET /health
 ```
 
 **レスポンス**:
 ```json
 {
-  "success": true,
-  "data": {
-    "current_period": {
-      "documents_created": 15,
-      "ai_generations": 42,
-      "pdfs_generated": 12,
-      "storage_used_mb": 256
-    },
-    "limits": {
-      "documents_per_month": 100,
-      "ai_generations_per_month": 500,
-      "storage_limit_mb": 1024
-    }
+  "status": "healthy",
+  "services": {
+    "firebase": "connected",
+    "speech_to_text": "available",
+    "vertex_ai": "available"
+  },
+  "timestamp": "2025-01-09T10:30:00Z"
+}
+```
+
+### 7.3 Firebase設定情報 ✅ 実装済み
+
+```http
+GET /config
+```
+
+**レスポンス**:
+```json
+{
+  "firebase_config": {
+    "project_id": "yutori-kyoshitu",
+    "status": "initialized"
   }
 }
 ```
+
+### ❌ 未実装機能（将来実装予定）
+
+以下の機能は現在未実装です：
+
+- `GET /api/v1/usage/stats` - 使用統計
 
 ---
 

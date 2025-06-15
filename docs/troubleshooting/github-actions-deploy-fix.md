@@ -14,6 +14,13 @@ ERROR: (gcloud.builds.submit) The user is forbidden from accessing the bucket [g
 Please check your organization's policy or if the user has the "serviceusage.services.use" permission.
 ```
 
+### 3. VPC Service Controls エラー ⭐ NEW
+```
+The build is running, and logs are being written to the default logs bucket.
+This tool can only stream logs if you are Viewer/Owner of the project and, if applicable, allowed by your VPC-SC security policy.
+The default logs bucket is always outside any VPC-SC security perimeter.
+```
+
 ## 🔧 修正内容
 
 ### 1. シェルスクリプト構文エラーの修正
@@ -74,12 +81,33 @@ gcloud projects add-iam-policy-binding gakkoudayori-ai \
     --role="roles/run.admin"
 ```
 
+### 3. VPC Service Controls エラーの対処 ⭐ NEW
+
+**問題**: VPC Service Controlsのセキュリティポリシーにより、デフォルトのCloud Storageログバケットにアクセスできない。
+
+**修正**: Cloud Buildのログ出力先をCloud Loggingに変更
+
+```yaml
+# 修正前
+gcloud builds submit --tag gcr.io/gakkoudayori-ai/yutori-backend-staging:latest .
+
+# 修正後
+gcloud builds submit --tag gcr.io/gakkoudayori-ai/yutori-backend-staging:latest . \
+  --logging=CLOUD_LOGGING_ONLY
+```
+
+**参考**: [Google Cloud Build VPC Service Controls documentation](https://cloud.google.com/build/docs/private-pools/using-vpc-service-controls)
+
+**代替案**:
+- カスタムCloud Storageバケットを作成してVPC Service Controlsペリメーター内に配置
+- プライベートプールを使用する場合は、適切なネットワーク設定を行う
+
 ## 📋 修正後の確認手順
 
 1. **ワークフローファイルの確認**
    ```bash
    git add .github/workflows/ci-cd.yml
-   git commit -m "🔧 Fix: GitHub Actions shell script syntax error"
+   git commit -m "🔧 Fix: VPC Service Controls logging issue"
    git push origin develop
    ```
 
@@ -105,8 +133,13 @@ gcloud projects add-iam-policy-binding gakkoudayori-ai \
    - 本番デプロイ前にステージング環境でテスト
    - CI/CDパイプラインの動作確認
 
+4. **VPC Service Controls対応** ⭐ NEW
+   - Cloud Buildログの出力先を適切に設定
+   - セキュリティポリシーに準拠したログ管理
+
 ## 📝 関連ドキュメント
 
 - [Google Cloud Build IAM 権限](https://cloud.google.com/build/docs/iam-roles-permissions)
 - [GitHub Actions シークレット管理](https://docs.github.com/en/actions/security-guides/encrypted-secrets)
-- [Firebase Hosting GitHub Actions](https://github.com/FirebaseExtended/action-hosting-deploy) 
+- [Firebase Hosting GitHub Actions](https://github.com/FirebaseExtended/action-hosting-deploy)
+- [VPC Service Controls with Cloud Build](https://cloud.google.com/build/docs/private-pools/using-vpc-service-controls) ⭐ NEW 
