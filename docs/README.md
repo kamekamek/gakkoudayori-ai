@@ -19,18 +19,25 @@
 
 ## 📋 ドキュメント構成
 
+### 🎯 **プロジェクト管理**
+- **[📝 要件定義書](01_REQUIREMENT_overview.md)** - 14機能要件・画面設計・ユーザーストーリー
+- **[📋 タスク管理](TASK.md)** - 全62タスク完了履歴・実装詳細・進捗管理
+- **[📏 ハッカソンルール](HACKASON_RULES.md)** - 制約・技術要件・審査基準
+
 ### 🚀 **開発者向け**
-- **[📋 開発ガイド](development_guide.md)** - 環境構築・開発手順
-- **[🏗️ システム設計](system_architecture.md)** - 技術アーキテクチャ
-- **[🧪 テストガイド](testing_guide.md)** - テスト実行・品質管理
+- **[📋 開発ガイド](development_guide.md)** - 環境構築・開発手順・トラブルシューティング
+- **[🏗️ システム設計](system_architecture.md)** - 技術アーキテクチャ・API・データベース設計
+- **[🔄 CI/CD設定](CI_CD_SETUP.md)** - GitHub Actions・デプロイ自動化
 
-### 📖 **プロジェクト管理**
+### 📖 **設計・仕様書**
+- **[🎨 ユーザーフロー設計](94_USER_FLOW_DESIGN.md)** - UI/UX設計・画面遷移
+- **[🤖 Gemini技術仕様](95_GEMINI_TECHNICAL_SPECIFICATION.md)** - AI生成・プロンプト設計
 - **[📊 プロジェクト完了報告](archive/PROJECT_COMPLETION_SUMMARY.md)** - 最終成果物
-- **[📋 完了タスク一覧](TASK.md)** - 全実装タスク履歴
 
-### 🎯 **ハッカソン関連**
-- **[📏 ハッカソンルール](HACKASON_RULES.md)** - 制約・技術要件
-- **[🏆 要件適合性](requirements_compliance.md)** - 必須条件達成状況
+### 🔧 **実装ガイド**
+- **[🔗 API統合ガイド](41_GUIDE_frontend_backend_api_integration_user_dictionary.md)** - フロントエンド・バックエンド連携
+- **[🏥 ヘルスチェック](41_GUIDE_health_check_debugging_lessons.md)** - デバッグ・監視手順
+- **[🔥 Firestore初期化](40_GUIDE_firestore_initialization_debugging_lessons.md)** - データベース設定
 
 ---
 
@@ -71,12 +78,12 @@ make lint
 **🏆 全62タスク完了 (100%) - プロジェクト完成** ✅
 
 ### 完成機能
-1. ✅ **音声入力システム** - Web Audio API統合
-2. ✅ **AI文章生成** - Gemini Pro完全統合  
-3. ✅ **WYSIWYGエディタ** - Quill.js Delta/HTML統合
-4. ✅ **PDF出力配信** - WeasyPrint高品質生成
-5. ✅ **Firebase統合** - 認証・ストレージ・DB連携
-6. ✅ **レスポンシブUI** - PC/タブレット/モバイル対応
+1. ✅ **音声入力システム** - Web Audio API統合・STT連携
+2. ✅ **AI文章生成** - Gemini Pro完全統合・学級通信特化
+3. ✅ **WYSIWYGエディタ** - Quill.js・Delta/HTML変換・季節テーマ
+4. ✅ **PDF出力配信** - WeasyPrint・日本語フォント・A4最適化
+5. ✅ **Firebase統合** - 認証・Firestore・Storage完全連携
+6. ✅ **レスポンシブUI** - PC/タブレット/モバイル完全対応
 
 ### ハッカソン要件達成
 - ✅ **Google Cloud Platform** - Vertex AI + Speech-to-Text
@@ -87,9 +94,20 @@ make lint
 
 ## 📞 サポート
 
+### **新規参加者**
+1. **[📝 要件定義書](01_REQUIREMENT_overview.md)** - プロジェクト全体理解
+2. **[📋 開発ガイド](development_guide.md)** - 環境構築・開発手順
+3. **[🏗️ システム設計](system_architecture.md)** - 技術アーキテクチャ
+
+### **開発者**
 - **技術的質問**: [システム設計書](system_architecture.md)参照
 - **開発手順**: [開発ガイド](development_guide.md)参照
-- **プロジェクト履歴**: [完了報告書](archive/PROJECT_COMPLETION_SUMMARY.md)参照
+- **実装詳細**: [タスク管理](TASK.md)参照
+
+### **プロジェクト管理者**
+- **進捗確認**: [タスク管理](TASK.md)参照
+- **要件確認**: [要件定義書](01_REQUIREMENT_overview.md)参照
+- **完了報告**: [プロジェクト完了報告](archive/PROJECT_COMPLETION_SUMMARY.md)参照
 
 ---
 
