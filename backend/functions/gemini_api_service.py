@@ -107,13 +107,15 @@ def get_gemini_client(
     start_time = time.time()
     
     try:
-        # GCP認証情報を初期化 (Cloud Run環境ではデフォルト認証を使用)
-        if credentials_path and os.path.exists(credentials_path):
+        # Cloud Run環境ではデフォルト認証を使用、ローカル環境では認証ファイルを使用
+        if os.getenv('K_SERVICE'):
+            logger.info("Detected Cloud Run environment, using default credentials")
+        elif credentials_path and os.path.exists(credentials_path):
             if not initialize_gcp_credentials(credentials_path):
                 logger.error("Failed to initialize GCP credentials")
                 return None
         else:
-            logger.info("Using default credentials (Cloud Run environment)")
+            logger.info("Using default credentials")
         
         # Vertex AI初期化
         vertexai.init(project=project_id, location=location)

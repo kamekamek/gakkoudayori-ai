@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'dart:convert';
 import 'services/audio_service.dart';
 import 'services/graphical_record_service.dart';
 import 'services/user_dictionary_service.dart';
-import 'widgets/html_preview_widget.dart';
 import 'widgets/print_preview_widget.dart';
 import 'widgets/user_dictionary_widget.dart';
 
 import 'dart:html' as html;
-import 'package:http/http.dart' as http;
 
 /// 学級通信AI - レスポンシブ対応版
 void main() {
@@ -19,7 +15,7 @@ void main() {
 }
 
 class YutoriKyoshituApp extends StatelessWidget {
-  const YutoriKyoshituApp({Key? key}) : super(key: key);
+  const YutoriKyoshituApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +33,7 @@ class YutoriKyoshituApp extends StatelessWidget {
 }
 
 class ResponsiveHomePage extends StatefulWidget {
-  const ResponsiveHomePage({Key? key}) : super(key: key);
+  const ResponsiveHomePage({super.key});
 
   @override
   ResponsiveHomePageState createState() => ResponsiveHomePageState();
@@ -110,23 +106,23 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
     });
 
     // sample.htmlの内容をプレビューに表示
-    print('🚀 [Init] initState完了 - sample.html読み込み開始');
+    debugPrint('🚀 [Init] initState完了 - sample.html読み込み開始');
     _loadSampleHtml();
   }
 
   /// sample.htmlの内容を読み込んでプレビューに表示
   Future<void> _loadSampleHtml() async {
     try {
-      print('🚀 [Sample] _loadSampleHtml開始');
+      debugPrint('🚀 [Sample] _loadSampleHtml開始');
       final String sampleHtml = await rootBundle.loadString('web/sample.html');
-      print('✅ [Sample] sample.htmlアセット読み込み成功');
+      debugPrint('✅ [Sample] sample.htmlアセット読み込み成功');
       setState(() {
         _generatedHtml = sampleHtml;
         _statusMessage = '📄 サンプル学級通信を表示しています';
       });
-      print('✅ [Sample] sample.htmlをプレビューに読み込み完了');
+      debugPrint('✅ [Sample] sample.htmlをプレビューに読み込み完了');
     } catch (e) {
-      print('❌ [Sample] sample.html読み込みエラー: $e');
+      debugPrint('❌ [Sample] sample.html読み込みエラー: $e');
       setState(() {
         _statusMessage = '❌ サンプル読み込みエラー: $e';
       });
@@ -415,7 +411,6 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
         });
         // スタイル選択のみで、生成は明示的なボタンで行う
       },
-      child: Text(label),
       style: ElevatedButton.styleFrom(
         backgroundColor: isSelected ? Colors.blue[700] : Colors.grey[300],
         foregroundColor: isSelected ? Colors.white : Colors.black,
@@ -424,6 +419,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
           borderRadius: BorderRadius.circular(8),
         ),
       ),
+      child: Text(label),
     );
   }
 
@@ -499,7 +495,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                 borderRadius: BorderRadius.circular(8),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                     blurRadius: 10,
                     offset: Offset(0, 4),
                   )
@@ -614,7 +610,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
       if (result.success && result.pdfData != null) {
         final blob = html.Blob([result.pdfData!], 'application/pdf');
         final url = html.Url.createObjectUrlFromBlob(blob);
-        final anchor = html.AnchorElement(href: url)
+        html.AnchorElement(href: url)
           ..setAttribute("download", "GakkyuTsuushin.pdf")
           ..click();
         html.Url.revokeObjectUrl(url);
@@ -625,7 +621,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
         throw Exception(result.error ?? 'PDF data is null.');
       }
     } catch (e) {
-      print('❌ PDF生成/ダウンロードエラー: $e');
+      debugPrint('❌ PDF生成/ダウンロードエラー: $e');
       setState(() {
         _statusMessage = '❌ PDFの生成に失敗しました: $e';
       });
