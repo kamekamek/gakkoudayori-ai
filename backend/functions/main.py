@@ -3,6 +3,8 @@
 # Deploy with `firebase deploy`
 
 from firebase_functions import https_fn
+from datetime import datetime
+from google.cloud import speech  # speechモジュールをインポート
 from firebase_admin import initialize_app
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -183,7 +185,8 @@ def transcribe_audio():
             language_code=language_code,
             sample_rate_hertz=sample_rate,
             speech_contexts=speech_contexts,
-            user_id=user_id
+            user_id=user_id,
+            encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16 if validation_result.get('format') == 'WAV' else speech.RecognitionConfig.AudioEncoding.WEBM_OPUS  # ファイル形式に応じてエンコーディングを設定 (デフォルトはWEBM_OPUS)
         )
         
         # ユーザー辞書でポストプロセシング
@@ -322,6 +325,67 @@ def add_custom_term(user_id: str):
             'error': str(e),
             'error_type': type(e).__name__
         }), 500
+
+@app.route('/api/v1/dictionary/<user_id>/terms/<term_name>', methods=['PUT'])
+def update_user_dictionary_term(user_id: str, term_name: str):
+    """ユーザー辞書の特定の用語を更新"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'No JSON data provided'}), 400
+        
+        variations = data.get('variations')
+        category = data.get('category', 'custom')
+        
+        if variations is None: # variations は空リストを許容するが、キー自体がないのはエラー
+            return jsonify({'success': False, 'error': 'Variations are required'}), 400
+
+        firestore_client = get_firestore_client()
+        dict_service = create_user_dictionary_service(firestore_client)
+        
+        success = dict_service.update_custom_term(user_id, term_name, variations, category)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'data': {
+                    'term': term_name,
+                    'variations': variations,
+                    'category': category,
+                    'message': f'Term "{term_name}" updated successfully.'
+                }
+            })
+        else:
+            # サービス側で term が見つからない場合などは False が返るので、それを適切に処理
+            return jsonify({'success': False, 'error': f'Failed to update term "{term_name}". It might not exist or an internal error occurred.'}), 404 # もしくは500
+            
+    except Exception as e:
+        logger.error(f"Update custom term error for term '{term_name}': {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e), 'error_type': type(e).__name__}), 500
+
+@app.route('/api/v1/dictionary/<user_id>/terms/<term_name>', methods=['DELETE'])
+def delete_user_dictionary_term(user_id: str, term_name: str):
+    """ユーザー辞書の特定の用語を削除"""
+    try:
+        firestore_client = get_firestore_client()
+        dict_service = create_user_dictionary_service(firestore_client)
+        
+        success = dict_service.delete_custom_term(user_id, term_name)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'data': {
+                    'term': term_name,
+                    'message': f'Term "{term_name}" deleted successfully.'
+                }
+            })
+        else:
+            return jsonify({'success': False, 'error': f'Failed to delete term "{term_name}". It might not exist or an internal error occurred.'}), 404 # もしくは500
+
+    except Exception as e:
+        logger.error(f"Delete custom term error for term '{term_name}': {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e), 'error_type': type(e).__name__}), 500
 
 @app.route('/api/v1/dictionary/<user_id>/correct', methods=['POST'])
 def correct_transcription(user_id: str):
