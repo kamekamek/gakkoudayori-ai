@@ -26,10 +26,10 @@
 
 ### 📖 **プロジェクト管理**
 - **[📊 プロジェクト完了報告](archive/PROJECT_COMPLETION_SUMMARY.md)** - 最終成果物
-- **[📋 完了タスク一覧](archive/tasks_completed.md)** - 全実装タスク履歴
+- **[📋 完了タスク一覧](TASK.md)** - 全実装タスク履歴
 
 ### 🎯 **ハッカソン関連**
-- **[📏 ハッカソンルール](hackason_rule.md)** - 制約・技術要件
+- **[📏 ハッカソンルール](HACKASON_RULES.md)** - 制約・技術要件
 - **[🏆 要件適合性](requirements_compliance.md)** - 必須条件達成状況
 
 ---
