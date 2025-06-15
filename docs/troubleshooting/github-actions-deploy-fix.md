@@ -142,4 +142,110 @@ gcloud builds submit --tag gcr.io/gakkoudayori-ai/yutori-backend-staging:latest 
 - [Google Cloud Build IAM 権限](https://cloud.google.com/build/docs/iam-roles-permissions)
 - [GitHub Actions シークレット管理](https://docs.github.com/en/actions/security-guides/encrypted-secrets)
 - [Firebase Hosting GitHub Actions](https://github.com/FirebaseExtended/action-hosting-deploy)
-- [VPC Service Controls with Cloud Build](https://cloud.google.com/build/docs/private-pools/using-vpc-service-controls) ⭐ NEW 
+- [VPC Service Controls with Cloud Build](https://cloud.google.com/build/docs/private-pools/using-vpc-service-controls) ⭐ NEW
+
+# 🔧 GitHub Actions Firebase Hosting デプロイエラー修正
+
+## 📅 発生日時
+2025-06-15
+
+## 🚨 エラー概要
+
+Firebase Hosting デプロイ時に以下のエラーが発生：
+
+### 1. GitHub Token権限エラー
+```
+RequestError [HttpError]: Resource not accessible by integration
+status: 403
+url: 'https://api.github.com/repos/kamekamek/yutorikyoshitu/check-runs'
+x-accepted-github-permissions: 'checks=write'
+```
+
+### 2. channelID必須エラー
+```
+Error: channelID is currently required
+The process '/usr/local/bin/npx' failed with exit code 1
+```
+
+## 🔍 原因分析
+
+### 1. **GitHub Token権限不足**
+- Firebase Hosting Deployアクションが`checks:write`権限を必要とする
+- ワークフローに`permissions`セクションが設定されていなかった
+- デフォルトの`GITHUB_TOKEN`では権限が不足
+
+### 2. **channelId設定問題**
+- プレビューデプロイで`channelId: pr-17`が設定されているが、Firebase CLIコマンドに正しく渡されていない
+- **本番デプロイで`channelId`が未設定**（最新版では必須パラメータ）
+- `entryPoint`パラメータが明示的に設定されていなかった
+
+## ✅ 修正内容
+
+### 1. permissions追加
+各デプロイジョブに以下を追加：
+
+```yaml
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write  # プレビューデプロイのみ
+```
+
+### 2. channelId設定とentryPoint明示設定
+Firebase Hosting Deployアクションに以下を追加：
+
+**プレビューデプロイ**:
+```yaml
+- name: 👀 プレビューデプロイ
+  uses: FirebaseExtended/action-hosting-deploy@v0
+  with:
+    repoToken: '${{ secrets.GITHUB_TOKEN }}'
+    firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}'
+    channelId: pr-${{ github.event.number }}
+    expires: 7d
+    projectId: gakkoudayori-ai
+    entryPoint: .  # 追加
+```
+
+**本番デプロイ**:
+```yaml
+- name: 🌐 フロントエンドデプロイ（本番）
+  uses: FirebaseExtended/action-hosting-deploy@v0
+  with:
+    repoToken: '${{ secrets.GITHUB_TOKEN }}'
+    firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}'
+    projectId: gakkoudayori-ai
+    channelId: live  # 本番環境用に追加
+    entryPoint: .    # 追加
+```
+
+## 🎯 修正後の期待動作
+
+1. **ステージングデプロイ**: `develop`ブランチプッシュ時に自動実行
+2. **本番デプロイ**: `main`ブランチプッシュ時に自動実行  
+3. **プレビューデプロイ**: プルリクエスト作成時に自動実行
+4. **権限エラー解消**: `checks:write`権限でGitHub APIアクセス可能
+5. **channelId正常動作**: プレビューチャンネルが正しく作成される
+
+## 📋 確認チェックリスト
+
+- [x] `permissions`セクション追加（全デプロイジョブ）
+- [x] `entryPoint: .`設定追加
+- [x] プレビューデプロイに`pull-requests: write`権限追加
+- [x] 本番デプロイに`channelId: live`追加
+- [ ] 次回デプロイ時の動作確認
+- [ ] プレビューURL生成確認
+- [ ] LINE通知動作確認
+
+## 🔗 関連リンク
+
+- [Firebase Hosting Deploy Action](https://github.com/FirebaseExtended/action-hosting-deploy)
+- [GitHub Actions Permissions](https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs)
+- [Firebase CLI Channel Deploy](https://firebase.google.com/docs/hosting/multisites#deploy_to_a_preview_channel)
+
+## 📝 今後の対策
+
+1. **定期的なアクション更新**: Firebase Hosting Deployアクションの最新版確認
+2. **権限設定の標準化**: 新しいワークフロー作成時の権限設定チェックリスト作成
+3. **エラーモニタリング**: デプロイ失敗時の自動通知設定
+4. **ドキュメント更新**: トラブルシューティング事例の蓄積 
