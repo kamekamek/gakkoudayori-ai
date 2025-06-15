@@ -42,11 +42,11 @@ pytest                           # Run tests
 flake8 . && black .              # Lint and format
 ```
 
-# ゆとり職員室 - Claude Code Action ガイドライン
+# 学校だよりAI - Claude Code Action ガイドライン
 
 ## 🎯 プロジェクト概要
 
-**ゆとり職員室**は、HTMLベースのグラフィックレコーディング風学級通信作成システムです。教師が音声入力とAIを活用して、効率的に魅力的な学級通信を作成できるWebアプリケーションです。
+**学校だよりAI**は、HTMLベースのグラフィックレコーディング風学級通信作成システムです。教師が音声入力とAIを活用して、効率的に魅力的な学級通信を作成できるWebアプリケーションです。
 
 ### 主要技術スタック
 - **フロントエンド**: Flutter Web
@@ -72,7 +72,7 @@ flake8 . && black .              # Lint and format
 ### 📁 プロジェクト構造
 **実際のプロジェクト構造 (Clean Architecture + Feature-First)**
 ```
-yutorikyoshitu/
+gakkoudayori-ai/
 ├── frontend/                    # Flutter Web アプリ
 │   ├── lib/
 │   │   ├── app/                # アプリケーション層

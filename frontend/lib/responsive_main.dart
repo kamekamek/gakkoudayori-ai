@@ -8,19 +8,19 @@ import 'widgets/user_dictionary_widget.dart';
 
 import 'dart:html' as html;
 
-/// 学級通信AI - レスポンシブ対応版
+/// 学校だよりAI - レスポンシブ対応版
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(YutoriKyoshituApp());
+  runApp(GakkouDayoriAiApp());
 }
 
-class YutoriKyoshituApp extends StatelessWidget {
-  const YutoriKyoshituApp({super.key});
+class GakkouDayoriAiApp extends StatelessWidget {
+  const GakkouDayoriAiApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '学級通信エディタ',
+      title: '学校だよりAI',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,

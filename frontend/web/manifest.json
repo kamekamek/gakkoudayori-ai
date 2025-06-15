@@ -1,11 +1,11 @@
 {
-    "name": "yutori_kyoshitu",
-    "short_name": "yutori_kyoshitu",
+    "name": "学校だよりAI",
+    "short_name": "学校だよりAI",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "学校だよりAI - 音声入力で学級通信を自動生成",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

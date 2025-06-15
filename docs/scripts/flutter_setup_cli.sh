@@ -57,7 +57,7 @@ cd frontend
 # Flutter プロジェクト初期化確認
 if [ ! -f "pubspec.yaml" ]; then
     print_warning "Flutter プロジェクトを初期化中..."
-    flutter create . --project-name yutori_kyoshitu --org jp.kyoshitu.yutori
+    flutter create . --project-name gakkoudayori_ai --org ai.gakkoudayori
     print_status "Flutter プロジェクト初期化完了"
 else
     print_status "Flutter プロジェクトは既に存在します"
@@ -67,7 +67,7 @@ fi
 echo "📦 依存関係更新中..."
 
 cat > pubspec.yaml << 'EOF'
-name: yutori_kyoshitu
+name: gakkoudayori_ai
 description: 学校だよりAI - 音声入力で学級通信を自動生成
 publish_to: 'none'
 version: 1.0.0+1
@@ -336,13 +336,13 @@ void main() async {
   
   runApp(
     const ProviderScope(
-      child: YutoriKyoshituApp(),
+      child: GakkouDayoriAiApp(),
     ),
   );
 }
 
-class YutoriKyoshituApp extends StatelessWidget {
-  const YutoriKyoshituApp({super.key});
+class GakkouDayoriAiApp extends StatelessWidget {
+  const GakkouDayoriAiApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -380,7 +380,7 @@ class _MyHomePageState extends State<MyHomePage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Text(
-              '🎯 ゆとり職員室AI',
+              '🎯 学校だよりAI',
               style: TextStyle(fontSize: 24),
             ),
             SizedBox(height: 20),

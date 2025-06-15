@@ -18,10 +18,10 @@
 - **TDD準拠**: 全コーディングタスクでテストファースト
 
 ### 📈 全体進捗サマリー
-- **Total Tasks**: 62個 ⬆️
-- **Completed**: 62個 (100%) ✅ **プロジェクト完了**
+- **Total Tasks**: 63個 ⬆️
+- **Completed**: 62個 (98.4%) ✅ **1タスク緊急追加**
 - **Manual Tasks**: 23個 (設定・環境構築)
-- **AI Tasks**: 32個 (コーディング・テスト) ⬆️
+- **AI Tasks**: 33個 (コーディング・テスト) ⬆️
 - **Hybrid Tasks**: 7個 (複雑実装)
 
 ---
@@ -109,6 +109,31 @@
 ## 📋 Phase 3: 緊急修正・機能改善
 
 ### 🔧 Phase 3 緊急対応タスク
+
+#### T3-AUDIO-001-A: ScriptProcessorNode廃止対応 - AudioWorkletNode移行 🚨
+- **作業者**: 🤖 AI
+- **所要時間**: 120分
+- **依存**: なし
+- **進行状況**: 📋 計画中
+- **優先度**: 🔴 **緊急** - iPhone 13 + iOS 18.5で音声入力不可
+- **📄 問題**: iOS 18.5でScriptProcessorNode完全廃止、iPhone 13で厳格適用
+- **完了条件**:
+  - [ ] 問題原因詳細調査（iOS 18.5 WebKit変更点）
+  - [ ] AudioWorkletProcessorファイル作成（`audio-processor.js`）
+  - [ ] `frontend/web/audio.js`のScriptProcessorNode削除
+  - [ ] AudioWorkletNode実装（専用ワーカースレッド処理）
+  - [ ] 音声データ処理ロジック移行（Float32Array → MessagePort）
+  - [ ] エラーハンドリング強化（AudioWorklet未対応ブラウザ対応）
+  - [ ] iPhone 12/13両方での動作確認
+  - [ ] 他のiOS 18.5デバイスでの検証
+- **技術仕様**:
+  - **移行前**: `createScriptProcessor(4096, 1, 1)` (メインスレッド)
+  - **移行後**: `AudioWorkletNode` + 専用プロセッサー (ワーカースレッド)
+  - **互換性**: iOS 14.5+, Chrome 66+, Firefox 76+, Safari 14.1+
+- **成果物**: 
+  - `frontend/web/audio-processor.js` (AudioWorkletProcessor)
+  - `frontend/web/audio.js` (ScriptProcessorNode削除、AudioWorkletNode実装)
+  - 動作確認レポート（iPhone 12/13比較）
 
 #### T3-ED-001-A: TinyMCE問題解決 & インライン編集実装 ✅
 - **作業者**: 🤖 AI
