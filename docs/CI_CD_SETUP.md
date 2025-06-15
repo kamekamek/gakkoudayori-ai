@@ -29,47 +29,67 @@ GCP_SA_KEY='{
   ...
 }'
 
-# Firebase認証トークン
-FIREBASE_TOKEN="1//0xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+# Firebase認証（サービスアカウントJSON）
+FIREBASE_SERVICE_ACCOUNT_JSON='{
+  "type": "service_account",
+  "project_id": "gakkoudayori-ai",
+  ...
+}'
+
+# LINE通知（本番環境のみ）
+LINE_CHANNEL_ACCESS_TOKEN="xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+LINE_TARGET_GROUP_ID="Cxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 ```
 
 ### 📝 シークレット取得方法
 
-#### 1. GCP_SA_KEY の取得
+#### 1. GCP_SA_KEY の取得と権限設定
 
 ```bash
 # サービスアカウント作成
-gcloud iam service-accounts create github-actions \
-    --display-name="GitHub Actions"
+gcloud iam service-accounts create gcp-sa-key \
+    --display-name="GitHub Actions Service Account"
 
-# 必要な権限を付与
+# 🔑 必須権限の付与
 gcloud projects add-iam-policy-binding gakkoudayori-ai \
-    --member="serviceAccount:github-actions@gakkoudayori-ai.iam.gserviceaccount.com" \
+    --member="serviceAccount:gcp-sa-key@gakkoudayori-ai.iam.gserviceaccount.com" \
     --role="roles/run.admin"
 
 gcloud projects add-iam-policy-binding gakkoudayori-ai \
-    --member="serviceAccount:github-actions@gakkoudayori-ai.iam.gserviceaccount.com" \
+    --member="serviceAccount:gcp-sa-key@gakkoudayori-ai.iam.gserviceaccount.com" \
     --role="roles/cloudbuild.builds.editor"
 
 gcloud projects add-iam-policy-binding gakkoudayori-ai \
-    --member="serviceAccount:github-actions@gakkoudayori-ai.iam.gserviceaccount.com" \
+    --member="serviceAccount:gcp-sa-key@gakkoudayori-ai.iam.gserviceaccount.com" \
     --role="roles/storage.admin"
 
+gcloud projects add-iam-policy-binding gakkoudayori-ai \
+    --member="serviceAccount:gcp-sa-key@gakkoudayori-ai.iam.gserviceaccount.com" \
+    --role="roles/iam.serviceAccountUser"
+
+gcloud projects add-iam-policy-binding gakkoudayori-ai \
+    --member="serviceAccount:gcp-sa-key@gakkoudayori-ai.iam.gserviceaccount.com" \
+    --role="roles/serviceusage.serviceUsageConsumer"
+
+# 🚨 重要: Cloud Run Service Agentがサービスアカウントのトークンを取得する権限
+gcloud iam service-accounts add-iam-policy-binding gcp-sa-key@gakkoudayori-ai.iam.gserviceaccount.com \
+    --member="serviceAccount:service-944053509139@serverless-robot-prod.iam.gserviceaccount.com" \
+    --role="roles/iam.serviceAccountTokenCreator"
+
 # キーファイル生成
-gcloud iam service-accounts keys create github-actions-key.json \
-    --iam-account=github-actions@gakkoudayori-ai.iam.gserviceaccount.com
+gcloud iam service-accounts keys create gcp-sa-key.json \
+    --iam-account=gcp-sa-key@gakkoudayori-ai.iam.gserviceaccount.com
 
 # ファイル内容をGCP_SA_KEYに設定
-cat github-actions-key.json
+cat gcp-sa-key.json
 ```
 
-#### 2. FIREBASE_TOKEN の取得
+#### 2. FIREBASE_SERVICE_ACCOUNT_JSON の取得
 
 ```bash
-# Firebase CLI でログイン
-firebase login:ci
-
-# 表示されたトークンをFIREBASE_TOKENに設定
+# Firebase プロジェクトのサービスアカウントキー生成
+# Firebase Console > Project Settings > Service accounts > Generate new private key
+# 生成されたJSONファイルの内容をFIREBASE_SERVICE_ACCOUNT_JSONに設定
 ```
 
 ## 🌍 環境設定
@@ -166,7 +186,7 @@ Error: google-github-actions/auth failed
 ```
 Error: HTTP Error: 401, Request had invalid authentication credentials
 ```
-**解決方法**: `FIREBASE_TOKEN`を再取得して設定。
+**解決方法**: `FIREBASE_SERVICE_ACCOUNT_JSON`を再取得して設定。
 
 #### 3. ビルドエラー
 ```
@@ -176,6 +196,93 @@ Error: Failed to compile application for the Web
 ```bash
 make reset-dev  # 開発環境リセット
 make ci-test    # ローカルでCI環境テスト
+```
+
+#### 4. 🚨 Cloud Run デプロイ権限エラー（重要）
+```
+ERROR: (gcloud.run.deploy) [gcp-sa-key@gakkoudayori-ai.iam.gserviceaccount.com] does not have permission to access namespaces instance [gakkoudayori-ai] (or it may not exist): The caller does not have permission
+```
+
+**原因**: Cloud Run Service Agentがサービスアカウントのアクセストークンを取得する権限がない
+
+**解決方法**:
+```bash
+# 1. Cloud Run Service Agentにトークン作成権限を付与
+gcloud iam service-accounts add-iam-policy-binding gcp-sa-key@gakkoudayori-ai.iam.gserviceaccount.com \
+    --member="serviceAccount:service-944053509139@serverless-robot-prod.iam.gserviceaccount.com" \
+    --role="roles/iam.serviceAccountTokenCreator"
+
+# 2. サービスアカウントにCloud Run Admin権限を付与
+gcloud projects add-iam-policy-binding gakkoudayori-ai \
+    --member="serviceAccount:gcp-sa-key@gakkoudayori-ai.iam.gserviceaccount.com" \
+    --role="roles/run.admin"
+```
+
+**📝 詳細説明**:
+- `service-{PROJECT_NUMBER}@serverless-robot-prod.iam.gserviceaccount.com` は Google が管理する Cloud Run Service Agent
+- このエージェントがユーザーのサービスアカウントのトークンを取得してCloud Runサービスを作成する
+- `roles/iam.serviceAccountTokenCreator` 権限が必要
+
+#### 5. 🔄 VPC Service Controls ログストリーミングエラー
+```
+ERROR: The build is running, and logs are being written to the default logs bucket.
+This tool can only stream logs if you are Viewer/Owner of the project and, if applicable, allowed by your VPC-SC security policy.
+```
+
+**原因**: VPC Service Controlsがログストリーミングをブロック（ビルド自体は成功）
+
+**解決方法**: 非同期ビルドとポーリング処理を使用
+```yaml
+# GitHub Actions ワークフロー内
+- name: 🚀 バックエンドイメージビルド
+  id: build_staging
+  run: |
+    BUILD_ID=$(gcloud builds submit --tag gcr.io/gakkoudayori-ai/yutori-backend-staging:latest . --async --format="value(id)")
+    echo "BUILD_ID=$BUILD_ID" >> $GITHUB_OUTPUT
+
+- name: ⏳ バックエンドビルド完了待機
+  run: |
+    BUILD_ID=${{ steps.build_staging.outputs.BUILD_ID }}
+    while true; do
+      STATUS=$(gcloud builds describe $BUILD_ID --format="value(status)")
+      if [[ "$STATUS" == "SUCCESS" ]]; then
+        echo "Build succeeded."
+        break
+      elif [[ "$STATUS" == "FAILURE" || "$STATUS" == "INTERNAL_ERROR" || "$STATUS" == "TIMEOUT" ]]; then
+        echo "Build failed with status: $STATUS"
+        exit 1
+      fi
+      echo "Current build status: $STATUS. Waiting 10 seconds..."
+      sleep 10
+    done
+```
+
+#### 6. シェルスクリプト構文エラー
+```
+813e621eb7c9be0d841a94301ca1b41610116206: command not found
+```
+
+**原因**: LINE通知メッセージ内でバッククォート（`）を使用
+
+**解決方法**: バッククォートをシングルクォート（'）に変更
+```yaml
+# ❌ 間違い
+MESSAGE_TEXT="コミット: `${{ github.sha }}`"
+
+# ✅ 正しい
+MESSAGE_TEXT="コミット: '${{ github.sha }}'"
+```
+
+#### 7. 権限設定の確認方法
+```bash
+# サービスアカウントの権限確認
+gcloud iam service-accounts get-iam-policy gcp-sa-key@gakkoudayori-ai.iam.gserviceaccount.com
+
+# プロジェクトレベルの権限確認
+gcloud projects get-iam-policy gakkoudayori-ai \
+    --flatten="bindings[].members" \
+    --format="table(bindings.role)" \
+    --filter="bindings.members:gcp-sa-key@gakkoudayori-ai.iam.gserviceaccount.com"
 ```
 
 ### 🔍 デバッグ方法
@@ -191,6 +298,13 @@ make ci-test    # ローカルでCI環境テスト
 3. **手動デプロイテスト**
    ```bash
    make deploy-preview
+   ```
+
+4. **Cloud Build ログ確認**
+   ```bash
+   # ビルドID取得後
+   gcloud builds describe BUILD_ID
+   gcloud builds log BUILD_ID
    ```
 
 ## 📊 監視・メトリクス
@@ -279,6 +393,28 @@ dev_documents/{doc_id}
 - [ ] パフォーマンス最適化
 - [ ] テストカバレッジ向上
 
+### 🔐 セキュリティベストプラクティス
+
+#### サービスアカウント権限の最小化
+現在設定されている権限（必要最小限）:
+```bash
+# 確認済み権限リスト
+roles/cloudbuild.builds.editor      # Cloud Build実行
+roles/run.admin                     # Cloud Run管理
+roles/storage.admin                 # Container Registry/Artifact Registry
+roles/iam.serviceAccountUser        # サービスアカウント使用
+roles/serviceusage.serviceUsageConsumer  # API使用
+roles/iam.serviceAccountTokenCreator     # トークン作成（Service Agent用）
+```
+
+#### 定期的な権限監査
+```bash
+# 月次実行推奨
+gcloud projects get-iam-policy gakkoudayori-ai \
+    --flatten="bindings[].members" \
+    --filter="bindings.members:gcp-sa-key@gakkoudayori-ai.iam.gserviceaccount.com"
+```
+
 ---
 
 ## 🆘 サポート
@@ -288,5 +424,6 @@ dev_documents/{doc_id}
 1. [GitHub Actions ログ](https://github.com/your-repo/actions)
 2. [Firebase Console](https://console.firebase.google.com/)
 3. [Google Cloud Console](https://console.cloud.google.com/)
+4. [Cloud Build履歴](https://console.cloud.google.com/cloud-build/builds)
 
 それでも解決しない場合は、Issueを作成してください。 
