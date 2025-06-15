@@ -100,8 +100,11 @@ jobs:
       - name: 🚀 バックエンドイメージビルド（ステージング）
         run: |
           cd backend/functions # Dockerfileがあるディレクトリに移動
-          gcloud builds submit --tag gcr.io/gakkoudayori-ai/yutori-backend-staging:latest . \
-            --suppress-logs
+          BUILD_ID=$(gcloud builds submit --tag gcr.io/gakkoudayori-ai/yutori-backend-staging:latest . \
+            --async --format="value(id)")
+          echo "Build ID: $BUILD_ID"
+          echo "Waiting for build to complete..."
+          gcloud builds wait $BUILD_ID --region=global
 
       - name: 🚀 バックエンドデプロイ（ステージング）
         run: |
@@ -192,8 +195,11 @@ jobs:
       - name: 🚀 バックエンドイメージビルド（本番）
         run: |
           cd backend/functions # Dockerfileがあるディレクトリに移動
-          gcloud builds submit --tag gcr.io/gakkoudayori-ai/yutori-backend:latest . \
-            --suppress-logs
+          BUILD_ID=$(gcloud builds submit --tag gcr.io/gakkoudayori-ai/yutori-backend:latest . \
+            --async --format="value(id)")
+          echo "Build ID: $BUILD_ID"
+          echo "Waiting for build to complete..."
+          gcloud builds wait $BUILD_ID --region=global
 
       - name: 🚀 バックエンドデプロイ（本番）
         run: |
