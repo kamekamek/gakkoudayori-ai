@@ -24,6 +24,7 @@ jobs:
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
+          cache: true # Flutterキャッシュ有効化
 
       - name: 📦 Flutter依存関係取得
         run: |
@@ -44,6 +45,14 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
+
+      - name: 🐍 pipキャッシュ設定
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
       - name: 📦 Python依存関係インストール
         run: |
@@ -88,28 +97,29 @@ jobs:
       - name: ☁️ Google Cloud SDK セットアップ
         uses: google-github-actions/setup-gcloud@v2
 
+      - name: 🚀 バックエンドイメージビルド（ステージング）
+        run: |
+          cd backend/functions # Dockerfileがあるディレクトリに移動
+          gcloud builds submit --tag gcr.io/gakkoudayori-ai/yutori-backend-staging:latest .
+
       - name: 🚀 バックエンドデプロイ（ステージング）
         run: |
-          cd backend
-          gcloud builds submit --tag gcr.io/gakkoudayori-ai/yutori-backend-staging
           gcloud run deploy yutori-backend-staging \
-            --image gcr.io/gakkoudayori-ai/yutori-backend-staging \
+            --image gcr.io/gakkoudayori-ai/yutori-backend-staging:latest \
             --platform managed \
             --region asia-northeast1 \
             --allow-unauthenticated \
-            --port 8080
-
-      - name: 🔥 Firebase CLI セットアップ
-        uses: w9jds/firebase-action@master
-        with:
-          args: --version
+            --port 8080 \
+            --set-env-vars="ENVIRONMENT=staging,FLASK_ENV=production" # 環境変数を設定
 
       - name: 🌐 フロントエンドデプロイ（ステージング）
-        uses: w9jds/firebase-action@master
+        uses: FirebaseExtended/action-hosting-deploy@v0
         with:
-          args: hosting:channel:deploy staging --expires 30d
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}'
+          channelId: staging
+          expires: 30d
+          projectId: gakkoudayori-ai
 
       - name: 📝 デプロイ完了通知
         run: |
@@ -150,28 +160,27 @@ jobs:
       - name: ☁️ Google Cloud SDK セットアップ
         uses: google-github-actions/setup-gcloud@v2
 
+      - name: 🚀 バックエンドイメージビルド（本番）
+        run: |
+          cd backend/functions # Dockerfileがあるディレクトリに移動
+          gcloud builds submit --tag gcr.io/gakkoudayori-ai/yutori-backend:latest .
+
       - name: 🚀 バックエンドデプロイ（本番）
         run: |
-          cd backend
-          gcloud builds submit --tag gcr.io/gakkoudayori-ai/yutori-backend
           gcloud run deploy yutori-backend \
-            --image gcr.io/gakkoudayori-ai/yutori-backend \
+            --image gcr.io/gakkoudayori-ai/yutori-backend:latest \
             --platform managed \
             --region asia-northeast1 \
             --allow-unauthenticated \
-            --port 8080
-
-      - name: 🔥 Firebase CLI セットアップ
-        uses: w9jds/firebase-action@master
-        with:
-          args: --version
+            --port 8080 \
+            --set-env-vars="ENVIRONMENT=production,FLASK_ENV=production" # 環境変数を設定
 
       - name: 🌐 フロントエンドデプロイ（本番）
-        uses: w9jds/firebase-action@master
+        uses: FirebaseExtended/action-hosting-deploy@v0
         with:
-          args: deploy --only hosting
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}'
+          projectId: gakkoudayori-ai
 
       - name: 📝 デプロイ完了通知
         run: |
@@ -213,17 +222,14 @@ jobs:
             --dart-define=API_BASE_URL=https://yutori-backend-944053509139.asia-northeast1.run.app/api/v1/ai \
             --release
 
-      - name: 🔥 Firebase CLI セットアップ
-        uses: w9jds/firebase-action@master
-        with:
-          args: --version
-
       - name: 👀 プレビューデプロイ
-        uses: w9jds/firebase-action@master
+        uses: FirebaseExtended/action-hosting-deploy@v0
         with:
-          args: hosting:channel:deploy pr-${{ github.event.number }} --expires 7d
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}'
+          channelId: pr-${{ github.event.number }}
+          expires: 7d
+          projectId: gakkoudayori-ai
 
       - name: 💬 プレビューURL通知
         uses: actions/github-script@v7
