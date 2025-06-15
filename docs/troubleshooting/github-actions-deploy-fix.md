@@ -85,7 +85,7 @@ gcloud projects add-iam-policy-binding gakkoudayori-ai \
 
 **問題**: VPC Service Controlsのセキュリティポリシーにより、デフォルトのCloud Storageログバケットにアクセスできない。
 
-**修正**: Cloud Buildのログ出力先をCloud Loggingに変更
+**修正**: Cloud Buildのログストリーミングを無効化してVPC Service Controlsの制限を回避
 
 ```yaml
 # 修正前
@@ -93,7 +93,7 @@ gcloud builds submit --tag gcr.io/gakkoudayori-ai/yutori-backend-staging:latest 
 
 # 修正後
 gcloud builds submit --tag gcr.io/gakkoudayori-ai/yutori-backend-staging:latest . \
-  --logging=CLOUD_LOGGING_ONLY
+  --suppress-logs
 ```
 
 **参考**: [Google Cloud Build VPC Service Controls documentation](https://cloud.google.com/build/docs/private-pools/using-vpc-service-controls)
