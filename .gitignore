@@ -1,5 +1,5 @@
 # =============================================================================
-# ゆとり職員室 - GitIgnore設定
+# 学校だよりAI - GitIgnore設定
 # =============================================================================
 
 # システム・エディタ関連
@@ -46,6 +46,7 @@ frontend/web/config.js
 # サービスアカウントキー
 service-account-key.json
 *-service-account-*.json
+temp-service-account-key.json
 gcloud-service-key.json
 firebase-service-account.json
 
