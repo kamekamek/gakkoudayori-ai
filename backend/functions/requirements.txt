@@ -1,0 +1,29 @@
+# Web Framework
+Flask==3.0.3
+Flask-Cors==4.0.1
+gunicorn==22.0.0
+
+# Google Cloud & Firebase
+# Note: Transitive dependencies like google-auth and google-api-core are intentionally omitted.
+# They will be installed automatically by the libraries below, letting pip resolve the correct versions.
+firebase-functions==0.2.0
+firebase-admin==6.9.0
+google-cloud-aiplatform==1.56.0
+google-cloud-firestore==2.19.0
+google-cloud-secret-manager==2.20.0
+google-cloud-speech==2.26.1
+google-cloud-storage==2.17.0
+google-generativeai==0.7.1
+
+# PDF & Image Processing
+weasyprint==62.3
+Pillow==10.4.0
+
+# Other
+requests==2.32.3
+beautifulsoup4==4.12.3
+python-dotenv==1.0.1
+
+# Testing
+pytest==8.2.2
+pytest-mock==3.14.0

@@ -1,0 +1,36 @@
+name: yutori_kyoshitu
+description: 学校だよりAI - 音声入力で学級通信を自動生成（リビルド版）
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # API呼び出し（STT・Gemini）
+  http: ^1.1.0
+  
+  # Web Audio API, JavaScript Bridge
+  web: ^1.1.0
+  
+  # HTML Widget for rendering HTML content
+  flutter_widget_from_html: ^0.15.0
+  flutter_widget_from_html_core: ^0.15.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  
+  # コード品質
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/audio/    # 音声関連ファイル用
+    - web/sample.html  # サンプル学級通信
+
