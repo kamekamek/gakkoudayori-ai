@@ -15,7 +15,7 @@ T3-AI-002-A: Gemini API基盤実装
 4. エラータイプ別の標準化されたエラーハンドリング
 
 APIエンドポイント仕様書に対応： docs/30_API_endpoints.md
-AIプロンプト仕様書に対応： docs/21_SPEC_ai_prompts.md
+
 """
 
 import os
@@ -107,10 +107,13 @@ def get_gemini_client(
     start_time = time.time()
     
     try:
-        # GCP認証情報を初期化
-        if not initialize_gcp_credentials(credentials_path):
-            logger.error("Failed to initialize GCP credentials")
-            return None
+        # GCP認証情報を初期化 (Cloud Run環境ではデフォルト認証を使用)
+        if credentials_path and os.path.exists(credentials_path):
+            if not initialize_gcp_credentials(credentials_path):
+                logger.error("Failed to initialize GCP credentials")
+                return None
+        else:
+            logger.info("Using default credentials (Cloud Run environment)")
         
         # Vertex AI初期化
         vertexai.init(project=project_id, location=location)

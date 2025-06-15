@@ -43,12 +43,48 @@ def initialize_firebase() -> bool:
     except ValueError:
         # まだ初期化されていない場合
         try:
-            firebase_admin.initialize_app()
-            logger.info("Firebase app initialized successfully")
+            # Cloud Run環境では Secret Manager からサービスアカウントキーを取得
+            credentials = get_credentials_from_secret_manager()
+            if credentials:
+                firebase_admin.initialize_app(credentials)
+                logger.info("Firebase app initialized with Secret Manager credentials")
+            else:
+                # フォールバック: デフォルト認証
+                firebase_admin.initialize_app()
+                logger.info("Firebase app initialized with default credentials")
             return True
         except Exception as e:
             logger.error(f"Failed to initialize Firebase app: {e}")
             return False
+
+
+def get_credentials_from_secret_manager():
+    """Secret Manager からサービスアカウントキーを取得"""
+    try:
+        from google.cloud import secretmanager
+        from google.oauth2 import service_account
+        import json
+        
+        # Secret Manager クライアント作成
+        client = secretmanager.SecretManagerServiceClient()
+        
+        # シークレット名
+        name = f"projects/gakkoudayori-ai/secrets/service-account-key/versions/latest"
+        
+        # シークレットを取得
+        response = client.access_secret_version(request={"name": name})
+        secret_value = response.payload.data.decode("UTF-8")
+        
+        # JSON から認証情報を作成
+        service_account_info = json.loads(secret_value)
+        credentials = service_account.Credentials.from_service_account_info(service_account_info)
+        
+        logger.info("Successfully retrieved credentials from Secret Manager")
+        return credentials
+        
+    except Exception as e:
+        logger.warning(f"Failed to get credentials from Secret Manager: {e}")
+        return None
 
 
 def initialize_firebase_with_credentials(credentials_path: str) -> bool:

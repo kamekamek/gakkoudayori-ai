@@ -3,6 +3,7 @@ import 'dart:js' as js;
 import 'dart:js_util' as js_util;
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../config/app_config.dart';
 
 /// 音声録音サービス (Phase R2)
 /// JavaScript の Web Audio API と連携
@@ -195,8 +196,8 @@ class AudioService {
       final audioBytes = base64Decode(base64AudioData);
       print('📄 [AudioService] 音声データサイズ: ${audioBytes.length} bytes');
 
-      // バックエンドAPIのエンドポイント（本番環境では適切なURLに変更）
-      const apiUrl = 'http://localhost:8081/api/v1/ai/transcribe';
+      // バックエンドAPIのエンドポイント（環境変数から取得）
+      final apiUrl = '${AppConfig.apiBaseUrl}/transcribe';
 
       // マルチパートフォームデータとして送信
       final request = http.MultipartRequest('POST', Uri.parse(apiUrl));

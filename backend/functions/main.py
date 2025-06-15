@@ -37,22 +37,34 @@ logger = logging.getLogger(__name__)
 
 # Flaskアプリケーション作成
 app = Flask(__name__)
-CORS(app)  # CORS設定
+# CORS設定 - 本番とローカル開発環境の両方を許可
+CORS(app, origins=[
+    "https://gakkoudayori-ai.web.app",
+    "https://gakkoudayori-ai--staging.web.app", 
+    "http://localhost:3000",
+    "http://localhost:5000",
+    "http://localhost:8080"
+])
 
 # Firebase初期化
 def init_firebase():
     """Firebase初期化"""
     try:
-        # 環境変数または認証ファイルパスを確認
-        credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
-        if credentials_path and os.path.exists(credentials_path):
-            logger.info(f"Initializing Firebase with credentials: {credentials_path}")
-            return initialize_firebase_with_credentials(credentials_path)
-        else:
-            logger.info("Initializing Firebase with default credentials")
-            return initialize_firebase()
+        # Cloud Run環境では環境変数GOOGLE_APPLICATION_CREDENTIALSは自動設定される
+        # まずデフォルト認証を試行
+        logger.info("Initializing Firebase with default credentials (Cloud Run)")
+        return initialize_firebase()
     except Exception as e:
         logger.error(f"Firebase initialization failed: {e}")
+        # 開発環境の場合は認証ファイルパスを確認
+        credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+        if credentials_path and os.path.exists(credentials_path):
+            logger.info(f"Fallback: Initializing Firebase with credentials: {credentials_path}")
+            try:
+                return initialize_firebase_with_credentials(credentials_path)
+            except Exception as e2:
+                logger.error(f"Fallback Firebase initialization failed: {e2}")
+                return False
         return False
 
 def get_firestore_client():
@@ -161,8 +173,10 @@ def transcribe_audio():
         dict_service = create_user_dictionary_service(firestore_client)
         speech_contexts = dict_service.get_speech_contexts(user_id)
         
-        # 認証情報パス
-        credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', '../secrets/service-account-key.json')
+        # 認証情報パス (Cloud Run環境では不要)
+        credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+        if credentials_path and not os.path.exists(credentials_path):
+            credentials_path = None
         
         # 音声文字起こし実行
         result = transcribe_audio_file(
@@ -956,7 +970,7 @@ def api(req: https_fn.Request) -> https_fn.Response:
 if __name__ == '__main__':
     # 本番環境とローカル開発の両方に対応
     import os
-    port = int(os.environ.get('PORT', 8080))
+    port = int(os.environ.get('PORT', 8081))
     debug = os.environ.get('FLASK_ENV') != 'production'
     app.run(debug=debug, host='0.0.0.0', port=port)
 

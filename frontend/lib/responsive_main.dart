@@ -433,6 +433,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
       color: Colors.grey[200],
       padding: EdgeInsets.all(isMobile ? 8 : 16),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
@@ -488,9 +489,10 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
             ),
           ),
           SizedBox(height: 16),
-          Expanded(
+          Flexible(
             child: Container(
               width: double.infinity,
+              height: isMobile ? 600 : 700,
               padding: EdgeInsets.all(isMobile ? 0 : 16),
               decoration: BoxDecoration(
                 color: Colors.white,

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
+import '../config/app_config.dart';
 
 /// ユーザー辞書管理ウィジェット
 /// 教師が固有名詞や学校専用用語を登録・管理できるUI
@@ -64,9 +64,7 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
     });
 
     try {
-      final apiUrl = kDebugMode 
-          ? 'http://localhost:8081/api/v1/dictionary/${widget.userId}'
-          : 'https://asia-northeast1-yutori-kyoshitu.cloudfunctions.net/main/api/v1/dictionary/${widget.userId}';
+      final apiUrl = '${AppConfig.apiBaseUrl.replaceAll('/api/v1/ai', '')}/api/v1/dictionary/${widget.userId}';
       
       final response = await http.get(Uri.parse(apiUrl));
       
@@ -131,9 +129,7 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
     });
 
     try {
-      final apiUrl = kDebugMode 
-          ? 'http://localhost:8081/api/v1/dictionary/${widget.userId}/terms'
-          : 'https://asia-northeast1-yutori-kyoshitu.cloudfunctions.net/main/api/v1/dictionary/${widget.userId}/terms';
+      final apiUrl = '${AppConfig.apiBaseUrl.replaceAll('/api/v1/ai', '')}/api/v1/dictionary/${widget.userId}/terms';
       
       final response = await http.post(
         Uri.parse(apiUrl),
@@ -178,9 +174,7 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
   /// 手動修正を記録
   Future<void> _recordCorrection(String original, String corrected) async {
     try {
-      final apiUrl = kDebugMode 
-          ? 'http://localhost:8081/api/v1/dictionary/${widget.userId}/correct'
-          : 'https://asia-northeast1-yutori-kyoshitu.cloudfunctions.net/main/api/v1/dictionary/${widget.userId}/correct';
+      final apiUrl = '${AppConfig.apiBaseUrl.replaceAll('/api/v1/ai', '')}/api/v1/dictionary/${widget.userId}/correct';
       
       final response = await http.post(
         Uri.parse(apiUrl),
