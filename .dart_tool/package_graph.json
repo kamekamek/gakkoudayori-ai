@@ -1,10 +1,10 @@
 {
   "roots": [
-    "yutorikyoshitu"
+    "gakkoudayori_ai"
   ],
   "packages": [
     {
-      "name": "yutorikyoshitu",
+      "name": "gakkoudayori_ai",
       "version": "1.0.0+1",
       "dependencies": [
         "flutter",

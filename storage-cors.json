@@ -1,6 +1,6 @@
 [
   {
-    "origin": ["http://localhost:3000", "https://yutori-kyoshitu-ai.web.app"],
+    "origin": ["http://localhost:3000", "https://gakkoudayori-ai.web.app"],
     "method": ["GET", "POST", "PUT", "DELETE"],
     "maxAgeSeconds": 3600
   }

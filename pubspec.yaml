@@ -1,5 +1,5 @@
-name: yutorikyoshitu
-description: 学級通信AI - 音声入力システム
+name: gakkoudayori_ai
+description: 学校だよりAI - 音声入力システム
 publish_to: 'none'
 version: 1.0.0+1
 
