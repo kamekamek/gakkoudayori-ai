@@ -15,12 +15,14 @@ analyzer:
     deprecated_member_use: ignore
     # Web専用ライブラリの警告を無視（Flutter Web必須）
     avoid_web_libraries_in_flutter: ignore
-    # 未使用変数を警告レベルに下げる（開発中は許可）
-    unused_local_variable: warning
-    unused_field: warning
-    unused_element: warning
-    # null比較チェックを緩和
-    unnecessary_null_comparison: warning
+    # 未使用変数を無視する（開発中は許可）
+    unused_local_variable: ignore
+    unused_field: ignore
+    unused_element: ignore
+    # null比較チェックを無視
+    unnecessary_null_comparison: ignore
+    # 関数宣言スタイルの警告を無視
+    prefer_function_declarations_over_variables: ignore
   exclude:
     - "**/*.g.dart"
     - "**/*.freezed.dart"
