@@ -10,6 +10,7 @@ class AudioRecorder {
         this.isIOS = this.detectIOS();
         this.audioContext = null;
         this.scriptProcessor = null;
+        this.audioWorkletNode = null;
         
         // 初期化ログ
         console.log('🎤 AudioRecorder初期化 - isRecording:', this.isRecording);
@@ -20,23 +21,58 @@ class AudioRecorder {
         this.forceReset();
     }
     
-    // iOS検出
+    // iOS検出（iOS 18.5対応強化）
     detectIOS() {
         const userAgent = navigator.userAgent;
-        return /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
+        const isIOS = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
+        
+        if (isIOS) {
+            // iOS バージョン検出
+            const versionMatch = userAgent.match(/OS (\d+)_(\d+)_?(\d+)?/);
+            if (versionMatch) {
+                const majorVersion = parseInt(versionMatch[1]);
+                const minorVersion = parseInt(versionMatch[2]);
+                console.log(`📱 iOS ${majorVersion}.${minorVersion} 検出`);
+                
+                // iOS 18.5以降でScriptProcessorNode廃止警告
+                if (majorVersion >= 18 && minorVersion >= 5) {
+                    console.warn('⚠️ iOS 18.5+ 検出 - ScriptProcessorNode廃止対象');
+                }
+            }
+        }
+        
+        return isIOS;
     }
     
     // 強制状態リセット
     forceReset() {
         this.isRecording = false;
         this.audioChunks = [];
+        
         if (this.mediaRecorder) {
             this.mediaRecorder = null;
         }
+        
+        if (this.audioWorkletNode) {
+            this.audioWorkletNode.disconnect();
+            this.audioWorkletNode = null;
+        }
+        
+        if (this.scriptProcessor) {
+            this.scriptProcessor.disconnect();
+            this.scriptProcessor = null;
+        }
+        
+        if (this.audioContext) {
+            this.audioContext.close();
+            this.audioContext = null;
+        }
+        
         if (this.stream) {
             this.stream.getTracks().forEach(track => track.stop());
             this.stream = null;
         }
+        
         console.log('🔄 AudioRecorder状態リセット完了');
     }
 
@@ -188,7 +224,7 @@ class AudioRecorder {
         return true;
     }
     
-    // Web Audio API録音（iOS対応）
+    // Web Audio API録音（iOS対応 - AudioWorkletNode使用）
     async startWebAudioRecording() {
         try {
             // Web Audio Context作成
@@ -205,6 +241,70 @@ class AudioRecorder {
                 console.log('🔊 AudioContext resume中...');
                 await this.audioContext.resume();
             }
+            
+            // AudioWorkletNode対応チェック
+            if (!this.audioContext.audioWorklet) {
+                console.warn('⚠️ AudioWorklet未対応 - ScriptProcessorNodeフォールバック');
+                return await this.startWebAudioRecordingLegacy();
+            }
+            
+            try {
+                // AudioWorkletProcessor読み込み
+                await this.audioContext.audioWorklet.addModule('./audio-processor.js');
+                console.log('✅ AudioWorkletProcessor読み込み完了');
+                
+                // AudioWorkletNode作成
+                this.audioWorkletNode = new AudioWorkletNode(this.audioContext, 'audio-recorder-processor');
+                
+                this.audioChunks = [];
+                this.recordingStartTime = Date.now();
+                
+                // AudioWorkletからの音声データ受信
+                this.audioWorkletNode.port.onmessage = (event) => {
+                    const { type, data } = event.data;
+                    
+                    if (type === 'audiodata' && this.isRecording) {
+                        this.audioChunks.push(data);
+                    }
+                };
+                
+                // 音声処理チェーン接続
+                source.connect(this.audioWorkletNode);
+                this.audioWorkletNode.connect(this.audioContext.destination);
+                
+                // 録音開始コマンド送信
+                this.audioWorkletNode.port.postMessage({ command: 'start' });
+                
+                this.isRecording = true;
+                console.log('🎤 AudioWorkletNode録音開始成功');
+                
+                // Flutter側に通知
+                if (window.onRecordingStarted) {
+                    console.log('🔗 [AudioRecorder] Flutter側に録音開始通知送信');
+                    window.onRecordingStarted();
+                }
+                
+                // 音声レベル監視開始
+                this.startAudioLevelMonitoring();
+                
+                return true;
+                
+            } catch (workletError) {
+                console.warn('⚠️ AudioWorklet初期化失敗:', workletError);
+                console.log('🔄 ScriptProcessorNodeフォールバックに切り替え');
+                return await this.startWebAudioRecordingLegacy();
+            }
+            
+        } catch (error) {
+            console.error('❌ Web Audio API録音エラー:', error);
+            return false;
+        }
+    }
+    
+    // ScriptProcessorNode フォールバック（旧iOS対応）
+    async startWebAudioRecordingLegacy() {
+        try {
+            console.log('📱 ScriptProcessorNode使用（レガシーモード）');
             
             // ScriptProcessorNode作成（iOS互換性）
             const bufferSize = 4096;
@@ -223,11 +323,12 @@ class AudioRecorder {
             };
             
             // 音声処理チェーン接続
+            const source = this.audioContext.createMediaStreamSource(this.stream);
             source.connect(this.scriptProcessor);
             this.scriptProcessor.connect(this.audioContext.destination);
             
             this.isRecording = true;
-            console.log('🎤 Web Audio API録音開始成功');
+            console.log('🎤 ScriptProcessorNode録音開始成功（フォールバック）');
             
             // Flutter側に通知
             if (window.onRecordingStarted) {
@@ -240,7 +341,7 @@ class AudioRecorder {
             
             return true;
         } catch (error) {
-            console.error('❌ Web Audio API録音エラー:', error);
+            console.error('❌ ScriptProcessorNode録音エラー:', error);
             return false;
         }
     }
@@ -306,9 +407,15 @@ class AudioRecorder {
             console.log('⏹️ MediaRecorder停止');
         }
         
-        // Web Audio API使用時（iOS）
-        if (this.scriptProcessor && this.audioContext) {
-            console.log('⏹️ Web Audio API停止開始');
+        // AudioWorkletNode使用時
+        if (this.audioWorkletNode) {
+            console.log('⏹️ AudioWorkletNode停止開始');
+            this.audioWorkletNode.port.postMessage({ command: 'stop' });
+            this.stopWebAudioRecording();
+        }
+        // ScriptProcessorNode使用時（フォールバック）
+        else if (this.scriptProcessor && this.audioContext) {
+            console.log('⏹️ ScriptProcessorNode停止開始');
             this.stopWebAudioRecording();
         }
 
@@ -323,13 +430,21 @@ class AudioRecorder {
         return true;
     }
     
-    // Web Audio API録音停止（iOS対応）
+    // Web Audio API録音停止（AudioWorkletNode & ScriptProcessorNode対応）
     stopWebAudioRecording() {
         try {
-            // ScriptProcessor切断
+            // AudioWorkletNode切断
+            if (this.audioWorkletNode) {
+                this.audioWorkletNode.disconnect();
+                this.audioWorkletNode = null;
+                console.log('⏹️ AudioWorkletNode切断完了');
+            }
+            
+            // ScriptProcessor切断（フォールバック）
             if (this.scriptProcessor) {
                 this.scriptProcessor.disconnect();
                 this.scriptProcessor = null;
+                console.log('⏹️ ScriptProcessorNode切断完了');
             }
             
             // 録音時間計算
@@ -473,6 +588,25 @@ class AudioRecorder {
             this.stream.getTracks().forEach(track => track.stop());
             this.stream = null;
         }
+        
+        // AudioWorkletNode解放
+        if (this.audioWorkletNode) {
+            this.audioWorkletNode.disconnect();
+            this.audioWorkletNode = null;
+        }
+        
+        // ScriptProcessorNode解放（フォールバック）
+        if (this.scriptProcessor) {
+            this.scriptProcessor.disconnect();
+            this.scriptProcessor = null;
+        }
+        
+        // AudioContext解放
+        if (this.audioContext) {
+            this.audioContext.close();
+            this.audioContext = null;
+        }
+        
         this.mediaRecorder = null;
         this.audioChunks = [];
         this.isRecording = false;
@@ -529,7 +663,12 @@ window.getAudioRecorderStatus = () => {
         isRecording: window.audioRecorder.isRecording,
         hasStream: !!window.audioRecorder.stream,
         hasMediaRecorder: !!window.audioRecorder.mediaRecorder,
-        audioChunksLength: window.audioRecorder.audioChunks.length
+        hasAudioWorkletNode: !!window.audioRecorder.audioWorkletNode,
+        hasScriptProcessor: !!window.audioRecorder.scriptProcessor,
+        hasAudioContext: !!window.audioRecorder.audioContext,
+        audioChunksLength: window.audioRecorder.audioChunks.length,
+        isIOS: window.audioRecorder.isIOS,
+        audioWorkletSupported: !!(window.AudioContext && window.AudioContext.prototype.audioWorklet)
     };
     console.log('📊 AudioRecorder状態:', status);
     return status;
