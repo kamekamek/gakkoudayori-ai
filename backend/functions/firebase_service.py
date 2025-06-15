@@ -3,6 +3,7 @@ Firebase Admin SDKの初期化とFirestoreクライアントの提供
 """
 import os
 import json
+from datetime import datetime
 import logging
 import firebase_admin
 from firebase_admin import credentials, firestore, storage
@@ -47,7 +48,7 @@ def initialize_firebase():
              return True
 
         project_id = 'gakkoudayori-ai'
-        options = {'projectId': project_id}
+        options = {'projectId': project_id, 'storageBucket': 'gakkoudayori-ai.firebasestorage.app'}
         
         # Secret Managerから認証情報を取得試行
         creds_json = get_credentials_from_secret_manager()
@@ -159,14 +160,14 @@ def health_check() -> Dict[str, Any]:
         
         # Firestoreアクセスチェック
         db = get_firestore_client()
-        test_doc = db.collection('__health_check__').document('test')
+        test_doc = db.collection('_internal_health_check_').document('test')
         test_doc.set({'check': True, 'timestamp': datetime.utcnow()})
         test_doc.delete()
         result['firestore_accessible'] = True
         
         # Storageアクセスチェック
-        bucket = get_storage_bucket()
-        test_blob = bucket.blob('__health_check__/test.txt')
+        bucket = storage.bucket()
+        test_blob = bucket.blob('_internal_health_check_files/test.txt')
         test_blob.upload_from_string(b'health check', content_type='text/plain')
         test_blob.delete()
         result['storage_accessible'] = True

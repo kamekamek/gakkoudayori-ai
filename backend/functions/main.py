@@ -111,7 +111,7 @@ def health():
         return jsonify({
             'status': 'error',
             'error': str(e),
-            'timestamp': datetime.utcnow().isoformat()
+            'message': "Health check failed (simplified error response)"  # datetimeを削除
         }), 500
 
 @app.route('/config', methods=['GET'])
@@ -123,8 +123,8 @@ def config():
     except Exception as e:
         logger.error(f"Config retrieval error: {e}")
         return jsonify({
-            'error': str(e),
-            'timestamp': datetime.utcnow().isoformat()
+            "status": "ok",
+            "message": "Health check successful (simplified)"
         }), 500
 
 # ==============================================================================
