@@ -94,8 +94,8 @@ FastAPI Backend (バックエンド)
 
 ```bash
 # 1. プロジェクトクローン
-git clone https://github.com/kamekamek/yutorikyoshitu.git
-cd yutorikyoshitu
+git clone https://github.com/kamekamek/gakkoudayori-ai.git
+cd gakkoudayori
 
 # 2. 環境設定確認
 ./scripts/check_env.sh
