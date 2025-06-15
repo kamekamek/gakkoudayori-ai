@@ -19,6 +19,9 @@ make deploy
 
 # Reset development environment when things break
 make reset-dev
+
+# Full CI pipeline locally (before commits)
+make ci-test
 ```
 
 ### Flutter Web Development
@@ -536,10 +539,13 @@ Based on `.cursor/rules/document_management.mdc`, follow these conventions:
 - `lib/features/editor/presentation/widgets/quill_editor_web.dart` でWebView制御
 
 ### 音声入力フロー
-- `web_audio_recorder.dart`: ブラウザのMediaRecorder API使用
-- `voice_input_widget.dart`: UI制御とファイルアップロード
+- `services/audio_service.dart`: ブラウザのMediaRecorder API使用
+- `widgets/*_widget.dart`: UI制御とファイルアップロード
 - Backend `speech_recognition_service.py`: Google Speech-to-Text処理
 - Backend `gemini_api_service.py`: AIによるテキストリライト
+
+### 現在の実装状況（プロジェクト完了）
+このプロジェクトは**Google Cloud Japan AI Hackathon Vol.2**向けに完成しており、全62タスクが完了済みです。主要機能は全て実装されています。
 
 ### テスト戦略
 - Unit Tests: `flutter test` (Dart/Flutter用)
@@ -610,8 +616,16 @@ make deploy-backend  # Cloud Run only
 ### Environment Variables (Critical)
 The application uses dart-define for configuration:
 - Development: `API_BASE_URL=http://localhost:8081/api/v1/ai`
+- Staging: `API_BASE_URL=https://staging-yutori-backend.asia-northeast1.run.app/api/v1/ai`
 - Production: `API_BASE_URL=https://yutori-backend-944053509139.asia-northeast1.run.app/api/v1/ai`
 - Always use `make dev` or `make staging` to ensure proper environment setup
+
+### Key Project Context
+- **Project Status**: Completed for Google Cloud Japan AI Hackathon Vol.2
+- **Architecture**: Web-only Flutter app with Python FastAPI backend
+- **Main Flow**: Voice → Speech-to-Text → Gemini AI → Quill.js Editor → PDF
+- **Target Users**: Teachers creating school newsletters efficiently
+- **Goal**: Reduce newsletter creation time from 2-3 hours to under 20 minutes
 
 ### Testing Strategy
 ```bash

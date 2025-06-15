@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>パーソナライズド・ストーリーテリング・ジャーニー</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tensorflow/3.18.0/tf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+</head>
+<body>
+    <div id="loading-screen">
+        <div class="ai-loader">
+            <div class="neural-network">
+                <div class="node"></div>
+                <div class="node"></div>
+                <div class="node"></div>
+                <div class="connection"></div>
+                <div class="connection"></div>
+            </div>
+            <p>AIがあなた専用のストーリーを生成中...</p>
+            <div class="progress-bar">
+                <div class="progress-fill"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="app">
+        <!-- Profile Detection Modal -->
+        <div id="profile-modal" class="modal">
+            <div class="modal-content">
+                <div class="profile-header">
+                    <h2>🎯 あなた専用の体験を作成</h2>
+                    <p>いくつかの質問にお答えください。AIがあなたに最適なストーリーを生成します。</p>
+                </div>
+                
+                <div id="profile-questions">
+                    <div class="question-step active" data-step="1">
+                        <h3>あなたの職種は？</h3>
+                        <div class="options-grid">
+                            <button class="option-btn" data-value="engineer">エンジニア</button>
+                            <button class="option-btn" data-value="designer">デザイナー</button>
+                            <button class="option-btn" data-value="manager">マネージャー</button>
+                            <button class="option-btn" data-value="marketing">マーケティング</button>
+                            <button class="option-btn" data-value="sales">営業</button>
+                            <button class="option-btn" data-value="other">その他</button>
+                        </div>
+                    </div>
+                    
+                    <div class="question-step" data-step="2">
+                        <h3>関心のある技術分野は？</h3>
+                        <div class="options-grid">
+                            <button class="option-btn" data-value="ai">AI・機械学習</button>
+                            <button class="option-btn" data-value="web">Web開発</button>
+                            <button class="option-btn" data-value="mobile">モバイルアプリ</button>
+                            <button class="option-btn" data-value="cloud">クラウド・インフラ</button>
+                            <button class="option-btn" data-value="data">データ分析</button>
+                            <button class="option-btn" data-value="blockchain">ブロックチェーン</button>
+                        </div>
+                    </div>
+                    
+                    <div class="question-step" data-step="3">
+                        <h3>プロジェクトの規模は？</h3>
+                        <div class="options-grid">
+                            <button class="option-btn" data-value="startup">スタートアップ</button>
+                            <button class="option-btn" data-value="small">中小企業</button>
+                            <button class="option-btn" data-value="enterprise">大企業</button>
+                            <button class="option-btn" data-value="government">公的機関</button>
+                        </div>
+                    </div>
+                    
+                    <div class="question-step" data-step="4">
+                        <h3>予算規模は？</h3>
+                        <div class="options-grid">
+                            <button class="option-btn" data-value="small">100万円未満</button>
+                            <button class="option-btn" data-value="medium">100-500万円</button>
+                            <button class="option-btn" data-value="large">500-1000万円</button>
+                            <button class="option-btn" data-value="enterprise">1000万円以上</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="profile-navigation">
+                    <button id="prev-question" disabled>← 前へ</button>
+                    <div class="step-indicator">
+                        <span class="step active"></span>
+                        <span class="step"></span>
+                        <span class="step"></span>
+                        <span class="step"></span>
+                    </div>
+                    <button id="next-question" disabled>次へ →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Story Content -->
+        <div id="story-container">
+            <!-- Hero Section -->
+            <section id="hero-section" class="story-section">
+                <div class="hero-content">
+                    <div class="hero-text">
+                        <h1 id="hero-title"></h1>
+                        <p id="hero-subtitle"></p>
+                        <div class="hero-stats">
+                            <div class="stat-item">
+                                <span class="stat-number" id="hero-stat1">0</span>
+                                <span class="stat-label" id="hero-stat1-label"></span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-number" id="hero-stat2">0</span>
+                                <span class="stat-label" id="hero-stat2-label"></span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-number" id="hero-stat3">0</span>
+                                <span class="stat-label" id="hero-stat3-label"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="hero-visual">
+                        <canvas id="hero-animation" width="500" height="400"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Challenge Section -->
+            <section id="challenge-section" class="story-section">
+                <div class="section-content">
+                    <h2 id="challenge-title"></h2>
+                    <div class="challenge-narrative">
+                        <div class="narrative-text">
+                            <p id="challenge-text"></p>
+                            <div class="pain-points">
+                                <h3>現在の課題</h3>
+                                <ul id="pain-points-list"></ul>
+                            </div>
+                        </div>
+                        <div class="challenge-chart">
+                            <canvas id="problem-chart" width="400" height="300"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Solution Journey -->
+            <section id="solution-section" class="story-section">
+                <div class="section-content">
+                    <h2 id="solution-title"></h2>
+                    <div class="solution-timeline">
+                        <div class="timeline-item" data-phase="1">
+                            <div class="timeline-marker"></div>
+                            <div class="timeline-content">
+                                <h3 id="solution-phase1-title"></h3>
+                                <p id="solution-phase1-desc"></p>
+                                <div class="phase-benefits" id="solution-phase1-benefits"></div>
+                            </div>
+                        </div>
+                        <div class="timeline-item" data-phase="2">
+                            <div class="timeline-marker"></div>
+                            <div class="timeline-content">
+                                <h3 id="solution-phase2-title"></h3>
+                                <p id="solution-phase2-desc"></p>
+                                <div class="phase-benefits" id="solution-phase2-benefits"></div>
+                            </div>
+                        </div>
+                        <div class="timeline-item" data-phase="3">
+                            <div class="timeline-marker"></div>
+                            <div class="timeline-content">
+                                <h3 id="solution-phase3-title"></h3>
+                                <p id="solution-phase3-desc"></p>
+                                <div class="phase-benefits" id="solution-phase3-benefits"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Success Story -->
+            <section id="success-section" class="story-section">
+                <div class="section-content">
+                    <h2 id="success-title"></h2>
+                    <div class="success-showcase">
+                        <div class="before-after">
+                            <div class="before-card">
+                                <h3>導入前</h3>
+                                <ul id="before-list"></ul>
+                            </div>
+                            <div class="transformation-arrow">→</div>
+                            <div class="after-card">
+                                <h3>導入後</h3>
+                                <ul id="after-list"></ul>
+                            </div>
+                        </div>
+                        <div class="success-metrics">
+                            <canvas id="success-chart" width="600" height="300"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Personalized Recommendations -->
+            <section id="recommendations-section" class="story-section">
+                <div class="section-content">
+                    <h2>あなたへのカスタマイズされた提案</h2>
+                    <div class="recommendations-grid">
+                        <div class="recommendation-card" id="tech-recommendation">
+                            <div class="card-icon">🚀</div>
+                            <h3 id="tech-rec-title"></h3>
+                            <p id="tech-rec-desc"></p>
+                            <div class="recommendation-actions">
+                                <button class="action-btn primary">詳細を見る</button>
+                                <button class="action-btn secondary">デモを試す</button>
+                            </div>
+                        </div>
+                        
+                        <div class="recommendation-card" id="timeline-recommendation">
+                            <div class="card-icon">⏱️</div>
+                            <h3 id="timeline-rec-title"></h3>
+                            <p id="timeline-rec-desc"></p>
+                            <div class="recommendation-actions">
+                                <button class="action-btn primary">プランを見る</button>
+                                <button class="action-btn secondary">相談する</button>
+                            </div>
+                        </div>
+                        
+                        <div class="recommendation-card" id="budget-recommendation">
+                            <div class="card-icon">💡</div>
+                            <h3 id="budget-rec-title"></h3>
+                            <p id="budget-rec-desc"></p>
+                            <div class="recommendation-actions">
+                                <button class="action-btn primary">見積もり依頼</button>
+                                <button class="action-btn secondary">事例を見る</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- CTA Section -->
+            <section id="cta-section" class="story-section">
+                <div class="cta-content">
+                    <h2 id="cta-title"></h2>
+                    <p id="cta-subtitle"></p>
+                    <div class="cta-actions">
+                        <button id="primary-cta" class="cta-btn primary">今すぐ相談する</button>
+                        <button id="secondary-cta" class="cta-btn secondary">資料をダウンロード</button>
+                    </div>
+                    <div class="contact-info">
+                        <p>📞 03-1234-5678 | ✉️ contact@innovative-it.co.jp</p>
+                        <p>🕒 平日 9:00-18:00（土日祝も対応可能）</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Navigation -->
+        <nav id="story-navigation">
+            <div class="nav-progress">
+                <div class="progress-line"></div>
+            </div>
+            <div class="nav-buttons">
+                <button class="nav-btn" data-section="hero">導入</button>
+                <button class="nav-btn" data-section="challenge">課題</button>
+                <button class="nav-btn" data-section="solution">解決策</button>
+                <button class="nav-btn" data-section="success">成果</button>
+                <button class="nav-btn" data-section="recommendations">提案</button>
+                <button class="nav-btn" data-section="cta">相談</button>
+            </div>
+        </nav>
+
+        <!-- Floating Actions -->
+        <div id="floating-actions">
+            <button id="regenerate-story" class="floating-btn" title="ストーリーを再生成">🔄</button>
+            <button id="save-story" class="floating-btn" title="ストーリーを保存">💾</button>
+            <button id="share-story" class="floating-btn" title="ストーリーを共有">📤</button>
+        </div>
+
+        <!-- Personalization Panel -->
+        <div id="personalization-panel">
+            <button id="panel-toggle">⚙️ カスタマイズ</button>
+            <div class="panel-content">
+                <h3>体験をカスタマイズ</h3>
+                
+                <div class="customization-option">
+                    <label>アニメーション速度</label>
+                    <input type="range" id="animation-speed" min="0.5" max="2" step="0.1" value="1">
+                </div>
+                
+                <div class="customization-option">
+                    <label>テーマカラー</label>
+                    <div class="color-options">
+                        <div class="color-option" data-theme="blue" style="background: #3498db;"></div>
+                        <div class="color-option" data-theme="green" style="background: #2ecc71;"></div>
+                        <div class="color-option" data-theme="purple" style="background: #9b59b6;"></div>
+                        <div class="color-option" data-theme="orange" style="background: #e67e22;"></div>
+                    </div>
+                </div>
+                
+                <div class="customization-option">
+                    <label>フォントサイズ</label>
+                    <select id="font-size">
+                        <option value="small">小</option>
+                        <option value="medium" selected>中</option>
+                        <option value="large">大</option>
+                    </select>
+                </div>
+                
+                <button id="reset-personalization">デフォルトに戻す</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analytics Tracking -->
+    <div id="analytics-tracker" style="display: none;"></div>
+
+    <script src="ml-engine.js"></script>
+    <script src="story-generator.js"></script>
+    <script src="animation-engine.js"></script>
+    <script src="personalization-app.js"></script>
+</body>
+</html>
