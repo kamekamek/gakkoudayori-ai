@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>リアルタイムコラボレーション - 革新的IT企業</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/4.6.0/fabric.min.js"></script>
+</head>
+<body>
+    <div id="loading-screen">
+        <div class="spinner"></div>
+        <p>コラボレーション環境を準備中...</p>
+    </div>
+
+    <div id="app">
+        <!-- Header -->
+        <header id="header">
+            <div class="header-left">
+                <h1>リアルタイムコラボレーション</h1>
+                <div class="connection-status">
+                    <div class="status-indicator offline"></div>
+                    <span id="connection-text">接続中...</span>
+                </div>
+            </div>
+            
+            <div class="header-right">
+                <div class="user-info">
+                    <span id="user-name">ゲスト</span>
+                    <div id="user-avatar"></div>
+                </div>
+                <div class="online-users">
+                    <span>オンライン: </span>
+                    <span id="user-count">1</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div id="main-content">
+            <!-- Sidebar -->
+            <div id="sidebar">
+                <div class="sidebar-section">
+                    <h3>参加者</h3>
+                    <div id="participants-list"></div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3>ツール</h3>
+                    <div class="tool-buttons">
+                        <button id="pen-tool" class="tool-btn active">✏️ ペン</button>
+                        <button id="eraser-tool" class="tool-btn">🗑️ 消しゴム</button>
+                        <button id="text-tool" class="tool-btn">📝 テキスト</button>
+                        <button id="shape-tool" class="tool-btn">⬜ 図形</button>
+                    </div>
+                    
+                    <div class="color-palette">
+                        <div class="color-option" data-color="#ff0000" style="background: #ff0000;"></div>
+                        <div class="color-option" data-color="#00ff00" style="background: #00ff00;"></div>
+                        <div class="color-option" data-color="#0000ff" style="background: #0000ff;"></div>
+                        <div class="color-option" data-color="#ffff00" style="background: #ffff00;"></div>
+                        <div class="color-option active" data-color="#000000" style="background: #000000;"></div>
+                        <div class="color-option" data-color="#ffffff" style="background: #ffffff; border: 1px solid #ccc;"></div>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3>レイヤー</h3>
+                    <div id="layers-list">
+                        <div class="layer-item active">
+                            <span>メインレイヤー</span>
+                            <button class="layer-toggle">👁️</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3>プロジェクト</h3>
+                    <button id="save-project" class="action-btn">💾 保存</button>
+                    <button id="export-project" class="action-btn">📥 エクスポート</button>
+                    <button id="clear-canvas" class="action-btn danger">🗑️ クリア</button>
+                </div>
+            </div>
+
+            <!-- Canvas Area -->
+            <div id="canvas-container">
+                <div id="canvas-toolbar">
+                    <div class="toolbar-group">
+                        <button id="zoom-in">🔍+</button>
+                        <button id="zoom-out">🔍-</button>
+                        <button id="zoom-reset">⚡ リセット</button>
+                    </div>
+                    
+                    <div class="toolbar-group">
+                        <span id="coordinates">X: 0, Y: 0</span>
+                    </div>
+                </div>
+                
+                <canvas id="collaboration-canvas" width="800" height="600"></canvas>
+                
+                <div id="cursors-container"></div>
+            </div>
+        </div>
+
+        <!-- Chat Panel -->
+        <div id="chat-panel">
+            <div id="chat-header">
+                <h3>チャット</h3>
+                <button id="chat-toggle">📢</button>
+            </div>
+            
+            <div id="chat-messages"></div>
+            
+            <div id="chat-input-container">
+                <input type="text" id="chat-input" placeholder="メッセージを入力...">
+                <button id="send-message">送信</button>
+            </div>
+        </div>
+
+        <!-- Demo Controls -->
+        <div id="demo-controls">
+            <button id="demo-drawing" class="demo-btn">🎨 描画デモ</button>
+            <button id="demo-collaboration" class="demo-btn">👥 コラボデモ</button>
+            <button id="demo-presentation" class="demo-btn">📊 プレゼンデモ</button>
+        </div>
+
+        <!-- User Join Modal -->
+        <div id="join-modal" class="modal">
+            <div class="modal-content">
+                <h2>コラボレーションに参加</h2>
+                <input type="text" id="username-input" placeholder="お名前を入力してください" maxlength="20">
+                <div class="avatar-selection">
+                    <p>アバターを選択:</p>
+                    <div class="avatar-options">
+                        <div class="avatar-option" data-avatar="👤">👤</div>
+                        <div class="avatar-option" data-avatar="👨‍💻">👨‍💻</div>
+                        <div class="avatar-option" data-avatar="👩‍💻">👩‍💻</div>
+                        <div class="avatar-option" data-avatar="🧑‍🎨">🧑‍🎨</div>
+                        <div class="avatar-option" data-avatar="👨‍🎨">👨‍🎨</div>
+                        <div class="avatar-option" data-avatar="👩‍🎨">👩‍🎨</div>
+                    </div>
+                </div>
+                <button id="join-collaboration">参加する</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="socket-client.js"></script>
+    <script src="canvas-manager.js"></script>
+    <script src="collaboration-app.js"></script>
+</body>
+</html>

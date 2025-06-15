@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIコンシェルジュ - 革新的IT企業体験</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+</head>
+<body>
+    <div id="loading-screen">
+        <div class="spinner"></div>
+        <p>AIコンシェルジュを起動中...</p>
+    </div>
+
+    <div id="app">
+        <!-- 3D Canvas -->
+        <canvas id="webgl-canvas"></canvas>
+        
+        <!-- AI Chat Interface -->
+        <div id="chat-interface">
+            <div id="ai-avatar">
+                <div class="avatar-circle">
+                    <div class="ai-indicator"></div>
+                </div>
+                <h3>AI コンシェルジュ</h3>
+                <p class="status">こんにちは！弊社についてお聞かせください</p>
+            </div>
+            
+            <div id="chat-messages"></div>
+            
+            <div id="chat-input-container">
+                <input type="text" id="chat-input" placeholder="質問をどうぞ...">
+                <button id="send-btn">送信</button>
+                <button id="voice-btn">🎤</button>
+            </div>
+        </div>
+
+        <!-- Company Info Panel -->
+        <div id="info-panel">
+            <h2>革新的IT企業</h2>
+            <div class="info-stats">
+                <div class="stat">
+                    <span class="number">500+</span>
+                    <span class="label">プロジェクト</span>
+                </div>
+                <div class="stat">
+                    <span class="number">50+</span>
+                    <span class="label">エンジニア</span>
+                </div>
+                <div class="stat">
+                    <span class="number">24/7</span>
+                    <span class="label">AI サポート</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Experience Controls -->
+        <div id="controls">
+            <button id="tour-btn" class="control-btn">バーチャル見学</button>
+            <button id="demo-btn" class="control-btn">技術デモ</button>
+            <button id="contact-btn" class="control-btn">お問い合わせ</button>
+        </div>
+
+        <!-- WebXR Button -->
+        <button id="xr-btn" style="display: none;">VR体験開始</button>
+    </div>
+
+    <script src="ai-engine.js"></script>
+    <script src="scene-manager.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
