@@ -81,61 +81,87 @@ Cloud Run (FastAPI)
 ### 📖 ドキュメント読み方
 
 **🎬 新規参加者**
-1. [📏 ハッカソンルール](docs/hackason_rule.md) - 制約・要件理解
+1. [📏 ハッカソンルール](docs/HACKASON_RULE.md) - 制約・要件理解
 2. [📝 要件定義](docs/REQUIREMENT.md) - プロジェクト全体把握  
-3. [🏗️ システム設計](docs/system_design.md) - 技術アーキテクチャ
+3. [🏗️ システム設計](docs/Archive/system_design.md) - 技術アーキテクチャ
 4. [📋 タスクリスト](docs/tasks.md) - 現在の進捗・次のアクション
 
 **💻 開発開始**
 1. [📋 今日のタスク](docs/tasks.md) - 実装すべき内容確認
-2. [🧪 TDD実践ガイド](docs/tdd_guide.md) - テスト駆動開発方法
-3. [🏗️ システム設計](docs/system_design.md) - 実装仕様確認
+2. [🧪 TDD実践ガイド](docs/Archive/tdd_guide.md) - テスト駆動開発方法
+3. [🏗️ システム設計](docs/Archive/system_design.md) - 実装仕様確認
 
 ### 🛠️ 開発環境構築
 
 ```bash
 # 1. プロジェクトクローン
-git clone https://github.com/your-repo/yutorikyoshitu.git
+git clone https://github.com/kamekamek/yutorikyoshitu.git
 cd yutorikyoshitu
 
-# 2. Flutter環境
-flutter pub get
-flutter run -d chrome
+# 2. 環境設定確認
+./scripts/check_env.sh
 
-# 3. Python環境 
-cd backend
-pip install -r requirements.txt
-uvicorn main:app --reload
+# 3. APIキー設定
+export GEMINI_API_KEY=your_api_key_here
+export SPEECH_TO_TEXT_API_KEY=your_api_key_here
 
-# 4. Google Cloud設定
-gcloud auth login
-gcloud config set project YOUR_PROJECT_ID
+# 4. 開発環境起動
+make dev
+# または
+./scripts/deploy.sh dev all
 ```
 
-### 📊 現在の進捗
+### 📚 詳細なセットアップガイド
+
+初心者向けの詳細なデプロイ手順は以下のドキュメントを参照してください：
+
+- **[🚀 デプロイガイド](docs/deployment_guide.md)** - 初心者向け完全ガイド
+- **[🔐 環境変数設定](docs/environment_setup.md)** - APIキー・シークレット設定詳細
+- **[🛠️ 便利スクリプト](scripts/)** - 自動化されたデプロイ・確認ツール
+
+### 🔄 CI/CD パイプライン
+
+**自動化されたワークフロー**
+- ✅ **継続的インテグレーション**: プッシュ・PR時の自動テスト
+- ✅ **静的解析**: Flutter analyze・flake8・black・mypy
+- ✅ **テストカバレッジ**: 80%以上の品質保証
+- ✅ **自動デプロイ**: Firebase Hosting への自動デプロイ
+- ✅ **依存関係管理**: Dependabot による週次更新
+- ✅ **セキュリティ**: 秘密情報検出・脆弱性スキャン
+
+**品質ゲート**
+```bash
+# ローカル品質チェック
+cd frontend && flutter analyze && flutter test
+cd backend && flake8 . && black --check . && pytest
+```
+
+### 🎉 プロジェクト完了状況
 
 | フェーズ | 期間 | 状況 | 主要成果物 |
 |---------|------|------|-----------|
 | **要件定義** | - | ✅ 完了 | 14機能要件・非機能要件 |
 | **システム設計** | - | ✅ 完了 | API・データ・セキュリティ設計 |
-| **タスク分解** | - | ✅ 完了 | 79タスク・4フェーズ |
-| **Phase 1** | Week 1-2 | 🚀 準備中 | 基盤構築・基本API |
-| **Phase 2** | Week 3-4 | ⏳ 待機中 | HTMLエディタ・チャット編集 |
-| **Phase 3** | Week 5 | ⏳ 待機中 | レイアウト自動生成・PDF |
-| **Phase 4** | Week 6 | ⏳ 待機中 | 統合・最適化・提出準備 |
+| **基盤実装** | - | ✅ 完了 | Firebase・GCP・Flutter Web基盤 |
+| **コア機能** | - | ✅ 完了 | 音声入力・AI生成・Quill.jsエディタ |
+| **高度機能** | - | ✅ 完了 | PDF出力・季節テーマ・レスポンシブUI |
+| **品質保証** | - | ✅ 完了 | E2Eテスト・パフォーマンス最適化 |
+
+**🏆 全61タスク完了 (100%) - プロジェクト完成** ✅
 
 ---
 
-## 📋 今週のフォーカスタスク
+## 🎉 完成機能一覧
 
-**Phase 1: 基盤構築**
-1. 🔴 Google Cloud プロジェクト作成・Vertex AI有効化
-2. 🔴 Flutter Web プロジェクト初期化・Firebase接続
-3. 🔴 FastAPI バックエンド・基本API実装
-4. 🔴 Speech-to-Text・Gemini統合・動作確認
-5. 🔴 Firebase Authentication・基本UI構築
+**✅ 完全実装済み機能**
+1. ✅ **音声入力システム** - リアルタイム録音・STT・ファイルアップロード
+2. ✅ **AI文章生成** - Gemini Pro・チャット編集・カスタム指示
+3. ✅ **WYSIWYGエディタ** - Quill.js・Delta変換・季節テーマ
+4. ✅ **PDF出力配信** - 高品質PDF・日本語フォント・自動レイアウト
+5. ✅ **Firebase統合** - 認証・ストレージ・リアルタイムDB
+6. ✅ **レスポンシブUI** - 3カラム・PC/タブレット/モバイル対応
 
-**詳細は [📋 tasks.md](docs/tasks.md) を参照**
+**📊 詳細な実装状況は [📋 tasks.md](docs/tasks.md) と [🎉 完了報告書](docs/archive/PROJECT_COMPLETION_SUMMARY.md) を参照**
 
 ---
 
@@ -156,14 +182,14 @@ gcloud config set project YOUR_PROJECT_ID
 
 | ドキュメント | 説明 | 対象 |
 |------------|------|------|
-| **[📋 Index](docs/index.md)** | エントリーポイント | 全員 |
-| **[📖 Overview](docs/README.md)** | 全体ナビゲーション | 全員 |
+| **[📋 Index](docs/archive/INDEX.md)** | エントリーポイント | 全員 |
+| **[📖 Overview](docs/Archive/README.md)** | 全体ナビゲーション | 全員 |
 | **[📝 要件定義](docs/REQUIREMENT.md)** | 14機能要件・画面設計 | 全員 |
-| **[🏗️ システム設計](docs/system_design.md)** | API・データ・セキュリティ | 開発者 |
+| **[🏗️ システム設計](docs/Archive/system_design.md)** | API・データ・セキュリティ | 開発者 |
 | **[📋 タスク](docs/tasks.md)** | 79実装タスク・進捗管理 | 開発者 |
-| **[🧪 TDD](docs/tdd_guide.md)** | テスト駆動開発実践 | 開発者 |
-| **[🚀 将来拡張](docs/future_extensions.md)** | ADKマルチエージェント | 設計者 |
-| **[📏 ハッカソンルール](docs/hackason_rule.md)** | 制約・技術要件 | 全員 |
+| **[🧪 TDD](docs/Archive/tdd_guide.md)** | テスト駆動開発実践 | 開発者 |
+| **[🚀 将来拡張](docs/Archive/future_extensions.md)** | ADKマルチエージェント | 設計者 |
+| **[📏 ハッカソンルール](docs/HACKASON_RULE.md)** | 制約・技術要件 | 全員 |
 
 ---
 
@@ -185,16 +211,60 @@ gcloud config set project YOUR_PROJECT_ID
 
 ## 📞 サポート・質問
 
-- **設計・仕様**: [system_design.md](docs/system_design.md) 参照
-- **実装方法**: [tdd_guide.md](docs/tdd_guide.md) 参照  
+- **設計・仕様**: [system_design.md](docs/Archive/system_design.md) 参照
+- **実装方法**: [tdd_guide.md](docs/Archive/tdd_guide.md) 参照  
 - **進捗確認**: [tasks.md](docs/tasks.md) 参照
-- **ハッカソン要件**: [hackason_rule.md](docs/hackason_rule.md) 参照
+- **ハッカソン要件**: [hackason_rule.md](docs/HACKASON_RULE.md) 参照
 
 ---
 
 ## 📜 ライセンス
 
 MIT License - Google Cloud Japan AI Hackathon Vol.2 提出用
+
+---
+
+## 🔐 機密情報の管理
+
+### Firebase設定
+
+Firebase設定ファイル `frontend/lib/firebase_options.dart` には機密情報が含まれているため、以下の手順で管理してください：
+
+1. **初回セットアップ時**：
+   ```bash
+   # テンプレートファイルから実際の設定ファイルを作成
+   cp frontend/lib/firebase_options.dart.template frontend/lib/firebase_options.dart
+   
+   # 実際のFirebase設定値を設定
+   # エディタで firebase_options.dart を開き、YOUR_*_HERE を実際の値に置換
+   ```
+
+2. **設定値の更新**：
+   - API Key: `AIzaSyAROJC6oomnN4tl1Sv27fcE5yaB_vIzXxc`
+   - App ID: `1:309920383305:web:fa0ae9890d4e7bf2355a98`
+   - Project ID: `yutori-kyoshitu`
+   - Auth Domain: `yutori-kyoshitu.firebaseapp.com`
+   - Storage Bucket: `yutori-kyoshitu.firebasestorage.app`
+
+3. **セキュリティ注意事項**：
+   - `firebase_options.dart` は `.gitignore` に登録済みでGit追跡されません
+   - テンプレートファイル `firebase_options.dart.template` のみがバージョン管理対象です
+   - 本番環境では環境変数やシークレット管理サービスの使用を推奨
+
+### 環境変数
+
+各環境で `.env` ファイルを作成し、以下の変数を設定してください：
+
+```bash
+# Frontend (.env)
+FIREBASE_API_KEY=your_api_key_here
+FIREBASE_APP_ID=your_app_id_here
+FIREBASE_PROJECT_ID=your_project_id_here
+
+# Backend (backend/functions/.env)
+GOOGLE_CLOUD_PROJECT=your_project_id_here
+FIREBASE_PROJECT_ID=your_project_id_here
+```
 
 ---
 

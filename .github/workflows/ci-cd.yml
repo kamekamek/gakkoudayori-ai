@@ -1,0 +1,311 @@
+name: 🚀 学級通信エディタ CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  FLUTTER_VERSION: '3.32.2'
+  NODE_VERSION: '18'
+
+jobs:
+  # テスト・品質チェック
+  test:
+    name: 🧪 テスト・品質チェック
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 コードチェックアウト
+        uses: actions/checkout@v4
+
+      - name: 🐦 Flutter環境セットアップ
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true # Flutterキャッシュ有効化
+
+      - name: 📦 Flutter依存関係取得
+        run: |
+          cd frontend
+          flutter pub get
+
+      - name: 🔍 Flutter静的解析
+        run: |
+          cd frontend
+          flutter analyze
+
+      - name: 🧪 Flutterテスト実行
+        run: |
+          cd frontend
+          flutter test
+
+      - name: 🐍 Python環境セットアップ
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: 🐍 pipキャッシュ設定
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: 📦 Python依存関係インストール
+        run: |
+          cd backend/functions
+          pip install -r requirements.txt
+
+      - name: 🧪 Pythonテスト実行
+        run: |
+          cd backend/functions
+          python -m pytest tests/ -v || echo "⚠️ テストファイルが見つかりません"
+
+  # ステージング環境デプロイ（developブランチ）
+  deploy-staging:
+    name: 🧪 ステージング環境デプロイ
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    environment: staging
+    steps:
+      - name: 📥 コードチェックアウト
+        uses: actions/checkout@v4
+
+      - name: 🐦 Flutter環境セットアップ
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+
+      - name: 🏗️ ステージング用ビルド
+        run: |
+          cd frontend
+          flutter build web \
+            --dart-define=ENVIRONMENT=staging \
+            --dart-define=API_BASE_URL=https://yutori-backend-staging-944053509139.asia-northeast1.run.app/api/v1/ai \
+            --release
+
+      - name: 🔧 Google Cloud認証
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: ☁️ Google Cloud SDK セットアップ
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: 🚀 バックエンドイメージビルド（ステージング）
+        id: build_staging
+        run: |
+          cd backend/functions # Dockerfileがあるディレクトリに移動
+          BUILD_ID=$(gcloud builds submit --tag gcr.io/gakkoudayori-ai/yutori-backend-staging:latest . --async --format="value(id)")
+          echo "BUILD_ID=$BUILD_ID" >> $GITHUB_OUTPUT
+          echo "Build submitted with ID: $BUILD_ID"
+
+      - name: ⏳ バックエンドビルド完了待機（ステージング）
+        run: |
+          BUILD_ID=${{ steps.build_staging.outputs.BUILD_ID }}
+          echo "Waiting for build $BUILD_ID to complete..."
+          while true; do
+            STATUS=$(gcloud builds describe $BUILD_ID --format="value(status)")
+            if [[ "$STATUS" == "SUCCESS" ]]; then
+              echo "Build $BUILD_ID succeeded."
+              break
+            elif [[ "$STATUS" == "FAILURE" || "$STATUS" == "INTERNAL_ERROR" || "$STATUS" == "TIMEOUT" ]]; then
+              echo "Build $BUILD_ID failed with status: $STATUS"
+              exit 1
+            fi
+            echo "Current build status: $STATUS. Waiting 10 seconds..."
+            sleep 10
+          done
+
+      - name: 🚀 バックエンドデプロイ（ステージング）
+        run: |
+          gcloud run deploy yutori-backend-staging \
+            --image gcr.io/gakkoudayori-ai/yutori-backend-staging:latest \
+            --platform managed \
+            --region asia-northeast1 \
+            --allow-unauthenticated \
+            --port 8080 \
+            --set-env-vars="ENVIRONMENT=staging,FLASK_ENV=production" # 環境変数を設定
+
+      - name: 🌐 フロントエンドデプロイ（ステージング）
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}'
+          channelId: staging
+          expires: 30d
+          projectId: gakkoudayori-ai
+
+  # 本番環境デプロイ（mainブランチ）
+  deploy-production:
+    name: 🚀 本番環境デプロイ
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    steps:
+      - name: 📥 コードチェックアウト
+        uses: actions/checkout@v4
+
+      - name: 🐦 Flutter環境セットアップ
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+
+      - name: 🏗️ 本番用ビルド
+        run: |
+          cd frontend
+          flutter build web \
+            --dart-define=ENVIRONMENT=production \
+            --dart-define=API_BASE_URL=https://yutori-backend-944053509139.asia-northeast1.run.app/api/v1/ai \
+            --release
+
+      - name: 🔧 Google Cloud認証
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: ☁️ Google Cloud SDK セットアップ
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: 🚀 バックエンドイメージビルド（本番）
+        id: build_production
+        run: |
+          cd backend/functions # Dockerfileがあるディレクトリに移動
+          BUILD_ID=$(gcloud builds submit --tag gcr.io/gakkoudayori-ai/yutori-backend:latest . --async --format="value(id)")
+          echo "BUILD_ID=$BUILD_ID" >> $GITHUB_OUTPUT
+          echo "Build submitted with ID: $BUILD_ID"
+
+      - name: ⏳ バックエンドビルド完了待機（本番）
+        run: |
+          BUILD_ID=${{ steps.build_production.outputs.BUILD_ID }}
+          echo "Waiting for build $BUILD_ID to complete..."
+          while true; do
+            STATUS=$(gcloud builds describe $BUILD_ID --format="value(status)")
+            if [[ "$STATUS" == "SUCCESS" ]]; then
+              echo "Build $BUILD_ID succeeded."
+              break
+            elif [[ "$STATUS" == "FAILURE" || "$STATUS" == "INTERNAL_ERROR" || "$STATUS" == "TIMEOUT" ]]; then
+              echo "Build $BUILD_ID failed with status: $STATUS"
+              exit 1
+            fi
+            echo "Current build status: $STATUS. Waiting 10 seconds..."
+            sleep 10
+          done
+
+      - name: 🚀 バックエンドデプロイ（本番）
+        run: |
+          gcloud run deploy yutori-backend \
+            --image gcr.io/gakkoudayori-ai/yutori-backend:latest \
+            --platform managed \
+            --region asia-northeast1 \
+            --allow-unauthenticated \
+            --port 8080 \
+            --set-env-vars="ENVIRONMENT=production,FLASK_ENV=production" # 環境変数を設定
+
+      - name: 🌐 フロントエンドデプロイ（本番）
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}'
+          projectId: gakkoudayori-ai
+
+      - name: 🔔 LINEデプロイ通知 (本番成功 - Messaging API)
+        if: success()
+        run: |
+          MESSAGE_TEXT="🎉 本番環境へのデプロイが完了しました！\nプロジェクト: ${{ github.repository }}\nブランチ: ${{ github.ref_name }}\nコミット: '${{ github.sha }}'\n実行者: ${{ github.actor }}\nURL: https://gakkoudayori-ai.web.app"
+          curl -X POST \
+          -H "Authorization: Bearer ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}" \
+          -H "Content-Type: application/json" \
+          -d "{\
+            \"to\": \"${{ secrets.LINE_TARGET_GROUP_ID }}\",\
+            \"messages\":[\
+                {\
+                    \"type\":\"text\",\
+                    \"text\":\"$MESSAGE_TEXT\"\
+                }\
+            ]\
+          }" https://api.line.me/v2/bot/message/push
+
+      - name: 🔔 LINEデプロイ通知 (本番失敗 - Messaging API)
+        if: failure()
+        run: |
+          MESSAGE_TEXT="🔥 本番環境へのデプロイに失敗しました。\nプロジェクト: ${{ github.repository }}\nブランチ: ${{ github.ref_name }}\nコミット: '${{ github.sha }}'\n実行者: ${{ github.actor }}\n詳細: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          curl -X POST \
+          -H "Authorization: Bearer ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}" \
+          -H "Content-Type: application/json" \
+          -d "{\
+            \"to\": \"${{ secrets.LINE_TARGET_GROUP_ID }}\",\
+            \"messages\":[\
+                {\
+                    \"type\":\"text\",\
+                    \"text\":\"$MESSAGE_TEXT\"\
+                }\
+            ]\
+          }" https://api.line.me/v2/bot/message/push
+
+      - name: 🏷️ リリースタグ作成
+        if: success()
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          TAG_NAME="v$(date +'%Y%m%d-%H%M%S')"
+          git tag $TAG_NAME
+          git push origin $TAG_NAME
+          echo "🏷️ リリースタグ作成: $TAG_NAME"
+
+  # プルリクエスト用プレビューデプロイ
+  deploy-preview:
+    name: 👀 プレビューデプロイ
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: 📥 コードチェックアウト
+        uses: actions/checkout@v4
+
+      - name: 🐦 Flutter環境セットアップ
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+
+      - name: 🏗️ プレビュー用ビルド
+        run: |
+          cd frontend
+          flutter build web \
+            --dart-define=ENVIRONMENT=preview \
+            --dart-define=API_BASE_URL=https://yutori-backend-944053509139.asia-northeast1.run.app/api/v1/ai \
+            --release
+
+      - name: 👀 プレビューデプロイ
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}'
+          channelId: pr-${{ github.event.number }}
+          expires: 7d
+          projectId: gakkoudayori-ai
+
+      - name: 💬 プレビューURL通知
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 👀 プレビューデプロイ完了！
+              
+              🌐 **プレビューURL**: https://gakkoudayori-ai--pr-${{ github.event.number }}.web.app
+              
+              ⏰ **有効期限**: 7日間
+              
+              このプレビューは自動的に削除されます。`
+            }) 

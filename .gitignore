@@ -33,6 +33,12 @@ config.json
 secrets.json
 private.json
 
+# 新しいセキュア設定管理
+scripts/env/*.env
+!scripts/env/*.env.example
+frontend/web/config.js
+!frontend/web/config.js.example
+
 # =============================================================================
 # Google Cloud・Firebase（機密情報）
 # =============================================================================
@@ -100,7 +106,7 @@ backend/uploads/
 backend/downloads/
 
 # =============================================================================
-# Frontend (Flutter)
+# Frontend (Flutter) - Webアプリケーション専用最適化
 # =============================================================================
 
 # Flutter/Dart生成ファイル
@@ -116,11 +122,6 @@ frontend/pubspec.lock
 
 # ビルド成果物
 frontend/build/web/
-frontend/android/app/build/
-frontend/ios/build/
-frontend/macos/build/
-frontend/windows/build/
-frontend/linux/build/
 
 # IDE関連
 frontend/.idea/
@@ -131,7 +132,31 @@ frontend/*.iws
 
 # Flutter Web関連
 frontend/web/canvaskit/
-frontend/web/icons/Icon-*.png
+
+# =============================================================================
+# Flutter: 不要なプラットフォームファイルを除外（Web + iOS アプリ用）
+# =============================================================================
+
+# Android関連ファイル（不要）
+frontend/android/
+frontend/android.zip
+
+# Desktop関連ファイル（不要）
+frontend/linux/
+frontend/macos/
+frontend/windows/
+
+# プラットフォーム固有設定ファイル
+frontend/*.iml
+frontend/yutori_kyoshitu.iml
+
+# iOS: 必要なファイルは残し、生成ファイルのみ除外
+frontend/ios/build/
+frontend/ios/Pods/
+frontend/ios/Podfile.lock
+frontend/ios/.symlinks/
+frontend/ios/Flutter/Generated.xcconfig
+frontend/ios/Flutter/flutter_export_environment.sh
 
 # =============================================================================
 # API キー・認証情報（機密情報）
@@ -192,14 +217,10 @@ personal-notes.md
 todo-private.md
 
 # Cursor関連
-.specstory/**
-.cursorindexingignore
+.cursor/
 
-# Node.js（もし使用する場合）
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+# tmux関連
+tmux-*.log
 
 # =============================================================================
 # 注意：以下のファイルは必ずGitに含める
@@ -208,4 +229,4 @@ yarn-error.log*
 # - 設定例ファイル（.env.example, config.example.yaml等）
 # - ドキュメント（docs/）
 # - テスト用モックデータ（test/fixtures/）
-
+.firebase/*
