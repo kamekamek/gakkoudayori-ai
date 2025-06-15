@@ -101,7 +101,7 @@ jobs:
         run: |
           cd backend/functions # Dockerfileがあるディレクトリに移動
           gcloud builds submit --tag gcr.io/gakkoudayori-ai/yutori-backend-staging:latest . \
-            --logging=CLOUD_LOGGING_ONLY
+            --suppress-logs
 
       - name: 🚀 バックエンドデプロイ（ステージング）
         run: |
@@ -193,7 +193,7 @@ jobs:
         run: |
           cd backend/functions # Dockerfileがあるディレクトリに移動
           gcloud builds submit --tag gcr.io/gakkoudayori-ai/yutori-backend:latest . \
-            --logging=CLOUD_LOGGING_ONLY
+            --suppress-logs
 
       - name: 🚀 バックエンドデプロイ（本番）
         run: |
