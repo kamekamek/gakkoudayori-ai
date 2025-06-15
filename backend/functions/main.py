@@ -8,6 +8,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import logging
 import os
+import re
 import sys
 from datetime import datetime
 
@@ -38,9 +39,13 @@ logger = logging.getLogger(__name__)
 # Flaskアプリケーション作成
 app = Flask(__name__)
 # CORS設定 - 本番とローカル開発環境の両方を許可
+# プレビュー環境のURLパターン (例: https://gakkoudayori-ai--pr-123.web.app) にマッチする正規表現
+preview_origin_pattern = r"https://gakkoudayori-ai--pr-\d+\.web\.app"
+
 CORS(app, origins=[
-    "https://gakkoudayori-ai.web.app",
-    "https://gakkoudayori-ai--staging.web.app", 
+    "https://gakkoudayori-ai.web.app",  # 本番フロントエンド
+    "https://gakkoudayori-ai--staging.web.app",  # ステージングフロントエンド
+    re.compile(preview_origin_pattern), # プレビュー環境 (正規表現)
     "http://localhost:3000",
     "http://localhost:5000",
     "http://localhost:8080"
