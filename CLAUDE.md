@@ -2,6 +2,43 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 🏃‍♂️ Quick Start Commands
+
+For immediate productivity, use these essential commands:
+
+### Most Common Commands
+```bash
+# Start development with proper environment
+make dev
+
+# Run all tests and checks (before committing)
+make test && make lint
+
+# Deploy everything (backend + frontend)
+make deploy
+
+# Reset development environment when things break
+make reset-dev
+```
+
+### Flutter Web Development
+```bash
+cd frontend
+flutter pub get                    # Install dependencies
+flutter run -d chrome             # Start dev server
+flutter test                      # Run tests
+flutter analyze                   # Static analysis
+```
+
+### Backend Python Development
+```bash
+cd backend/functions
+source venv/bin/activate          # Activate virtual environment
+python start_server.py           # Start local server
+pytest                           # Run tests
+flake8 . && black .              # Lint and format
+```
+
 # ゆとり職員室 - Claude Code Action ガイドライン
 
 ## 🎯 プロジェクト概要
@@ -478,6 +515,21 @@ PRを作成する際は、以下のテンプレートを使用してClaudeにレ
 - 初回は `firebase_options.dart.template` からコピーして実際の値を設定
 - Web用Firebase設定は `web/firebase-config.js.sample` も参照
 
+### Document Management Rules
+Based on `.cursor/rules/document_management.mdc`, follow these conventions:
+- File naming: `{Number}_{CATEGORY}_{title}.md` (e.g., `01_REQUIREMENT_overview.md`)
+- Categories: REQUIREMENT (01-09), DESIGN (10-19), SPEC (20-29), API (30-39), etc.
+- Include TL;DR section for 30-second understanding
+- Keep documents under 10KB, split if larger
+- Always include metadata: complexity, reading time, dependencies
+
+### Architecture-Specific Notes
+- **Web-only**: No mobile app support, Flutter Web PWA only
+- **Quill.js Bridge**: JavaScript ↔ Flutter communication via `web/quill/index.html`
+- **Audio Pipeline**: MediaRecorder API → Cloud Speech-to-Text → Gemini → Quill Delta
+- **Firebase Functions**: Python FastAPI deployed as Firebase Functions
+- **State Management**: Provider pattern, especially `QuillEditorProvider` for editor state
+
 ### Quill.js統合の理解
 - `web/quill/index.html` が Quill.js の実装本体
 - `lib/features/editor/services/javascript_bridge.dart` で Flutter ↔ JavaScript 通信
@@ -505,3 +557,76 @@ PRを作成する際は、以下のテンプレートを使用してClaudeにレ
 - Gemini API のレスポンス時間（ストリーミング対応推奨）
 - 音声ファイルのサイズ制限（Cloud Speech-to-Text上限）
 - PDF生成処理のタイムアウト
+
+## 📋 Task Management & TDD Integration
+
+### Required Task Management Flow
+This project enforces strict task management based on `.cursor/rules/task_management_tdd.mdc`:
+
+1. **Task Start**: Mark in progress in `docs/tasks.md` with timestamp
+2. **TDD Implementation**: Follow Red → Green → Blue cycle for AI/HYBRID tasks
+3. **Task Complete**: Update all completion conditions and record artifacts
+4. **Dependency Check**: Verify and unlock dependent tasks
+
+### TDD Phase Tracking
+For any coding task, track TDD phases in task updates:
+```markdown
+#### T1-XX-001-A: Example Task
+- **TDD Phase**: 🔴 RED - Test creation
+- **TDD Phase**: 🟢 GREEN - Minimum implementation  
+- **TDD Phase**: 🔵 BLUE - Refactoring
+- **TDD Phase**: ✅ Complete
+```
+
+### Task Completion Requirements
+Every task must satisfy ALL completion conditions before marking complete:
+- All checkboxes marked [x]
+- Test coverage recorded (for code tasks)
+- Artifacts documented with file paths
+- Dependencies verified and updated
+
+## 🛠️ Critical Development Commands
+
+### Makefile Integration
+This project uses a comprehensive Makefile. Always prefer Makefile commands:
+
+```bash
+# Essential development workflow
+make help           # Show all available commands
+make dev            # Start development (Chrome with proper env vars)
+make staging        # Test with staging environment
+make test           # Run all tests (Flutter + Python)
+make lint           # Run all static analysis
+make format         # Format all code
+make ci-test        # Full CI pipeline locally
+
+# Deployment workflow
+make build-prod     # Production build
+make deploy         # Deploy everything (RECOMMENDED)
+make deploy-frontend # Firebase Hosting only
+make deploy-backend  # Cloud Run only
+```
+
+### Environment Variables (Critical)
+The application uses dart-define for configuration:
+- Development: `API_BASE_URL=http://localhost:8081/api/v1/ai`
+- Production: `API_BASE_URL=https://yutori-backend-944053509139.asia-northeast1.run.app/api/v1/ai`
+- Always use `make dev` or `make staging` to ensure proper environment setup
+
+### Testing Strategy
+```bash
+# Frontend testing
+cd frontend
+flutter test                    # Unit tests
+flutter test integration_test/  # Integration tests
+
+# Backend testing  
+cd backend/functions
+pytest                         # All tests
+pytest test_firebase_service.py -v  # Specific test file
+pytest --cov=. --cov-report=html    # With coverage
+
+# E2E testing
+cd frontend/e2e
+npm run test                   # Playwright E2E tests
+```
