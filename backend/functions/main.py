@@ -50,21 +50,11 @@ CORS(app, origins=[
 def init_firebase():
     """Firebase初期化"""
     try:
-        # Cloud Run環境では環境変数GOOGLE_APPLICATION_CREDENTIALSは自動設定される
-        # まずデフォルト認証を試行
-        logger.info("Initializing Firebase with default credentials (Cloud Run)")
+        # firebase_service.pyのinitialize_firebase()を使用（Secret Manager対応済み）
+        from firebase_service import initialize_firebase
         return initialize_firebase()
     except Exception as e:
         logger.error(f"Firebase initialization failed: {e}")
-        # 開発環境の場合は認証ファイルパスを確認
-        credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
-        if credentials_path and os.path.exists(credentials_path):
-            logger.info(f"Fallback: Initializing Firebase with credentials: {credentials_path}")
-            try:
-                return initialize_firebase_with_credentials(credentials_path)
-            except Exception as e2:
-                logger.error(f"Fallback Firebase initialization failed: {e2}")
-                return False
         return False
 
 def get_firestore_client():

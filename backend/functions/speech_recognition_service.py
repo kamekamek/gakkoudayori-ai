@@ -38,26 +38,25 @@ def initialize_speech_client(credentials_path: str = None) -> Optional[speech.Sp
         Optional[speech.SpeechClient]: 初期化されたクライアント、失敗時はNone
     """
     try:
-        # Cloud Run環境ではデフォルト認証を使用
-        if credentials_path and os.path.exists(credentials_path):
-            # 開発環境の場合は認証ファイルを設定
-            os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_path
-            logger.info(f"Using credentials file: {credentials_path}")
-        else:
-            # Cloud Run環境ではデフォルト認証を使用
-            logger.info("Using default credentials (Cloud Run environment)")
+        # Cloud Run環境では Secret Manager からサービスアカウントキーを取得
+        from firebase_service import get_credentials_from_secret_manager
+        credentials = get_credentials_from_secret_manager()
         
-        # Speech-to-Textクライアント作成（Cloud Run環境ではデフォルト認証を自動使用）
-        from google.auth import default
-        try:
-            # デフォルト認証を明示的に使用
-            credentials, project = default()
+        if credentials:
+            # Secret Manager から取得した認証情報を使用
             client = speech.SpeechClient(credentials=credentials)
-        except Exception:
-            # フォールバック: 認証情報なしで作成（Cloud Run環境で自動認証）
+            logger.info("Speech-to-Text client initialized with Secret Manager credentials")
+        else:
+            # フォールバック: デフォルト認証またはファイル認証
+            if credentials_path and os.path.exists(credentials_path):
+                os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_path
+                logger.info(f"Using credentials file: {credentials_path}")
+            else:
+                logger.info("Using default credentials (Cloud Run environment)")
+            
             client = speech.SpeechClient()
+            logger.info("Speech-to-Text client initialized with fallback method")
         
-        logger.info("Speech-to-Text client initialized successfully")
         return client
         
     except Exception as e:
