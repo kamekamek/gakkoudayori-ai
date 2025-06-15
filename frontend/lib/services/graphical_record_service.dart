@@ -1,11 +1,41 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
+import 'seasonal_detection_service.dart';
 
 /// グラフィックレコーディング（グラレコ）生成サービス
 /// 新フロー: 音声→JSON→HTMLグラレコ
 class GraphicalRecordService {
   static String get _baseUrl => AppConfig.apiBaseUrl;
+  final SeasonalDetectionService _seasonalDetectionService = SeasonalDetectionService();
+
+  /// 🎨 季節感を統合したJSON構造化データ変換（新機能）
+  Future<SpeechToJsonResult> convertSpeechToJsonWithSeasonal({
+    required String transcribedText,
+    String customContext = '',
+    SeasonalTemplate? seasonalTemplate,
+  }) async {
+    // 季節感情報をカスタムコンテキストに追加
+    String enhancedContext = customContext;
+    
+    if (seasonalTemplate != null) {
+      enhancedContext += '''
+      
+SEASONAL_THEME_INTEGRATION:
+- Primary Color: ${seasonalTemplate.primaryColor}
+- Accent Color: ${seasonalTemplate.accentColor}
+- Background Pattern: ${seasonalTemplate.backgroundPattern}
+- Font Style: ${seasonalTemplate.fontStyle}
+- Decorative Elements: ${seasonalTemplate.decorativeElements.map((e) => '${e.emoji} at ${e.position}').join(', ')}
+- Apply seasonal color scheme and decorative elements to the newsletter layout
+''';
+    }
+    
+    return convertSpeechToJson(
+      transcribedText: transcribedText,
+      customContext: enhancedContext,
+    );
+  }
 
   /// 音声認識結果をJSON構造化データに変換
   Future<SpeechToJsonResult> convertSpeechToJson({
@@ -51,6 +81,28 @@ class GraphicalRecordService {
     }
   }
 
+  /// 🎨 季節感を統合したHTMLグラレコ生成（新機能）
+  Future<JsonToGraphicalRecordResult> convertJsonToGraphicalRecordWithSeasonal({
+    required Map<String, dynamic> jsonData,
+    String template = 'colorful',
+    String customStyle = '',
+    SeasonalTemplate? seasonalTemplate,
+  }) async {
+    // 季節感CSSを生成してカスタムスタイルに追加
+    String enhancedStyle = customStyle;
+    
+    if (seasonalTemplate != null) {
+      final seasonalCSS = _seasonalDetectionService.generateSeasonalCSS(seasonalTemplate);
+      enhancedStyle += '\n\n/* 🎨 Seasonal Theme CSS */\n$seasonalCSS';
+    }
+    
+    return convertJsonToGraphicalRecord(
+      jsonData: jsonData,
+      template: template,
+      customStyle: enhancedStyle,
+    );
+  }
+
   /// JSON構造化データからHTMLグラレコを生成
   Future<JsonToGraphicalRecordResult> convertJsonToGraphicalRecord({
     required Map<String, dynamic> jsonData,
@@ -94,6 +146,62 @@ class GraphicalRecordService {
         success: false,
         error: 'Network error: $e',
         errorCode: 'NETWORK_ERROR',
+      );
+    }
+  }
+
+  /// 🚀 完全統合ワークフロー：季節感検出→JSON→HTMLグラレコ（新機能）
+  Future<SeasonalNewsletterResult> generateSeasonalNewsletter({
+    required String transcribedText,
+    String template = 'colorful',
+    String style = 'classic',
+  }) async {
+    try {
+      // 1. 季節感を自動検出
+      final detectionResult = await _seasonalDetectionService.detectSeasonFromText(transcribedText);
+      final seasonalTemplate = await _seasonalDetectionService.generateSeasonalTemplate(detectionResult);
+      
+      // 2. 季節感を統合したJSON変換
+      final jsonResult = await convertSpeechToJsonWithSeasonal(
+        transcribedText: transcribedText,
+        customContext: 'style:$style',
+        seasonalTemplate: seasonalTemplate,
+      );
+      
+      if (!jsonResult.success || jsonResult.jsonData == null) {
+        return SeasonalNewsletterResult(
+          success: false,
+          error: jsonResult.error ?? 'JSON conversion failed',
+        );
+      }
+      
+      // 3. 季節感を統合したHTMLグラレコ生成
+      final htmlResult = await convertJsonToGraphicalRecordWithSeasonal(
+        jsonData: jsonResult.jsonData!,
+        template: template == 'classic' ? 'classic_newsletter' : 'modern_newsletter',
+        customStyle: 'newsletter_optimized_for_print',
+        seasonalTemplate: seasonalTemplate,
+      );
+      
+      if (!htmlResult.success || htmlResult.htmlContent == null) {
+        return SeasonalNewsletterResult(
+          success: false,
+          error: htmlResult.error ?? 'HTML generation failed',
+        );
+      }
+      
+      return SeasonalNewsletterResult(
+        success: true,
+        htmlContent: htmlResult.htmlContent!,
+        seasonalDetection: detectionResult,
+        seasonalTemplate: seasonalTemplate,
+        jsonData: jsonResult.jsonData!,
+      );
+      
+    } catch (e) {
+      return SeasonalNewsletterResult(
+        success: false,
+        error: 'Integrated workflow error: $e',
       );
     }
   }
@@ -278,6 +386,7 @@ class GraphicalRecordService {
       return PdfConversionResult(success: false, error: 'Network error: $e');
     }
   }
+
 }
 
 class PdfConversionResult {
@@ -287,6 +396,7 @@ class PdfConversionResult {
 
   PdfConversionResult({required this.success, this.pdfData, this.error});
 }
+
 
 /// 音声→JSON変換結果
 class SpeechToJsonResult {
@@ -333,6 +443,27 @@ class JsonToGraphicalRecordResult {
     this.timestamp,
     this.error,
     this.errorCode,
+  });
+}
+
+/// 🎨 季節感統合学級通信生成結果
+class SeasonalNewsletterResult {
+  final bool success;
+  final String? htmlContent;
+  final SeasonalDetectionResult? seasonalDetection;
+  final SeasonalTemplate? seasonalTemplate;
+  final Map<String, dynamic>? jsonData;
+  final int? processingTimeMs;
+  final String? error;
+
+  SeasonalNewsletterResult({
+    required this.success,
+    this.htmlContent,
+    this.seasonalDetection,
+    this.seasonalTemplate,
+    this.jsonData,
+    this.processingTimeMs,
+    this.error,
   });
 }
 

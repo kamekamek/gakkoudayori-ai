@@ -3,8 +3,11 @@ import 'package:flutter/services.dart';
 import 'services/audio_service.dart';
 import 'services/graphical_record_service.dart';
 import 'services/user_dictionary_service.dart';
+import 'services/ai_voice_coaching_service.dart';
+import 'services/seasonal_detection_service.dart';
 import 'widgets/print_preview_widget.dart';
 import 'widgets/user_dictionary_widget.dart';
+import 'widgets/swipe_gesture_editor.dart';
 
 import 'dart:html' as html;
 
@@ -39,11 +42,18 @@ class ResponsiveHomePage extends StatefulWidget {
   ResponsiveHomePageState createState() => ResponsiveHomePageState();
 }
 
-class ResponsiveHomePageState extends State<ResponsiveHomePage> {
+class ResponsiveHomePageState extends State<ResponsiveHomePage> 
+    with SingleTickerProviderStateMixin {
   final AudioService _audioService = AudioService();
   final GraphicalRecordService _graphicalRecordService =
       GraphicalRecordService();
   final UserDictionaryService _userDictionaryService = UserDictionaryService();
+  final AIVoiceCoachingService _aiCoachingService = AIVoiceCoachingService();
+  final SeasonalDetectionService _seasonalDetectionService = SeasonalDetectionService();
+  
+  // タブ状態管理
+  TabController? _tabController;
+  int _currentTabIndex = 0;
 
   // --- 状態変数 ---
   // 共通
@@ -57,19 +67,47 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
   // 学級通信モード用 (2エージェント対応)
   String _generatedHtml = '';
   bool _isGenerating = false;
+  double _aiProgress = 0.0;
   String _selectedStyle = ''; // 初期状態では何も選択されていない
   Map<String, dynamic>? _structuredJsonData; // 第1エージェントの出力
   bool _showStyleButtons = false; // スタイル選択ボタンの表示制御
+  
+  // AI音声コーチング関連
+  bool _isAICoachingActive = false;
+  String _realtimeTranscript = '';
+  
+  // 季節感検出システム関連
+  SeasonalDetectionResult? _seasonalDetectionResult;
+  SeasonalTemplate? _currentSeasonalTemplate;
+  final bool _isSeasonalDetectionEnabled = true;
 
   @override
   void initState() {
     super.initState();
+    
+    // タブコントローラー初期化
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController!.addListener(() {
+      if (_tabController!.indexIsChanging) {
+        setState(() {
+          _currentTabIndex = _tabController!.index;
+        });
+      }
+    });
+    
     _audioService.initializeJavaScriptBridge();
 
     _audioService.setOnRecordingStateChanged((isRecording) {
       setState(() {
         _isRecording = isRecording;
         _statusMessage = isRecording ? '🎤 録音中...' : '⏹️ 録音停止';
+        
+        // AIコーチング連動
+        if (isRecording && !_isAICoachingActive) {
+          _startAICoaching();
+        } else if (!isRecording && _isAICoachingActive) {
+          _stopAICoaching();
+        }
       });
     });
 
@@ -98,13 +136,28 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
 
         if (correctionResult.hasCorrections) {
           _statusMessage =
-              '✅ 文字起こし完了！${correctionResult.correctionCount}件の誤変換を修正しました。スタイルを選択して「学級通信を作成する」ボタンを押してください';
+              '✅ 文字起こし完了！${correctionResult.correctionCount}件の誤変換を修正しました。季節感を自動検出中...';
         } else {
-          _statusMessage = '✅ 文字起こし完了！スタイルを選択して「学級通信を作成する」ボタンを押してください';
+          _statusMessage = '✅ 文字起こし完了！季節感を自動検出中...';
         }
+        
+        // 季節感検出を実行
+        _detectSeasonalTheme(correctionResult.correctedText);
       });
     });
 
+    // リアルタイム文字起こしコールバック設定 (AIコーチング用)
+    _audioService.setOnRealtimeTranscript((transcript) {
+      setState(() {
+        _realtimeTranscript = transcript;
+      });
+      
+      // AIコーチングサービスにリアルタイム音声分析を依頼
+      if (_isAICoachingActive) {
+        _aiCoachingService.analyzeRealTimeVoice(transcript);
+      }
+    });
+    
     // sample.htmlの内容をプレビューに表示
     _loadSampleHtml();
   }
@@ -126,8 +179,42 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
 
   @override
   void dispose() {
+    _tabController?.dispose();
     _audioService.dispose();
+    _aiCoachingService.stopCoaching();
     super.dispose();
+  }
+  
+  /// 🎤 AIコーチング開始
+  Future<void> _startAICoaching() async {
+    if (_isAICoachingActive) return;
+    
+    setState(() {
+      _isAICoachingActive = true;
+    });
+    
+    await _aiCoachingService.startCoaching();
+    
+    // メッセージストリームを監視
+    _aiCoachingService.messageStream?.listen((message) {
+      if (mounted && message.type != CoachingType.system) {
+        // システムメッセージ以外はステータスに表示
+        setState(() {
+          _statusMessage = '🤖 AIコーチ: ${message.message}';
+        });
+      }
+    });
+  }
+  
+  /// 🎤 AIコーチング停止
+  Future<void> _stopAICoaching() async {
+    if (!_isAICoachingActive) return;
+    
+    setState(() {
+      _isAICoachingActive = false;
+    });
+    
+    await _aiCoachingService.stopCoaching();
   }
 
   @override
@@ -143,27 +230,27 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
         foregroundColor: Colors.white,
         elevation: 2,
       ),
-      body: isMobile ? _buildMobileLayout() : _buildDesktopLayout(),
-      floatingActionButton: isMobile && _generatedHtml.isNotEmpty
-          ? Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                FloatingActionButton(
-                  onPressed: _downloadPdf,
-                  backgroundColor: Colors.purple[600],
-                  heroTag: "pdf",
-                  child: Icon(Icons.picture_as_pdf, color: Colors.white),
-                ),
-                SizedBox(height: 8),
-                FloatingActionButton(
-                  onPressed: _regenerateNewsletter,
-                  backgroundColor: Colors.orange[600],
-                  heroTag: "regenerate",
-                  child: Icon(Icons.refresh, color: Colors.white),
-                ),
-              ],
-            )
-          : null,
+      body: Stack(
+        children: [
+          isMobile ? _buildMobileLayout() : _buildDesktopLayout(),
+          // AI音声コーチング表示
+          if (_isAICoachingActive)
+            Positioned(
+              top: 80,
+              left: 16,
+              right: 16,
+              child: AIVoiceCoachingWidget(
+                isVisible: _isAICoachingActive,
+                onClose: () {
+                  setState(() {
+                    _isAICoachingActive = false;
+                  });
+                },
+              ),
+            ),
+        ],
+      ),
+      floatingActionButton: null, // スマホではタブ内に移動
     );
   }
 
@@ -187,6 +274,57 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
   }
 
   Widget _buildMobileLayout() {
+    return Column(
+      children: [
+        // 固定タブバー
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
+          ),
+          child: TabBar(
+            controller: _tabController,
+            labelColor: Colors.blue[700],
+            unselectedLabelColor: Colors.grey[600],
+            indicatorColor: Colors.blue[600],
+            indicatorWeight: 3,
+            labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            tabs: [
+              Tab(
+                icon: Icon(Icons.mic, size: 20),
+                text: '音声入力',
+              ),
+              Tab(
+                icon: Icon(Icons.preview, size: 20),
+                text: 'プレビュー',
+              ),
+            ],
+          ),
+        ),
+        // タブコンテンツ
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              // 音声入力タブ
+              Container(
+                color: Colors.white,
+                padding: EdgeInsets.all(16),
+                child: _buildVoiceInputSection(isCompact: true),
+              ),
+              // プレビュータブ
+              Container(
+                color: Colors.grey[50],
+                child: _buildPreviewEditorSection(),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMobileLayoutOld() {
     return DefaultTabController(
       length: 2,
       child: Column(
@@ -252,16 +390,38 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Colors.blue[100]!),
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.info_outline, color: Colors.blue[600]),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    _statusMessage,
-                    style: TextStyle(color: Colors.blue[800], fontSize: 14),
-                  ),
+                Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.blue[600]),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _statusMessage,
+                        style: TextStyle(color: Colors.blue[800], fontSize: 14),
+                      ),
+                    ),
+                  ],
                 ),
+                if (_isProcessing && _aiProgress > 0) ...[
+                  SizedBox(height: 12),
+                  LinearProgressIndicator(
+                    value: _aiProgress,
+                    backgroundColor: Colors.blue[100],
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[600]!),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    '${(_aiProgress * 100).toInt()}% 完了',
+                    style: TextStyle(
+                      color: Colors.blue[700],
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -271,21 +431,27 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
               borderRadius: BorderRadius.circular(60),
               child: AnimatedContainer(
                 duration: Duration(milliseconds: 300),
-                width: 120,
-                height: 120,
+                width: isCompact ? 120 : 140, // スマホでより大きく
+                height: isCompact ? 120 : 140, // 44px最小タップサイズを大幅に上回る
                 decoration: BoxDecoration(
-                  color:
-                      (_isRecording ? Colors.red : Colors.blue).withValues(alpha: 0.12),
+                  color: (_isRecording ? Colors.red : Colors.blue).withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: _isRecording ? Colors.red[300]! : Colors.blue[300]!,
                     width: 4,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (_isRecording ? Colors.red : Colors.blue).withValues(alpha: 0.3),
+                      blurRadius: _isRecording ? 15 : 8,
+                      spreadRadius: _isRecording ? 3 : 1,
+                    ),
+                  ],
                 ),
                 child: Center(
                   child: Icon(
                     _isRecording ? Icons.mic_off : Icons.mic,
-                    size: 60,
+                    size: isCompact ? 56 : 70, // アイコンサイズも調整
                     color: _isRecording ? Colors.red[600] : Colors.blue[600],
                   ),
                 ),
@@ -301,10 +467,13 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                 _inputText = text;
                 _showStyleButtons = text.trim().isNotEmpty;
                 if (text.trim().isNotEmpty) {
-                  _statusMessage =
-                      '📝 テキスト入力完了！スタイルを選択して「学級通信を作成する」ボタンを押してください';
+                  _statusMessage = '📝 テキスト入力完了！季節感を自動検出中...';
+                  // テキスト変更時も季節感検出を実行
+                  _detectSeasonalTheme(text);
                 } else {
                   _statusMessage = '🎤 音声録音または文字入力で学級通信を作成してください';
+                  _seasonalDetectionResult = null;
+                  _currentSeasonalTemplate = null;
                 }
               });
             },
@@ -336,6 +505,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
             ),
           ),
           SizedBox(height: 16),
+          if (_seasonalDetectionResult != null) _buildSeasonalDetectionResult(),
           if (_showStyleButtons) _buildStyleSelection(),
           if (!isCompact) ...[
             SizedBox(height: 16),
@@ -481,25 +651,43 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                 Icon(Icons.preview, color: Colors.blue[600]),
                 SizedBox(width: 8),
                 Text(
-                  'プレビュー',
+                  isMobile ? 'スワイプ編集' : 'プレビュー',
                   style: TextStyle(
                     fontSize: isMobile ? 16 : 18,
                     fontWeight: FontWeight.bold,
                     color: Colors.grey[800],
                   ),
                 ),
+                if (isMobile) ...[
+                  Icon(Icons.swipe, color: Colors.blue[600], size: 20),
+                  SizedBox(width: 4),
+                ],
                 Spacer(),
-                ElevatedButton.icon(
-                  onPressed: _loadSampleHtml,
-                  icon: Icon(Icons.description, size: 16),
-                  label: Text('サンプル表示'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal,
-                    foregroundColor: Colors.white,
-                    padding:
-                        EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                if (_generatedHtml.isNotEmpty && isMobile) ...[
+                  IconButton(
+                    onPressed: _downloadPdf,
+                    icon: Icon(Icons.picture_as_pdf),
+                    tooltip: 'PDF保存',
+                    color: Colors.purple[600],
                   ),
-                ),
+                  IconButton(
+                    onPressed: _regenerateNewsletter,
+                    icon: Icon(Icons.refresh),
+                    tooltip: '再生成',
+                    color: Colors.orange[600],
+                  ),
+                ] else
+                  ElevatedButton.icon(
+                    onPressed: _loadSampleHtml,
+                    icon: Icon(Icons.description, size: 16),
+                    label: Text('サンプル表示'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.teal,
+                      foregroundColor: Colors.white,
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -522,15 +710,9 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
               ),
               child: _isProcessing
                   ? Center(child: CircularProgressIndicator())
-                  : Builder(
-                      builder: (context) {
-                        return PrintPreviewWidget(
-                          htmlContent: _generatedHtml,
-                          height: isMobile ? 600 : 700,
-                          enableMobilePrintView: true,
-                        );
-                      },
-                    ),
+                  : isMobile
+                      ? _buildSwipeEnabledPreview()
+                      : _buildDesktopPreview(),
             ),
           ),
         ],
@@ -546,7 +728,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
     }
   }
 
-  // 新しい2エージェント処理フロー
+  // 🚀 季節感統合処理フロー（革新的アップデート）
   Future<void> _generateNewsletterTwoAgent() async {
     if (_isGenerating || _isProcessing) return;
 
@@ -562,44 +744,43 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
     _isGenerating = true;
     setState(() {
       _isProcessing = true;
-      _statusMessage = '🤖 AI生成中... (2エージェント処理)';
+      _statusMessage = '🎨 季節感統合AI生成開始... (1/4)';
+      _aiProgress = 0.1;
     });
 
     try {
-      final jsonResult = await _graphicalRecordService.convertSpeechToJson(
+      // 🎯 新機能：季節感統合ワークフローを使用
+      final result = await _graphicalRecordService.generateSeasonalNewsletter(
         transcribedText: inputText,
-        customContext: 'style:$_selectedStyle',
+        template: _selectedStyle,
+        style: _selectedStyle,
       );
 
-      if (!jsonResult.success || jsonResult.jsonData == null) {
-        throw Exception(jsonResult.error ?? 'Failed to convert speech to JSON');
+      if (!result.success || result.htmlContent == null) {
+        throw Exception(result.error ?? 'Seasonal newsletter generation failed');
       }
 
       setState(() {
-        _structuredJsonData = jsonResult.jsonData;
-        _statusMessage = '🤖 1/2: 内容の構造化完了。レイアウトを生成中...';
-      });
-
-      final htmlResult =
-          await _graphicalRecordService.convertJsonToGraphicalRecord(
-        jsonData: _structuredJsonData!,
-        template: _selectedStyle == 'classic'
-            ? 'classic_newsletter'
-            : 'modern_newsletter',
-        customStyle: 'newsletter_optimized_for_print',
-      );
-
-      setState(() {
-        _generatedHtml = htmlResult.htmlContent!;
-        _statusMessage = '🎉 2エージェント処理完了！印刷最適化された学級通信をプレビューで確認してください';
+        _generatedHtml = result.htmlContent!;
+        _structuredJsonData = result.jsonData;
+        
+        // 季節感検出結果を更新（既に検出済みの場合は上書き）
+        if (result.seasonalDetection != null && result.seasonalTemplate != null) {
+          _seasonalDetectionResult = result.seasonalDetection;
+          _currentSeasonalTemplate = result.seasonalTemplate;
+        }
+        
+        _statusMessage = '🎉 季節感統合学級通信生成完了！${_seasonalDetectionResult != null ? _getSeasonName(_seasonalDetectionResult!.primarySeason) : ''}テーマを適用しました';
+        _aiProgress = 1.0;
       });
     } catch (e) {
       setState(() {
-        _statusMessage = '❌ AI生成でエラーが発生しました: $e';
+        _statusMessage = '❌ 季節感統合AI生成でエラーが発生しました: $e';
       });
     } finally {
       setState(() {
         _isProcessing = false;
+        _aiProgress = 0.0;
       });
       _isGenerating = false;
     }
@@ -643,6 +824,203 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
       setState(() {
         _statusMessage = '❌ PDFの生成に失敗しました: $e';
       });
+    }
+  }
+
+  /// スワイプ対応プレビュー (モバイル用)
+  Widget _buildSwipeEnabledPreview() {
+    return SwipeGestureEditor(
+      htmlContent: _generatedHtml,
+      onContentChanged: (newContent) {
+        setState(() {
+          _generatedHtml = newContent;
+          _statusMessage = '✏️ コンテンツを編集しました';
+        });
+      },
+      onFontSizeChanged: (newSize) {
+        setState(() {
+          _statusMessage = '📝 フォントサイズを${newSize.toInt()}pxに変更';
+        });
+      },
+      onEditModeActivated: (message) {
+        setState(() {
+          _statusMessage = message;
+        });
+      },
+      child: PrintPreviewWidget(
+        htmlContent: _generatedHtml,
+        height: 600,
+        enableMobilePrintView: true,
+      ),
+    );
+  }
+
+  /// デスクトップ用プレビュー
+  Widget _buildDesktopPreview() {
+    return PrintPreviewWidget(
+      htmlContent: _generatedHtml,
+      height: 700,
+      enableMobilePrintView: true,
+    );
+  }
+
+  /// 季節感検出を実行
+  Future<void> _detectSeasonalTheme(String inputText) async {
+    if (!_isSeasonalDetectionEnabled || inputText.trim().isEmpty) return;
+
+    try {
+      final detectionResult = await _seasonalDetectionService.detectSeasonFromText(inputText);
+      final template = await _seasonalDetectionService.generateSeasonalTemplate(detectionResult);
+      
+      setState(() {
+        _seasonalDetectionResult = detectionResult;
+        _currentSeasonalTemplate = template;
+        _statusMessage = '🎨 季節感検出完了！${_getSeasonName(detectionResult.primarySeason)}テーマを適用 - スタイルを選択してください';
+      });
+    } catch (e) {
+      setState(() {
+        _statusMessage = '⚠️ 季節感検出でエラーが発生しましたが、通常の処理を続行します';
+      });
+    }
+  }
+
+  /// 季節名取得
+  String _getSeasonName(Season season) {
+    switch (season) {
+      case Season.spring:
+        return '春🌸';
+      case Season.summer:
+        return '夏☀️';
+      case Season.autumn:
+        return '秋🍂';
+      case Season.winter:
+        return '冬❄️';
+    }
+  }
+
+  /// 季節感検出結果表示ウィジェット
+  Widget _buildSeasonalDetectionResult() {
+    if (_seasonalDetectionResult == null) return SizedBox.shrink();
+
+    return Container(
+      margin: EdgeInsets.only(bottom: 16),
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.green[50],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.green[200]!),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.green.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.auto_awesome, color: Colors.green[600]),
+              SizedBox(width: 8),
+              Text(
+                '🎨 季節感自動検出',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green[800],
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '検出された季節: ${_getSeasonName(_seasonalDetectionResult!.primarySeason)}',
+                      style: TextStyle(
+                        color: Colors.green[700],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    if (_seasonalDetectionResult!.detectedEvents.isNotEmpty) ...[
+                      SizedBox(height: 4),
+                      Text(
+                        '学校行事: ${_seasonalDetectionResult!.detectedEvents.map((e) => e.name).join(', ')}',
+                        style: TextStyle(color: Colors.green[700]),
+                      ),
+                    ],
+                    if (_seasonalDetectionResult!.seasonalKeywords.isNotEmpty) ...[
+                      SizedBox(height: 4),
+                      Wrap(
+                        spacing: 4,
+                        runSpacing: 4,
+                        children: _seasonalDetectionResult!.seasonalKeywords.take(5).map((keyword) => 
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.green[100],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              keyword,
+                              style: TextStyle(
+                                color: Colors.green[800],
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ).toList(),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: Color(int.parse(_currentSeasonalTemplate?.primaryColor.replaceAll('#', '0xFF') ?? '0xFF4CAF50')),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.white, width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    _getSeasonalEmoji(_seasonalDetectionResult!.primarySeason),
+                    style: TextStyle(fontSize: 24),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 季節絵文字取得
+  String _getSeasonalEmoji(Season season) {
+    switch (season) {
+      case Season.spring:
+        return '🌸';
+      case Season.summer:
+        return '☀️';
+      case Season.autumn:
+        return '🍂';
+      case Season.winter:
+        return '❄️';
     }
   }
 

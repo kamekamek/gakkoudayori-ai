@@ -18,6 +18,7 @@ class AudioService {
   Function(String)? _onAudioRecorded;
   Function(bool)? _onRecordingStateChanged;
   Function(String)? _onTranscriptionCompleted;
+  Function(String)? _onRealtimeTranscript; // リアルタイム文字起こし用
 
   bool get isRecording => _isRecording;
 
@@ -34,6 +35,11 @@ class AudioService {
   /// 文字起こし完了時のコールバック設定
   void setOnTranscriptionCompleted(Function(String transcript) callback) {
     _onTranscriptionCompleted = callback;
+  }
+  
+  /// リアルタイム文字起こしコールバック設定
+  void setOnRealtimeTranscript(Function(String transcript) callback) {
+    _onRealtimeTranscript = callback;
   }
 
   /// JavaScript Bridge初期化
@@ -68,6 +74,12 @@ class AudioService {
       } catch (e) {
         if (kDebugMode) debugPrint('❌ [AudioService] 音声データ処理エラー: $e');
       }
+    });
+    
+    // JavaScript側からのリアルタイム文字起こし(シミュレーション)
+    js.context['onRealtimeTranscript'] = js.allowInterop((transcript) {
+      if (kDebugMode) debugPrint('🗣️ [AudioService] リアルタイム文字起こし: $transcript');
+      _onRealtimeTranscript?.call(transcript as String);
     });
 
     if (kDebugMode) debugPrint('🔗 [AudioService] JavaScript Bridge初期化完了');

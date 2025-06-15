@@ -12,6 +12,21 @@ class AudioRecorder {
         this.scriptProcessor = null;
         this.audioWorkletNode = null;
         
+        // リアルタイム文字起こしシミュレーション用
+        this.realtimeTranscriptTimer = null;
+        this.simulatedSentences = [
+            '今日の運動会について',
+            'お話しします',
+            '子どもたちは一生懸命',
+            '練習を頑張りました',
+            '写真をご覧ください',
+            '素晴らしい表情ですね',
+            '保護者の皆様には',
+            'ご協力いただき',
+            'ありがとうございました'
+        ];
+        this.currentSentenceIndex = 0;
+        
         // 初期化ログ
         console.log('🎤 AudioRecorder初期化 - isRecording:', this.isRecording);
         console.log('📱 iOS検出:', this.isIOS);
@@ -48,6 +63,13 @@ class AudioRecorder {
     forceReset() {
         this.isRecording = false;
         this.audioChunks = [];
+        
+        // リアルタイム文字起こしタイマークリア
+        if (this.realtimeTranscriptTimer) {
+            clearInterval(this.realtimeTranscriptTimer);
+            this.realtimeTranscriptTimer = null;
+        }
+        this.currentSentenceIndex = 0;
         
         if (this.mediaRecorder) {
             this.mediaRecorder = null;
@@ -209,6 +231,9 @@ class AudioRecorder {
         
         // 音声レベル監視開始
         this.startAudioLevelMonitoring();
+        
+        // リアルタイム文字起こしシミュレーション開始
+        this.startRealtimeTranscriptSimulation();
 
         // 録音開始
         this.mediaRecorder.start();
@@ -287,6 +312,9 @@ class AudioRecorder {
                 // 音声レベル監視開始
                 this.startAudioLevelMonitoring();
                 
+                // リアルタイム文字起こしシミュレーション開始
+                this.startRealtimeTranscriptSimulation();
+                
                 return true;
                 
             } catch (workletError) {
@@ -329,6 +357,9 @@ class AudioRecorder {
             
             this.isRecording = true;
             console.log('🎤 ScriptProcessorNode録音開始成功（フォールバック）');
+            
+            // リアルタイム文字起こしシミュレーション開始
+            this.startRealtimeTranscriptSimulation();
             
             // Flutter側に通知
             if (window.onRecordingStarted) {
@@ -400,6 +431,9 @@ class AudioRecorder {
 
         this.isRecording = false;
         console.log('⏹️ 録音停止開始');
+        
+        // リアルタイム文字起こしシミュレーション停止
+        this.stopRealtimeTranscriptSimulation();
 
         // MediaRecorder使用時
         if (this.mediaRecorder) {
@@ -610,7 +644,51 @@ class AudioRecorder {
         this.mediaRecorder = null;
         this.audioChunks = [];
         this.isRecording = false;
+        
+        // リアルタイム文字起こしタイマークリア
+        if (this.realtimeTranscriptTimer) {
+            clearInterval(this.realtimeTranscriptTimer);
+            this.realtimeTranscriptTimer = null;
+        }
+        
         console.log('🧹 AudioRecorderクリーンアップ完了');
+    }
+    
+    /// 🗣️ リアルタイム文字起こしシミュレーション開始
+    startRealtimeTranscriptSimulation() {
+        if (this.realtimeTranscriptTimer) {
+            clearInterval(this.realtimeTranscriptTimer);
+        }
+        
+        this.currentSentenceIndex = 0;
+        
+        // 3秒間隔で文章を段階的に送信
+        this.realtimeTranscriptTimer = setInterval(() => {
+            if (!this.isRecording || this.currentSentenceIndex >= this.simulatedSentences.length) {
+                return;
+            }
+            
+            const sentence = this.simulatedSentences[this.currentSentenceIndex];
+            console.log('🗣️ リアルタイム文字起こしシミュレーション:', sentence);
+            
+            // Flutter側にリアルタイム文字起こしを送信
+            if (window.onRealtimeTranscript) {
+                window.onRealtimeTranscript(sentence);
+            }
+            
+            this.currentSentenceIndex++;
+        }, 3000); // 3秒間隔
+        
+        console.log('🗣️ リアルタイム文字起こしシミュレーション開始');
+    }
+    
+    /// 🗣️ リアルタイム文字起こしシミュレーション停止
+    stopRealtimeTranscriptSimulation() {
+        if (this.realtimeTranscriptTimer) {
+            clearInterval(this.realtimeTranscriptTimer);
+            this.realtimeTranscriptTimer = null;
+            console.log('🗣️ リアルタイム文字起こしシミュレーション停止');
+        }
     }
 }
 

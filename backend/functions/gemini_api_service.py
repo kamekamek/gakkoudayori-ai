@@ -255,6 +255,80 @@ def generate_text(
         return handle_gemini_error(e, start_time)
 
 
+def generate_text_with_seasonal_enhancement(
+    prompt: str,
+    seasonal_data: Optional[Dict[str, Any]] = None,
+    project_id: str = "yutori-kyoshitu",
+    credentials_path: str = "secrets/gcp-credentials.json",
+    model_name: str = "gemini-1.5-flash",
+    temperature: float = 0.2,
+    max_output_tokens: int = 1024,
+    top_k: int = 40,
+    top_p: float = 0.8,
+    location: str = "us-central1"
+) -> Dict[str, Any]:
+    """
+    🎨 季節感を考慮したテキスト生成（革新的新機能）
+    
+    Args:
+        prompt (str): 基本プロンプトテキスト
+        seasonal_data (Optional[Dict[str, Any]]): 季節感データ（季節、キーワード、カラーパレット等）
+        project_id (str): Google CloudプロジェクトID
+        credentials_path (str): サービスアカウントキーファイルのパス
+        model_name (str, optional): Geminiモデル名
+        temperature (float, optional): 生成の多様性
+        max_output_tokens (int, optional): 最大出力トークン数
+        top_k (int, optional): 生成時に考慮する上位k個のトークン
+        top_p (float, optional): 生成時に考慮するtop-pトークン
+        location (str, optional): APIリージョン
+        
+    Returns:
+        Dict[str, Any]: 季節感を統合した生成結果またはエラー情報
+    """
+    start_time = time.time()
+    
+    # 季節感強化プロンプトを構築
+    enhanced_prompt = prompt
+    
+    if seasonal_data:
+        season_name = seasonal_data.get('season', '春')
+        keywords = seasonal_data.get('keywords', [])
+        colors = seasonal_data.get('colors', [])
+        events = seasonal_data.get('events', [])
+        themes = seasonal_data.get('themes', [])
+        
+        seasonal_context = f"""
+
+🎨 SEASONAL_ENHANCEMENT_CONTEXT:
+現在の季節: {season_name}
+季節キーワード: {', '.join(keywords[:5])}
+季節カラーパレット: {', '.join(colors[:3])}
+学校行事: {', '.join(events)}
+季節テーマ: {', '.join(themes)}
+
+この季節情報を活用して、以下の要求に応じた学級通信コンテンツを生成してください：
+- 季節に適した表現や語彙を使用
+- 季節行事や自然の変化を織り込む
+- 季節の色彩感覚を反映した表現
+- 教師らしい温かみのある文体で
+- 保護者が共感できる季節感を表現
+
+オリジナルリクエスト: {prompt}
+"""
+        enhanced_prompt = seasonal_context
+
+    return generate_text(
+        prompt=enhanced_prompt,
+        project_id=project_id,
+        credentials_path=credentials_path,
+        model_name=model_name,
+        temperature=temperature,
+        max_output_tokens=max_output_tokens,
+        top_k=top_k,
+        top_p=top_p,
+        location=location
+    )
+
 def generate_text_with_context(
     prompt: str,
     context: List[Dict[str, str]],

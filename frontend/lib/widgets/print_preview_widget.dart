@@ -113,7 +113,7 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
             print-color-adjust: exact;
         }
         
-        /* 印刷用コンテナ - A4固定サイズ */
+        /* 印刷用コンテナ - レスポンシブ対応 */
         .print-container {
             width: 210mm;
             min-height: 297mm;
@@ -123,6 +123,7 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
             background: white;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
             position: relative;
+            overflow-x: auto; /* 横スクロール防止 */
         }
         
         /* 元のa4-sheetクラスがある場合の調整 */
@@ -181,14 +182,74 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
             padding: 6px !important;
         }
         
-        /* スマホでのA4プレビュー対応 */
+        /* スマホでのA4プレビュー対応 - 完全最適化 */
         @media screen and (max-width: 768px) {
+            html, body {
+                overflow-x: hidden; /* 横スクロール完全禁止 */
+            }
+            
             .print-container {
-                width: 100vw;
+                width: calc(100vw - 16px) !important;
+                min-width: 0 !important;
+                max-width: calc(100vw - 16px) !important;
                 min-height: auto;
-                margin: 0;
-                padding: 10mm;
-                box-shadow: none;
+                margin: 8px !important;
+                padding: 12px !important;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                border-radius: 8px;
+                font-size: 14px;
+                overflow-x: hidden; /* コンテナ内横スクロール禁止 */
+                word-wrap: break-word; /* 長い単語の改行 */
+                overflow-wrap: break-word;
+            }
+            
+            /* フォントサイズをスマホ最適化 */
+            h1 { 
+                font-size: 18px !important; 
+                word-wrap: break-word;
+            }
+            h2 { 
+                font-size: 16px !important; 
+                word-wrap: break-word;
+            }
+            h3 { 
+                font-size: 14px !important; 
+                word-wrap: break-word;
+            }
+            p { 
+                font-size: 13px !important; 
+                word-wrap: break-word;
+                overflow-wrap: break-word;
+            }
+            
+            /* 画像・テーブルのレスポンシブ対応 */
+            img {
+                max-width: 100% !important;
+                width: auto !important;
+                height: auto !important;
+            }
+            
+            table {
+                width: 100% !important;
+                max-width: 100% !important;
+                table-layout: fixed;
+                word-wrap: break-word;
+            }
+            
+            td, th {
+                word-wrap: break-word;
+                overflow-wrap: break-word;
+                max-width: 0;
+            }
+        }
+        
+        /* タブレット対応 */
+        @media screen and (min-width: 769px) and (max-width: 1024px) {
+            .print-container {
+                width: 90vw;
+                max-width: 800px;
+                margin: 20px auto;
+                padding: 20px;
             }
         }
         
