@@ -140,11 +140,14 @@ def generate_pdf_from_html(
             font_family=font_family
         )
         
-        # 出力パス決定
+        # 出力パス決定（Cloud Run環境対応）
         if output_path is None:
-            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
+            # Cloud Run環境では/tmpディレクトリを使用
+            temp_dir = '/tmp' if os.path.exists('/tmp') else tempfile.gettempdir()
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf', dir=temp_dir)
             output_path = temp_file.name
             temp_file.close()
+            logger.info(f"Using temporary file: {output_path}")
         
         # PDF生成実行（日本語フォント対応）
         logger.info(f"Generating PDF: {output_path}")
@@ -189,11 +192,24 @@ def generate_pdf_from_html(
         
     except Exception as e:
         error_msg = f"PDF generation failed: {str(e)}"
-        logger.error(error_msg)
+        error_type = type(e).__name__
+        logger.error(f"PDF generation error ({error_type}): {error_msg}")
+        logger.error(f"WeasyPrint available: {WEASYPRINT_AVAILABLE}")
+        logger.error(f"PIL available: {PIL_AVAILABLE}")
+        
+        # より詳細なエラー情報を提供
+        error_details = {
+            'error_type': error_type,
+            'weasyprint_available': WEASYPRINT_AVAILABLE,
+            'pil_available': PIL_AVAILABLE,
+            'temp_dir_writable': os.access('/tmp', os.W_OK) if os.path.exists('/tmp') else False
+        }
+        
         return {
             'success': False,
             'error': error_msg,
             'error_code': 'PDF_GENERATION_ERROR',
+            'error_details': error_details,
             'processing_time_ms': int((time.time() - start_time) * 1000)
         }
 
