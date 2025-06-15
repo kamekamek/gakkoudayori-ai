@@ -71,6 +71,9 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
     environment: staging
+    permissions:
+      contents: read
+      checks: write
     steps:
       - name: 📥 コードチェックアウト
         uses: actions/checkout@v4
@@ -140,6 +143,7 @@ jobs:
           channelId: staging
           expires: 30d
           projectId: gakkoudayori-ai
+          entryPoint: .
 
   # 本番環境デプロイ（mainブランチ）
   deploy-production:
@@ -148,6 +152,9 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: production
+    permissions:
+      contents: read
+      checks: write
     steps:
       - name: 📥 コードチェックアウト
         uses: actions/checkout@v4
@@ -215,6 +222,8 @@ jobs:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}'
           projectId: gakkoudayori-ai
+          channelId: live
+          entryPoint: .
 
       - name: 🔔 LINEデプロイ通知 (本番成功 - Messaging API)
         if: success()
@@ -266,6 +275,10 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
     steps:
       - name: 📥 コードチェックアウト
         uses: actions/checkout@v4
@@ -292,6 +305,7 @@ jobs:
           channelId: pr-${{ github.event.number }}
           expires: 7d
           projectId: gakkoudayori-ai
+          entryPoint: .
 
       - name: 💬 プレビューURL通知
         uses: actions/github-script@v7
