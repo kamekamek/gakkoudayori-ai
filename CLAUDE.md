@@ -644,3 +644,101 @@ pytest --cov=. --cov-report=html    # With coverage
 cd frontend/e2e
 npm run test                   # Playwright E2E tests
 ```
+
+---
+
+# 🤖 ClaudeCode組織システム
+
+## システム概要
+
+このプロジェクトでは複数のClaudeエージェントが協力して働く組織システムを活用できます。
+
+## エージェント構成
+- **PRESIDENT**: プロジェクト統括責任者
+- **boss1**: チームリーダー・ファシリテーター  
+- **worker1**: フロントエンド/UI専門
+- **worker2**: バックエンド/データ専門
+- **worker3**: インフラ/テスト専門
+
+## 基本フロー
+PRESIDENT → boss1 → workers → boss1 → PRESIDENT
+
+## 組織システム使用方法
+
+### 1. 環境構築
+```bash
+cd claude_org
+./setup.sh
+```
+
+### 2. エージェント起動
+```bash
+# PRESIDENTセッション
+tmux attach-session -t president
+
+# 他のエージェント
+tmux attach-session -t multiagent
+```
+
+### 3. Claude起動（各ペインで）
+```bash
+claude --dangerously-skip-permissions
+```
+
+### 4. コミュニケーション
+```bash
+cd claude_org
+./agent-send.sh [相手] "[メッセージ]"
+```
+
+### 5. 実践例
+PRESIDENT画面で以下のような指示を送信：
+
+```
+あなたはpresidentです。
+
+学校だよりAIプロジェクトの新機能として、音声入力の精度向上システムを開発してください。
+- iOS Safari での録音品質向上
+- ノイズキャンセリング機能
+- リアルタイム音声レベル表示
+
+@claude_org/instructions/president.md の指示書に従って実行してください。
+```
+
+## 指示書参照
+各エージェントは以下を参照：
+- `@claude_org/instructions/president.md` (PRESIDENT用)
+- `@claude_org/instructions/boss.md` (boss1用)  
+- `@claude_org/instructions/worker.md` (worker用)
+- `@CLAUDE.md` (このファイル)
+
+## 組織システムの活用場面
+
+### 1. 複雑な機能開発
+- 音声認識システムの改良
+- AI機能の統合
+- エディタコンポーネントの開発
+
+### 2. 品質向上プロジェクト
+- パフォーマンス最適化
+- セキュリティ強化
+- アクセシビリティ改善
+
+### 3. 新機能の検討・実装
+- 革新的アイデアの創出
+- 技術的な実現可能性検証
+- ユーザビリティテスト
+
+## 重要なポイント
+- 各エージェントの専門性を活用（worker1: UI/UX, worker2: バックエンド/AI, worker3: インフラ/テスト）
+- 革新的アイデア3つ以上の創出を必須要求
+- 構造化されたコミュニケーション
+- ユーザーニーズ100%充足まで継続
+
+## 学校だよりAIプロジェクトとの統合
+組織システムは以下の場面で特に有効：
+- 音声入力機能の改良（現在のiOS対応強化など）
+- Gemini AI活用の最適化
+- Quill.jsエディタの機能拡張
+- PDF生成パフォーマンス向上
+- 教育現場での使いやすさ改善
