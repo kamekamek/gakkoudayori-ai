@@ -46,21 +46,19 @@ def initialize_speech_client(credentials_path: str = None) -> Optional[speech.Sp
             # Secret Manager から取得した認証情報を使用
             client = speech.SpeechClient(credentials=credentials)
             logger.info("Speech-to-Text client initialized with Secret Manager credentials")
-        else:
-            # フォールバック: デフォルト認証またはファイル認証
-            if credentials_path and os.path.exists(credentials_path):
-                os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = credentials_path
-                logger.info(f"Using credentials file: {credentials_path}")
-            else:
-                logger.info("Using default credentials (Cloud Run environment)")
-            
-            client = speech.SpeechClient()
-            logger.info("Speech-to-Text client initialized with fallback method")
+            return client
         
+        # Secret Manager が失敗した場合、Cloud Run のデフォルト認証を使用
+        logger.info("Secret Manager credentials not available, using default credentials (Cloud Run environment)")
+        client = speech.SpeechClient()
+        logger.info("Speech-to-Text client initialized with default credentials")
         return client
         
     except Exception as e:
         logger.error(f"Failed to initialize Speech-to-Text client: {e}")
+        logger.error(f"Exception type: {type(e).__name__}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
         return None
 
 

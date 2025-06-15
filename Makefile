@@ -102,14 +102,15 @@ deploy-frontend: build-prod
 
 # バックエンドデプロイ
 deploy-backend:
-	@echo "📤 バックエンドをCloud Runにデプロイ中..."
+	@echo "📤 バックエンドをCloud Runにデプロイ中 (Dockerfile使用)..."
 	cd backend/functions && gcloud run deploy yutori-backend \
 		--source=. \
 		--region=asia-northeast1 \
 		--allow-unauthenticated \
 		--memory=2Gi \
 		--timeout=300 \
-		--set-env-vars="ENVIRONMENT=production"
+		--set-env-vars="ENVIRONMENT=production" \
+		--platform=managed
 
 # 全体デプロイ（推奨）
 deploy: deploy-backend deploy-frontend

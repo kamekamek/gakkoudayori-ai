@@ -1,414 +1,96 @@
 """
-Firebase SDK統合サービス
-
-T1-FB-005-A: Firebase SDK統合コード
-- Firebase初期化コード実装
-- 認証ヘルパー関数実装
-- Firestore接続テスト実装
-- Storage接続テスト実装
-- 全統合テスト通過
+Firebase Admin SDKの初期化とFirestoreクライアントの提供
 """
-
 import os
+import json
 import logging
-from typing import Dict, List, Optional, Any, Tuple
-from datetime import datetime, timedelta
-
-# Firebase関連のインポート
 import firebase_admin
-from firebase_admin import credentials, auth, firestore, storage
-from google.cloud.firestore_v1.base_query import FieldFilter
-from google.cloud.exceptions import GoogleCloudError
+from firebase_admin import credentials, firestore, storage
+from typing import Optional, Dict, Any
+from google.cloud import secretmanager
 
-# 設定
+# --- Globals ---
+firebase_initialized = False
 logger = logging.getLogger(__name__)
 
-
-# ==============================================================================
-# Firebase初期化
-# ==============================================================================
-
-def initialize_firebase() -> bool:
-    """
-    Firebase アプリを初期化
-    
-    Returns:
-        bool: 初期化が成功したかどうか
-    """
-    try:
-        # 既に初期化されているかチェック
-        firebase_admin.get_app()
-        logger.info("Firebase app already initialized")
-        return True
-    except ValueError:
-        # まだ初期化されていない場合
-        try:
-            # Cloud Run環境では Secret Manager からサービスアカウントキーを取得
-            credentials = get_credentials_from_secret_manager()
-            if credentials:
-                firebase_admin.initialize_app(credentials)
-                logger.info("Firebase app initialized with Secret Manager credentials")
-            else:
-                # フォールバック: デフォルト認証
-                firebase_admin.initialize_app()
-                logger.info("Firebase app initialized with default credentials")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to initialize Firebase app: {e}")
-            return False
-
-
 def get_credentials_from_secret_manager():
-    """Secret Manager からサービスアカウントキーを取得"""
+    if 'K_SERVICE' not in os.environ: # ローカル環境なら何もしない
+        logger.info("Local environment: Skipping Secret Manager credential retrieval.")
+        return None
     try:
-        from google.cloud import secretmanager
-        from google.oauth2 import service_account
-        import json
-        
-        # Secret Manager クライアント作成
+        """Google Secret Managerからサービスアカウントキーを取得する"""
         client = secretmanager.SecretManagerServiceClient()
-        
-        # シークレット名
-        name = f"projects/gakkoudayori-ai/secrets/service-account-key/versions/latest"
-        
-        # シークレットを取得
-        response = client.access_secret_version(request={"name": name})
-        secret_value = response.payload.data.decode("UTF-8")
-        
-        # JSON から認証情報を作成
-        service_account_info = json.loads(secret_value)
-        credentials = service_account.Credentials.from_service_account_info(service_account_info)
-        
-        logger.info("Successfully retrieved credentials from Secret Manager")
-        return credentials
-        
+        secret_name = "projects/944053509139/secrets/FIREBASE_SERVICE_ACCOUNT_KEY/versions/latest"
+        response = client.access_secret_version(request={"name": secret_name})
+        payload = response.payload.data.decode("UTF-8")
+        return json.loads(payload)
     except Exception as e:
-        logger.error(f"Failed to get credentials from Secret Manager: {e}")
-        logger.error(f"Exception type: {type(e).__name__}")
-        import traceback
-        logger.error(f"Full traceback: {traceback.format_exc()}")
+        logger.error(f"Failed to retrieve credentials from Secret Manager: {e}", exc_info=True)
         return None
 
-
-def initialize_firebase_with_credentials(credentials_path: str) -> bool:
+def initialize_firebase():
     """
-    サービスアカウントキーを使用してFirebaseアプリを初期化
-    
-    Args:
-        credentials_path (str): サービスアカウントキーファイルのパス
-        
-    Returns:
-        bool: 初期化が成功したかどうか
+    Firebase Admin SDKを初期化する。
+    - Secret Managerの認証情報を優先的に使用
+    - Cloud Run環境でSecret Managerに失敗した場合、ADCにフォールバック
+    - ローカル環境でSecret Managerに失敗した場合はエラー
     """
-    try:
-        # 既に初期化されているかチェック
-        firebase_admin.get_app()
-        logger.info("Firebase app already initialized")
+    global firebase_initialized
+    if firebase_initialized:
         return True
-    except ValueError:
-        # まだ初期化されていない場合
-        try:
-            # サービスアカウントキーから認証情報を取得
-            cred = credentials.Certificate(credentials_path)
-            firebase_admin.initialize_app(cred)
-            logger.info(f"Firebase app initialized with credentials: {credentials_path}")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to initialize Firebase app with credentials: {e}")
-            return False
 
-
-# ==============================================================================
-# 認証ヘルパー関数
-# ==============================================================================
-
-def verify_firebase_token(id_token: str) -> Optional[Dict[str, Any]]:
-    """
-    Firebase IDトークンを検証してデコードされた情報を返す
-    
-    Args:
-        id_token (str): Firebase IDトークン
-        
-    Returns:
-        Optional[Dict[str, Any]]: デコードされたトークン情報、失敗時はNone
-    """
     try:
-        decoded_token = auth.verify_id_token(id_token)
-        logger.info(f"Token verified for user: {decoded_token.get('uid')}")
-        return decoded_token
-    except Exception as e:
-        logger.error(f"Token verification failed: {e}")
-        return None
+        # 既に初期化済みの場合は何もしない
+        if firebase_admin._apps:
+             logger.warning("Firebase app already initialized.")
+             firebase_initialized = True
+             return True
 
-
-def get_user_info(uid: str) -> Optional[auth.UserRecord]:
-    """
-    ユーザーUIDから詳細情報を取得
-    
-    Args:
-        uid (str): ユーザーUID
+        project_id = 'gakkoudayori-ai'
+        options = {'projectId': project_id}
         
-    Returns:
-        Optional[auth.UserRecord]: ユーザー情報、存在しない場合はNone
-    """
-    try:
-        user_record = auth.get_user(uid)
-        logger.info(f"User info retrieved for: {uid}")
-        return user_record
-    except Exception as e:
-        logger.error(f"Failed to get user info for {uid}: {e}")
-        return None
-
-
-def create_custom_token(uid: str, additional_claims: Optional[Dict[str, Any]] = None) -> Optional[bytes]:
-    """
-    カスタムトークンを作成
-    
-    Args:
-        uid (str): ユーザーUID
-        additional_claims (Optional[Dict[str, Any]]): 追加クレーム
+        # Secret Managerから認証情報を取得試行
+        creds_json = get_credentials_from_secret_manager()
         
-    Returns:
-        Optional[bytes]: カスタムトークン、失敗時はNone
-    """
-    try:
-        custom_token = auth.create_custom_token(uid, additional_claims)
-        logger.info(f"Custom token created for user: {uid}")
-        return custom_token
+        if creds_json:
+            creds = credentials.Certificate(creds_json)
+            firebase_admin.initialize_app(creds, options)
+            logger.info("Firebase app initialized successfully with Secret Manager credentials.")
+        else:
+            # Secret Manager failed, try Application Default Credentials
+            logger.warning("Failed to retrieve credentials from Secret Manager. Attempting to use Application Default Credentials.")
+            try:
+                cred = credentials.ApplicationDefault()
+                firebase_admin.initialize_app(credential=cred, options=options)
+                logger.info("Firebase app initialized successfully with Application Default Credentials.")
+            except Exception as adc_e:
+                logger.error(f"Failed to initialize Firebase with Application Default Credentials: {adc_e}", exc_info=True)
+                logger.error("Ensure GOOGLE_APPLICATION_CREDENTIALS is set or you have run 'gcloud auth application-default login'.")
+                return False # ADC also failed
+            
+        firebase_initialized = True
+        return True
+
     except Exception as e:
-        logger.error(f"Failed to create custom token for {uid}: {e}")
-        return None
-
-
-# ==============================================================================
-# Firestore操作
-# ==============================================================================
+        logger.error(f"Failed to initialize Firebase: {e}", exc_info=True)
+        firebase_initialized = False
+        return False
 
 def get_firestore_client():
-    """Firestoreクライアントを取得"""
-    return firestore.client()
-
-
-def create_document(collection_name: str, data: Dict[str, Any]) -> Optional[str]:
     """
-    Firestoreにドキュメントを作成
-    
-    Args:
-        collection_name (str): コレクション名
-        data (Dict[str, Any]): ドキュメントデータ
-        
-    Returns:
-        Optional[str]: 作成されたドキュメントID、失敗時はNone
+    Firestoreクライアントを取得する。
+    Firebaseが初期化されていない場合は初期化を試みる。
     """
-    try:
-        db = get_firestore_client()
-        _, doc_ref = db.collection(collection_name).add(data)
-        logger.info(f"Document created in {collection_name}: {doc_ref.id}")
-        return doc_ref.id
-    except Exception as e:
-        logger.error(f"Failed to create document in {collection_name}: {e}")
-        return None
-
-
-def get_document(collection_name: str, document_id: str) -> Optional[Dict[str, Any]]:
-    """
-    Firestoreからドキュメントを取得
-    
-    Args:
-        collection_name (str): コレクション名
-        document_id (str): ドキュメントID
-        
-    Returns:
-        Optional[Dict[str, Any]]: ドキュメントデータ、存在しない場合はNone
-    """
-    try:
-        db = get_firestore_client()
-        doc_ref = db.collection(collection_name).document(document_id)
-        doc_snapshot = doc_ref.get()
-        
-        if doc_snapshot.exists:
-            logger.info(f"Document retrieved from {collection_name}: {document_id}")
-            return doc_snapshot.to_dict()
-        else:
-            logger.warning(f"Document not found in {collection_name}: {document_id}")
+    if not firebase_initialized:
+        if not initialize_firebase():
+            logger.error("Cannot get Firestore client because Firebase initialization failed.")
             return None
+    
+    try:
+        return firestore.client()
     except Exception as e:
-        logger.error(f"Failed to get document from {collection_name}/{document_id}: {e}")
+        logger.error(f"Error getting Firestore client after initialization: {e}", exc_info=True)
         return None
-
-
-def update_document(collection_name: str, document_id: str, data: Dict[str, Any]) -> bool:
-    """
-    Firestoreのドキュメントを更新
-    
-    Args:
-        collection_name (str): コレクション名
-        document_id (str): ドキュメントID
-        data (Dict[str, Any]): 更新データ
-        
-    Returns:
-        bool: 更新が成功したかどうか
-    """
-    try:
-        db = get_firestore_client()
-        doc_ref = db.collection(collection_name).document(document_id)
-        doc_ref.update(data)
-        logger.info(f"Document updated in {collection_name}: {document_id}")
-        return True
-    except Exception as e:
-        logger.error(f"Failed to update document in {collection_name}/{document_id}: {e}")
-        return False
-
-
-def delete_document(collection_name: str, document_id: str) -> bool:
-    """
-    Firestoreからドキュメントを削除
-    
-    Args:
-        collection_name (str): コレクション名
-        document_id (str): ドキュメントID
-        
-    Returns:
-        bool: 削除が成功したかどうか
-    """
-    try:
-        db = get_firestore_client()
-        doc_ref = db.collection(collection_name).document(document_id)
-        doc_ref.delete()
-        logger.info(f"Document deleted from {collection_name}: {document_id}")
-        return True
-    except Exception as e:
-        logger.error(f"Failed to delete document from {collection_name}/{document_id}: {e}")
-        return False
-
-
-def query_documents(
-    collection_name: str,
-    filters: Optional[List[Tuple[str, str, Any]]] = None,
-    order_by: Optional[str] = None,
-    limit: Optional[int] = None
-) -> List[Dict[str, Any]]:
-    """
-    条件付きでドキュメントを検索
-    
-    Args:
-        collection_name (str): コレクション名
-        filters (Optional[List[Tuple[str, str, Any]]]): フィルター条件 [(field, operator, value), ...]
-        order_by (Optional[str]): ソートフィールド
-        limit (Optional[int]): 取得上限数
-        
-    Returns:
-        List[Dict[str, Any]]: 検索結果のドキュメントリスト
-    """
-    try:
-        db = get_firestore_client()
-        query = db.collection(collection_name)
-        
-        # フィルター適用
-        if filters:
-            for field, operator, value in filters:
-                query = query.where(field, operator, value)
-        
-        # ソート適用
-        if order_by:
-            query = query.order_by(order_by)
-        
-        # 制限適用
-        if limit:
-            query = query.limit(limit)
-        
-        # 実行
-        docs = query.stream()
-        results = []
-        for doc in docs:
-            doc_data = doc.to_dict()
-            doc_data['id'] = doc.id
-            results.append(doc_data)
-        
-        logger.info(f"Query executed on {collection_name}: {len(results)} documents found")
-        return results
-    except Exception as e:
-        logger.error(f"Failed to query documents from {collection_name}: {e}")
-        return []
-
-
-# ==============================================================================
-# Storage操作
-# ==============================================================================
-
-def get_storage_bucket():
-    """Storageバケットを取得"""
-    return storage.bucket()
-
-
-def upload_file_to_storage(file_path: str, file_content: bytes, content_type: str = 'application/octet-stream') -> bool:
-    """
-    ファイルをCloud Storageにアップロード
-    
-    Args:
-        file_path (str): ストレージ内のファイルパス
-        file_content (bytes): ファイル内容
-        content_type (str): MIMEタイプ
-        
-    Returns:
-        bool: アップロードが成功したかどうか
-    """
-    try:
-        bucket = get_storage_bucket()
-        blob = bucket.blob(file_path)
-        blob.upload_from_string(file_content, content_type=content_type)
-        logger.info(f"File uploaded to storage: {file_path}")
-        return True
-    except Exception as e:
-        logger.error(f"Failed to upload file to storage {file_path}: {e}")
-        return False
-
-
-def download_file_from_storage(file_path: str) -> Optional[bytes]:
-    """
-    Cloud Storageからファイルをダウンロード
-    
-    Args:
-        file_path (str): ストレージ内のファイルパス
-        
-    Returns:
-        Optional[bytes]: ファイル内容、存在しない場合はNone
-    """
-    try:
-        bucket = get_storage_bucket()
-        blob = bucket.blob(file_path)
-        
-        if blob.exists():
-            file_content = blob.download_as_bytes()
-            logger.info(f"File downloaded from storage: {file_path}")
-            return file_content
-        else:
-            logger.warning(f"File not found in storage: {file_path}")
-            return None
-    except Exception as e:
-        logger.error(f"Failed to download file from storage {file_path}: {e}")
-        return None
-
-
-def delete_file_from_storage(file_path: str) -> bool:
-    """
-    Cloud Storageからファイルを削除
-    
-    Args:
-        file_path (str): ストレージ内のファイルパス
-        
-    Returns:
-        bool: 削除が成功したかどうか
-    """
-    try:
-        bucket = get_storage_bucket()
-        blob = bucket.blob(file_path)
-        blob.delete()
-        logger.info(f"File deleted from storage: {file_path}")
-        return True
-    except Exception as e:
-        logger.error(f"Failed to delete file from storage {file_path}: {e}")
-        return False
 
 
 def generate_download_url(file_path: str, expiration_hours: int = 1) -> Optional[str]:
@@ -454,8 +136,21 @@ def health_check() -> Dict[str, Any]:
         'firebase_initialized': False,
         'firestore_accessible': False,
         'storage_accessible': False,
+        'secret_manager_accessible': False,
+        'old_credentials_exist': False,
         'timestamp': datetime.utcnow().isoformat()
     }
+    
+    # Secret Manager アクセスチェック
+    try:
+        secret_credentials = get_credentials_from_secret_manager()
+        result['secret_manager_accessible'] = secret_credentials is not None
+    except Exception as e:
+        logger.error(f"Secret Manager check failed: {e}")
+        
+    # 古い認証ファイルチェック
+    old_credentials_path = '/app/secrets/service-account-key.json'
+    result['old_credentials_exist'] = os.path.exists(old_credentials_path)
     
     try:
         # Firebase初期化チェック

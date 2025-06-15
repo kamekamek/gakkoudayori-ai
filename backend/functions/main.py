@@ -14,7 +14,7 @@ from datetime import datetime
 # カスタムサービスをインポート
 from firebase_service import (
     initialize_firebase,
-    initialize_firebase_with_credentials,
+
     health_check,
     get_firebase_config
 )
@@ -68,6 +68,9 @@ def get_firestore_client():
             return None
     except Exception as e:
         logger.error(f"Failed to get Firestore client: {e}")
+        logger.error(f"Exception type: {type(e).__name__}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
         return None
 
 # アプリケーション起動時にFirebase初期化
@@ -503,8 +506,8 @@ def convert_speech_to_json():
         style = data.get('style', 'classic')
         custom_context = data.get('custom_context', '')
         
-        # Google Cloud認証情報パス
-        credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', '../secrets/service-account-key.json')
+        # Google Cloud認証情報パス（Cloud Run環境ではNone）
+        credentials_path = None if os.getenv('K_SERVICE') else os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
         project_id = os.getenv('GOOGLE_CLOUD_PROJECT', 'gakkoudayori-ai')
         
         # 音声→JSON変換サービスをインポート
@@ -556,8 +559,8 @@ def handle_json_to_graphical_record():
         template = data.get('template', 'classic')
         custom_style = data.get('custom_style', '')
         
-        # Google Cloud認証情報パス
-        credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', '../secrets/service-account-key.json')
+        # Google Cloud認証情報パス（Cloud Run環境ではNone）
+        credentials_path = None if os.getenv('K_SERVICE') else os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
         project_id = os.getenv('GOOGLE_CLOUD_PROJECT', 'gakkoudayori-ai')
         
         # JSON→HTMLグラレコ変換サービスをインポート
@@ -633,8 +636,8 @@ def generate_html_content():
         document_type = data.get('document_type', 'class_newsletter')
         constraints = data.get('constraints', {})
         
-        # Google Cloud認証情報パス
-        credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', '../secrets/service-account-key.json')
+        # Google Cloud認証情報パス（Cloud Run環境ではNone）
+        credentials_path = None if os.getenv('K_SERVICE') else os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
         project_id = os.getenv('GOOGLE_CLOUD_PROJECT', 'gakkoudayori-ai')
         
         # Gemini HTML生成実行
@@ -690,8 +693,8 @@ def generate_newsletter():
         season = data.get('season', 'auto')
         custom_instruction = data.get('custom_instruction', '')
         
-        # 認証情報パス
-        credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', '../secrets/service-account-key.json')
+        # 認証情報パス（Cloud Run環境ではNone）
+        credentials_path = None if os.getenv('K_SERVICE') else os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
         project_id = os.getenv('GOOGLE_CLOUD_PROJECT', 'gakkoudayori-ai')
         
         # 季節自動判定
