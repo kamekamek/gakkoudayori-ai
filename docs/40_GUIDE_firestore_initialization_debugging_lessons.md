@@ -113,6 +113,22 @@
     - `firebase_admin.initialize_app()` には、認証情報を渡す `credential`引数と、その他の設定 (プロジェクトID等) を渡す `options`引数があることを理解する。
     - ADCを使用する場合、`credentials.ApplicationDefault()` で認証情報を取得してから渡すのが確実。
 
+### 4. Cloud Run デプロイと `Dockerfile` の活用
+
+- **症状**:
+    - `weasyprint` など、特定のシステムライブラリに依存する機能が Cloud Run 上で動作しない (例: `cannot load library 'gobject-2.0-0'` エラー)。
+    - `gcloud run deploy --source=.` を使用していても、期待通りにカスタム環境が構築されない。
+- **原因分析**:
+    - `gcloud run deploy --source=.` は、カレントディレクトリに `Dockerfile` が存在すればそれを使用するが、存在しない場合は Cloud Build の Buildpacks (汎用ビルドプロセス) にフォールバックする。
+    - Buildpacks は一般的な Python アプリケーションには適していても、`apt-get` でインストールするようなシステムレベルの依存関係は自動的には解決してくれない。
+- **解決策**:
+    - システムライブラリが必要な場合は、プロジェクトルート (または `--source` で指定するディレクトリ) に `Dockerfile` を作成し、必要なライブラリ (`libcairo2`, `libpango-1.0-0`, `fonts-noto-cjk` など) を `RUN apt-get update && apt-get install -y ...` で明示的にインストールする。
+    - `Makefile` 等でデプロイコマンドを実行する際、`Dockerfile` が存在するディレクトリを `--source` オプションの起点 (例: `cd backend/functions && gcloud run deploy --source=.`) となるようにする。
+- **教訓**:
+    - **`gcloud run deploy --source=.` は `Dockerfile` を優先する**ことを理解する。
+    - アプリケーションが Python ライブラリだけでなく、**OSレベルのパッケージに依存する場合は、`Dockerfile` を使用してビルドプロセスを完全に制御する**のが最も確実で推奨される方法である。
+    - `Dockerfile` 内では、`EXPOSE` でポートを指定し、`CMD` または `ENTRYPOINT` でアプリケーションの起動コマンドを正しく設定する。
+
 ## ✨ 総括と今後のためのチェックリスト
 
 - **依存関係 (`requirements.txt`)**:
