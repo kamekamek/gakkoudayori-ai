@@ -1,10 +1,20 @@
-name: 🚀 学級通信エディタ CI/CD
+name: 🚀 学校だよりAI CI/CD
 
 on:
   push:
     branches: [ main, develop ]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - '.gitignore'
+      - 'LICENSE'
   pull_request:
     branches: [ main, develop ]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - '.gitignore'
+      - 'LICENSE'
 
 env:
   FLUTTER_VERSION: '3.32.2'
@@ -153,7 +163,7 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: production
     permissions:
-      contents: read
+      contents: write
       checks: write
     steps:
       - name: 📥 コードチェックアウト

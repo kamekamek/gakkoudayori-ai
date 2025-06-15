@@ -1,6 +1,6 @@
-# ゆとり職員室
+# 学校だよりAI
 
-**HTMLベースグラレコ風学級通信作成システム**
+**AIによる学級通信自動生成システム**
 
 *Google Cloud Japan AI Hackathon Vol.2 提出プロジェクト*
 
@@ -19,9 +19,9 @@
 
 **「学級通信作成時間を従来の2-3時間から20分以内に短縮」**
 
-音声入力 → AIチャット編集 → グラレコ風HTML → PDF配信
+音声入力 → AI文章生成 → WYSIWYG編集 → PDF出力
 
-**→ 先生が子どもと向き合う「ゆとり」を創出！**
+**→ 先生が子どもと向き合う時間を創出！**
 
 ---
 
@@ -29,67 +29,66 @@
 
 ### 🎤 音声入力
 - **ワンタップ録音**: 簡単な音声入力でコンテンツ作成
-- **リアルタイム字幕**: 発話内容を即座にテキスト化
+- **リアルタイム文字起こし**: Google Speech-to-Text API統合
 - **ノイズ抑制**: 教室環境でも高精度な音声認識
 - **ユーザー辞書**: 学校固有の用語・名前の認識率向上
 
-### 🤖 AI編集
+### 🤖 AI文章生成
 - **自動リライト**: Gemini 1.5 Proによる自然な文章調整
+- **学級通信特化**: 教育現場に適した文体・構成自動生成
 - **カスタム指示**: 「やさしい語り口」等のワンフレーズ反映
-- **チャット編集**: 対話形式での差分表示・リアルタイム編集
-- **見出し生成**: コンテンツを自動分析して適切な見出し提案
+- **リアルタイム編集**: 対話形式での差分表示・即座反映
 
-### 🎨 グラレコ風HTML
-- **WYSIWYG エディタ**: リアルタイムプレビュー対応
+### 🎨 WYSIWYG編集
+- **Quill.jsエディタ**: プロ仕様のリッチテキスト編集
 - **季節テンプレート**: 春夏秋冬の色彩・アイコンセット
-- **手描き風素材**: 豊富なSVGアイコン・吹き出し・装飾
-- **自動レイアウト**: 「全まかせボタン」で最適デザイン生成
+- **インライン編集**: クリックで直接編集可能
+- **Delta/HTML変換**: 高品質なレイアウト保持
 
-### 📤 自動配信
-- **複数フォーマット**: HTML・PDF同時生成
-- **Google Classroom**: 投稿・ファイル添付・生徒通知
-- **Google Drive**: 月別フォルダ自動振り分け・共有設定
-- **LINE通知**: 保護者への配信完了通知（オプション）
+### 📄 PDF出力・配信
+- **高品質PDF**: WeasyPrintによるA4最適化レイアウト
+- **日本語フォント**: NotoSansCJK完全対応
+- **自動レイアウト**: 季節テーマ色彩・装飾自動反映
+- **ワンクリック配信**: PDF生成・ダウンロード・共有
 
 ---
 
 ## 🏗️ 技術スタック
 
 ### **ハッカソン必須要件対応**
-- ✅ **Google Cloud Run**: メインアプリケーション基盤
+- ✅ **Google Cloud Platform**: Vertex AI + Speech-to-Text
 - ✅ **Vertex AI Gemini 1.5 Pro**: テキスト生成・リライト
-- ✅ **Speech-to-Text**: 音声認識
 - ✅ **Flutter Web**: 特別賞対象フロントエンド
-- ✅ **Firebase**: 特別賞対象（Authentication・Firestore）
+- ✅ **Firebase**: 特別賞対象（Authentication・Firestore・Storage）
 
 ### **アーキテクチャ**
 ```
-Flutter Web App
+Flutter Web App (フロントエンド)
     ↓ HTTPS API
-Cloud Run (FastAPI)
+FastAPI Backend (バックエンド)
     ↓ 
-┌─ Vertex AI ────┬─ Cloud Storage ──┬─ Firestore ─┐
-│  - Gemini      │  - 月別管理      │  - ユーザー  │
-│  - STT/TTS     │  - ファイル保存   │  - 履歴管理   │
-└────────────────┴───────────────────┴──────────────┘
+┌─ Vertex AI ────┬─ Firebase ──────┬─ WeasyPrint ─┐
+│  - Gemini Pro  │  - Auth         │  - PDF生成    │
+│  - STT API     │  - Firestore    │  - 日本語対応  │
+│                │  - Storage      │              │
+└────────────────┴─────────────────┴──────────────┘
 ```
 
 ---
 
 ## 🚀 クイックスタート
 
-### 📖 ドキュメント読み方
+### 📖 ドキュメント
 
 **🎬 新規参加者**
-1. [📏 ハッカソンルール](docs/HACKASON_RULE.md) - 制約・要件理解
-2. [📝 要件定義](docs/REQUIREMENT.md) - プロジェクト全体把握  
-3. [🏗️ システム設計](docs/Archive/system_design.md) - 技術アーキテクチャ
-4. [📋 タスクリスト](docs/tasks.md) - 現在の進捗・次のアクション
+1. [📚 ドキュメント一覧](docs/README.md) - 全体ナビゲーション
+2. [📏 ハッカソンルール](docs/hackason_rule.md) - 制約・要件理解
+3. [🏆 プロジェクト完了報告](docs/archive/PROJECT_COMPLETION_SUMMARY.md) - 最終成果物
 
-**💻 開発開始**
-1. [📋 今日のタスク](docs/tasks.md) - 実装すべき内容確認
-2. [🧪 TDD実践ガイド](docs/Archive/tdd_guide.md) - テスト駆動開発方法
-3. [🏗️ システム設計](docs/Archive/system_design.md) - 実装仕様確認
+**💻 開発者**
+1. [📋 開発ガイド](docs/development_guide.md) - 環境構築・開発手順
+2. [🏗️ システム設計](docs/system_architecture.md) - 技術アーキテクチャ
+3. [🧪 テストガイド](docs/testing_guide.md) - テスト実行・品質管理
 
 ### 🛠️ 開発環境構築
 
@@ -107,114 +106,87 @@ export SPEECH_TO_TEXT_API_KEY=your_api_key_here
 
 # 4. 開発環境起動
 make dev
-# または
-./scripts/deploy.sh dev all
-```
-
-### 📚 詳細なセットアップガイド
-
-初心者向けの詳細なデプロイ手順は以下のドキュメントを参照してください：
-
-- **[🚀 デプロイガイド](docs/deployment_guide.md)** - 初心者向け完全ガイド
-- **[🔐 環境変数設定](docs/environment_setup.md)** - APIキー・シークレット設定詳細
-- **[🛠️ 便利スクリプト](scripts/)** - 自動化されたデプロイ・確認ツール
-
-### 🔄 CI/CD パイプライン
-
-**自動化されたワークフロー**
-- ✅ **継続的インテグレーション**: プッシュ・PR時の自動テスト
-- ✅ **静的解析**: Flutter analyze・flake8・black・mypy
-- ✅ **テストカバレッジ**: 80%以上の品質保証
-- ✅ **自動デプロイ**: Firebase Hosting への自動デプロイ
-- ✅ **依存関係管理**: Dependabot による週次更新
-- ✅ **セキュリティ**: 秘密情報検出・脆弱性スキャン
-
-**品質ゲート**
-```bash
-# ローカル品質チェック
-cd frontend && flutter analyze && flutter test
-cd backend && flake8 . && black --check . && pytest
 ```
 
 ### 🎉 プロジェクト完了状況
 
-| フェーズ | 期間 | 状況 | 主要成果物 |
-|---------|------|------|-----------|
-| **要件定義** | - | ✅ 完了 | 14機能要件・非機能要件 |
-| **システム設計** | - | ✅ 完了 | API・データ・セキュリティ設計 |
-| **基盤実装** | - | ✅ 完了 | Firebase・GCP・Flutter Web基盤 |
-| **コア機能** | - | ✅ 完了 | 音声入力・AI生成・Quill.jsエディタ |
-| **高度機能** | - | ✅ 完了 | PDF出力・季節テーマ・レスポンシブUI |
-| **品質保証** | - | ✅ 完了 | E2Eテスト・パフォーマンス最適化 |
+**🏆 全62タスク完了 (100%) - プロジェクト完成** ✅
 
-**🏆 全61タスク完了 (100%) - プロジェクト完成** ✅
-
----
-
-## 🎉 完成機能一覧
-
-**✅ 完全実装済み機能**
-1. ✅ **音声入力システム** - リアルタイム録音・STT・ファイルアップロード
-2. ✅ **AI文章生成** - Gemini Pro・チャット編集・カスタム指示
-3. ✅ **WYSIWYGエディタ** - Quill.js・Delta変換・季節テーマ
-4. ✅ **PDF出力配信** - 高品質PDF・日本語フォント・自動レイアウト
-5. ✅ **Firebase統合** - 認証・ストレージ・リアルタイムDB
-6. ✅ **レスポンシブUI** - 3カラム・PC/タブレット/モバイル対応
-
-**📊 詳細な実装状況は [📋 tasks.md](docs/tasks.md) と [🎉 完了報告書](docs/archive/PROJECT_COMPLETION_SUMMARY.md) を参照**
+| 機能カテゴリ | 状況 | 主要成果物 |
+|------------|------|-----------|
+| **音声入力システム** | ✅ 完了 | Web Audio API統合・STT連携 |
+| **AI文章生成** | ✅ 完了 | Gemini Pro完全統合・学級通信特化 |
+| **WYSIWYGエディタ** | ✅ 完了 | Quill.js・Delta/HTML変換・季節テーマ |
+| **PDF出力配信** | ✅ 完了 | WeasyPrint・日本語フォント・A4最適化 |
+| **Firebase統合** | ✅ 完了 | 認証・Firestore・Storage完全連携 |
+| **レスポンシブUI** | ✅ 完了 | PC/タブレット/モバイル完全対応 |
 
 ---
 
 ## 🎖️ ハッカソン適合性
 
 ### ✅ 必須条件クリア
-- **Google Cloud アプリケーション**: Cloud Run ✅
-- **Google Cloud AI**: Vertex AI・Speech-to-Text ✅
+- **Google Cloud アプリケーション**: Vertex AI・Speech-to-Text ✅
+- **AI機能活用**: Gemini 1.5 Pro完全統合 ✅
 
 ### 🏆 特別賞対象
 - **Flutter賞**: Flutter Web使用 ✅
-- **Firebase賞**: Authentication・Firestore使用 ✅
+- **Firebase賞**: Authentication・Firestore・Storage使用 ✅
 - **Deep Dive賞**: 複数Google Cloudサービス活用 ✅
 
 ---
 
-## 📚 ドキュメント構成
+## 🔐 セキュリティ・設定管理
 
-| ドキュメント | 説明 | 対象 |
-|------------|------|------|
-| **[📋 Index](docs/archive/INDEX.md)** | エントリーポイント | 全員 |
-| **[📖 Overview](docs/Archive/README.md)** | 全体ナビゲーション | 全員 |
-| **[📝 要件定義](docs/REQUIREMENT.md)** | 14機能要件・画面設計 | 全員 |
-| **[🏗️ システム設計](docs/Archive/system_design.md)** | API・データ・セキュリティ | 開発者 |
-| **[📋 タスク](docs/tasks.md)** | 79実装タスク・進捗管理 | 開発者 |
-| **[🧪 TDD](docs/Archive/tdd_guide.md)** | テスト駆動開発実践 | 開発者 |
-| **[🚀 将来拡張](docs/Archive/future_extensions.md)** | ADKマルチエージェント | 設計者 |
-| **[📏 ハッカソンルール](docs/HACKASON_RULE.md)** | 制約・技術要件 | 全員 |
+### Firebase設定
+
+Firebase設定ファイル `frontend/lib/firebase_options.dart` の管理：
+
+```bash
+# テンプレートから実際の設定ファイルを作成
+cp frontend/lib/firebase_options.dart.template frontend/lib/firebase_options.dart
+
+# 実際のFirebase設定値を設定（エディタで編集）
+# - API Key: AIzaSyAROJC6oomnN4tl1Sv27fcE5yaB_vIzXxc
+# - Project ID: yutori-kyoshitu
+# - App ID: 1:309920383305:web:fa0ae9890d4e7bf2355a98
+```
+
+### 環境変数
+
+```bash
+# Frontend (.env)
+FIREBASE_API_KEY=your_api_key_here
+FIREBASE_PROJECT_ID=your_project_id_here
+
+# Backend (backend/functions/.env)
+GOOGLE_CLOUD_PROJECT=your_project_id_here
+GEMINI_API_KEY=your_gemini_api_key_here
+```
 
 ---
 
 ## 🤝 コントリビューション
 
-### 📋 タスク管理
-- 毎日 [tasks.md](docs/tasks.md) で進捗更新
-- 4つの完了条件すべて満たしてからタスクチェック
-- TDD必須（🔴 Red → 🟢 Green → 🔵 Refactor）
-
 ### 🔧 開発ワークフロー
-1. 今日のタスク確認
-2. TDD実践でコード実装
-3. テスト通過・品質確認
-4. 実際の使用シナリオで動作検証
-5. 完了条件満たしてタスク完了
+1. **ブランチ作成**: `git checkout -b feature/your-feature`
+2. **開発・テスト**: TDD実践でコード実装
+3. **品質確認**: `make lint && make test`
+4. **プルリクエスト**: mainブランチへのPR作成
+
+### 📋 品質基準
+- **テストカバレッジ**: 80%以上維持
+- **静的解析**: Flutter analyze・flake8・black通過
+- **パフォーマンス**: 音声→PDF生成20秒以内
 
 ---
 
 ## 📞 サポート・質問
 
-- **設計・仕様**: [system_design.md](docs/Archive/system_design.md) 参照
-- **実装方法**: [tdd_guide.md](docs/Archive/tdd_guide.md) 参照  
-- **進捗確認**: [tasks.md](docs/tasks.md) 参照
-- **ハッカソン要件**: [hackason_rule.md](docs/HACKASON_RULE.md) 参照
+- **開発手順**: [開発ガイド](docs/development_guide.md)参照
+- **技術仕様**: [システム設計](docs/system_architecture.md)参照  
+- **プロジェクト履歴**: [完了報告書](docs/archive/PROJECT_COMPLETION_SUMMARY.md)参照
+- **ハッカソン要件**: [ハッカソンルール](docs/hackason_rule.md)参照
 
 ---
 
@@ -224,48 +196,4 @@ MIT License - Google Cloud Japan AI Hackathon Vol.2 提出用
 
 ---
 
-## 🔐 機密情報の管理
-
-### Firebase設定
-
-Firebase設定ファイル `frontend/lib/firebase_options.dart` には機密情報が含まれているため、以下の手順で管理してください：
-
-1. **初回セットアップ時**：
-   ```bash
-   # テンプレートファイルから実際の設定ファイルを作成
-   cp frontend/lib/firebase_options.dart.template frontend/lib/firebase_options.dart
-   
-   # 実際のFirebase設定値を設定
-   # エディタで firebase_options.dart を開き、YOUR_*_HERE を実際の値に置換
-   ```
-
-2. **設定値の更新**：
-   - API Key: `AIzaSyAROJC6oomnN4tl1Sv27fcE5yaB_vIzXxc`
-   - App ID: `1:309920383305:web:fa0ae9890d4e7bf2355a98`
-   - Project ID: `yutori-kyoshitu`
-   - Auth Domain: `yutori-kyoshitu.firebaseapp.com`
-   - Storage Bucket: `yutori-kyoshitu.firebasestorage.app`
-
-3. **セキュリティ注意事項**：
-   - `firebase_options.dart` は `.gitignore` に登録済みでGit追跡されません
-   - テンプレートファイル `firebase_options.dart.template` のみがバージョン管理対象です
-   - 本番環境では環境変数やシークレット管理サービスの使用を推奨
-
-### 環境変数
-
-各環境で `.env` ファイルを作成し、以下の変数を設定してください：
-
-```bash
-# Frontend (.env)
-FIREBASE_API_KEY=your_api_key_here
-FIREBASE_APP_ID=your_app_id_here
-FIREBASE_PROJECT_ID=your_project_id_here
-
-# Backend (backend/functions/.env)
-GOOGLE_CLOUD_PROJECT=your_project_id_here
-FIREBASE_PROJECT_ID=your_project_id_here
-```
-
----
-
-**🎉 ゴール: 先生が子どもと向き合う「ゆとり」を創出する学級通信システムの実現！**
+**🎯 ゴール達成: 学級通信作成時間を2-3時間から20分以内に短縮！**
