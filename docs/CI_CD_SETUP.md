@@ -205,6 +205,72 @@ make ci-test    # ローカルでCI環境テスト
 - Firebase Hosting配信状況
 - Cloud Run稼働状況
 
+## 🗄️ データベース環境分離設定
+
+### 🎯 概要
+同一Firebaseプロジェクト内でコレクション名プレフィックスによる環境分離を実装。
+追加費用なしで完全なデータ分離を実現。
+
+### 🔧 実装方法
+
+#### 1. 環境変数設定
+```yaml
+# .github/workflows/ci-cd.yml
+env:
+  ENVIRONMENT: prod    # prod/staging/dev
+```
+
+#### 2. firebase_service.py 修正
+```python
+def get_collection_name(base_name: str) -> str:
+    """環境別コレクション名を生成"""
+    env = os.getenv('ENVIRONMENT', 'dev')
+    return f"{env}_{base_name}"
+```
+
+#### 3. 各サービスでの使用例
+```python
+# user_dictionary_service.py
+doc_ref = self.db.collection(get_collection_name('user_dictionaries')).document(user_id)
+
+# 他のサービスでも同様に適用
+```
+
+### 📊 コレクション構造
+```
+# 本番環境
+prod_user_dictionaries/{user_id}
+prod_documents/{doc_id}
+
+# ステージング環境  
+staging_user_dictionaries/{user_id}
+staging_documents/{doc_id}
+
+# 開発環境
+dev_user_dictionaries/{user_id}
+dev_documents/{doc_id}
+```
+
+### ✅ メリット
+- ✅ **費用ゼロ**: 追加課金なし
+- ✅ **完全分離**: 環境間でデータ汚染なし
+- ✅ **実装簡単**: 環境変数1つで制御
+- ✅ **権限管理**: 環境別セキュリティルール可能
+- ✅ **バックアップ**: 環境別データ管理
+
+### 🚨 注意事項
+- 全てのFirestore操作で `get_collection_name()` を使用必須
+- 環境変数 `ENVIRONMENT` が未設定の場合は 'dev' がデフォルト
+- 既存データの移行が必要な場合は別途マイグレーション実装
+
+### 📋 実装チェックリスト
+- [ ] firebase_service.py に `get_collection_name()` 関数追加
+- [ ] user_dictionary_service.py のコレクション名修正
+- [ ] 他のサービスファイルのコレクション名修正
+- [ ] CI/CD設定に環境変数追加
+- [ ] テスト環境での動作確認
+- [ ] 本番環境へのデプロイ
+
 ## 🔄 継続的改善
 
 ### 📝 定期レビュー項目
