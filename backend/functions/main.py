@@ -43,10 +43,13 @@ app = Flask(__name__)
 # CORS設定 - 本番とローカル開発環境の両方を許可
 # プレビュー環境のURLパターン (例: https://gakkoudayori-ai--pr-123.web.app) にマッチする正規表現
 preview_origin_pattern = r"https://gakkoudayori-ai--pr-\d+\.web\.app"
+# ステージング環境のURLパターン (例: https://gakkoudayori-ai--staging-abc123.web.app) にマッチする正規表現
+staging_origin_pattern = r"https://gakkoudayori-ai--staging-[a-z0-9]+\.web\.app"
 
 CORS(app, origins=[
     "https://gakkoudayori-ai.web.app",  # 本番フロントエンド
-    "https://gakkoudayori-ai--staging.web.app",  # ステージングフロントエンド
+    "https://gakkoudayori-ai--staging.web.app",  # ステージングフロントエンド (固定)
+    re.compile(staging_origin_pattern), # ステージング環境 (可変ID付き)
     re.compile(preview_origin_pattern), # プレビュー環境 (正規表現)
     "http://localhost:3000",
     "http://localhost:5000",

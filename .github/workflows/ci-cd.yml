@@ -86,7 +86,7 @@ jobs:
           cd frontend
           flutter build web \
             --dart-define=ENVIRONMENT=staging \
-            --dart-define=API_BASE_URL=https://staging-yutori-backend.asia-northeast1.run.app/api/v1/ai \
+            --dart-define=API_BASE_URL=https://yutori-backend-staging-944053509139.asia-northeast1.run.app/api/v1/ai \
             --release
 
       - name: 🔧 Google Cloud認証
