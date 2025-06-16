@@ -202,21 +202,65 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
   }
 
   Widget _buildDesktopLayout() {
-    return Row(
-      children: [
-        Container(
-          width: 400,
-          padding: EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border(right: BorderSide(color: Colors.grey[300]!)),
+    return Center(
+      child: Container(
+        constraints: BoxConstraints(maxWidth: 1200), // 最大幅を制限
+        child: DefaultTabController(
+          length: 2,
+          child: Column(
+            children: [
+              // タブバー
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
+                ),
+                child: TabBar(
+                  labelColor: Colors.blue[700],
+                  unselectedLabelColor: Colors.grey[600],
+                  indicatorColor: Colors.blue[600],
+                  indicatorWeight: 3,
+                  labelStyle: GoogleFonts.notoSansJp(
+                      fontWeight: FontWeight.bold, fontSize: 16),
+                  tabs: [
+                    Tab(
+                      icon: Icon(Icons.mic, size: 20),
+                      text: '音声入力',
+                    ),
+                    Tab(
+                      icon: Icon(Icons.preview, size: 20),
+                      text: 'プレビュー',
+                    ),
+                  ],
+                ),
+              ),
+              // タブコンテンツ
+              Expanded(
+                child: TabBarView(
+                  children: [
+                    // 音声入力タブ
+                    Container(
+                      color: Colors.white,
+                      padding: EdgeInsets.all(20),
+                      child: Center(
+                        child: Container(
+                          constraints: BoxConstraints(maxWidth: 600), // 音声入力エリアの幅を制限
+                          child: _buildVoiceInputSection(isCompact: false),
+                        ),
+                      ),
+                    ),
+                    // プレビュータブ
+                    Container(
+                      color: Colors.grey[50],
+                      child: _buildPreviewEditorSection(),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          child: _buildVoiceInputSection(isCompact: false),
         ),
-        Expanded(
-          child: _buildPreviewEditorSection(),
-        ),
-      ],
+      ),
     );
   }
 
@@ -373,40 +417,6 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
           ),
           SizedBox(height: 16),
           if (_showStyleButtons) _buildStyleSelection(),
-          if (!isCompact) ...[
-            SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _downloadPdf,
-                    icon: Icon(Icons.picture_as_pdf, size: 16),
-                    label: Text('PDF'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.purple[600],
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: (_isGenerating || _isProcessing)
-                        ? null
-                        : _regenerateNewsletter,
-                    icon: Icon(Icons.refresh, size: 16),
-                    label: Text('再生成'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange[600],
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
         ],
       ),
     );
@@ -527,6 +537,34 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                   ),
                 ),
                 Spacer(),
+                // PDF・再生成ボタンを右上に配置
+                if (_generatedHtml.isNotEmpty) ...[
+                  ElevatedButton.icon(
+                    onPressed: _downloadPdf,
+                    icon: Icon(Icons.picture_as_pdf, size: 16),
+                    label: Text('PDF'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.purple[600],
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      minimumSize: Size(0, 0),
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: (_isGenerating || _isProcessing)
+                        ? null
+                        : _regenerateNewsletter,
+                    icon: Icon(Icons.refresh, size: 16),
+                    label: Text('再生成'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange[600],
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      minimumSize: Size(0, 0),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
