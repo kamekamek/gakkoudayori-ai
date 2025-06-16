@@ -259,9 +259,9 @@ def convert_speech_to_json(
     credentials_path: str,
     style: str = "classic",
     custom_context: str = "",
-    model_name: str = "gemini-2.5-pro-preview-03-25",
+    model_name: str = "gemini-2.5-flash-preview-05-20",
     temperature: float = 0.3,
-    max_output_tokens: int = 2048
+    max_output_tokens: int = 8192
 ) -> Dict[str, Any]:
     """
     音声認識結果を構造化JSONに変換
@@ -281,6 +281,31 @@ def convert_speech_to_json(
     """
     start_time = time.time()
     timestamp = datetime.now().isoformat()
+    
+    # 入力テキストの事前バリデーション
+    if not transcribed_text or not transcribed_text.strip():
+        return {
+            "success": False,
+            "error": {
+                "code": "EMPTY_INPUT_TEXT",
+                "message": "音声認識結果が空です。音声ファイルが正しく認識されているか確認してください。",
+                "details": {
+                    "text_length": len(transcribed_text) if transcribed_text else 0,
+                    "possible_causes": [
+                        "音声ファイルが空またはサイレント",
+                        "音声形式が対応していない",
+                        "音声レベルが低すぎる",
+                        "言語設定が間違っている"
+                    ]
+                },
+                "processing_time_ms": int((time.time() - start_time) * 1000),
+                "timestamp": timestamp
+            }
+        }
+    
+    # 短すぎるテキストに対する警告
+    if len(transcribed_text.strip()) < 10:
+        logger.warning(f"Very short transcribed text received: '{transcribed_text}'. Proceeding with conversion.")
     
     try:
         # JSONスキーマを取得
