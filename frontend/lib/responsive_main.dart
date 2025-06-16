@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'services/audio_service.dart';
 import 'services/graphical_record_service.dart';
 import 'services/user_dictionary_service.dart';
@@ -18,16 +19,45 @@ class GakkouDayoriAiApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Noto Sans JPを基本フォントとして設定
+    final baseTextTheme = Theme.of(context).textTheme;
+
     return MaterialApp(
       title: '学校だよりAI',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
-        fontFamily: 'Meiryo',
-        fontFamilyFallback: const ['メイリオ', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'ヒラギノ角ゴ ProN W3', 'MS PGothic'],
-        textTheme: Theme.of(context).textTheme.apply(
-          fontFamily: 'Meiryo',
-          fontFamilyFallback: ['メイリオ', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'ヒラギノ角ゴ ProN W3', 'MS PGothic'],
+        // Noto Sans JPをアプリ全体のフォントとして設定
+        textTheme: GoogleFonts.notoSansJpTextTheme(baseTextTheme).copyWith(
+          // 個別のスタイルにも適用
+          displayLarge:
+              GoogleFonts.notoSansJp(textStyle: baseTextTheme.displayLarge),
+          displayMedium:
+              GoogleFonts.notoSansJp(textStyle: baseTextTheme.displayMedium),
+          displaySmall:
+              GoogleFonts.notoSansJp(textStyle: baseTextTheme.displaySmall),
+          headlineLarge:
+              GoogleFonts.notoSansJp(textStyle: baseTextTheme.headlineLarge),
+          headlineMedium:
+              GoogleFonts.notoSansJp(textStyle: baseTextTheme.headlineMedium),
+          headlineSmall:
+              GoogleFonts.notoSansJp(textStyle: baseTextTheme.headlineSmall),
+          titleLarge:
+              GoogleFonts.notoSansJp(textStyle: baseTextTheme.titleLarge),
+          titleMedium:
+              GoogleFonts.notoSansJp(textStyle: baseTextTheme.titleMedium),
+          titleSmall:
+              GoogleFonts.notoSansJp(textStyle: baseTextTheme.titleSmall),
+          bodyLarge: GoogleFonts.notoSansJp(textStyle: baseTextTheme.bodyLarge),
+          bodyMedium:
+              GoogleFonts.notoSansJp(textStyle: baseTextTheme.bodyMedium),
+          bodySmall: GoogleFonts.notoSansJp(textStyle: baseTextTheme.bodySmall),
+          labelLarge:
+              GoogleFonts.notoSansJp(textStyle: baseTextTheme.labelLarge),
+          labelMedium:
+              GoogleFonts.notoSansJp(textStyle: baseTextTheme.labelMedium),
+          labelSmall:
+              GoogleFonts.notoSansJp(textStyle: baseTextTheme.labelSmall),
         ),
       ),
       home: ResponsiveHomePage(),
@@ -206,7 +236,8 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
               unselectedLabelColor: Colors.grey[600],
               indicatorColor: Colors.blue[600],
               indicatorWeight: 3,
-              labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              labelStyle: GoogleFonts.notoSansJp(
+                  fontWeight: FontWeight.bold, fontSize: 16),
               tabs: [
                 Tab(
                   icon: Icon(Icons.mic, size: 20),
@@ -263,7 +294,8 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                 Expanded(
                   child: Text(
                     _statusMessage,
-                    style: TextStyle(color: Colors.blue[800], fontSize: 14),
+                    style: GoogleFonts.notoSansJp(
+                        color: Colors.blue[800], fontSize: 14),
                   ),
                 ),
               ],
@@ -386,7 +418,8 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
       children: [
         Text(
           'スタイルを選択してください',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style:
+              GoogleFonts.notoSansJp(fontSize: 16, fontWeight: FontWeight.bold),
           textAlign: TextAlign.center,
         ),
         SizedBox(height: 12),
@@ -421,7 +454,8 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
             icon: Icon(Icons.auto_awesome, size: 20),
             label: Text(
               '学級通信を作成する',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: GoogleFonts.notoSansJp(
+                  fontSize: 16, fontWeight: FontWeight.bold),
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.green[600],
@@ -486,7 +520,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                 SizedBox(width: 8),
                 Text(
                   'プレビュー',
-                  style: TextStyle(
+                  style: GoogleFonts.notoSansJp(
                     fontSize: isMobile ? 16 : 18,
                     fontWeight: FontWeight.bold,
                     color: Colors.grey[800],
@@ -518,7 +552,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                       ? Center(
                           child: Text(
                             '学級通信を作成すると、ここにプレビューが表示されます',
-                            style: TextStyle(
+                            style: GoogleFonts.notoSansJp(
                               color: Colors.grey[600],
                               fontSize: 16,
                             ),

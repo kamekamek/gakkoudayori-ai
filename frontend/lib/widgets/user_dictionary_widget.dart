@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../config/app_config.dart';
 import '../services/user_dictionary_service.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// ユーザー辞書管理ウィジェット
 /// 教師が固有名詞や学校専用用語を登録・管理できるUI
@@ -160,7 +161,7 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text('削除', style: TextStyle(color: Colors.red)),
+            child: Text('削除', style: GoogleFonts.notoSansJp(color: Colors.red)),
           ),
         ],
       ),
@@ -449,7 +450,7 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
     return Scaffold(
       appBar: AppBar(
         title: Text('ユーザー辞書管理'),
-        backgroundColor: Colors.blue[600],
+        backgroundColor: Colors.orange[800],
         foregroundColor: Colors.white,
         actions: [
           IconButton(
@@ -468,7 +469,8 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                     children: [
                       Icon(Icons.error, size: 64, color: Colors.red),
                       SizedBox(height: 16),
-                      Text(_errorMessage, style: TextStyle(color: Colors.red)),
+                      Text(_errorMessage,
+                          style: GoogleFonts.notoSansJp(color: Colors.red)),
                       SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: _loadDictionary,
@@ -490,10 +492,8 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                             children: [
                               Text(
                                 '辞書統計',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                style: GoogleFonts.notoSansJp(
+                                    fontSize: 18, fontWeight: FontWeight.bold),
                               ),
                               SizedBox(height: 12),
                               Row(
@@ -554,10 +554,9 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                                     SizedBox(width: 8),
                                     Text(
                                       'カスタム用語一覧',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                      style: GoogleFonts.notoSansJp(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold),
                                     ),
                                   ],
                                 ),
@@ -577,18 +576,16 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                                             SizedBox(height: 16),
                                             Text(
                                               'カスタム用語がありません',
-                                              style: TextStyle(
-                                                color: Colors.grey[600],
-                                                fontSize: 16,
-                                              ),
+                                              style: GoogleFonts.notoSansJp(
+                                                  fontSize: 16,
+                                                  color: Colors.grey[600]),
                                             ),
                                             SizedBox(height: 8),
                                             Text(
                                               '「新しい用語を追加」ボタンから\n生徒名や学校専用用語を登録してください',
-                                              style: TextStyle(
-                                                color: Colors.grey[500],
-                                                fontSize: 14,
-                                              ),
+                                              style: GoogleFonts.notoSansJp(
+                                                  fontSize: 14,
+                                                  color: Colors.grey[500]),
                                               textAlign: TextAlign.center,
                                             ),
                                           ],
@@ -605,13 +602,13 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                                                       term.category),
                                               child: Text(
                                                 _getCategoryIcon(term.category),
-                                                style: TextStyle(
+                                                style: GoogleFonts.notoSansJp(
                                                     color: Colors.white),
                                               ),
                                             ),
                                             title: Text(
                                               term.term,
-                                              style: TextStyle(
+                                              style: GoogleFonts.notoSansJp(
                                                   fontWeight: FontWeight.bold),
                                             ),
                                             subtitle: Column(
@@ -625,10 +622,9 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                                                   // '${_categories[term.category] ?? 'その他'} • 使用回数: ${term.usageCount}回',
                                                   _categories[term.category] ??
                                                       'その他',
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    color: Colors.grey[600],
-                                                  ),
+                                                  style: GoogleFonts.notoSansJp(
+                                                      fontSize: 12,
+                                                      color: Colors.grey[600]),
                                                 ),
                                               ],
                                             ),
@@ -654,9 +650,10 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                                                           color: Colors.red),
                                                       SizedBox(width: 8),
                                                       Text('削除',
-                                                          style: TextStyle(
-                                                              color:
-                                                                  Colors.red)),
+                                                          style: GoogleFonts
+                                                              .notoSansJp(
+                                                                  color: Colors
+                                                                      .red)),
                                                     ],
                                                   ),
                                                 ),
@@ -696,7 +693,7 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
         SizedBox(height: 4),
         Text(
           value,
-          style: TextStyle(
+          style: GoogleFonts.notoSansJp(
             fontSize: 20,
             fontWeight: FontWeight.bold,
             color: Colors.blue[800],
@@ -704,7 +701,7 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
         ),
         Text(
           label,
-          style: TextStyle(
+          style: GoogleFonts.notoSansJp(
             fontSize: 12,
             color: Colors.grey[600],
           ),
