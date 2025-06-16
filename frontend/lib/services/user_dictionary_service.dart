@@ -164,46 +164,79 @@ class UserDictionaryService {
           if (apiData['dictionary'] is Map) {
             final Map<String, dynamic> dictionaryMap = apiData['dictionary'] as Map<String, dynamic>;
             final List<UserDictionaryEntry> terms = [];
-            dictionaryMap.forEach((key, value) {
+            
+            // より安全なアプローチでエントリを処理
+            for (final entry in dictionaryMap.entries) {
               try {
-                if (value is Map) {
-                  // カスタム用語の場合（辞書形式）
-                  final termData = value as Map<String, dynamic>;
-                  final variations = termData['variations'];
-                  
-                  if (variations is List) {
-                    // null値を除外してString型のみを抽出
-                    final cleanVariations = variations
-                        .where((v) => v != null && v is String)
-                        .map((v) => v.toString())
-                        .toList();
-                    
-                    terms.add(UserDictionaryEntry(
-                      term: key,
-                      variations: cleanVariations,
-                    ));
+                final key = entry.key;
+                final value = entry.value;
+                
+                if (kDebugMode) {
+                  debugPrint('Processing entry: key="$key" (${key.runtimeType}), value type=${value.runtimeType}');
+                }
+                
+                // キーがnullまたは空文字の場合はスキップ
+                if (key == null || key.toString().isEmpty) {
+                  if (kDebugMode) {
+                    debugPrint('Skipping invalid key: $key');
                   }
+                  continue;
+                }
+                
+                final termString = key.toString();
+                List<String> cleanVariations = [];
+                
+                if (value is Map<String, dynamic>) {
+                  // カスタム用語の場合（辞書形式）
+                  if (kDebugMode) {
+                    debugPrint('Processing custom term: "$termString"');
+                  }
+                  
+                  final variations = value['variations'];
+                  if (variations is List) {
+                    cleanVariations = _extractCleanStringList(variations);
+                  }
+                  
                 } else if (value is List) {
                   // デフォルト用語の場合（配列形式）
-                  // null値を除外してString型のみを抽出
-                  final cleanVariations = value
-                      .where((v) => v != null && v is String)
-                      .map((v) => v.toString())
-                      .toList();
+                  if (kDebugMode) {
+                    debugPrint('Processing default term: "$termString"');
+                  }
                   
-                  if (cleanVariations.isNotEmpty) {
-                    terms.add(UserDictionaryEntry(
-                      term: key,
-                      variations: cleanVariations,
-                    ));
+                  cleanVariations = _extractCleanStringList(value);
+                  
+                } else {
+                  if (kDebugMode) {
+                    debugPrint('Skipping unknown value type for "$termString": ${value.runtimeType}');
+                  }
+                  continue;
+                }
+                
+                // 有効なバリエーションがある場合のみ追加
+                if (cleanVariations.isNotEmpty) {
+                  final entry = UserDictionaryEntry(
+                    term: termString,
+                    variations: cleanVariations,
+                  );
+                  
+                  terms.add(entry);
+                  
+                  if (kDebugMode) {
+                    debugPrint('Successfully added term: "$termString" with ${cleanVariations.length} variations');
+                  }
+                } else {
+                  if (kDebugMode) {
+                    debugPrint('Skipping "$termString" - no valid variations');
                   }
                 }
-              } catch (e) {
+                
+              } catch (e, stackTrace) {
                 if (kDebugMode) {
-                  debugPrint('Error parsing term "$key": $e');
+                  debugPrint('Error processing entry: $e');
+                  debugPrint('Stack trace: $stackTrace');
                 }
               }
-            });
+            }
             if (kDebugMode) {
               debugPrint('UserDictionaryService: Successfully parsed ${terms.length} terms.');
             }
@@ -273,6 +306,28 @@ class UserDictionaryService {
       }
       return false;
     }
+  }
+
+  /// Listからnull値を除外してString型のみを安全に抽出
+  List<String> _extractCleanStringList(List list) {
+    final cleanList = <String>[];
+    
+    for (final item in list) {
+      if (item != null) {
+        try {
+          final stringItem = item.toString();
+          if (stringItem.isNotEmpty) {
+            cleanList.add(stringItem);
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            debugPrint('Failed to convert item to string: $item ($e)');
+          }
+        }
+      }
+    }
+    
+    return cleanList;
   }
 }
 

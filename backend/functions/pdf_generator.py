@@ -124,43 +124,54 @@ def generate_pdf_from_html(
                 'processing_time_ms': int((time.time() - start_time) * 1000)
             }
         
-        # 利用可能な日本語フォントを取得
-        available_fonts = _get_available_japanese_fonts()
-        font_family = ", ".join([f'"{font}"' for font in available_fonts])
+        # フォント処理のログレベルを一時的に変更
+        import logging
+        font_logger = logging.getLogger('fontTools')
+        original_level = font_logger.level
+        font_logger.setLevel(logging.WARNING)  # INFO以下のログを抑制
         
-        # HTML文書を構築
-        full_html = _build_complete_html_document(
-            html_content=html_content,
-            title=title,
-            page_size=page_size,
-            margin=margin,
-            include_header=include_header,
-            include_footer=include_footer,
-            custom_css=custom_css,
-            font_family=font_family
-        )
-        
-        # 出力パス決定（Cloud Run環境対応）
-        if output_path is None:
-            # Cloud Run環境では/tmpディレクトリを使用
-            temp_dir = '/tmp' if os.path.exists('/tmp') else tempfile.gettempdir()
-            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf', dir=temp_dir)
-            output_path = temp_file.name
-            temp_file.close()
-            logger.info(f"Using temporary file: {output_path}")
-        
-        # PDF生成実行（日本語フォント対応）
-        logger.info(f"Generating PDF: {output_path}")
-        logger.info(f"Using font family: {font_family}")
-        
-        # HTMLドキュメント作成（WeasyPrint 60.x対応）
-        # WeasyPrint HTMLドキュメント作成
-        html_doc = HTML(string=full_html)
-        
-        # PDF生成
-        html_doc.write_pdf(output_path)
-        
-        logger.info("PDF generation completed with Japanese font support")
+        try:
+            # 利用可能な日本語フォントを取得
+            available_fonts = _get_available_japanese_fonts()
+            font_family = ", ".join([f'"{font}"' for font in available_fonts])
+            
+            # HTML文書を構築
+            full_html = _build_complete_html_document(
+                html_content=html_content,
+                title=title,
+                page_size=page_size,
+                margin=margin,
+                include_header=include_header,
+                include_footer=include_footer,
+                custom_css=custom_css,
+                font_family=font_family
+            )
+            
+            # 出力パス決定（Cloud Run環境対応）
+            if output_path is None:
+                # Cloud Run環境では/tmpディレクトリを使用
+                temp_dir = '/tmp' if os.path.exists('/tmp') else tempfile.gettempdir()
+                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf', dir=temp_dir)
+                output_path = temp_file.name
+                temp_file.close()
+                logger.info(f"Using temporary file: {output_path}")
+            
+            # PDF生成実行（日本語フォント対応）
+            logger.info(f"Generating PDF: {output_path}")
+            logger.info(f"Using font family: {font_family}")
+            
+            # HTMLドキュメント作成（WeasyPrint 60.x対応）
+            # WeasyPrint HTMLドキュメント作成
+            html_doc = HTML(string=full_html)
+            
+            # PDF生成
+            html_doc.write_pdf(output_path)
+            
+            logger.info("PDF generation completed with Japanese font support")
+            
+        finally:
+            # フォント処理のログレベルを元に戻す
+            font_logger.setLevel(original_level)
         
         # ファイル情報取得
         file_size = os.path.getsize(output_path)
