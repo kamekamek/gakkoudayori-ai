@@ -559,12 +559,16 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                             textAlign: TextAlign.center,
                           ),
                         )
-                      : SingleChildScrollView(
-                          child: PrintPreviewWidget(
-                            htmlContent: _generatedHtml,
-                            height: null, // 高さ制限を削除してスクロール可能に
-                            enableMobilePrintView: true,
-                          ),
+                      : LayoutBuilder(
+                          builder: (context, constraints) {
+                            return SingleChildScrollView(
+                              child: PrintPreviewWidget(
+                                htmlContent: _generatedHtml,
+                                height: constraints.maxHeight,
+                                enableMobilePrintView: true,
+                              ),
+                            );
+                          },
                         ),
             ),
           ),
