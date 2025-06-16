@@ -31,10 +31,10 @@ def check_available_models():
     
     # テスト対象のモデル一覧
     models_to_test = [
-        "gemini-2.0-flash-exp",
-        "gemini-2.0-flash",
+        "gemini-2.5-pro-002",
+        "gemini-2.5-flash-002", 
+        "gemini-2.5-pro-preview-03-25",
         "gemini-1.5-flash",
-        "gemini-2.0-flash-exp",
         "gemini-1.0-pro",
     ]
     

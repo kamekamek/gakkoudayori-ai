@@ -38,7 +38,7 @@ class TestHTMLConstraintService(unittest.TestCase):
             "data": {
                 "text": "<h1>こんにちは</h1><p>これはテストです。</p><ul><li>項目1</li></ul>",
                 "ai_metadata": {
-                    "model": "gemini-2.0-flash-exp",
+                    "model": "gemini-2.5-pro-preview-03-25",
                     "processing_time_ms": 500,
                     "word_count": 10,
                     "usage": {"total_token_count": 50}
@@ -87,7 +87,7 @@ class TestHTMLConstraintService(unittest.TestCase):
             "success": True,
             "data": {
                 "text": raw_html_from_api,
-                "ai_metadata": { "model": "gemini-2.0-flash-exp"}
+                "ai_metadata": { "model": "gemini-2.5-pro-preview-03-25"}
             }
         }
         mock_generate_text.return_value = mock_api_response
@@ -140,7 +140,7 @@ class TestHTMLConstraintService(unittest.TestCase):
             "success": True,
             "data": {
                 "text": raw_html_from_api,
-                "ai_metadata": { "model": "gemini-2.0-flash-exp"}
+                "ai_metadata": { "model": "gemini-2.5-pro-preview-03-25"}
             }
         }
         mock_generate_text.return_value = mock_api_response
@@ -203,7 +203,7 @@ class TestHTMLConstraintService(unittest.TestCase):
             "success": True,
             "data": {
                 "text": expected_html_structure,
-                "ai_metadata": { "model": "gemini-2.0-flash-exp", "usage": {"total_token_count": 100}},
+                "ai_metadata": { "model": "gemini-2.5-pro-preview-03-25", "usage": {"total_token_count": 100}},
                 "timestamp": "2025-06-11T03:10:00Z"
             }
         }
@@ -266,7 +266,7 @@ class TestHTMLConstraintService(unittest.TestCase):
             "success": True,
             "data": {
                 "text": valid_html,
-                "ai_metadata": { "model": "gemini-2.0-flash-exp"}
+                "ai_metadata": { "model": "gemini-2.5-pro-preview-03-25"}
             }
         }
         mock_generate_text.return_value = mock_api_response
@@ -309,7 +309,7 @@ class TestHTMLConstraintService(unittest.TestCase):
             "success": True, # API呼び出し自体は成功したと仮定
             "data": {
                 "text": some_html_text,
-                "ai_metadata": { "model": "gemini-2.0-flash-exp"}
+                "ai_metadata": { "model": "gemini-2.5-pro-preview-03-25"}
             }
         }
         mock_generate_text.return_value = mock_api_response
