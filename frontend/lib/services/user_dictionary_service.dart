@@ -9,19 +9,16 @@ import '../config/app_config.dart';
 class UserDictionaryEntry {
   final String term;
   final List<String> variations;
-  final String category;
 
   UserDictionaryEntry({
     required this.term,
     required this.variations,
-    required this.category,
   });
 
   factory UserDictionaryEntry.fromJson(Map<String, dynamic> json) {
     return UserDictionaryEntry(
       term: json['term'] as String,
       variations: List<String>.from(json['variations'] as List),
-      category: json['category'] as String,
     );
   }
 
@@ -29,7 +26,6 @@ class UserDictionaryEntry {
     return {
       'term': term,
       'variations': variations,
-      'category': category,
     };
   }
 }
@@ -166,12 +162,9 @@ class UserDictionaryService {
                 terms.add(UserDictionaryEntry.fromJson(value as Map<String, dynamic>));
               } else if (value is List && value.every((v) => v is String)) {
                 // 単語に対して読み仮名のリストが直接返ってきている場合
-                // UserDictionaryEntryの形式に合わせる (categoryは'general'など適切なデフォルト値に)
                 terms.add(UserDictionaryEntry(
                   term: key,
                   variations: List<String>.from(value),
-                  category: 'general', // 必要に応じてデフォルトカテゴリを設定
-                  // UserDictionaryEntryの他の必須フィールドがあれば、ここでデフォルト値を設定
                 ));
               }
             });

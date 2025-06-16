@@ -28,7 +28,6 @@ class DictionaryTerm:
     """辞書エントリのデータクラス"""
     term: str
     variations: List[str]
-    category: str = "custom"
     confidence: float = 1.0
     usage_count: int = 0
     phonetic_key: str = ""
@@ -251,7 +250,7 @@ class UserDictionaryService:
             logger.error(f"Failed to load user dictionary: {e}")
             return DEFAULT_SCHOOL_TERMS
     
-    def add_custom_term(self, user_id: str, term: str, variations: List[str], category: str = "custom") -> bool:
+    def add_custom_term(self, user_id: str, term: str, variations: List[str]) -> bool:
         """
         カスタム用語を追加
         
@@ -283,7 +282,6 @@ class UserDictionaryService:
             term_obj = DictionaryTerm(
                 term=term,
                 variations=variations,
-                category=category,
                 phonetic_key=self.phonetic_matcher.get_phonetic_key(term),
                 created_at=datetime.now()
             )
@@ -306,7 +304,7 @@ class UserDictionaryService:
             logger.error(f"Failed to add custom term: {e}")
             return False
 
-    def update_custom_term(self, user_id: str, term: str, variations: List[str], category: str = "custom") -> bool:
+    def update_custom_term(self, user_id: str, term: str, variations: List[str]) -> bool:
         """
         カスタム用語を更新
         
@@ -314,7 +312,6 @@ class UserDictionaryService:
             user_id (str): ユーザーID
             term (str): 更新対象の用語
             variations (List[str]): 新しい読み方のバリエーション
-            category (str): 新しいカテゴリ
             
         Returns:
             bool: 成功可否
@@ -340,7 +337,6 @@ class UserDictionaryService:
             term_obj = DictionaryTerm(
                 term=term,
                 variations=variations,
-                category=category,
                 phonetic_key=self.phonetic_matcher.get_phonetic_key(term),
                 # created_at は既存のものを維持、last_used は更新時に設定も可能
                 created_at=datetime.fromisoformat(data['custom_terms'][term]['created_at']) if data['custom_terms'][term].get('created_at') else datetime.now(),
@@ -550,19 +546,11 @@ class UserDictionaryService:
         custom_terms = self._load_custom_dictionary(user_id)
         usage_stats = self._get_usage_stats(user_id)
         
-        # カテゴリ別統計
-        categories = {}
-        for term, data in custom_terms.items():
-            if isinstance(data, dict) and 'category' in data:
-                category = data['category']
-                categories[category] = categories.get(category, 0) + 1
-        
         return {
             'total_terms': len(dictionary),
             'default_terms': len(DEFAULT_SCHOOL_TERMS),
             'custom_terms': len(custom_terms),
             'total_variations': sum(len(variations) if isinstance(variations, list) else len(variations.get('variations', [])) for variations in dictionary.values()),
-            'categories': categories,
             'usage_stats': {
                 'most_used_terms': sorted(
                     [(term, stats['count']) for term, stats in usage_stats.items()],

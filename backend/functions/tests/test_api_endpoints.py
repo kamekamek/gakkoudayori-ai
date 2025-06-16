@@ -107,14 +107,13 @@ def test_health_endpoint():
     except Exception as e:
         print(f"❌ テストエラー: {e}")
 
-def test_add_user_dictionary_term_endpoint(user_id="test_user", term="テスト単語", variations=["てすとたんご"], category="test_cat"):
+def test_add_user_dictionary_term_endpoint(user_id="test_user", term="テスト単語", variations=["てすとたんご"]):
     """ユーザー辞書用語追加エンドポイントテスト"""
     print("\n=== ユーザー辞書 用語追加エンドポイントテスト ===")
     url = f"http://localhost:8081/api/v1/dictionary/{user_id}/terms"
     payload = {
         "term": term,
-        "variations": variations,
-        "category": category
+        "variations": variations
     }
     try:
         response = requests.post(url, json=payload, timeout=10)
@@ -167,21 +166,18 @@ def test_update_user_dictionary_term_endpoint():
     user_id = "test_update_user"
     term_to_update = "更新前単語"
     initial_variations = ["こうしんぜんたんご"]
-    initial_category = "initial_cat"
     
     updated_variations = ["こうしんごたんご", "アップデート後"]
-    updated_category = "updated_cat"
     
     # 1. テスト用単語を追加
-    if not test_add_user_dictionary_term_endpoint(user_id, term_to_update, initial_variations, initial_category):
+    if not test_add_user_dictionary_term_endpoint(user_id, term_to_update, initial_variations):
         print("❌ 更新テスト失敗: 初期単語の追加に失敗しました。")
         return
 
     # 2. 用語を更新
     url_update = f"http://localhost:8081/api/v1/dictionary/{user_id}/terms/{term_to_update}"
     payload_update = {
-        "variations": updated_variations,
-        "category": updated_category
+        "variations": updated_variations
     }
     try:
         print(f"\n'{term_to_update}' を更新中...")
@@ -202,13 +198,12 @@ def test_update_user_dictionary_term_endpoint():
             # user_dictionary_service.py の custom_terms は DictionaryTerm の to_dict() 形式で保存されるため、
             # variations は直接比較ではなく、辞書内のキーでアクセスする
             retrieved_variations = updated_term_data.get('variations')
-            retrieved_category = updated_term_data.get('category')
             
             # variations の比較は順序も考慮する場合 list == list で良い
-            if retrieved_variations == updated_variations and retrieved_category == updated_category:
-                print(f"✅ 用語更新成功: '{term_to_update}' -> Variations: {retrieved_variations}, Category: {retrieved_category}")
+            if retrieved_variations == updated_variations:
+                print(f"✅ 用語更新成功: '{term_to_update}' -> Variations: {retrieved_variations}")
             else:
-                print(f"❌ 更新内容不一致: Expected Vars: {updated_variations}, Got: {retrieved_variations}. Expected Cat: {updated_category}, Got: {retrieved_category}")
+                print(f"❌ 更新内容不一致: Expected Vars: {updated_variations}, Got: {retrieved_variations}")
         else:
             print(f"❌ 更新確認エラー: '{term_to_update}' が辞書に見つからない、または辞書取得失敗")
             
@@ -224,7 +219,7 @@ def test_delete_user_dictionary_term_endpoint():
     term_to_delete = "削除対象単語"
     
     # 1. テスト用単語を追加
-    if not test_add_user_dictionary_term_endpoint(user_id, term_to_delete, ["さくじょたいしょうたんご"], "delete_cat"):
+    if not test_add_user_dictionary_term_endpoint(user_id, term_to_delete, ["さくじょたいしょうたんご"]):
         print("❌ 削除テスト失敗: 初期単語の追加に失敗しました。")
         return
 

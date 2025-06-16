@@ -280,7 +280,6 @@ def add_custom_term(user_id: str):
         
         term = data.get('term')
         variations = data.get('variations', [])
-        category = data.get('category', 'custom')
         
         if not term:
             logger.error("Term is required but not provided")
@@ -302,7 +301,7 @@ def add_custom_term(user_id: str):
         
         # カスタム用語追加
         logger.info(f"Adding custom term: {term} with variations: {variations}")
-        success = dict_service.add_custom_term(user_id, term, variations, category)
+        success = dict_service.add_custom_term(user_id, term, variations)
         logger.info(f"Add custom term result: {success}")
         
         if success:
@@ -310,8 +309,7 @@ def add_custom_term(user_id: str):
                 'success': True,
                 'data': {
                     'term': term,
-                    'variations': variations,
-                    'category': category
+                    'variations': variations
                 }
             })
         else:
@@ -338,7 +336,6 @@ def update_user_dictionary_term(user_id: str, term_name: str):
             return jsonify({'success': False, 'error': 'No JSON data provided'}), 400
         
         variations = data.get('variations')
-        category = data.get('category', 'custom')
         
         if variations is None: # variations は空リストを許容するが、キー自体がないのはエラー
             return jsonify({'success': False, 'error': 'Variations are required'}), 400
@@ -346,7 +343,7 @@ def update_user_dictionary_term(user_id: str, term_name: str):
         firestore_client = get_firestore_client()
         dict_service = create_user_dictionary_service(firestore_client)
         
-        success = dict_service.update_custom_term(user_id, term_name, variations, category)
+        success = dict_service.update_custom_term(user_id, term_name, variations)
         
         if success:
             return jsonify({
@@ -354,7 +351,6 @@ def update_user_dictionary_term(user_id: str, term_name: str):
                 'data': {
                     'term': term_name,
                     'variations': variations,
-                    'category': category,
                     'message': f'Term "{term_name}" updated successfully.'
                 }
             })
@@ -821,6 +817,10 @@ def generate_newsletter():
                 timestamp = result.get('timestamp', timestamp)
         
         if html_content is not None:
+            # \n や \\n を <br> に置換して、HTMLでの改行を確実にする
+            # プレビューで意図しない \n が表示される問題への対処
+            html_content = html_content.replace('\\n', '<br />').replace('\n', '<br />')
+
             # 成功レスポンスを構築
             newsletter_data = {
                 'success': True,
