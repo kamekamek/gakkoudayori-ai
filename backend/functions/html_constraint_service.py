@@ -127,7 +127,17 @@ def generate_constrained_html(
 
     # 最終的なプロンプトの組み立て
     system_prompt = "\n".join(system_prompt_parts)
-    final_prompt = f"{system_prompt}\n---\n## あなたのタスク\n### 入力テキスト:\n```\n{prompt}\n```\n### 出力HTML:"
+    
+    # 【重要】HTMLのみの出力を強調する指示を追加
+    output_instruction = """
+## 【重要】出力形式について
+- HTMLコンテンツのみを出力してください
+- Markdownコードブロック（```html や ``` など）は絶対に使用しないでください
+- 説明文や前置きは一切不要です
+- HTMLタグから直接開始し、HTMLタグで終了してください
+"""
+    
+    final_prompt = f"{system_prompt}{output_instruction}\n---\n## あなたのタスク\n### 入力テキスト:\n```\n{prompt}\n```\n### 出力HTML（コードブロックなし、HTMLのみ）:"
 
     logger.debug(f"Final prompt for HTML generation: {final_prompt}")
 
@@ -158,6 +168,9 @@ def generate_constrained_html(
 
         generated_html_content = api_response.get("data", {}).get("text", "")
         ai_metadata = api_response.get("data", {}).get("ai_metadata", {})
+
+        # 【重要】Markdownコードブロックのクリーンアップ処理を追加
+        generated_html_content = _clean_markdown_codeblocks(generated_html_content)
 
         # BLUEフェーズ: _validate_and_filter_html を使用してHTMLを検証・フィルタリング
         filtered_html_content, validation_issues = _validate_and_filter_html(
@@ -301,4 +314,51 @@ def _validate_and_filter_html(
         filtered_html_content = str(soup)
         
     return filtered_html_content.strip(), issues_found
+
+def _clean_markdown_codeblocks(html_content: str) -> str:
+    """
+    GeminiレスポンスからMarkdownコードブロックを完全に除去
+    
+    Args:
+        html_content (str): クリーンアップするHTMLコンテンツ
+        
+    Returns:
+        str: Markdownコードブロックが除去されたHTMLコンテンツ
+    """
+    if not html_content:
+        return html_content
+    
+    import re
+    
+    # Markdownコードブロックの様々なパターンを確実に削除
+    content = html_content.strip()
+    
+    # 様々な形式のHTMLコードブロックを削除
+    patterns = [
+        r'```html\s*',          # ```html
+        r'```HTML\s*',          # ```HTML
+        r'```\s*html\s*',       # ``` html
+        r'```\s*HTML\s*',       # ``` HTML
+        r'```\s*',              # 一般的なコードブロック開始
+        r'\s*```',              # コードブロック終了
+    ]
+    
+    for pattern in patterns:
+        content = re.sub(pattern, '', content, flags=re.IGNORECASE)
+    
+    # HTMLの前後にある説明文を削除
+    content = re.sub(r'^[^<]*(?=<)', '', content)  # HTML開始前の説明文
+    content = re.sub(r'>[^<]*$', '>', content)     # HTML終了後の説明文
+    
+    # 空白の正規化
+    content = re.sub(r'\n\s*\n', '\n', content)
+    content = content.strip()
+    
+    # デバッグログ：クリーンアップ後のチェック
+    if '```' in content:
+        logger.warning(f"Markdown code block remnants still detected after cleanup: {content[:100]}...")
+    
+    logger.debug(f"HTML content after markdown cleanup: {content[:200]}...")
+    
+    return content
 
