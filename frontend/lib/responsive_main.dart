@@ -179,36 +179,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
         elevation: 2,
       ),
       body: isMobile ? _buildMobileLayout() : _buildDesktopLayout(),
-      floatingActionButton: isMobile && _generatedHtml.isNotEmpty
-          ? Container(
-              margin: EdgeInsets.only(bottom: 16, right: 4),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildMobileFloatingButton(
-                    onPressed: (_isGenerating || _isProcessing) ? null : _regenerateNewsletter,
-                    backgroundColor: (_isGenerating || _isProcessing) 
-                        ? Colors.grey[400]! 
-                        : Colors.orange[600]!,
-                    icon: Icons.refresh,
-                    heroTag: "regenerate",
-                    tooltip: "再生成",
-                  ),
-                  SizedBox(height: 12),
-                  _buildMobileFloatingButton(
-                    onPressed: _isDownloadingPdf ? null : _downloadPdf,
-                    backgroundColor: _isDownloadingPdf 
-                        ? Colors.grey[400]! 
-                        : Colors.purple[600]!,
-                    icon: Icons.picture_as_pdf,
-                    heroTag: "pdf",
-                    tooltip: "PDF生成",
-                  ),
-                ],
-              ),
-            )
-          : null,
+      floatingActionButton: null, // モバイルボタンは別途配置
     );
   }
 
@@ -279,51 +250,83 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
   Widget _buildMobileLayout() {
     return DefaultTabController(
       length: 2,
-      child: Column(
+      child: Stack(
         children: [
-          // タブバー
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
-            ),
-            child: TabBar(
-              labelColor: Colors.blue[700],
-              unselectedLabelColor: Colors.grey[600],
-              indicatorColor: Colors.blue[600],
-              indicatorWeight: 3,
-              labelStyle: GoogleFonts.notoSansJp(
-                  fontWeight: FontWeight.bold, fontSize: 16),
-              tabs: [
-                Tab(
-                  icon: Icon(Icons.mic, size: 20),
-                  text: '音声入力',
-                ),
-                Tab(
-                  icon: Icon(Icons.preview, size: 20),
-                  text: 'プレビュー',
-                ),
-              ],
-            ),
-          ),
-          // タブコンテンツ
-          Expanded(
-            child: TabBarView(
-              children: [
-                // 音声入力タブ
-                Container(
+          Column(
+            children: [
+              // タブバー
+              Container(
+                decoration: BoxDecoration(
                   color: Colors.white,
-                  padding: EdgeInsets.all(16),
-                  child: _buildVoiceInputSection(isCompact: true),
+                  border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
                 ),
-                // プレビュータブ
-                Container(
-                  color: Colors.grey[50],
-                  child: _buildPreviewEditorSection(),
+                child: TabBar(
+                  labelColor: Colors.blue[700],
+                  unselectedLabelColor: Colors.grey[600],
+                  indicatorColor: Colors.blue[600],
+                  indicatorWeight: 3,
+                  labelStyle: GoogleFonts.notoSansJp(
+                      fontWeight: FontWeight.bold, fontSize: 16),
+                  tabs: [
+                    Tab(
+                      icon: Icon(Icons.mic, size: 20),
+                      text: '音声入力',
+                    ),
+                    Tab(
+                      icon: Icon(Icons.preview, size: 20),
+                      text: 'プレビュー',
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              // タブコンテンツ
+              Expanded(
+                child: TabBarView(
+                  children: [
+                    // 音声入力タブ
+                    Container(
+                      color: Colors.white,
+                      padding: EdgeInsets.all(16),
+                      child: _buildVoiceInputSection(isCompact: true),
+                    ),
+                    // プレビュータブ
+                    Container(
+                      color: Colors.grey[50],
+                      child: _buildPreviewEditorSection(),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
+          // モバイル用フローティングボタン
+          if (_generatedHtml.isNotEmpty)
+            Positioned(
+              right: 16,
+              bottom: 80,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildMobileActionButton(
+                    onTap: (_isGenerating || _isProcessing) ? null : _regenerateNewsletter,
+                    backgroundColor: (_isGenerating || _isProcessing) 
+                        ? Colors.grey[400]! 
+                        : Colors.orange[600]!,
+                    icon: Icons.refresh,
+                    label: "再生成",
+                  ),
+                  SizedBox(height: 12),
+                  _buildMobileActionButton(
+                    onTap: _isDownloadingPdf ? null : _downloadPdf,
+                    backgroundColor: _isDownloadingPdf 
+                        ? Colors.grey[400]! 
+                        : Colors.purple[600]!,
+                    icon: Icons.picture_as_pdf,
+                    label: "PDF",
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
@@ -612,16 +615,18 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                                 textAlign: TextAlign.center,
                               ),
                             )
-                          : LayoutBuilder(
-                              builder: (context, constraints) {
-                                return SingleChildScrollView(
-                                  child: PrintPreviewWidget(
-                                    htmlContent: _generatedHtml,
-                                    height: constraints.maxHeight,
-                                    enableMobilePrintView: true,
-                                  ),
-                                );
-                              },
+                          : SingleChildScrollView(
+                              physics: AlwaysScrollableScrollPhysics(),
+                              child: Container(
+                                constraints: BoxConstraints(
+                                  minHeight: isMobile ? 600 : 800,
+                                ),
+                                child: PrintPreviewWidget(
+                                  htmlContent: _generatedHtml,
+                                  height: isMobile ? 600 : 800,
+                                  enableMobilePrintView: true,
+                                ),
+                              ),
                             ),
                 ),
                 if (_isGenerating || _isProcessing || _isDownloadingPdf)
@@ -666,36 +671,38 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
     }
   }
 
-  /// モバイル用の最適化されたFloatingActionButtonを作成
-  Widget _buildMobileFloatingButton({
-    required VoidCallback? onPressed,
+  /// モバイル用のアクションボタンを作成
+  Widget _buildMobileActionButton({
+    required VoidCallback? onTap,
     required Color backgroundColor,
     required IconData icon,
-    required String heroTag,
-    required String tooltip,
+    required String label,
   }) {
-    return Material(
-      elevation: 6,
-      borderRadius: BorderRadius.circular(28),
-      color: backgroundColor,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(28),
-        splashColor: Colors.white.withOpacity(0.3),
-        highlightColor: Colors.white.withOpacity(0.1),
-        child: Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(28),
-          ),
-          child: Center(
-            child: Icon(
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 60,
+        height: 60,
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 8,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
               icon,
               color: Colors.white,
-              size: 24,
+              size: 28,
             ),
-          ),
+          ],
         ),
       ),
     );

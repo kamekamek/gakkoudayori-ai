@@ -26,17 +26,43 @@
     body {
       touch-action: manipulation;
       -webkit-tap-highlight-color: transparent;
+      overflow-x: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
     }
     
-    /* Ensure FloatingActionButtons are properly touchable */
-    .fab-button {
+    /* Fix iOS Safari touch issues */
+    *, *:before, *:after {
       touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    /* Ensure scrollable areas work properly */
+    .scrollable {
+      -webkit-overflow-scrolling: touch;
+      overflow-scrolling: touch;
+    }
+    
+    /* Button touch optimization */
+    button, .button, [role="button"] {
+      touch-action: manipulation !important;
+      cursor: pointer;
       -webkit-tap-highlight-color: rgba(0,0,0,0.1);
     }
     
-    /* Prevent zoom on double tap while maintaining touch responsiveness */
-    * {
+    /* Flutter web specific fixes */
+    flt-glass-pane {
       touch-action: manipulation;
+    }
+    
+    /* Prevent text selection on mobile */
+    .mobile-no-select {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
     }
   </style>
 
