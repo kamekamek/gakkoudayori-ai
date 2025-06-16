@@ -180,23 +180,33 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
       ),
       body: isMobile ? _buildMobileLayout() : _buildDesktopLayout(),
       floatingActionButton: isMobile && _generatedHtml.isNotEmpty
-          ? Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                FloatingActionButton(
-                  onPressed: _regenerateNewsletter,
-                  backgroundColor: Colors.orange[600],
-                  heroTag: "regenerate",
-                  child: Icon(Icons.refresh, color: Colors.white),
-                ),
-                SizedBox(height: 8),
-                FloatingActionButton(
-                  onPressed: _downloadPdf,
-                  backgroundColor: Colors.purple[600],
-                  heroTag: "pdf",
-                  child: Icon(Icons.picture_as_pdf, color: Colors.white),
-                ),
-              ],
+          ? Container(
+              margin: EdgeInsets.only(bottom: 16, right: 4),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildMobileFloatingButton(
+                    onPressed: (_isGenerating || _isProcessing) ? null : _regenerateNewsletter,
+                    backgroundColor: (_isGenerating || _isProcessing) 
+                        ? Colors.grey[400]! 
+                        : Colors.orange[600]!,
+                    icon: Icons.refresh,
+                    heroTag: "regenerate",
+                    tooltip: "再生成",
+                  ),
+                  SizedBox(height: 12),
+                  _buildMobileFloatingButton(
+                    onPressed: _isDownloadingPdf ? null : _downloadPdf,
+                    backgroundColor: _isDownloadingPdf 
+                        ? Colors.grey[400]! 
+                        : Colors.purple[600]!,
+                    icon: Icons.picture_as_pdf,
+                    heroTag: "pdf",
+                    tooltip: "PDF生成",
+                  ),
+                ],
+              ),
             )
           : null,
     );
@@ -654,6 +664,41 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
     } else {
       await _audioService.startRecording();
     }
+  }
+
+  /// モバイル用の最適化されたFloatingActionButtonを作成
+  Widget _buildMobileFloatingButton({
+    required VoidCallback? onPressed,
+    required Color backgroundColor,
+    required IconData icon,
+    required String heroTag,
+    required String tooltip,
+  }) {
+    return Material(
+      elevation: 6,
+      borderRadius: BorderRadius.circular(28),
+      color: backgroundColor,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(28),
+        splashColor: Colors.white.withOpacity(0.3),
+        highlightColor: Colors.white.withOpacity(0.1),
+        child: Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(28),
+          ),
+          child: Center(
+            child: Icon(
+              icon,
+              color: Colors.white,
+              size: 24,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   // 新しい2エージェント処理フロー

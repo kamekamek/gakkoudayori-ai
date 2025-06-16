@@ -20,6 +20,25 @@
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="学校だよりAI - 音声入力で学級通信を自動生成">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+  
+  <!-- Improve touch responsiveness for mobile -->
+  <style>
+    body {
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    /* Ensure FloatingActionButtons are properly touchable */
+    .fab-button {
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: rgba(0,0,0,0.1);
+    }
+    
+    /* Prevent zoom on double tap while maintaining touch responsiveness */
+    * {
+      touch-action: manipulation;
+    }
+  </style>
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">

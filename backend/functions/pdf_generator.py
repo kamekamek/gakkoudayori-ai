@@ -14,6 +14,7 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 import asyncio
 from pathlib import Path
+import re
 
 # PDF生成関連
 try:
@@ -135,6 +136,10 @@ def generate_pdf_from_html(
             available_fonts = _get_available_japanese_fonts()
             font_family = ", ".join([f'"{font}"' for font in available_fonts])
             
+            # デバッグ用：HTMLコンテンツの先頭を確認
+            html_preview = html_content[:200] + "..." if len(html_content) > 200 else html_content
+            logger.info(f"入力HTMLプレビュー: {html_preview}")
+            
             # HTML文書を構築
             full_html = _build_complete_html_document(
                 html_content=html_content,
@@ -146,6 +151,10 @@ def generate_pdf_from_html(
                 custom_css=custom_css,
                 font_family=font_family
             )
+            
+            # デバッグ用：生成されたHTML文書の先頭を確認
+            full_html_preview = full_html[:300] + "..." if len(full_html) > 300 else full_html
+            logger.info(f"生成HTML文書プレビュー: {full_html_preview}")
             
             # 出力パス決定（Cloud Run環境対応）
             if output_path is None:
@@ -250,12 +259,95 @@ def _build_complete_html_document(
         str: 完全なHTML文書
     """
     
+    # HTMLコンテンツの前処理と検査
+    clean_html_content = html_content.strip()
+    
+    # 既に完全なHTMLドキュメントかチェック
+    html_lower = clean_html_content.lower()
+    is_complete_html = (
+        '<!doctype html>' in html_lower and
+        '<html' in html_lower and
+        '</html>' in html_lower and
+        '<head' in html_lower and
+        '<body' in html_lower and
+        '</body>' in html_lower
+    )
+    
+    # 既に完全なHTMLドキュメントの場合は、そのまま返す（PDF用CSS調整のみ）
+    if is_complete_html:
+        logger.info("完全なHTMLドキュメントを検出：PDF用CSS調整のみ実行")
+        
+        # PDF用CSSの追加
+        pdf_css = f"""
+        /* 日本語フォント対応 - プレビューと統一 */
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
+        
+        @page {{
+            size: {page_size};
+            margin: {margin};
+            @bottom-center {{
+                content: counter(page);
+                font-family: 'Noto Sans JP', sans-serif;
+                font-size: 10pt;
+                color: #666;
+            }}
+        }}
+        
+        @page:first {{
+            @bottom-center {{
+                content: none;
+            }}
+        }}
+        
+        body {{
+            font-family: 'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic', sans-serif !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }}
+        
+        .a4-sheet {{
+            width: 100% !important;
+            min-height: auto !important;
+            margin: 0 !important;
+            padding: 10mm !important;
+            box-shadow: none !important;
+            background: white !important;
+        }}
+        
+        .print-container {{
+            width: 100% !important;
+            min-height: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            box-shadow: none !important;
+        }}
+        
+        {custom_css}
+        """
+        
+        # 既存のスタイルタグ内にPDF用CSSを追加
+        if "<style>" in clean_html_content and "</style>" in clean_html_content:
+            clean_html_content = clean_html_content.replace("</style>", f"\n{pdf_css}\n</style>", 1)
+        else:
+            # head内にスタイルタグを追加
+            head_end = clean_html_content.find("</head>")
+            if head_end != -1:
+                clean_html_content = (
+                    clean_html_content[:head_end] +
+                    f"<style>{pdf_css}</style>\n" +
+                    clean_html_content[head_end:]
+                )
+        
+        return clean_html_content
+    
+    # 以下、不完全なHTMLの場合の従来処理
+    
     # 元のHTMLコンテンツからスタイルを抽出
     original_styles = ""
-    if "<style>" in html_content and "</style>" in html_content:
-        start_idx = html_content.find("<style>") + 7
-        end_idx = html_content.find("</style>")
-        original_styles = html_content[start_idx:end_idx]
+    if "<style>" in clean_html_content and "</style>" in clean_html_content:
+        start_idx = clean_html_content.find("<style>") + 7
+        end_idx = clean_html_content.find("</style>")
+        original_styles = clean_html_content[start_idx:end_idx]
     
     # PDF用CSS（最小限の調整のみ）
     pdf_css = f"""
@@ -388,11 +480,13 @@ def _build_complete_html_document(
     """
     
     # HTMLコンテンツからstyleタグを除去（重複を防ぐため）
-    clean_html_content = html_content
     if "<style>" in clean_html_content and "</style>" in clean_html_content:
         start_idx = clean_html_content.find("<style>")
         end_idx = clean_html_content.find("</style>") + 8
         clean_html_content = clean_html_content[:start_idx] + clean_html_content[end_idx:]
+    
+    # HTMLタグやDOCTYPE宣言を除去（bodyコンテンツのみに）
+    clean_html_content = _extract_body_content(clean_html_content)
     
     # 既存のヘッダーがある場合は追加ヘッダーを無効化
     has_existing_header = any(tag in html_content.lower() for tag in ['<h1', '<header', 'class="newsletter-header"', 'class="a4-sheet"'])
@@ -442,6 +536,35 @@ def _build_complete_html_document(
     """
     
     return complete_html
+
+def _extract_body_content(html_content: str) -> str:
+    """
+    HTMLからbodyコンテンツのみを抽出
+    - 完全なHTMLドキュメントからbody内容のみを取得
+    - HTMLタグやDOCTYPE宣言を除去
+    """
+    content = html_content.strip()
+    
+    # body要素の抽出を試行
+    body_match = re.search(r'<body[^>]*>(.*?)</body>', content, re.DOTALL | re.IGNORECASE)
+    if body_match:
+        return body_match.group(1).strip()
+    
+    # body要素がない場合、HTML要素の抽出を試行
+    html_match = re.search(r'<html[^>]*>(.*?)</html>', content, re.DOTALL | re.IGNORECASE)
+    if html_match:
+        html_content_inner = html_match.group(1).strip()
+        # head要素を除去
+        html_content_inner = re.sub(r'<head[^>]*>.*?</head>', '', html_content_inner, flags=re.DOTALL | re.IGNORECASE)
+        return html_content_inner.strip()
+    
+    # DOCTYPEとhtmlタグを除去
+    content = re.sub(r'<!DOCTYPE[^>]*>', '', content, flags=re.IGNORECASE)
+    content = re.sub(r'</?html[^>]*>', '', content, flags=re.IGNORECASE)
+    content = re.sub(r'<head[^>]*>.*?</head>', '', content, flags=re.DOTALL | re.IGNORECASE)
+    content = re.sub(r'</?body[^>]*>', '', content, flags=re.IGNORECASE)
+    
+    return content.strip()
 
 def _get_pdf_page_count(pdf_path: str) -> int:
     """
