@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'services/audio_service.dart';
 import 'services/graphical_record_service.dart';
 import 'services/user_dictionary_service.dart';
@@ -24,7 +23,12 @@ class GakkouDayoriAiApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
-        fontFamily: 'メイリオ, Meiryo, sans-serif',
+        fontFamily: 'Meiryo',
+        fontFamilyFallback: const ['メイリオ', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'ヒラギノ角ゴ ProN W3', 'MS PGothic'],
+        textTheme: Theme.of(context).textTheme.apply(
+          fontFamily: 'Meiryo',
+          fontFamilyFallback: ['メイリオ', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'ヒラギノ角ゴ ProN W3', 'MS PGothic'],
+        ),
       ),
       home: ResponsiveHomePage(),
       debugShowCheckedModeBanner: false,
@@ -55,7 +59,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
   String _statusMessage = '🎤 音声録音または文字入力で学級通信を作成してください';
 
   // 学級通信モード用 (2エージェント対応)
-  String _generatedHtml = '';
+  String _generatedHtml = ''; // 初期状態は空
   bool _isGenerating = false;
   String _selectedStyle = ''; // 初期状態では何も選択されていない
   Map<String, dynamic>? _structuredJsonData; // 第1エージェントの出力
@@ -105,24 +109,24 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
       });
     });
 
-    // sample.htmlの内容をプレビューに表示
-    _loadSampleHtml();
+    // サンプル表示を削除
+    // _loadSampleHtml();
   }
 
-  /// sample.htmlの内容を読み込んでプレビューに表示
-  Future<void> _loadSampleHtml() async {
-    try {
-      final String sampleHtml = await rootBundle.loadString('web/sample.html');
-      setState(() {
-        _generatedHtml = sampleHtml;
-        _statusMessage = '📄 サンプル学級通信を表示しています';
-      });
-    } catch (e) {
-      setState(() {
-        _statusMessage = '❌ サンプル読み込みエラー: $e';
-      });
-    }
-  }
+  /// sample.htmlの内容を読み込んでプレビューに表示 (使用停止)
+  // Future<void> _loadSampleHtml() async {
+  //   try {
+  //     final String sampleHtml = await rootBundle.loadString('web/sample.html');
+  //     setState(() {
+  //       _generatedHtml = sampleHtml;
+  //       _statusMessage = '📄 サンプル学級通信を表示しています';
+  //     });
+  //   } catch (e) {
+  //     setState(() {
+  //       _statusMessage = '❌ サンプル読み込みエラー: $e';
+  //     });
+  //   }
+  // }
 
   @override
   void dispose() {
@@ -138,7 +142,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Text('学級通信エディタ'),
+        title: Text('学校だよりAI'),
         backgroundColor: Colors.blue[600],
         foregroundColor: Colors.white,
         elevation: 2,
@@ -149,17 +153,17 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 FloatingActionButton(
-                  onPressed: _downloadPdf,
-                  backgroundColor: Colors.purple[600],
-                  heroTag: "pdf",
-                  child: Icon(Icons.picture_as_pdf, color: Colors.white),
-                ),
-                SizedBox(height: 8),
-                FloatingActionButton(
                   onPressed: _regenerateNewsletter,
                   backgroundColor: Colors.orange[600],
                   heroTag: "regenerate",
                   child: Icon(Icons.refresh, color: Colors.white),
+                ),
+                SizedBox(height: 8),
+                FloatingActionButton(
+                  onPressed: _downloadPdf,
+                  backgroundColor: Colors.purple[600],
+                  heroTag: "pdf",
+                  child: Icon(Icons.picture_as_pdf, color: Colors.white),
                 ),
               ],
             )
@@ -274,8 +278,8 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                 width: 120,
                 height: 120,
                 decoration: BoxDecoration(
-                  color:
-                      (_isRecording ? Colors.red : Colors.blue).withValues(alpha: 0.12),
+                  color: (_isRecording ? Colors.red : Colors.blue)
+                      .withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: _isRecording ? Colors.red[300]! : Colors.blue[300]!,
@@ -343,13 +347,11 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: (_isGenerating || _isProcessing)
-                        ? null
-                        : _regenerateNewsletter,
-                    icon: Icon(Icons.refresh, size: 16),
-                    label: Text('再生成'),
+                    onPressed: _downloadPdf,
+                    icon: Icon(Icons.picture_as_pdf, size: 16),
+                    label: Text('PDF'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange[600],
+                      backgroundColor: Colors.purple[600],
                       foregroundColor: Colors.white,
                       padding: EdgeInsets.symmetric(vertical: 12),
                     ),
@@ -358,11 +360,13 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                 SizedBox(width: 8),
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: _downloadPdf,
-                    icon: Icon(Icons.picture_as_pdf, size: 16),
-                    label: Text('PDF'),
+                    onPressed: (_isGenerating || _isProcessing)
+                        ? null
+                        : _regenerateNewsletter,
+                    icon: Icon(Icons.refresh, size: 16),
+                    label: Text('再生成'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.purple[600],
+                      backgroundColor: Colors.orange[600],
                       foregroundColor: Colors.white,
                       padding: EdgeInsets.symmetric(vertical: 12),
                     ),
@@ -489,25 +493,13 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                   ),
                 ),
                 Spacer(),
-                ElevatedButton.icon(
-                  onPressed: _loadSampleHtml,
-                  icon: Icon(Icons.description, size: 16),
-                  label: Text('サンプル表示'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal,
-                    foregroundColor: Colors.white,
-                    padding:
-                        EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
-                ),
               ],
             ),
           ),
           SizedBox(height: 16),
-          Flexible(
+          Expanded(
             child: Container(
               width: double.infinity,
-              height: isMobile ? 600 : 700,
               padding: EdgeInsets.all(isMobile ? 0 : 16),
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -522,15 +514,24 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
               ),
               child: _isProcessing
                   ? Center(child: CircularProgressIndicator())
-                  : Builder(
-                      builder: (context) {
-                        return PrintPreviewWidget(
-                          htmlContent: _generatedHtml,
-                          height: isMobile ? 600 : 700,
-                          enableMobilePrintView: true,
-                        );
-                      },
-                    ),
+                  : _generatedHtml.isEmpty
+                      ? Center(
+                          child: Text(
+                            '学級通信を作成すると、ここにプレビューが表示されます',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 16,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        )
+                      : SingleChildScrollView(
+                          child: PrintPreviewWidget(
+                            htmlContent: _generatedHtml,
+                            height: null, // 高さ制限を削除してスクロール可能に
+                            enableMobilePrintView: true,
+                          ),
+                        ),
             ),
           ),
         ],

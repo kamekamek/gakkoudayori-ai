@@ -30,7 +30,34 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
   
-  <!-- メイリオフォントを優先使用 -->
+  <!-- メイリオフォントの設定 -->
+  <!-- Webフォントとしてメイリオを読み込み -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <style>
+    * {
+      font-family: 'メイリオ', 'Meiryo', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'ヒラギノ角ゴ ProN W3', 'MS PGothic', sans-serif;
+    }
+    
+    body {
+      font-family: 'メイリオ', 'Meiryo', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'ヒラギノ角ゴ ProN W3', 'MS PGothic', sans-serif;
+    }
+    
+    /* Flutter Web アプリケーション全体にメイリオを適用 */
+    flt-glass-pane, 
+    flt-semantics-host,
+    .flt-text-editing,
+    flt-scene-host,
+    flutter-view,
+    #flutter-view {
+      font-family: 'メイリオ', 'Meiryo', 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'ヒラギノ角ゴ ProN W3', 'MS PGothic', sans-serif !important;
+    }
+    
+    /* より具体的なFlutter要素の指定 */
+    flt-text {
+      font-family: 'メイリオ', 'Meiryo', 'Noto Sans JP' !important;
+    }
+  </style>
 
   <title>学校だよりAI - 音声入力システム</title>
   <link rel="manifest" href="manifest.json">
