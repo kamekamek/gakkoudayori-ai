@@ -477,8 +477,8 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                                     Icons.book,
                                   ),
                                   _buildStatItem(
-                                    'カスタム用語',
-                                    '${_stats['custom_terms'] ?? 0}',
+                                    '登録用語',
+                                    '${_customTerms.length}',
                                     Icons.edit,
                                   ),
                                   _buildStatItem(
