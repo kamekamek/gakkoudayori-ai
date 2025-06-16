@@ -91,6 +91,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
   // 学級通信モード用 (2エージェント対応)
   String _generatedHtml = ''; // 初期状態は空
   bool _isGenerating = false;
+  bool _isDownloadingPdf = false; // PDF生成中のローディング表示用
   String _selectedStyle = ''; // 初期状態では何も選択されていない
   Map<String, dynamic>? _structuredJsonData; // 第1エージェントの出力
   bool _showStyleButtons = false; // スタイル選択ボタンの表示制御
@@ -244,7 +245,8 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                       padding: EdgeInsets.all(20),
                       child: Center(
                         child: Container(
-                          constraints: BoxConstraints(maxWidth: 600), // 音声入力エリアの幅を制限
+                          constraints:
+                              BoxConstraints(maxWidth: 600), // 音声入力エリアの幅を制限
                           child: _buildVoiceInputSection(isCompact: false),
                         ),
                       ),
@@ -546,7 +548,8 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.purple[600],
                       foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       minimumSize: Size(0, 0),
                     ),
                   ),
@@ -560,7 +563,8 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.orange[600],
                       foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       minimumSize: Size(0, 0),
                     ),
                   ),
@@ -694,12 +698,23 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
     await _generateNewsletterTwoAgent();
   }
 
+  /// PDFをダウンロードする
   Future<void> _downloadPdf() async {
+    if (_generatedHtml.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('PDFを生成する内容がありません。')),
+      );
+      return;
+    }
+
     setState(() {
-      _statusMessage = '📄 PDFを生成中...';
+      _isDownloadingPdf = true;
+      _statusMessage = '📄 PDFを生成中です... しばらくお待ちください';
     });
+
     try {
       final String htmlContent = _generatedHtml;
+      // 既存のサービスメソッドを呼び出す
       final result =
           await _graphicalRecordService.convertHtmlToPdf(htmlContent);
 
@@ -719,6 +734,15 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
     } catch (e) {
       setState(() {
         _statusMessage = '❌ PDFの生成に失敗しました: $e';
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('❌ PDFの生成中にエラーが発生しました: $e'),
+            backgroundColor: Colors.red),
+      );
+    } finally {
+      setState(() {
+        _isDownloadingPdf = false;
       });
     }
   }

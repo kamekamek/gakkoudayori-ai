@@ -35,17 +35,6 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
   // 新規用語追加用
   final TextEditingController _termController = TextEditingController();
   final TextEditingController _variationsController = TextEditingController();
-  String _selectedCategory = 'student_name';
-
-  // カテゴリ定義
-  final Map<String, String> _categories = {
-    'student_name': '児童・生徒名',
-    'teacher_name': '教師名',
-    'school_event': '学校行事',
-    'subject_term': '教科用語',
-    'school_facility': '学校施設',
-    'custom': 'その他',
-  };
 
   @override
   void initState() {
@@ -112,7 +101,6 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
       final newEntry = UserDictionaryEntry(
         term: term,
         variations: variations,
-        category: _selectedCategory,
       );
 
       await _dictionaryService.addTerm(widget.userId, newEntry);
@@ -252,7 +240,6 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
   void _showEditTermDialog(UserDictionaryEntry entryToEdit) {
     _termController.text = entryToEdit.term;
     _variationsController.text = entryToEdit.variations.join(', ');
-    _selectedCategory = entryToEdit.category;
 
     showDialog(
       context: context,
@@ -280,28 +267,6 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                   border: OutlineInputBorder(),
                 ),
                 maxLines: 2,
-              ),
-              SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value:
-                    _selectedCategory, // entryToEdit.category should be used here if _selectedCategory is not updated before build
-                decoration: InputDecoration(
-                  labelText: 'カテゴリ',
-                  border: OutlineInputBorder(),
-                ),
-                items: _categories.entries.map((entry) {
-                  return DropdownMenuItem<String>(
-                    value: entry.key,
-                    child: Text(entry.value),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      _selectedCategory = value;
-                    });
-                  }
-                },
               ),
             ],
           ),
@@ -340,7 +305,6 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
     final newEntry = UserDictionaryEntry(
       term: term,
       variations: variations,
-      category: _selectedCategory,
     );
 
     setState(() {
@@ -405,25 +369,6 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                   border: OutlineInputBorder(),
                 ),
                 maxLines: 2,
-              ),
-              SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: _selectedCategory,
-                decoration: InputDecoration(
-                  labelText: 'カテゴリ',
-                  border: OutlineInputBorder(),
-                ),
-                items: _categories.entries.map((entry) {
-                  return DropdownMenuItem(
-                    value: entry.key,
-                    child: Text(entry.value),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedCategory = value!;
-                  });
-                },
               ),
             ],
           ),
@@ -597,13 +542,10 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                                           final term = _customTerms[index];
                                           return ListTile(
                                             leading: CircleAvatar(
-                                              backgroundColor:
-                                                  _getCategoryColor(
-                                                      term.category),
-                                              child: Text(
-                                                _getCategoryIcon(term.category),
-                                                style: GoogleFonts.notoSansJp(
-                                                    color: Colors.white),
+                                              backgroundColor: Colors.blue,
+                                              child: Icon(
+                                                Icons.text_fields,
+                                                color: Colors.white,
                                               ),
                                             ),
                                             title: Text(
@@ -618,14 +560,6 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                                                 if (term.variations.isNotEmpty)
                                                   Text(
                                                       '読み: ${term.variations.join(', ')}'),
-                                                Text(
-                                                  // '${_categories[term.category] ?? 'その他'} • 使用回数: ${term.usageCount}回',
-                                                  _categories[term.category] ??
-                                                      'その他',
-                                                  style: GoogleFonts.notoSansJp(
-                                                      fontSize: 12,
-                                                      color: Colors.grey[600]),
-                                                ),
                                               ],
                                             ),
                                             trailing: PopupMenuButton(
@@ -710,37 +644,4 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
     );
   }
 
-  Color _getCategoryColor(String category) {
-    switch (category) {
-      case 'student_name':
-        return Colors.green;
-      case 'teacher_name':
-        return Colors.blue;
-      case 'school_event':
-        return Colors.orange;
-      case 'subject_term':
-        return Colors.purple;
-      case 'school_facility':
-        return Colors.teal;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  String _getCategoryIcon(String category) {
-    switch (category) {
-      case 'student_name':
-        return '👦';
-      case 'teacher_name':
-        return '👨‍🏫';
-      case 'school_event':
-        return '🎉';
-      case 'subject_term':
-        return '📚';
-      case 'school_facility':
-        return '🏫';
-      default:
-        return '📝';
-    }
-  }
 }
