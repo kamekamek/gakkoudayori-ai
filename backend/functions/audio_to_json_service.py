@@ -259,7 +259,7 @@ def convert_speech_to_json(
     credentials_path: str,
     style: str = "classic",
     custom_context: str = "",
-    model_name: str = "gemini-2.0-flash-exp",
+    model_name: str = "gemini-2.5-pro-preview-03-25",
     temperature: float = 0.3,
     max_output_tokens: int = 2048
 ) -> Dict[str, Any]:

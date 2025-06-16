@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 # Gemini設定
 PROJECT_ID = "gakkoudayori-ai"
 LOCATION = "us-central1"
-MODEL_NAME = "gemini-1.5-flash"
+MODEL_NAME = "gemini-2.5-pro-preview-03-25"
 
 def initialize_gemini_api(api_key: str = None) -> bool:
     """
@@ -95,7 +95,7 @@ def generate_newsletter_from_speech(
         )
         
         # Gemini APIで生成
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-pro-preview-03-25')
         
         # 生成設定
         generation_config = genai.types.GenerationConfig(

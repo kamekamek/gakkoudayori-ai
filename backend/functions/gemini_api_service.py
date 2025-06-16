@@ -86,7 +86,7 @@ class ConnectionStatus(TypedDict):
 def get_gemini_client(
     project_id: str,
     credentials_path: str,
-    model_name: str = "gemini-1.5-flash",
+    model_name: str = "gemini-2.5-pro-preview-03-25",
     location: str = "us-central1"
 ) -> Optional[GenerativeModel]:
     """
@@ -95,7 +95,7 @@ def get_gemini_client(
     Args:
         project_id (str): Google CloudプロジェクトID
         credentials_path (str): サービスアカウントキーファイルのパス
-        model_name (str, optional): 使用するGeminiモデル名. デフォルトは "gemini-2.0-flash-exp"
+        model_name (str, optional): 使用するGeminiモデル名. デフォルトは "gemini-2.5-pro-preview-03-25"
         location (str, optional): APIリージョン. デフォルトは "us-central1"
         
     Returns:
@@ -149,7 +149,7 @@ def generate_text(
     prompt: str,
     project_id: str,
     credentials_path: str,
-    model_name: str = "gemini-1.5-flash",
+    model_name: str = "gemini-2.5-pro-preview-03-25",
     temperature: float = 0.2,
     max_output_tokens: int = 1024,
     top_k: int = 40,
@@ -260,7 +260,7 @@ def generate_text_with_context(
     context: List[Dict[str, str]],
     project_id: str,
     credentials_path: str,
-    model_name: str = "gemini-1.5-flash",
+    model_name: str = "gemini-2.5-pro-preview-03-25",
     temperature: float = 0.2,
     max_output_tokens: int = 1024,
     top_k: int = 40,
@@ -391,7 +391,7 @@ def generate_text_with_context(
 def check_gemini_connection(
     project_id: str,
     credentials_path: str,
-    model_name: str = "gemini-1.5-flash",
+    model_name: str = "gemini-2.5-pro-preview-03-25",
     location: str = "us-central1"
 ) -> Dict[str, Any]:
     """
