@@ -31,21 +31,28 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
   final Map<String, dynamic> _dictionaryData = {};
   final Map<String, dynamic> _stats = {};
   List<UserDictionaryEntry> _customTerms = [];
+  List<UserDictionaryEntry> _filteredTerms = [];
 
   // 新規用語追加用
   final TextEditingController _termController = TextEditingController();
   final TextEditingController _variationsController = TextEditingController();
+  
+  // 検索用
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _loadDictionary();
+    _searchController.addListener(_filterTerms);
   }
 
   @override
   void dispose() {
     _termController.dispose();
     _variationsController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -63,6 +70,7 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
 
       setState(() {
         _customTerms = terms;
+        _filterTerms();
         // if (stats != null) {
         //   _stats = stats;
         // }
@@ -76,6 +84,24 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
         _isLoading = false;
       });
     }
+  }
+
+  /// 検索フィルタリング
+  void _filterTerms() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      _searchQuery = query;
+      if (query.isEmpty) {
+        _filteredTerms = List.from(_customTerms);
+      } else {
+        _filteredTerms = _customTerms.where((term) {
+          return term.term.toLowerCase().contains(query) ||
+              term.variations.any((v) => v.toLowerCase().contains(query));
+        }).toList();
+      }
+      // アルファベット順でソート
+      _filteredTerms.sort((a, b) => a.term.compareTo(b.term));
+    });
   }
 
   /// 新規用語を追加
@@ -108,7 +134,7 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
       // 成功時の処理
       _termController.clear();
       _variationsController.clear();
-      _loadDictionary(); // 辞書を再読み込み
+      await _loadDictionary(); // 辞書を再読み込み
       widget.onDictionaryUpdated?.call();
 
       if (mounted) {
@@ -161,7 +187,7 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
       });
       try {
         await _dictionaryService.deleteTerm(widget.userId, entry.term);
-        _loadDictionary(); // 辞書を再読み込み
+        await _loadDictionary(); // 辞書を再読み込み
         widget.onDictionaryUpdated?.call();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -213,7 +239,7 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
               backgroundColor: Colors.blue,
             ),
           );
-          _loadDictionary(); // 統計を更新
+          await _loadDictionary(); // 統計を更新
         }
       }
     } catch (e) {
@@ -316,7 +342,7 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
           widget.userId, oldEntry.term, newEntry);
       _termController.clear();
       _variationsController.clear();
-      _loadDictionary();
+      await _loadDictionary();
       widget.onDictionaryUpdated?.call();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -493,21 +519,57 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                             children: [
                               Padding(
                                 padding: EdgeInsets.all(16),
-                                child: Row(
+                                child: Column(
                                   children: [
-                                    Icon(Icons.list, color: Colors.blue[600]),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      'カスタム用語一覧',
-                                      style: GoogleFonts.notoSansJp(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold),
+                                    Row(
+                                      children: [
+                                        Icon(Icons.list, color: Colors.blue[600]),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          '登録用語一覧',
+                                          style: GoogleFonts.notoSansJp(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                        Spacer(),
+                                        Text(
+                                          '${_filteredTerms.length}件',
+                                          style: GoogleFonts.notoSansJp(
+                                              fontSize: 14,
+                                              color: Colors.grey[600]),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: 12),
+                                    // 検索バー
+                                    TextField(
+                                      controller: _searchController,
+                                      decoration: InputDecoration(
+                                        hintText: '用語や読みで検索...',
+                                        prefixIcon: Icon(Icons.search),
+                                        suffixIcon: _searchQuery.isNotEmpty
+                                            ? IconButton(
+                                                icon: Icon(Icons.clear),
+                                                onPressed: () {
+                                                  _searchController.clear();
+                                                },
+                                              )
+                                            : null,
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        contentPadding: EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 12,
+                                        ),
+                                      ),
+                                      style: GoogleFonts.notoSansJp(fontSize: 14),
                                     ),
                                   ],
                                 ),
                               ),
                               Expanded(
-                                child: _customTerms.isEmpty
+                                child: _filteredTerms.isEmpty
                                     ? Center(
                                         child: Column(
                                           mainAxisAlignment:
@@ -520,7 +582,7 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                                             ),
                                             SizedBox(height: 16),
                                             Text(
-                                              'カスタム用語がありません',
+                                              '用語が登録されていません',
                                               style: GoogleFonts.notoSansJp(
                                                   fontSize: 16,
                                                   color: Colors.grey[600]),
@@ -537,14 +599,19 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                                         ),
                                       )
                                     : ListView.builder(
-                                        itemCount: _customTerms.length,
+                                        itemCount: _filteredTerms.length,
                                         itemBuilder: (context, index) {
-                                          final term = _customTerms[index];
+                                          final term = _filteredTerms[index];
+                                          // デフォルト用語かカスタム用語かを判定
+                                          // variationsに2つ以上あり、最後がtermと同じ場合はデフォルト用語
+                                          final isDefaultTerm = term.variations.length >= 2 && 
+                                              term.variations.last == term.term;
+                                          
                                           return ListTile(
                                             leading: CircleAvatar(
-                                              backgroundColor: Colors.blue,
+                                              backgroundColor: isDefaultTerm ? Colors.grey : Colors.blue,
                                               child: Icon(
-                                                Icons.text_fields,
+                                                isDefaultTerm ? Icons.book : Icons.text_fields,
                                                 color: Colors.white,
                                               ),
                                             ),
@@ -562,7 +629,7 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                                                       '読み: ${term.variations.join(', ')}'),
                                               ],
                                             ),
-                                            trailing: PopupMenuButton(
+                                            trailing: isDefaultTerm ? null : PopupMenuButton(
                                               itemBuilder: (context) => [
                                                 PopupMenuItem(
                                                   value: 'edit',
