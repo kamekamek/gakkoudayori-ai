@@ -8,13 +8,13 @@ import 'dart:convert';
 /// 94_USER_FLOW_DESIGN.mdの印刷要件に準拠
 class PrintPreviewWidget extends StatefulWidget {
   final String htmlContent;
-  final double? height;
+  final double height;
   final bool enableMobilePrintView; // スマホでのA4印刷プレビュー強制表示
 
   const PrintPreviewWidget({
     Key? key,
     required this.htmlContent,
-    this.height,
+    required this.height,
     this.enableMobilePrintView = true,
   }) : super(key: key);
 
@@ -47,7 +47,7 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
     _cachedContent = widget.htmlContent;
 
     // A4サイズに対応したiframe作成
-    final safeHeight = widget.height ?? 600.0;
+    final safeHeight = widget.height;
     _iframe = web.HTMLIFrameElement()
       ..width = '100%'
       ..height = '${safeHeight.toInt()}px'
