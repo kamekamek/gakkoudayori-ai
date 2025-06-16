@@ -574,44 +574,73 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
           ),
           SizedBox(height: 16),
           Expanded(
-            child: Container(
-              width: double.infinity,
-              padding: EdgeInsets.all(isMobile ? 0 : 16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 10,
-                    offset: Offset(0, 4),
-                  )
-                ],
-              ),
-              child: _isProcessing
-                  ? Center(child: CircularProgressIndicator())
-                  : _generatedHtml.isEmpty
-                      ? Center(
-                          child: Text(
-                            '学級通信を作成すると、ここにプレビューが表示されます',
-                            style: GoogleFonts.notoSansJp(
-                              color: Colors.grey[600],
-                              fontSize: 16,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        )
-                      : LayoutBuilder(
-                          builder: (context, constraints) {
-                            return SingleChildScrollView(
-                              child: PrintPreviewWidget(
-                                htmlContent: _generatedHtml,
-                                height: constraints.maxHeight,
-                                enableMobilePrintView: true,
+            child: Stack(
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(isMobile ? 0 : 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 10,
+                        offset: Offset(0, 4),
+                      )
+                    ],
+                  ),
+                  child:
+                      _generatedHtml.isEmpty && !_isGenerating && !_isProcessing
+                          ? Center(
+                              child: Text(
+                                '学級通信を作成すると、ここにプレビューが表示されます',
+                                style: GoogleFonts.notoSansJp(
+                                  color: Colors.grey[600],
+                                  fontSize: 16,
+                                ),
+                                textAlign: TextAlign.center,
                               ),
-                            );
-                          },
+                            )
+                          : LayoutBuilder(
+                              builder: (context, constraints) {
+                                return SingleChildScrollView(
+                                  child: PrintPreviewWidget(
+                                    htmlContent: _generatedHtml,
+                                    height: constraints.maxHeight,
+                                    enableMobilePrintView: true,
+                                  ),
+                                );
+                              },
+                            ),
+                ),
+                if (_isGenerating || _isProcessing || _isDownloadingPdf)
+                  Container(
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
+                        SizedBox(height: 16),
+                        Text(
+                          _isDownloadingPdf ? 'PDFを生成中...' : 'AIが生成中...',
+                          style: GoogleFonts.notoSansJp(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
