@@ -262,6 +262,9 @@ def _build_complete_html_document(
     # HTMLコンテンツの前処理と検査
     clean_html_content = html_content.strip()
     
+    # 【重要】Markdownコードブロックのクリーンアップを追加
+    clean_html_content = _clean_markdown_codeblocks_pdf(clean_html_content)
+    
     # 既に完全なHTMLドキュメントかチェック
     html_lower = clean_html_content.lower()
     is_complete_html = (
@@ -816,6 +819,50 @@ def test_pdf_generation() -> bool:
     except Exception as e:
         print(f"❌ テストエラー: {e}")
         return False
+
+def _clean_markdown_codeblocks_pdf(html_content: str) -> str:
+    """
+    PDF生成前にHTMLからMarkdownコードブロックを完全に除去
+    
+    Args:
+        html_content (str): クリーンアップするHTMLコンテンツ
+        
+    Returns:
+        str: Markdownコードブロックが除去されたHTMLコンテンツ
+    """
+    if not html_content:
+        return html_content
+    
+    content = html_content.strip()
+    
+    # Markdownコードブロックの様々なパターンを削除
+    patterns = [
+        r'```html\s*',          # ```html
+        r'```HTML\s*',          # ```HTML  
+        r'```\s*html\s*',       # ``` html
+        r'```\s*HTML\s*',       # ``` HTML
+        r'```\s*',              # 一般的なコードブロック開始
+        r'\s*```',              # コードブロック終了
+    ]
+    
+    for pattern in patterns:
+        content = re.sub(pattern, '', content, flags=re.IGNORECASE)
+    
+    # HTMLの前後にある説明文を削除
+    content = re.sub(r'^[^<]*(?=<)', '', content)  # HTML開始前の説明文
+    content = re.sub(r'>[^<]*$', '>', content)     # HTML終了後の説明文
+    
+    # 空白の正規化
+    content = re.sub(r'\n\s*\n', '\n', content)
+    content = content.strip()
+    
+    # デバッグログ：PDF生成前のクリーンアップチェック
+    if '```' in content:
+        logger.warning(f"PDF generation: Markdown code block remnants detected: {content[:100]}...")
+    
+    logger.debug(f"PDF HTML content after markdown cleanup: {content[:200]}...")
+    
+    return content
 
 if __name__ == '__main__':
     success = test_pdf_generation()

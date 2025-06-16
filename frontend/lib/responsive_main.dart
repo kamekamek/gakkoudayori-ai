@@ -299,34 +299,6 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
               ),
             ],
           ),
-          // モバイル用フローティングボタン
-          if (_generatedHtml.isNotEmpty)
-            Positioned(
-              right: 16,
-              bottom: 80,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildMobileActionButton(
-                    onTap: (_isGenerating || _isProcessing) ? null : _regenerateNewsletter,
-                    backgroundColor: (_isGenerating || _isProcessing) 
-                        ? Colors.grey[400]! 
-                        : Colors.orange[600]!,
-                    icon: Icons.refresh,
-                    label: "再生成",
-                  ),
-                  SizedBox(height: 12),
-                  _buildMobileActionButton(
-                    onTap: _isDownloadingPdf ? null : _downloadPdf,
-                    backgroundColor: _isDownloadingPdf 
-                        ? Colors.grey[400]! 
-                        : Colors.purple[600]!,
-                    icon: Icons.picture_as_pdf,
-                    label: "PDF",
-                  ),
-                ],
-              ),
-            ),
         ],
       ),
     );
@@ -671,42 +643,6 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
     }
   }
 
-  /// モバイル用のアクションボタンを作成
-  Widget _buildMobileActionButton({
-    required VoidCallback? onTap,
-    required Color backgroundColor,
-    required IconData icon,
-    required String label,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 60,
-        height: 60,
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(30),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 8,
-              offset: Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              color: Colors.white,
-              size: 28,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   // 新しい2エージェント処理フロー
   Future<void> _generateNewsletterTwoAgent() async {

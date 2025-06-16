@@ -318,10 +318,21 @@ def _clean_and_format_html(html_content: str) -> str:
     # 不要な前後の説明文を削除
     content = html_content.strip()
     
+    # 【重要】Markdownコードブロックの完全除去
+    # 様々なパターンのMarkdownコードブロックを確実に削除
+    content = re.sub(r'```html\s*', '', content, flags=re.IGNORECASE)
+    content = re.sub(r'```HTML\s*', '', content, flags=re.IGNORECASE)
+    content = re.sub(r'```\s*html\s*', '', content, flags=re.IGNORECASE)
+    content = re.sub(r'```\s*HTML\s*', '', content, flags=re.IGNORECASE)
+    content = re.sub(r'```\s*', '', content)  # 一般的なコードブロック開始
+    content = re.sub(r'\s*```', '', content)  # コードブロック終了
+    
     # 「【学級通信】」などの不要なテキストを削除
     content = re.sub(r'【[^】]*】', '', content)
-    content = re.sub(r'```html', '', content)
-    content = re.sub(r'```', '', content)
+    
+    # HTMLコンテンツの先頭と末尾の説明文を削除
+    content = re.sub(r'^[^<]*(?=<)', '', content)  # HTML開始前の説明文
+    content = re.sub(r'>[^<]*$', '>', content)     # HTML終了後の説明文
     
     # 危険なタグを削除
     dangerous_tags = ['script', 'style', 'iframe', 'object', 'embed']
@@ -342,6 +353,10 @@ def _clean_and_format_html(html_content: str) -> str:
     
     # 最終的なクリーンアップ
     content = content.strip()
+    
+    # デバッグログ：クリーンアップ後のコンテンツをチェック
+    if '```' in content:
+        logger.warning(f"Markdown code block remnants detected in cleaned HTML: {content[:200]}...")
     
     return content
 
