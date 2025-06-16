@@ -55,7 +55,9 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
       ..style.height = '${safeHeight}px'
       ..style.border = 'none'
       ..style.borderRadius = '8px'
-      ..style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+      ..style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'
+      ..style.overflow = 'auto'
+      ..style.setProperty('-webkit-overflow-scrolling', 'touch');
 
     // A4印刷最適化HTMLコンテンツを作成
     final printOptimizedHtml = _createPrintOptimizedHtml(widget.htmlContent);
@@ -111,6 +113,10 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
             background-color: #f5f5f5;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            height: auto;
+            min-height: 100vh;
         }
         
         /* 印刷用コンテナ - A4固定サイズ */
