@@ -450,7 +450,7 @@ def validate_and_clean_html(html_content: str) -> Dict[str, Any]:
 
     # ここでさらに最終的な構造保証を行う
     if not cleaned_html.lower().startswith('<!doctype html>'):
-         cleaned_html = '<!DOCTYPE html>\\n' + cleaned_html
+         cleaned_html = '<!DOCTYPE html>\n' + cleaned_html
 
     if '<html' not in cleaned_html.lower():
         cleaned_html = f'<html lang="ja"><head><meta charset="UTF-8"></head><body>{cleaned_html}</body></html>'
@@ -509,39 +509,39 @@ def _perform_final_html_repair(html_text: str) -> str:
 
     # DOCTYPE宣言
     if not repaired_html.lower().startswith('<!doctype html>'):
-        repaired_html = '<!DOCTYPE html>\\n' + repaired_html
+        repaired_html = '<!DOCTYPE html>\n' + repaired_html
 
     # <html> タグ
     if '<html' not in repaired_html.lower():
         repaired_html = f'<html lang="ja">{repaired_html}'
     if '</html>' not in repaired_html.lower():
-        repaired_html += '\\n</html>'
+        repaired_html += '\n</html>'
     
     # <head> タグ
     if '<head' not in repaired_html.lower():
         # <html> の直後に挿入
-        repaired_html = re.sub(r'(<html[^>]*>)', r'\\1\\n<head>\\n<meta charset="UTF-8">\\n</head>\\n', repaired_html, count=1, flags=re.IGNORECASE)
+        repaired_html = re.sub(r'(<html[^>]*>)', r'\1\n<head>\n<meta charset="UTF-8">\n</head>\n', repaired_html, count=1, flags=re.IGNORECASE)
     elif '</head>' not in repaired_html.lower():
         # <head>はあるが閉じタグがない場合
          if '<body' in repaired_html.lower():
              # bodyの前に挿入
-             repaired_html = re.sub(r'(<body[^>]*>)', r'</head>\\n\\1', repaired_html, count=1, flags=re.IGNORECASE)
+             repaired_html = re.sub(r'(<body[^>]*>)', r'</head>\n\1', repaired_html, count=1, flags=re.IGNORECASE)
          else:
              # headのコンテンツの後に挿入
-             repaired_html = re.sub(r'(<head[^>]*>.*?)', r'\\1</head>', repaired_html, count=1, flags=re.IGNORECASE | re.DOTALL)
+             repaired_html = re.sub(r'(<head[^>]*>.*?)', r'\1</head>', repaired_html, count=1, flags=re.IGNORECASE | re.DOTALL)
 
 
     # <body> タグ
     if '<body' not in repaired_html.lower():
          # </head> の直後か、<html> の直後に挿入
         if '</head>' in repaired_html.lower():
-             repaired_html = re.sub(r'(</head>)', r'\\1\\n<body>\\n', repaired_html, count=1, flags=re.IGNORECASE)
+             repaired_html = re.sub(r'(</head>)', r'\1\n<body>\n', repaired_html, count=1, flags=re.IGNORECASE)
         else:
-             repaired_html = re.sub(r'(<html[^>]*>)', r'\\1\\n<head></head>\\n<body>\\n', repaired_html, count=1, flags=re.IGNORECASE)
+             repaired_html = re.sub(r'(<html[^>]*>)', r'\1\n<head></head>\n<body>\n', repaired_html, count=1, flags=re.IGNORECASE)
              
     if '</body>' not in repaired_html.lower():
         # </html> の直前に挿入
-        repaired_html = re.sub(r'(</html>)', r'\\n</body>\\n\\1', repaired_html, count=1, flags=re.IGNORECASE)
+        repaired_html = re.sub(r'(</html>)', r'\n</body>\n\1', repaired_html, count=1, flags=re.IGNORECASE)
         
     return repaired_html
 
