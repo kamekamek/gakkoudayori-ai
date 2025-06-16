@@ -145,9 +145,17 @@ class UserDictionaryService {
   /// ユーザー辞書の用語一覧を取得
   Future<List<UserDictionaryEntry>> getTerms(String userId) async {
     try {
+      if (kDebugMode) {
+        debugPrint('UserDictionaryService: Fetching terms for user $userId');
+      }
+      
       final response = await http.get(
         Uri.parse('$_baseUrl/api/v1/dictionary/$userId'),
       );
+
+      if (kDebugMode) {
+        debugPrint('UserDictionaryService: Response status ${response.statusCode}');
+      }
 
       if (response.statusCode == 200) {
         final responseBody = jsonDecode(response.body);
@@ -157,15 +165,43 @@ class UserDictionaryService {
             final Map<String, dynamic> dictionaryMap = apiData['dictionary'] as Map<String, dynamic>;
             final List<UserDictionaryEntry> terms = [];
             dictionaryMap.forEach((key, value) {
-              if (value is Map) {
-                // UserDictionaryEntry に合致する構造の場合
-                terms.add(UserDictionaryEntry.fromJson(value as Map<String, dynamic>));
-              } else if (value is List && value.every((v) => v is String)) {
-                // 単語に対して読み仮名のリストが直接返ってきている場合
-                terms.add(UserDictionaryEntry(
-                  term: key,
-                  variations: List<String>.from(value),
-                ));
+              try {
+                if (value is Map) {
+                  // カスタム用語の場合（辞書形式）
+                  final termData = value as Map<String, dynamic>;
+                  final variations = termData['variations'];
+                  
+                  if (variations is List) {
+                    // null値を除外してString型のみを抽出
+                    final cleanVariations = variations
+                        .where((v) => v != null && v is String)
+                        .map((v) => v.toString())
+                        .toList();
+                    
+                    terms.add(UserDictionaryEntry(
+                      term: key,
+                      variations: cleanVariations,
+                    ));
+                  }
+                } else if (value is List) {
+                  // デフォルト用語の場合（配列形式）
+                  // null値を除外してString型のみを抽出
+                  final cleanVariations = value
+                      .where((v) => v != null && v is String)
+                      .map((v) => v.toString())
+                      .toList();
+                  
+                  if (cleanVariations.isNotEmpty) {
+                    terms.add(UserDictionaryEntry(
+                      term: key,
+                      variations: cleanVariations,
+                    ));
+                  }
+                }
+              } catch (e) {
+                if (kDebugMode) {
+                  debugPrint('Error parsing term "$key": $e');
+                }
               }
             });
             if (kDebugMode) {

@@ -65,15 +65,24 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
 
     try {
       final terms = await _dictionaryService.getTerms(widget.userId);
-      // TODO: 統計情報の取得も行う場合は、別途 _dictionaryService.getDictionaryStats() を呼び出す
-      // final stats = await _dictionaryService.getDictionaryStats(widget.userId);
+      
+      // 統計情報の取得（エラーが発生しても用語データは表示する）
+      Map<String, dynamic>? stats;
+      try {
+        stats = await _dictionaryService.getDictionaryStats(userId: widget.userId);
+      } catch (statsError) {
+        if (kDebugMode) {
+          debugPrint('Stats loading error: $statsError');
+        }
+      }
 
       setState(() {
         _customTerms = terms;
         _filterTerms();
-        // if (stats != null) {
-        //   _stats = stats;
-        // }
+        if (stats != null) {
+          _stats.clear();
+          _stats.addAll(stats);
+        }
       });
     } catch (e) {
       setState(() {
@@ -473,12 +482,12 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                                 children: [
                                   _buildStatItem(
                                     '総用語数',
-                                    '${_stats['total_terms'] ?? 0}',
+                                    '${_customTerms.length}',
                                     Icons.book,
                                   ),
                                   _buildStatItem(
-                                    '登録用語',
-                                    '${_customTerms.length}',
+                                    'カスタム用語',
+                                    '${_stats['custom_terms'] ?? 0}',
                                     Icons.edit,
                                   ),
                                   _buildStatItem(
