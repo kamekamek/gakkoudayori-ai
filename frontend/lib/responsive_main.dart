@@ -24,7 +24,7 @@ class GakkouDayoriAiApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
-        fontFamily: 'Noto Sans JP',
+        fontFamily: 'メイリオ, Meiryo, sans-serif',
       ),
       home: ResponsiveHomePage(),
       debugShowCheckedModeBanner: false,
