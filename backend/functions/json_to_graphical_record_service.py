@@ -504,8 +504,28 @@ def _perform_final_html_repair(html_text: str) -> str:
     """
     不完全なHTMLを修復する最終防衛ライン
     - 足りない主要タグを補完する
+    - 既に完全なHTMLドキュメントの場合は重複タグを避ける
     """
     repaired_html = html_text.strip()
+    
+    # 既に完全なHTMLドキュメントかチェック
+    html_lower = repaired_html.lower()
+    
+    # 既に完全なHTML構造が存在する場合は、余計な処理を避ける
+    is_complete_html = (
+        '<!doctype html>' in html_lower and
+        '<html' in html_lower and
+        '</html>' in html_lower and
+        '<head' in html_lower and
+        '<body' in html_lower and
+        '</body>' in html_lower
+    )
+    
+    if is_complete_html:
+        logger.info("既に完全なHTML文書のため、リペア処理をスキップします")
+        return repaired_html
+
+    # 以下、不完全なHTMLの場合のみ実行
 
     # DOCTYPE宣言
     if not repaired_html.lower().startswith('<!doctype html>'):
@@ -513,7 +533,7 @@ def _perform_final_html_repair(html_text: str) -> str:
 
     # <html> タグ
     if '<html' not in repaired_html.lower():
-        repaired_html = f'<html lang="ja">{repaired_html}'
+        repaired_html = f'<html lang="ja">\n{repaired_html}'
     if '</html>' not in repaired_html.lower():
         repaired_html += '\n</html>'
     
