@@ -244,13 +244,11 @@ def get_user_dictionary(user_id: str):
         firestore_client = get_firestore_client()
         dict_service = create_user_dictionary_service(firestore_client)
         dictionary = dict_service.get_user_dictionary(user_id)
-        stats = dict_service.get_dictionary_stats(user_id)
         
         return jsonify({
             'success': True,
             'data': {
                 'dictionary': dictionary,
-                'stats': stats,
                 'user_id': user_id
             }
         })
@@ -496,25 +494,6 @@ def suggest_corrections(user_id: str):
             'error': str(e)
         }), 500
 
-@app.route('/api/v1/dictionary/<user_id>/stats', methods=['GET'])
-def get_dictionary_stats(user_id: str):
-    """辞書統計情報取得"""
-    try:
-        firestore_client = get_firestore_client()
-        dict_service = create_user_dictionary_service(firestore_client)
-        stats = dict_service.get_dictionary_stats(user_id)
-        
-        return jsonify({
-            'success': True,
-            'data': stats
-        })
-        
-    except Exception as e:
-        logger.error(f"Get dictionary stats error: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
 
 @app.route('/api/v1/ai/formats', methods=['GET'])
 def get_audio_formats():
@@ -1120,16 +1099,11 @@ def debug_dictionary():
         default_dict = dict_service.get_user_dictionary("default")
         logger.info(f"Default dictionary entries: {len(default_dict)}")
         
-        # 統計情報取得テスト
-        stats = dict_service.get_dictionary_stats("default")
-        logger.info(f"Dictionary stats: {stats}")
-        
         return jsonify({
             'success': True,
             'data': {
                 'service_initialized': True,
                 'default_dictionary_size': len(default_dict),
-                'stats': stats,
                 'firebase_initialized': firebase_initialized
             }
         })

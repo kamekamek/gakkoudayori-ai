@@ -121,26 +121,6 @@ class UserDictionaryService {
     }
   }
 
-  /// ユーザー辞書統計情報を取得
-  Future<Map<String, dynamic>?> getDictionaryStats({
-    String userId = 'default',
-  }) async {
-    try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/api/v1/dictionary/$userId/stats'),
-      );
-
-      final data = jsonDecode(response.body);
-
-      if (response.statusCode == 200 && data['success'] == true) {
-        return data['data'];
-      }
-      return null;
-    } catch (e) {
-      if (kDebugMode) debugPrint('辞書統計取得エラー: $e');
-      return null;
-    }
-  }
 
   /// ユーザー辞書の用語一覧を取得
   Future<List<UserDictionaryEntry>> getTerms(String userId) async {

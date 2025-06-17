@@ -532,52 +532,7 @@ class UserDictionaryService:
         except Exception as e:
             logger.error(f"Failed to update usage stats: {e}")
     
-    def get_dictionary_stats(self, user_id: str = "default") -> Dict[str, Any]:
-        """
-        辞書統計情報取得（使用統計込み）
-        
-        Args:
-            user_id (str): ユーザーID
-            
-        Returns:
-            Dict[str, Any]: 統計情報
-        """
-        dictionary = self.get_user_dictionary(user_id)
-        custom_terms = self._load_custom_dictionary(user_id)
-        usage_stats = self._get_usage_stats(user_id)
-        
-        return {
-            'total_terms': len(dictionary),
-            'default_terms': len(DEFAULT_SCHOOL_TERMS),
-            'custom_terms': len(custom_terms),
-            'total_variations': sum(len(variations) if isinstance(variations, list) else len(variations.get('variations', [])) for variations in dictionary.values()),
-            'usage_stats': {
-                'most_used_terms': sorted(
-                    [(term, stats['count']) for term, stats in usage_stats.items()],
-                    key=lambda x: x[1],
-                    reverse=True
-                )[:10],
-                'total_corrections': sum(stats['count'] for stats in usage_stats.values())
-            }
-        }
     
-    def _get_usage_stats(self, user_id: str) -> Dict[str, Dict[str, Any]]:
-        """使用統計を取得"""
-        try:
-            if not self.db:
-                return {}
-            
-            doc_ref = self.db.collection('user_dictionaries').document(user_id)
-            doc = doc_ref.get()
-            
-            if doc.exists:
-                data = doc.to_dict()
-                return data.get('usage_stats', {})
-            return {}
-            
-        except Exception as e:
-            logger.error(f"Failed to get usage stats: {e}")
-            return {}
     
     def suggest_corrections(self, text: str, user_id: str = "default") -> List[Dict[str, Any]]:
         """テキストに対する修正候補を提案"""
@@ -671,11 +626,6 @@ def test_user_dictionary_service():
     corrected = service.correct_transcription(test_transcript, "test_user")
     print(f"   元: {test_transcript}")
     print(f"   補正: {corrected}")
-    
-    # 4. 統計情報
-    print("\n4. 辞書統計...")
-    stats = service.get_dictionary_stats("test_user")
-    print(f"   統計: {stats}")
     
     print("\n✅ ユーザー辞書サービステスト完了")
 
