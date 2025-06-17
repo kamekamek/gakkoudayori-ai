@@ -29,11 +29,8 @@ class GraphicalRecordService {
       if (response.statusCode == 200 && data['success'] == true) {
         return SpeechToJsonResult(
           success: true,
-          jsonData: data['data']['json_data'],
-          sourceText: data['data']['source_text'],
-          validationInfo: data['data']['validation_info'],
-          processingTimeMs: data['data']['processing_time_ms'],
-          timestamp: data['data']['timestamp'],
+          jsonData: data['data'],
+          warnings: (data['warnings'] as List<dynamic>?)?.cast<String>(),
         );
       } else {
         return SpeechToJsonResult(
@@ -292,22 +289,16 @@ class PdfConversionResult {
 class SpeechToJsonResult {
   final bool success;
   final Map<String, dynamic>? jsonData;
-  final String? sourceText;
-  final Map<String, dynamic>? validationInfo;
-  final int? processingTimeMs;
-  final String? timestamp;
   final String? error;
   final String? errorCode;
+  final List<String>? warnings;
 
   SpeechToJsonResult({
     required this.success,
     this.jsonData,
-    this.sourceText,
-    this.validationInfo,
-    this.processingTimeMs,
-    this.timestamp,
     this.error,
     this.errorCode,
+    this.warnings,
   });
 }
 

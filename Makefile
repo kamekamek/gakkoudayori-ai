@@ -1,10 +1,10 @@
-# 学級通信エディタ - 環境管理Makefile
+# 学校だよりAI - 環境管理Makefile
 
 .PHONY: help dev prod staging build-dev build-prod deploy deploy-frontend deploy-backend deploy-all deploy-staging deploy-preview ci-setup test lint format reset-dev
 
 # デフォルトターゲット
 help:
-	@echo "🎯 学級通信エディタ - 利用可能なコマンド:"
+	@echo "🎯 学校だよりAI - 利用可能なコマンド:"
 	@echo ""
 	@echo "📱 フロントエンド:"
 	@echo "  make dev          - 開発環境で起動"

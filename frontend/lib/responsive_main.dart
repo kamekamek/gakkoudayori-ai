@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'services/audio_service.dart';
 import 'services/graphical_record_service.dart';
 import 'services/user_dictionary_service.dart';
@@ -19,12 +19,46 @@ class GakkouDayoriAiApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Noto Sans JPを基本フォントとして設定
+    final baseTextTheme = Theme.of(context).textTheme;
+
     return MaterialApp(
       title: '学校だよりAI',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
-        fontFamily: 'Noto Sans JP',
+        // Noto Sans JPをアプリ全体のフォントとして設定
+        textTheme: GoogleFonts.notoSansJpTextTheme(baseTextTheme).copyWith(
+          // 個別のスタイルにも適用
+          displayLarge:
+              GoogleFonts.notoSansJp(textStyle: baseTextTheme.displayLarge),
+          displayMedium:
+              GoogleFonts.notoSansJp(textStyle: baseTextTheme.displayMedium),
+          displaySmall:
+              GoogleFonts.notoSansJp(textStyle: baseTextTheme.displaySmall),
+          headlineLarge:
+              GoogleFonts.notoSansJp(textStyle: baseTextTheme.headlineLarge),
+          headlineMedium:
+              GoogleFonts.notoSansJp(textStyle: baseTextTheme.headlineMedium),
+          headlineSmall:
+              GoogleFonts.notoSansJp(textStyle: baseTextTheme.headlineSmall),
+          titleLarge:
+              GoogleFonts.notoSansJp(textStyle: baseTextTheme.titleLarge),
+          titleMedium:
+              GoogleFonts.notoSansJp(textStyle: baseTextTheme.titleMedium),
+          titleSmall:
+              GoogleFonts.notoSansJp(textStyle: baseTextTheme.titleSmall),
+          bodyLarge: GoogleFonts.notoSansJp(textStyle: baseTextTheme.bodyLarge),
+          bodyMedium:
+              GoogleFonts.notoSansJp(textStyle: baseTextTheme.bodyMedium),
+          bodySmall: GoogleFonts.notoSansJp(textStyle: baseTextTheme.bodySmall),
+          labelLarge:
+              GoogleFonts.notoSansJp(textStyle: baseTextTheme.labelLarge),
+          labelMedium:
+              GoogleFonts.notoSansJp(textStyle: baseTextTheme.labelMedium),
+          labelSmall:
+              GoogleFonts.notoSansJp(textStyle: baseTextTheme.labelSmall),
+        ),
       ),
       home: ResponsiveHomePage(),
       debugShowCheckedModeBanner: false,
@@ -55,8 +89,9 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
   String _statusMessage = '🎤 音声録音または文字入力で学級通信を作成してください';
 
   // 学級通信モード用 (2エージェント対応)
-  String _generatedHtml = '';
+  String _generatedHtml = ''; // 初期状態は空
   bool _isGenerating = false;
+  bool _isDownloadingPdf = false; // PDF生成中のローディング表示用
   String _selectedStyle = ''; // 初期状態では何も選択されていない
   Map<String, dynamic>? _structuredJsonData; // 第1エージェントの出力
   bool _showStyleButtons = false; // スタイル選択ボタンの表示制御
@@ -105,24 +140,24 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
       });
     });
 
-    // sample.htmlの内容をプレビューに表示
-    _loadSampleHtml();
+    // サンプル表示を削除
+    // _loadSampleHtml();
   }
 
-  /// sample.htmlの内容を読み込んでプレビューに表示
-  Future<void> _loadSampleHtml() async {
-    try {
-      final String sampleHtml = await rootBundle.loadString('web/sample.html');
-      setState(() {
-        _generatedHtml = sampleHtml;
-        _statusMessage = '📄 サンプル学級通信を表示しています';
-      });
-    } catch (e) {
-      setState(() {
-        _statusMessage = '❌ サンプル読み込みエラー: $e';
-      });
-    }
-  }
+  /// sample.htmlの内容を読み込んでプレビューに表示 (使用停止)
+  // Future<void> _loadSampleHtml() async {
+  //   try {
+  //     final String sampleHtml = await rootBundle.loadString('web/sample.html');
+  //     setState(() {
+  //       _generatedHtml = sampleHtml;
+  //       _statusMessage = '📄 サンプル学級通信を表示しています';
+  //     });
+  //   } catch (e) {
+  //     setState(() {
+  //       _statusMessage = '❌ サンプル読み込みエラー: $e';
+  //     });
+  //   }
+  // }
 
   @override
   void dispose() {
@@ -138,100 +173,131 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Text('学級通信エディタ'),
+        title: Text('学校だよりAI'),
         backgroundColor: Colors.blue[600],
         foregroundColor: Colors.white,
         elevation: 2,
       ),
       body: isMobile ? _buildMobileLayout() : _buildDesktopLayout(),
-      floatingActionButton: isMobile && _generatedHtml.isNotEmpty
-          ? Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                FloatingActionButton(
-                  onPressed: _downloadPdf,
-                  backgroundColor: Colors.purple[600],
-                  heroTag: "pdf",
-                  child: Icon(Icons.picture_as_pdf, color: Colors.white),
-                ),
-                SizedBox(height: 8),
-                FloatingActionButton(
-                  onPressed: _regenerateNewsletter,
-                  backgroundColor: Colors.orange[600],
-                  heroTag: "regenerate",
-                  child: Icon(Icons.refresh, color: Colors.white),
-                ),
-              ],
-            )
-          : null,
+      floatingActionButton: null, // モバイルボタンは別途配置
     );
   }
 
   Widget _buildDesktopLayout() {
-    return Row(
-      children: [
-        Container(
-          width: 400,
-          padding: EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border(right: BorderSide(color: Colors.grey[300]!)),
+    return Center(
+      child: Container(
+        constraints: BoxConstraints(maxWidth: 1200), // 最大幅を制限
+        child: DefaultTabController(
+          length: 2,
+          child: Column(
+            children: [
+              // タブバー
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
+                ),
+                child: TabBar(
+                  labelColor: Colors.blue[700],
+                  unselectedLabelColor: Colors.grey[600],
+                  indicatorColor: Colors.blue[600],
+                  indicatorWeight: 3,
+                  labelStyle: GoogleFonts.notoSansJp(
+                      fontWeight: FontWeight.bold, fontSize: 16),
+                  tabs: [
+                    Tab(
+                      icon: Icon(Icons.mic, size: 20),
+                      text: '音声入力',
+                    ),
+                    Tab(
+                      icon: Icon(Icons.preview, size: 20),
+                      text: 'プレビュー',
+                    ),
+                  ],
+                ),
+              ),
+              // タブコンテンツ
+              Expanded(
+                child: TabBarView(
+                  children: [
+                    // 音声入力タブ
+                    Container(
+                      color: Colors.white,
+                      padding: EdgeInsets.all(20),
+                      child: Center(
+                        child: Container(
+                          constraints:
+                              BoxConstraints(maxWidth: 600), // 音声入力エリアの幅を制限
+                          child: _buildVoiceInputSection(isCompact: false),
+                        ),
+                      ),
+                    ),
+                    // プレビュータブ
+                    Container(
+                      color: Colors.grey[50],
+                      child: _buildPreviewEditorSection(),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          child: _buildVoiceInputSection(isCompact: false),
         ),
-        Expanded(
-          child: _buildPreviewEditorSection(),
-        ),
-      ],
+      ),
     );
   }
 
   Widget _buildMobileLayout() {
     return DefaultTabController(
       length: 2,
-      child: Column(
+      child: Stack(
         children: [
-          // タブバー
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
-            ),
-            child: TabBar(
-              labelColor: Colors.blue[700],
-              unselectedLabelColor: Colors.grey[600],
-              indicatorColor: Colors.blue[600],
-              indicatorWeight: 3,
-              labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              tabs: [
-                Tab(
-                  icon: Icon(Icons.mic, size: 20),
-                  text: '音声入力',
-                ),
-                Tab(
-                  icon: Icon(Icons.preview, size: 20),
-                  text: 'プレビュー',
-                ),
-              ],
-            ),
-          ),
-          // タブコンテンツ
-          Expanded(
-            child: TabBarView(
-              children: [
-                // 音声入力タブ
-                Container(
+          Column(
+            children: [
+              // タブバー
+              Container(
+                decoration: BoxDecoration(
                   color: Colors.white,
-                  padding: EdgeInsets.all(16),
-                  child: _buildVoiceInputSection(isCompact: true),
+                  border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
                 ),
-                // プレビュータブ
-                Container(
-                  color: Colors.grey[50],
-                  child: _buildPreviewEditorSection(),
+                child: TabBar(
+                  labelColor: Colors.blue[700],
+                  unselectedLabelColor: Colors.grey[600],
+                  indicatorColor: Colors.blue[600],
+                  indicatorWeight: 3,
+                  labelStyle: GoogleFonts.notoSansJp(
+                      fontWeight: FontWeight.bold, fontSize: 16),
+                  tabs: [
+                    Tab(
+                      icon: Icon(Icons.mic, size: 20),
+                      text: '音声入力',
+                    ),
+                    Tab(
+                      icon: Icon(Icons.preview, size: 20),
+                      text: 'プレビュー',
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              // タブコンテンツ
+              Expanded(
+                child: TabBarView(
+                  children: [
+                    // 音声入力タブ
+                    Container(
+                      color: Colors.white,
+                      padding: EdgeInsets.all(16),
+                      child: _buildVoiceInputSection(isCompact: true),
+                    ),
+                    // プレビュータブ
+                    Container(
+                      color: Colors.grey[50],
+                      child: _buildPreviewEditorSection(),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -259,7 +325,8 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                 Expanded(
                   child: Text(
                     _statusMessage,
-                    style: TextStyle(color: Colors.blue[800], fontSize: 14),
+                    style: GoogleFonts.notoSansJp(
+                        color: Colors.blue[800], fontSize: 14),
                   ),
                 ),
               ],
@@ -274,8 +341,8 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                 width: 120,
                 height: 120,
                 decoration: BoxDecoration(
-                  color:
-                      (_isRecording ? Colors.red : Colors.blue).withValues(alpha: 0.12),
+                  color: (_isRecording ? Colors.red : Colors.blue)
+                      .withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: _isRecording ? Colors.red[300]! : Colors.blue[300]!,
@@ -337,40 +404,6 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
           ),
           SizedBox(height: 16),
           if (_showStyleButtons) _buildStyleSelection(),
-          if (!isCompact) ...[
-            SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: (_isGenerating || _isProcessing)
-                        ? null
-                        : _regenerateNewsletter,
-                    icon: Icon(Icons.refresh, size: 16),
-                    label: Text('再生成'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange[600],
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _downloadPdf,
-                    icon: Icon(Icons.picture_as_pdf, size: 16),
-                    label: Text('PDF'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.purple[600],
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
         ],
       ),
     );
@@ -382,7 +415,8 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
       children: [
         Text(
           'スタイルを選択してください',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style:
+              GoogleFonts.notoSansJp(fontSize: 16, fontWeight: FontWeight.bold),
           textAlign: TextAlign.center,
         ),
         SizedBox(height: 12),
@@ -417,7 +451,8 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
             icon: Icon(Icons.auto_awesome, size: 20),
             label: Text(
               '学級通信を作成する',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: GoogleFonts.notoSansJp(
+                  fontSize: 16, fontWeight: FontWeight.bold),
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.green[600],
@@ -482,55 +517,123 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                 SizedBox(width: 8),
                 Text(
                   'プレビュー',
-                  style: TextStyle(
+                  style: GoogleFonts.notoSansJp(
                     fontSize: isMobile ? 16 : 18,
                     fontWeight: FontWeight.bold,
                     color: Colors.grey[800],
                   ),
                 ),
                 Spacer(),
-                ElevatedButton.icon(
-                  onPressed: _loadSampleHtml,
-                  icon: Icon(Icons.description, size: 16),
-                  label: Text('サンプル表示'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal,
-                    foregroundColor: Colors.white,
-                    padding:
-                        EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                // PDF・再生成ボタンを右上に配置
+                if (_generatedHtml.isNotEmpty) ...[
+                  ElevatedButton.icon(
+                    onPressed: _downloadPdf,
+                    icon: Icon(Icons.picture_as_pdf, size: 16),
+                    label: Text('PDF'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.purple[600],
+                      foregroundColor: Colors.white,
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      minimumSize: Size(0, 0),
+                    ),
                   ),
-                ),
+                  SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: (_isGenerating || _isProcessing)
+                        ? null
+                        : _regenerateNewsletter,
+                    icon: Icon(Icons.refresh, size: 16),
+                    label: Text('再生成'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange[600],
+                      foregroundColor: Colors.white,
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      minimumSize: Size(0, 0),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
           SizedBox(height: 16),
-          Flexible(
-            child: Container(
-              width: double.infinity,
-              height: isMobile ? 600 : 700,
-              padding: EdgeInsets.all(isMobile ? 0 : 16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 10,
-                    offset: Offset(0, 4),
-                  )
-                ],
-              ),
-              child: _isProcessing
-                  ? Center(child: CircularProgressIndicator())
-                  : Builder(
-                      builder: (context) {
-                        return PrintPreviewWidget(
-                          htmlContent: _generatedHtml,
-                          height: isMobile ? 600 : 700,
-                          enableMobilePrintView: true,
-                        );
-                      },
+          Expanded(
+            child: Stack(
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(isMobile ? 0 : 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 10,
+                        offset: Offset(0, 4),
+                      )
+                    ],
+                  ),
+                  child:
+                      _generatedHtml.isEmpty && !_isGenerating && !_isProcessing
+                          ? Center(
+                              child: Text(
+                                '学級通信を作成すると、ここにプレビューが表示されます',
+                                style: GoogleFonts.notoSansJp(
+                                  color: Colors.grey[600],
+                                  fontSize: 16,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            )
+                          : SingleChildScrollView(
+                              physics: AlwaysScrollableScrollPhysics(),
+                              scrollDirection: Axis.vertical,
+                              child: SingleChildScrollView(
+                                physics: AlwaysScrollableScrollPhysics(),
+                                scrollDirection: Axis.horizontal,
+                                child: Container(
+                                  constraints: BoxConstraints(
+                                    minHeight: isMobile ? 600 : 800,
+                                    minWidth: isMobile ? 800 : 600, // A4幅を確保
+                                  ),
+                                  child: PrintPreviewWidget(
+                                    htmlContent: _generatedHtml,
+                                    height: isMobile ? 600 : 800,
+                                    enableMobilePrintView: true,
+                                  ),
+                                ),
+                              ),
+                            ),
+                ),
+                if (_isGenerating || _isProcessing || _isDownloadingPdf)
+                  Container(
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(8),
                     ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          _isDownloadingPdf ? 'PDFを生成中...' : 'AIが生成中...',
+                          style: GoogleFonts.notoSansJp(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
@@ -545,6 +648,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
       await _audioService.startRecording();
     }
   }
+
 
   // 新しい2エージェント処理フロー
   Future<void> _generateNewsletterTwoAgent() async {
@@ -617,12 +721,23 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
     await _generateNewsletterTwoAgent();
   }
 
+  /// PDFをダウンロードする
   Future<void> _downloadPdf() async {
+    if (_generatedHtml.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('PDFを生成する内容がありません。')),
+      );
+      return;
+    }
+
     setState(() {
-      _statusMessage = '📄 PDFを生成中...';
+      _isDownloadingPdf = true;
+      _statusMessage = '📄 PDFを生成中です... しばらくお待ちください';
     });
+
     try {
       final String htmlContent = _generatedHtml;
+      // 既存のサービスメソッドを呼び出す
       final result =
           await _graphicalRecordService.convertHtmlToPdf(htmlContent);
 
@@ -642,6 +757,15 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
     } catch (e) {
       setState(() {
         _statusMessage = '❌ PDFの生成に失敗しました: $e';
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('❌ PDFの生成中にエラーが発生しました: $e'),
+            backgroundColor: Colors.red),
+      );
+    } finally {
+      setState(() {
+        _isDownloadingPdf = false;
       });
     }
   }

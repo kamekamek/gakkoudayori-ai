@@ -227,6 +227,82 @@ def get_json_schema() -> Dict[str, Any]:
     }
 
 
+def repair_json_data(json_data: Dict[str, Any], schema: Dict[str, Any]) -> Tuple[Dict[str, Any], List[str]]:
+    """
+    不足している必須フィールドをデフォルト値で補完してJSONを修復する
+    """
+    repaired_data = json_data.copy()
+    repairs_made = []
+
+    required_fields = schema.get("required", [])
+    for field in required_fields:
+        if field not in repaired_data or not repaired_data[field]:
+            default_value = ""
+            if field == "school_name":
+                default_value = "（学校名不明）"
+            elif field == "issue_date":
+                default_value = datetime.now().strftime('%Y-%m-%d')
+            elif field == "grade":
+                default_value = "（学年不明）"
+            elif field == "issue":
+                default_value = "（号数不明）"
+            elif field == "author":
+                default_value = {"name": "（作成者不明）", "title": "担任"}
+            elif field == "main_title":
+                default_value = "（タイトルなし）"
+            elif field == "season":
+                default_value = "（季節不明）"
+            elif field == "theme":
+                default_value = "（テーマ不明）"
+            elif field == "sections":
+                default_value = []
+            
+            repaired_data[field] = default_value
+            repairs_made.append(f"フィールド '{field}' をデフォルト値で補完しました。")
+
+    return repaired_data, repairs_made
+
+
+# ==============================================================================
+# JSON検証・抽出機能
+# ==============================================================================
+
+def validate_generated_json(json_data: Dict[str, Any]) -> Tuple[bool, List[str]]:
+    """
+    生成されたJSONがスキーマに準拠しているか検証する
+    
+    Args:
+        json_data (Dict[str, Any]): AIによって生成されたJSONデータ
+        
+    Returns:
+        Tuple[bool, List[str]]: 検証結果 (bool) とエラーメッセージのリスト
+    """
+    schema = get_json_schema()
+    errors = []
+
+    # 必須フィールドのチェック
+    for required_field in schema.get("required", []):
+        if required_field not in json_data or not json_data[required_field]:
+            errors.append(f"必須フィールド '{required_field}' が不足しているか、空です。")
+
+    # セクションの必須フィールドチェック
+    if "sections" in json_data and isinstance(json_data["sections"], list):
+        for i, section in enumerate(json_data["sections"]):
+            if not isinstance(section, dict):
+                errors.append(f"sections[{i}] がオブジェクトではありません。")
+                continue
+            
+            section_required = schema["properties"]["sections"]["items"].get("required", [])
+            for field in section_required:
+                if field not in section or not section[field]:
+                    errors.append(f"sections[{i}] の必須フィールド '{field}' が不足しているか、空です。")
+    
+    if errors:
+        return False, errors
+        
+    return True, []
+
+
 # ==============================================================================
 # 音声→JSON変換機能
 # ==============================================================================
@@ -235,22 +311,82 @@ def extract_json_from_response(response_text: str) -> Optional[str]:
     """
     AIの応答からJSONコードブロックを抽出する
     """
-    # ```json ... ``` ブロックを探す
-    match = re.search(r'```json\s*(\{.*?\})\s*```', response_text, re.DOTALL)
-    if match:
-        return match.group(1)
+    logger.info(f"Attempting to extract JSON from response (length: {len(response_text)})")
     
-    # ``` ... ``` ブロックを探す
-    match = re.search(r'```\s*(\{.*?\})\s*```', response_text, re.DOTALL)
-    if match:
-        return match.group(1)
+    # まず、応答をログに出力（デバッグ用）
+    logger.debug(f"Response text preview: {response_text[:500]}...")
+    
+    # ```json ... ``` ブロックを探す（より柔軟に）
+    patterns = [
+        r'```json\s*(\{.*?\})\s*```',
+        r'```JSON\s*(\{.*?\})\s*```',
+        r'```\s*(\{.*?\})\s*```',
+        r'(\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})',  # ネストしたJSONも対応
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, response_text, re.DOTALL | re.IGNORECASE)
+        if match:
+            json_text = match.group(1).strip()
+            logger.info(f"JSON extracted using pattern: {pattern[:20]}...")
+            # 抽出した文字列の最初と最後が波括弧であることを確認
+            if json_text.startswith('{') and json_text.endswith('}'):
+                return json_text
 
-    # JSONオブジェクトそのものを探す
-    if response_text.strip().startswith('{'):
-        return response_text
+    # 行ベースでJSONの開始と終了を探す
+    lines = response_text.split('\n')
+    start_idx = None
+    end_idx = None
+    brace_count = 0
+    
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith('{') and start_idx is None:
+            start_idx = i
+            brace_count = 1
+        elif start_idx is not None:
+            brace_count += stripped.count('{') - stripped.count('}')
+            if brace_count == 0:
+                end_idx = i
+                break
+    
+    if start_idx is not None and end_idx is not None:
+        json_lines = lines[start_idx:end_idx + 1]
+        json_text = '\n'.join(json_lines).strip()
+        logger.info("JSON extracted using line-by-line parsing")
+        return json_text
+    
+    # 最後の手段：レスポンス全体がJSONかどうかチェック
+    response_stripped = response_text.strip()
+    if response_stripped.startswith('{') and response_stripped.endswith('}'):
+        logger.info("Using entire response as JSON")
+        return response_stripped
 
     logger.warning("No JSON block found in the response.")
     return None
+
+
+def _build_prompt(transcribed_text: str, style: str, custom_context: str = "") -> str:
+    """プロンプトを構築する"""
+    system_prompt = load_prompt(style)
+    if not system_prompt:
+        raise ValueError(f"Could not load prompt for style '{style}'")
+
+    if custom_context:
+        system_prompt += f"\n\n### 追加指示\n{custom_context}"
+
+    user_prompt = f"""
+以下の音声認識テキストを、システムプロンプトで定義されたルールに厳密に従って、学級通信用のJSONデータに変換してください。
+**特に、`school_name`, `grade`, `issue`, `issue_date`, `author`, `main_title` などの基本情報は必ず含めてください。**
+
+入力テキスト:
+```
+{transcribed_text}
+```
+
+出力はJSON形式のコードブロック(` ```json ... ``` `)で、他の説明文は含めないでください。
+"""
+    return f"{system_prompt}\n\n{user_prompt}"
 
 
 def convert_speech_to_json(
@@ -259,178 +395,116 @@ def convert_speech_to_json(
     credentials_path: str,
     style: str = "classic",
     custom_context: str = "",
-    model_name: str = "gemini-2.0-flash-exp",
+    model_name: str = "gemini-2.5-flash-preview-05-20",
     temperature: float = 0.3,
-    max_output_tokens: int = 2048
+    max_output_tokens: int = 8192
 ) -> Dict[str, Any]:
     """
-    音声認識結果を構造化JSONに変換
-    
+    音声認識テキストをJSONに変換する。検証と自己修復メカニズムを含む。
+
     Args:
-        transcribed_text (str): 音声認識結果のテキスト
-        project_id (str): Google CloudプロジェクトID
-        credentials_path (str): サービスアカウントキーファイルのパス
-        style (str): 使用するプロンプトのスタイル
-        custom_context (str): 追加のコンテキスト情報
-        model_name (str): 使用するGeminiモデル
-        temperature (float): 生成の多様性
+        transcribed_text (str): 音声認識サービスから得られたテキスト
+        project_id (str): GCPプロジェクトID
+        credentials_path (str): GCPサービスアカウントキーのパス
+        style (str): 使用するプロンプトのスタイル ('classic', 'modern')
+        custom_context (str): ユーザーからの追加の指示
+        model_name (str): 使用するGeminiモデル名
+        temperature (float): 生成の多様性を制御する温度
         max_output_tokens (int): 最大出力トークン数
-        
+
     Returns:
-        Dict[str, Any]: 変換結果（成功時はJSONデータ、失敗時はエラー情報）
+        Dict[str, Any]: 変換結果。成功時はJSONデータ、失敗時はエラードキュメント
     """
-    start_time = time.time()
-    timestamp = datetime.now().isoformat()
+    logger.info(f"Converting speech to JSON. Text length: {len(transcribed_text)} chars. Style: {style}")
+    
+    full_prompt = _build_prompt(transcribed_text, style, custom_context)
     
     try:
-        # JSONスキーマを取得
-        json_schema = get_json_schema()
-        
-        # プロンプトをファイルから読み込み
-        system_prompt_template = load_prompt(style)
-        if not system_prompt_template:
-            return {
-                "success": False,
-                "error": {
-                    "code": "PROMPT_LOADING_FAILED",
-                    "message": f"Style '{style}'のプロンプトファイルの読み込みに失敗しました。",
-                    "processing_time_ms": int((time.time() - start_time) * 1000),
-                    "timestamp": timestamp
-                }
-            }
-
-        # プロンプトをそのまま使用（v2.2プロンプトは完全な形式）
-        system_prompt = system_prompt_template
-        
-        # カスタムコンテキストがある場合は追加
-        if custom_context and custom_context.strip():
-            system_prompt += f"\n\n### 追加指示\n{custom_context}"
-
-        user_prompt = f"""
-以下の音声認識テキストをJSONに変換してください：
-
-```
-{transcribed_text}
-```
-
-出力（JSONのみ）:
-"""
-
-        full_prompt = f"{system_prompt}\n\n{user_prompt}"
-        
-        logger.info(f"Converting speech to JSON. Text length: {len(transcribed_text)} chars. Style: {style}")
-        
-        # Gemini APIで変換実行
         api_response = generate_text(
-            prompt=full_prompt,
             project_id=project_id,
             credentials_path=credentials_path,
             model_name=model_name,
+            prompt=full_prompt,
             temperature=temperature,
             max_output_tokens=max_output_tokens
         )
-        
-        if not api_response.get("success"):
-            logger.error(f"Gemini API call failed: {api_response.get('error')}")
-            return {
-                "success": False,
-                "error": {
-                    "code": "GEMINI_API_ERROR",
-                    "message": "音声→JSON変換でGemini APIエラーが発生しました",
-                    "details": api_response.get("error", {}),
-                    "processing_time_ms": int((time.time() - start_time) * 1000),
-                    "timestamp": timestamp
-                }
-            }
-        
-        # 生成されたテキストからJSONを抽出
-        generated_text = api_response.get("data", {}).get("text", "")
-        ai_metadata = api_response.get("data", {}).get("ai_metadata", {})
-        
-        # JSONをパース
-        response_text = generated_text
-        
-        # 応答からJSON部分のみを抽出
+
+        if not api_response or not api_response.get("success"):
+            error_details = api_response.get("error", {}) if api_response else {"message": "Empty response from API service"}
+            logger.error(f"Gemini API call failed: {error_details}")
+            return {"success": False, "error": {"code": "GEMINI_API_ERROR", "message": "AIサービス呼び出しに失敗しました", "details": error_details}}
+
+        response_text = api_response.get("data", {}).get("text")
+
+        if not response_text:
+            return {"success": False, "error": {"code": "EMPTY_RESPONSE", "message": "AIからの応答テキストが空です。"}}
+
         json_string = extract_json_from_response(response_text)
+        
         if not json_string:
-            logger.error("Failed to extract JSON from AI response.")
-            return {"success": False, "error": {"code": "JSON_EXTRACTION_FAILED", "message": "AIの応答からJSONを抽出できませんでした。"}}
+            return {"success": False, "error": {"code": "JSON_EXTRACTION_FAILED", "message": "AIの応答からJSONを抽出できませんでした。", "response_preview": response_text[:500]}}
 
         try:
-            # 抽出した文字列をJSONとしてパース
-            generated_json = json.loads(json_string)
+            json_data = json.loads(json_string)
+            
+            is_valid, errors = validate_generated_json(json_data)
+            if is_valid:
+                logger.info("JSON validation successful.")
+                return {"success": True, "data": json_data}
+
+            logger.warning(f"生成されたJSONの検証に失敗しました: {', '.join(errors)}. 修復を試みます。")
+            
+            repaired_json, repairs_made = repair_json_data(json_data, get_json_schema())
+            
+            # 修復後、再度バリデーション
+            is_valid_after_repair, final_errors = validate_generated_json(repaired_json)
+            
+            if is_valid_after_repair:
+                logger.info(f"JSONの修復に成功しました。実施した修復: {', '.join(repairs_made)}")
+                return {"success": True, "data": repaired_json, "warnings": repairs_made}
+            else:
+                # 修復してもなお無効な場合はエラー
+                error_message = f"JSONの修復後も検証に失敗しました: {', '.join(final_errors)}"
+                logger.error(error_message)
+                return {"success": False, "error": {"code": "REPAIR_VALIDATION_FAILED", "message": error_message, "repaired_json": repaired_json}}
+
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to decode extracted JSON: {e}")
-            return {"success": False, "error": {"code": "JSON_DECODE_ERROR", "message": str(e)}}
-
-        # バリデーション
-        is_valid, error_message = validate_generated_json(generated_json)
-        if not is_valid:
-            logger.error(f"Invalid JSON generated: {error_message}")
-            return {"success": False, "error": {"code": "JSON_VALIDATION_ERROR", "message": error_message}}
-        
-        # 成功レスポンス
-        processing_time = time.time() - start_time
-        
-        return {
-            "success": True,
-            "data": {
-                "json_data": generated_json,
-                "source_text": transcribed_text,
-                "ai_metadata": ai_metadata,
-                "validation_info": {
-                    "schema_valid": True,
-                    "sections_count": len(generated_json.get("sections", [])),
-                    "highlights_count": len(generated_json.get("highlights", [])),
-                    "overall_mood": generated_json.get("overall_mood", "neutral")
-                },
-                "processing_time_ms": int(processing_time * 1000),
-                "timestamp": timestamp
-            }
-        }
-        
+            error_message = f"抽出された文字列のJSONパースに失敗しました: {e}"
+            logger.error(error_message, exc_info=True)
+            return {"success": False, "error": {"code": "JSON_DECODE_ERROR", "message": error_message, "invalid_json_string": json_string}}
+    
     except Exception as e:
-        logger.error(f"Speech to JSON conversion failed: {e}", exc_info=True)
-        return {"success": False, "error": {"code": "UNKNOWN_ERROR", "message": str(e)}}
+        error_message = f"JSON生成中に予期せぬエラーが発生しました: {e}"
+        logger.critical(error_message, exc_info=True)
+        return {"success": False, "error": {"code": "UNEXPECTED_ERROR", "message": str(e)}}
 
 
 # ==============================================================================
-# JSON検証・抽出機能
+# JSON検証
 # ==============================================================================
 
-def validate_generated_json(json_data: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
+def validate_generated_json_v1(json_data: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
     """
-    生成されたJSONデータを検証
+    [旧バージョン - v1] 生成されたJSONがスキーマに準拠しているか検証する
     
     Args:
-        json_data (Dict[str, Any]): 生成されたJSONデータ
+        json_data (Dict[str, Any]): AIによって生成されたJSONデータ
         
     Returns:
-        Tuple[bool, Optional[str]]: 検証結果とエラーメッセージ
+        Tuple[bool, Optional[str]]: 検証結果 (bool) とエラーメッセージ (str)
     """
-    try:
-        # 基本的なスキーマ検証
-        schema = get_json_schema()
-        required_fields = schema.get("required", [])
-        
-        for field in required_fields:
-            if field not in json_data:
-                return False, f"必須フィールド '{field}' が不足しています"
-        
-        # sectionsの検証
-        if "sections" in json_data:
-            for i, section in enumerate(json_data["sections"]):
-                if not isinstance(section, dict):
-                    return False, f"sections[{i}] は辞書である必要があります"
-                
-                section_required = ["type", "title", "content", "emotion"]
-                for req_field in section_required:
-                    if req_field not in section:
-                        return False, f"sections[{i}] に必須フィールド '{req_field}' が不足しています"
-        
-        return True, None
-    except Exception as e:
-        return False, f"JSON検証エラー: {str(e)}"
+    schema = get_json_schema()
+
+    # 必須フィールドのチェック
+    for required_field in schema.get("required", []):
+        if required_field not in json_data:
+            error_message = f"必須フィールド '{required_field}' が不足しています"
+            logger.error(f"Validation failed: {error_message}")
+            return False, error_message
+
+    # すべてのチェックを通過
+    logger.info("JSON validation successful.")
+    return True, None
 
 
 # ==============================================================================

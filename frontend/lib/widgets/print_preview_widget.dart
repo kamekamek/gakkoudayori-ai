@@ -47,7 +47,7 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
     _cachedContent = widget.htmlContent;
 
     // A4サイズに対応したiframe作成
-    final safeHeight = widget.height.isFinite ? widget.height : 600.0;
+    final safeHeight = widget.height;
     _iframe = web.HTMLIFrameElement()
       ..width = '100%'
       ..height = '${safeHeight.toInt()}px'
@@ -55,7 +55,11 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
       ..style.height = '${safeHeight}px'
       ..style.border = 'none'
       ..style.borderRadius = '8px'
-      ..style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+      ..style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'
+      ..style.overflow = 'auto'
+      ..style.overflowX = 'auto'
+      ..style.overflowY = 'auto'
+      ..style.setProperty('-webkit-overflow-scrolling', 'touch');
 
     // A4印刷最適化HTMLコンテンツを作成
     final printOptimizedHtml = _createPrintOptimizedHtml(widget.htmlContent);
@@ -111,18 +115,26 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
             background-color: #f5f5f5;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
+            height: auto;
+            min-height: 100vh;
+            /* モバイルでも固定幅を維持 */
+            min-width: 250mm;
         }
         
-        /* 印刷用コンテナ - A4固定サイズ */
+        /* 印刷用コンテナ - A4固定サイズ（モバイルでも維持） */
         .print-container {
-            width: 210mm;
+            width: 210mm !important;
             min-height: 297mm;
-            max-width: 210mm;
+            max-width: none !important;
             margin: 20px auto;
             padding: 15mm;
             background: white;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
             position: relative;
+            /* モバイルでもサイズを固定 */
+            flex-shrink: 0;
         }
         
         /* 元のa4-sheetクラスがある場合の調整 */
@@ -229,6 +241,29 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
         .no-break {
             page-break-inside: avoid;
         }
+        
+        /* モバイル固定サイズ設定 - レスポンシブを無効化 */
+        @media screen and (max-width: 768px) {
+            html, body {
+                min-width: 250mm !important;
+                overflow-x: auto !important;
+            }
+            
+            .print-container {
+                width: 210mm !important;
+                min-width: 210mm !important;
+                max-width: 210mm !important;
+                margin: 10px auto !important;
+                transform: none !important;
+                zoom: 1 !important;
+            }
+            
+            /* すべての要素のレスポンシブを無効化 */
+            * {
+                min-width: auto !important;
+                max-width: none !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -298,12 +333,11 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final safeHeight = widget.height.isFinite ? widget.height : 600.0;
     final isMobile = MediaQuery.of(context).size.width < 768;
 
     if (_viewId == null) {
       return Container(
-        height: safeHeight,
+        height: widget.height,
         decoration: BoxDecoration(
           color: Colors.grey[100],
           borderRadius: BorderRadius.circular(8),
@@ -325,7 +359,7 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
     }
 
     return Container(
-      height: safeHeight,
+      height: widget.height,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.grey[300]!),

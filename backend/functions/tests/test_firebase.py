@@ -101,7 +101,6 @@ def initialize_user_dictionary():
             'custom_terms': {
                 'テスト用語': {
                     'variations': ['てすとようご', 'テスト用語'],
-                    'category': 'custom',
                     'confidence': 1.0,
                     'usage_count': 0,
                     'created_at': datetime.now().isoformat()
