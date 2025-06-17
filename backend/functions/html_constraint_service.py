@@ -128,16 +128,19 @@ def generate_constrained_html(
     # 最終的なプロンプトの組み立て
     system_prompt = "\n".join(system_prompt_parts)
     
-    # 【重要】HTMLのみの出力を強調する指示を追加
+    # 【重要】HTMLのみの出力を強調する指示を追加 - 強化版
     output_instruction = """
-## 【重要】出力形式について
+## 【重要】出力形式について - 厳格に遵守してください
 - HTMLコンテンツのみを出力してください
-- Markdownコードブロック（```html や ``` など）は絶対に使用しないでください
+- Markdownコードブロック（```html、```HTML、```、`html、`HTML等）は絶対に使用しないでください
+- バッククォート（`）は一切使用しないでください
 - 説明文や前置きは一切不要です
 - HTMLタグから直接開始し、HTMLタグで終了してください
+- 「以下のHTML」「こちらが学級通信です」などの説明は不要です
+- 出力例: <h1>タイトル</h1><p>内容...</p>
 """
     
-    final_prompt = f"{system_prompt}{output_instruction}\n---\n## あなたのタスク\n### 入力テキスト:\n```\n{prompt}\n```\n### 出力HTML（コードブロックなし、HTMLのみ）:"
+    final_prompt = f"{system_prompt}{output_instruction}\n---\n## あなたのタスク\n### 入力テキスト:\n```\n{prompt}\n```\n### 出力HTML（コードブロック禁止、HTMLのみ）:"
 
     logger.debug(f"Final prompt for HTML generation: {final_prompt}")
 
@@ -317,7 +320,7 @@ def _validate_and_filter_html(
 
 def _clean_markdown_codeblocks(html_content: str) -> str:
     """
-    GeminiレスポンスからMarkdownコードブロックを完全に除去
+    GeminiレスポンスからMarkdownコードブロックを完全に除去 - 強化版
     
     Args:
         html_content (str): クリーンアップするHTMLコンテンツ
@@ -330,10 +333,10 @@ def _clean_markdown_codeblocks(html_content: str) -> str:
     
     import re
     
-    # Markdownコードブロックの様々なパターンを確実に削除
+    # Markdownコードブロックの様々なパターンを確実に削除 - 強化版
     content = html_content.strip()
     
-    # 様々な形式のHTMLコードブロックを削除
+    # 様々な形式のHTMLコードブロックを削除（より包括的に）
     patterns = [
         r'```html\s*',          # ```html
         r'```HTML\s*',          # ```HTML
@@ -341,24 +344,37 @@ def _clean_markdown_codeblocks(html_content: str) -> str:
         r'```\s*HTML\s*',       # ``` HTML
         r'```\s*',              # 一般的なコードブロック開始
         r'\s*```',              # コードブロック終了
+        r'`html\s*',            # `html（単一バッククォート）
+        r'`HTML\s*',            # `HTML（単一バッククォート）
+        r'\s*`\s*$',            # 末尾の単一バッククォート
+        r'^\s*`',               # 先頭の単一バッククォート
     ]
     
     for pattern in patterns:
-        content = re.sub(pattern, '', content, flags=re.IGNORECASE)
+        content = re.sub(pattern, '', content, flags=re.IGNORECASE | re.MULTILINE)
     
-    # HTMLの前後にある説明文を削除
-    content = re.sub(r'^[^<]*(?=<)', '', content)  # HTML開始前の説明文
-    content = re.sub(r'>[^<]*$', '>', content)     # HTML終了後の説明文
+    # HTMLの前後にある説明文を削除（より積極的に）
+    explanation_patterns = [
+        r'^[^<]*(?=<)',                           # HTML開始前の説明文
+        r'>[^<]*$',                               # HTML終了後の説明文  
+        r'以下のHTML.*?です[。：]?\s*',              # 「以下のHTML〜です」パターン
+        r'HTML.*?を出力.*?[。：]?\s*',             # 「HTMLを出力〜」パターン
+        r'こちらが.*?HTML.*?[。：]?\s*',           # 「こちらがHTML〜」パターン
+        r'生成された.*?HTML.*?[。：]?\s*',         # 「生成されたHTML〜」パターン
+    ]
+    
+    for pattern in explanation_patterns:
+        content = re.sub(pattern, '', content, flags=re.IGNORECASE)
     
     # 空白の正規化
     content = re.sub(r'\n\s*\n', '\n', content)
     content = content.strip()
     
-    # デバッグログ：クリーンアップ後のチェック
-    if '```' in content:
-        logger.warning(f"Markdown code block remnants still detected after cleanup: {content[:100]}...")
+    # デバッグログ：クリーンアップ後のチェック（警告レベルで出力）
+    if '```' in content or '`' in content:
+        logger.warning(f"Markdown/backtick remnants still detected after enhanced cleanup: {content[:100]}...")
     
-    logger.debug(f"HTML content after markdown cleanup: {content[:200]}...")
+    logger.debug(f"HTML content after enhanced markdown cleanup: {content[:200]}...")
     
     return content
 

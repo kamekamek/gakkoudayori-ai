@@ -589,14 +589,20 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                             )
                           : SingleChildScrollView(
                               physics: AlwaysScrollableScrollPhysics(),
-                              child: Container(
-                                constraints: BoxConstraints(
-                                  minHeight: isMobile ? 600 : 800,
-                                ),
-                                child: PrintPreviewWidget(
-                                  htmlContent: _generatedHtml,
-                                  height: isMobile ? 600 : 800,
-                                  enableMobilePrintView: true,
+                              scrollDirection: Axis.vertical,
+                              child: SingleChildScrollView(
+                                physics: AlwaysScrollableScrollPhysics(),
+                                scrollDirection: Axis.horizontal,
+                                child: Container(
+                                  constraints: BoxConstraints(
+                                    minHeight: isMobile ? 600 : 800,
+                                    minWidth: isMobile ? 800 : 600, // A4幅を確保
+                                  ),
+                                  child: PrintPreviewWidget(
+                                    htmlContent: _generatedHtml,
+                                    height: isMobile ? 600 : 800,
+                                    enableMobilePrintView: true,
+                                  ),
                                 ),
                               ),
                             ),

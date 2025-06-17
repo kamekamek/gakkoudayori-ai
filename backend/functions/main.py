@@ -939,6 +939,9 @@ def generate_pdf():
                 'error_code': 'MISSING_HTML_CONTENT'
             }), 400
         
+        # 【重要】HTMLコンテンツのMarkdownコードブロッククリーンアップ
+        html_content = _clean_html_for_pdf(html_content)
+        
         # オプションパラメータ
         title = data.get('title', '学級通信')
         page_size = data.get('page_size', 'A4')
@@ -997,6 +1000,68 @@ def get_pdf_info_endpoint(pdf_id):
             'error': f'Failed to get PDF info: {str(e)}',
             'error_code': 'PDF_INFO_ERROR'
         }), 500
+
+# ==============================================================================
+# ヘルパー関数
+# ==============================================================================
+
+def _clean_html_for_pdf(html_content: str) -> str:
+    """
+    PDF生成前にHTMLからMarkdownコードブロックを除去 - 強化版
+    
+    Args:
+        html_content (str): クリーンアップするHTMLコンテンツ
+        
+    Returns:
+        str: Markdownコードブロックが除去されたHTMLコンテンツ
+    """
+    if not html_content:
+        return html_content
+    
+    import re
+    
+    content = html_content.strip()
+    
+    # Markdownコードブロックの様々なパターンを削除 - 強化版
+    patterns = [
+        r'```html\s*',          # ```html
+        r'```HTML\s*',          # ```HTML  
+        r'```\s*html\s*',       # ``` html
+        r'```\s*HTML\s*',       # ``` HTML
+        r'```\s*',              # 一般的なコードブロック開始
+        r'\s*```',              # コードブロック終了
+        r'`html\s*',            # `html（単一バッククォート）
+        r'`HTML\s*',            # `HTML（単一バッククォート）
+        r'\s*`\s*$',            # 末尾の単一バッククォート
+        r'^\s*`',               # 先頭の単一バッククォート
+    ]
+    
+    for pattern in patterns:
+        content = re.sub(pattern, '', content, flags=re.IGNORECASE | re.MULTILINE)
+    
+    # HTMLの前後にある説明文を削除（より積極的に）
+    explanation_patterns = [
+        r'^[^<]*(?=<)',                           # HTML開始前の説明文
+        r'>[^<]*$',                               # HTML終了後の説明文  
+        r'以下のHTML.*?です[。：]?\s*',              # 「以下のHTML〜です」パターン
+        r'HTML.*?を出力.*?[。：]?\s*',             # 「HTMLを出力〜」パターン
+        r'こちらが.*?HTML.*?[。：]?\s*',           # 「こちらがHTML〜」パターン
+        r'生成された.*?HTML.*?[。：]?\s*',         # 「生成されたHTML〜」パターン
+        r'【[^】]*】',                               # 【〜】形式のラベル
+    ]
+    
+    for pattern in explanation_patterns:
+        content = re.sub(pattern, '', content, flags=re.IGNORECASE)
+    
+    # 空白の正規化
+    content = re.sub(r'\n\s*\n', '\n', content)
+    content = content.strip()
+    
+    # デバッグログ：PDFエンドポイントでのクリーンアップチェック（強化）
+    if '```' in content or '`' in content:
+        logger.warning(f"PDF endpoint: Markdown/backtick remnants detected after enhanced cleanup: {content[:100]}...")
+    
+    return content
 
 @app.errorhandler(404)
 def not_found(error):

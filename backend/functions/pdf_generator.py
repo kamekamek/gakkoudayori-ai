@@ -822,7 +822,7 @@ def test_pdf_generation() -> bool:
 
 def _clean_markdown_codeblocks_pdf(html_content: str) -> str:
     """
-    PDF生成前にHTMLからMarkdownコードブロックを完全に除去
+    PDF生成前にHTMLからMarkdownコードブロックを完全に除去 - 強化版
     
     Args:
         html_content (str): クリーンアップするHTMLコンテンツ
@@ -835,7 +835,7 @@ def _clean_markdown_codeblocks_pdf(html_content: str) -> str:
     
     content = html_content.strip()
     
-    # Markdownコードブロックの様々なパターンを削除
+    # Markdownコードブロックの様々なパターンを削除 - PDF用強化版
     patterns = [
         r'```html\s*',          # ```html
         r'```HTML\s*',          # ```HTML  
@@ -843,24 +843,38 @@ def _clean_markdown_codeblocks_pdf(html_content: str) -> str:
         r'```\s*HTML\s*',       # ``` HTML
         r'```\s*',              # 一般的なコードブロック開始
         r'\s*```',              # コードブロック終了
+        r'`html\s*',            # `html（単一バッククォート）
+        r'`HTML\s*',            # `HTML（単一バッククォート）
+        r'\s*`\s*$',            # 末尾の単一バッククォート
+        r'^\s*`',               # 先頭の単一バッククォート
     ]
     
     for pattern in patterns:
-        content = re.sub(pattern, '', content, flags=re.IGNORECASE)
+        content = re.sub(pattern, '', content, flags=re.IGNORECASE | re.MULTILINE)
     
-    # HTMLの前後にある説明文を削除
-    content = re.sub(r'^[^<]*(?=<)', '', content)  # HTML開始前の説明文
-    content = re.sub(r'>[^<]*$', '>', content)     # HTML終了後の説明文
+    # HTMLの前後にある説明文を削除（PDF用強化）
+    explanation_patterns = [
+        r'^[^<]*(?=<)',                           # HTML開始前の説明文
+        r'>[^<]*$',                               # HTML終了後の説明文  
+        r'以下のHTML.*?です[。：]?\s*',              # 「以下のHTML〜です」パターン
+        r'HTML.*?を出力.*?[。：]?\s*',             # 「HTMLを出力〜」パターン
+        r'こちらが.*?HTML.*?[。：]?\s*',           # 「こちらがHTML〜」パターン
+        r'生成された.*?HTML.*?[。：]?\s*',         # 「生成されたHTML〜」パターン
+        r'【[^】]*】',                               # 【〜】形式のラベル
+    ]
+    
+    for pattern in explanation_patterns:
+        content = re.sub(pattern, '', content, flags=re.IGNORECASE)
     
     # 空白の正規化
     content = re.sub(r'\n\s*\n', '\n', content)
     content = content.strip()
     
-    # デバッグログ：PDF生成前のクリーンアップチェック
-    if '```' in content:
-        logger.warning(f"PDF generation: Markdown code block remnants detected: {content[:100]}...")
+    # デバッグログ：PDF生成前のクリーンアップチェック（強化）
+    if '```' in content or '`' in content:
+        logger.warning(f"PDF generation: Markdown/backtick remnants detected after enhanced cleanup: {content[:100]}...")
     
-    logger.debug(f"PDF HTML content after markdown cleanup: {content[:200]}...")
+    logger.debug(f"PDF HTML content after enhanced markdown cleanup: {content[:200]}...")
     
     return content
 
