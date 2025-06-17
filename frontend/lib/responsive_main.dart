@@ -587,23 +587,13 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                                 textAlign: TextAlign.center,
                               ),
                             )
-                          : SingleChildScrollView(
-                              physics: AlwaysScrollableScrollPhysics(),
-                              scrollDirection: Axis.vertical,
-                              child: SingleChildScrollView(
-                                physics: AlwaysScrollableScrollPhysics(),
-                                scrollDirection: Axis.horizontal,
-                                child: Container(
-                                  constraints: BoxConstraints(
-                                    minHeight: isMobile ? 600 : 800,
-                                    minWidth: isMobile ? 800 : 600, // A4幅を確保
-                                  ),
-                                  child: PrintPreviewWidget(
-                                    htmlContent: _generatedHtml,
-                                    height: isMobile ? 600 : 800,
-                                    enableMobilePrintView: true,
-                                  ),
-                                ),
+                          : SizedBox(
+                              width: double.infinity,
+                              height: double.infinity,
+                              child: PrintPreviewWidget(
+                                htmlContent: _generatedHtml,
+                                height: isMobile ? 600 : 800,
+                                enableMobilePrintView: true,
                               ),
                             ),
                 ),
