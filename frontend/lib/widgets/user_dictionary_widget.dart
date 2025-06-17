@@ -109,9 +109,9 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
       return;
     }
 
-    // バリエーションを分割（カンマ区切り）
+    // 読み方を設定
     final variations = variationsText.isNotEmpty
-        ? variationsText.split(',').map((v) => v.trim()).toList()
+        ? [variationsText.trim()]
         : <String>[];
 
     setState(() {
@@ -260,7 +260,7 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
 
   void _showEditTermDialog(UserDictionaryEntry entryToEdit) {
     _termController.text = entryToEdit.term;
-    _variationsController.text = entryToEdit.variations.join(', ');
+    _variationsController.text = entryToEdit.variations.isNotEmpty ? entryToEdit.variations.first : '';
 
     showDialog(
       context: context,
@@ -283,11 +283,11 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
               TextField(
                 controller: _variationsController,
                 decoration: InputDecoration(
-                  labelText: '読み方・バリエーション（カンマ区切り）',
-                  hintText: 'たなかたろう, タナカタロウ, 田中',
+                  labelText: '読み方',
+                  hintText: 'たなかたろう',
                   border: OutlineInputBorder(),
                 ),
-                maxLines: 2,
+                maxLines: 1,
               ),
             ],
           ),
@@ -320,7 +320,7 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
     }
 
     final variations = variationsText.isNotEmpty
-        ? variationsText.split(',').map((v) => v.trim()).toList()
+        ? [variationsText.trim()]
         : <String>[];
 
     final newEntry = UserDictionaryEntry(
@@ -385,11 +385,11 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
               TextField(
                 controller: _variationsController,
                 decoration: InputDecoration(
-                  labelText: '読み方・バリエーション（カンマ区切り）',
-                  hintText: 'たなかたろう, タナカタロウ, 田中',
+                  labelText: '読み方',
+                  hintText: 'たなかたろう',
                   border: OutlineInputBorder(),
                 ),
-                maxLines: 2,
+                maxLines: 1,
               ),
             ],
           ),
@@ -581,7 +581,7 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                                               children: [
                                                 if (term.variations.isNotEmpty)
                                                   Text(
-                                                      '読み: ${term.variations.join(', ')}'),
+                                                      '読み: ${term.variations.isNotEmpty ? term.variations.first : ''}'),
                                               ],
                                             ),
                                             trailing: isDefaultTerm ? null : PopupMenuButton(
