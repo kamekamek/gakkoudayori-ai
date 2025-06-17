@@ -587,7 +587,7 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
                                 textAlign: TextAlign.center,
                               ),
                             )
-                          : Container(
+                          : SizedBox(
                               width: double.infinity,
                               height: double.infinity,
                               child: PrintPreviewWidget(
