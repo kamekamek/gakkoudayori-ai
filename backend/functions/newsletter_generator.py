@@ -23,6 +23,44 @@ PROJECT_ID = "gakkoudayori-ai"
 LOCATION = "us-central1"
 MODEL_NAME = "gemini-2.5-flash-preview-05-20"
 
+# プロンプトディレクトリを定数として定義
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROMPT_DIR = os.path.join(BASE_DIR, "prompts")
+
+def load_newsletter_prompt(template_type: str) -> Optional[str]:
+    """
+    指定されたテンプレートタイプに対応するプロンプトファイルを読み込む
+    
+    Args:
+        template_type (str): テンプレートタイプ (例: "daily_report", "weekly_summary", "modern_report")
+        
+    Returns:
+        Optional[str]: 読み込んだプロンプトの文字列、見つからない場合はNone
+    """
+    # テンプレートタイプからプロンプトファイル名を決定
+    if 'modern' in template_type.lower():
+        prompt_filename = "MODERN_TENSAKU.md"
+    else:
+        # classic系やその他はCLASSIC_TENSAKU.mdを使用
+        prompt_filename = "CLASSIC_TENSAKU.md"
+
+    try:
+        prompt_path = os.path.join(PROMPT_DIR, prompt_filename)
+        
+        if not os.path.exists(prompt_path):
+            logger.error(f"Newsletter prompt file not found: {prompt_path}")
+            # モダンプロンプトが見つからない場合はクラシックにフォールバック
+            if 'modern' in template_type.lower():
+                logger.warning(f"Modern newsletter prompt not found, falling back to classic")
+                return load_newsletter_prompt('daily_report')  # classic系にフォールバック
+            return None
+            
+        with open(prompt_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except Exception as e:
+        logger.error(f"Error loading newsletter prompt file {prompt_filename}: {e}")
+        return None
+
 def initialize_gemini_api(api_key: str = None) -> bool:
     """
     Gemini APIを初期化
@@ -237,6 +275,65 @@ def _create_newsletter_prompt(
         str: 生成されたプロンプト
     """
     
+    # 外部プロンプトファイルを読み込み
+    system_prompt_template = load_newsletter_prompt(template_type)
+    if not system_prompt_template:
+        # フォールバック: ハードコードされたプロンプト
+        logger.warning(f"Using fallback hardcoded prompt for template_type: {template_type}")
+        return _create_fallback_prompt(speech_text, template_type, include_greeting, target_audience, season)
+    
+    # 季節に応じた挨拶文テンプレート
+    seasonal_greetings = {
+        "spring": "桜の花が美しく咲く季節となりました。新学期も始まり、子どもたちは元気いっぱいです。",
+        "summer": "暑い日が続いておりますが、子どもたちは元気に活動しています。",
+        "autumn": "秋の深まりを感じる季節となりました。子どもたちも学習に集中して取り組んでいます。",
+        "winter": "寒い日が続きますが、子どもたちは元気に過ごしています。",
+        "default": "いつも子どもたちの教育にご理解ご協力をいただき、ありがとうございます。"
+    }
+    
+    greeting = seasonal_greetings.get(season, seasonal_greetings["default"])
+    
+    # テンプレートタイプ別の指示
+    template_instructions = {
+        "daily_report": "今日の学校での出来事を中心とした日報形式",
+        "weekly_summary": "一週間の活動をまとめた週報形式",
+        "event_report": "特別な行事やイベントの報告形式",
+        "modern_report": "モダンな学級通信形式",
+        "general": "一般的な学級通信形式"
+    }
+    
+    template_instruction = template_instructions.get(template_type, template_instructions["general"])
+    
+    # プロンプトに変数を埋め込む（format()の代わりにreplace()を使用）
+    user_prompt = f"""
+以下の音声認識結果をもとに学級通信を生成してください。
+
+【音声認識結果】
+{speech_text}
+
+【生成パラメータ】
+- テンプレート形式: {template_instruction}
+- 対象読者: {target_audience}
+- 季節: {season}
+- 挨拶文含める: {include_greeting}
+- 季節の挨拶: {greeting if include_greeting else "なし"}
+"""
+    
+    # システムプロンプトとユーザープロンプトを結合
+    full_prompt = f"{system_prompt_template}\n\n{user_prompt}"
+    
+    return full_prompt
+
+def _create_fallback_prompt(
+    speech_text: str,
+    template_type: str,
+    include_greeting: bool,
+    target_audience: str,
+    season: str
+) -> str:
+    """
+    フォールバック用のハードコードされたプロンプトを生成
+    """
     # 季節に応じた挨拶文テンプレート
     seasonal_greetings = {
         "spring": "桜の花が美しく咲く季節となりました。新学期も始まり、子どもたちは元気いっぱいです。",
