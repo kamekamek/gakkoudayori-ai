@@ -50,15 +50,13 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
     final safeHeight = widget.height;
     _iframe = web.HTMLIFrameElement()
       ..width = '100%'
-      ..height = '${safeHeight.toInt()}px'
+      ..height = '100%'
       ..style.width = '100%'
-      ..style.height = '${safeHeight}px'
+      ..style.height = '100%'
       ..style.border = 'none'
       ..style.borderRadius = '8px'
       ..style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'
-      ..style.overflow = 'auto'
-      ..style.overflowX = 'auto'
-      ..style.overflowY = 'auto'
+      ..style.overflow = 'hidden'
       ..style.setProperty('-webkit-overflow-scrolling', 'touch');
 
     // A4印刷最適化HTMLコンテンツを作成
@@ -247,21 +245,25 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
             html, body {
                 min-width: 250mm !important;
                 overflow-x: auto !important;
+                overflow-y: auto !important;
+                width: auto !important;
             }
             
             .print-container {
                 width: 210mm !important;
                 min-width: 210mm !important;
                 max-width: 210mm !important;
-                margin: 10px auto !important;
+                margin: 10px 20px !important;
                 transform: none !important;
                 zoom: 1 !important;
+                position: static !important;
             }
             
-            /* すべての要素のレスポンシブを無効化 */
-            * {
-                min-width: auto !important;
-                max-width: none !important;
+            /* 全体のコンテナをスクロール可能に */
+            body {
+                padding: 0 !important;
+                margin: 0 !important;
+                display: block !important;
             }
         }
     </style>
