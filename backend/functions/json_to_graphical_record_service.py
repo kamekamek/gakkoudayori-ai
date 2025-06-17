@@ -415,7 +415,8 @@ def validate_and_clean_html(html_content: str) -> Dict[str, Any]:
     if not isinstance(html_content, str) or not html_content.strip():
         return {"valid": False, "html": "", "error": "HTMLコンテンツが空または無効です"}
 
-    cleaned_html = html_content.strip()
+    # 【重要】Markdownコードブロックのクリーンアップを追加
+    cleaned_html = _clean_markdown_codeblocks_service(html_content.strip())
 
     # 必須タグの存在チェック
     required_tags = {
@@ -638,6 +639,64 @@ def test_json_to_graphical_record_conversion():
         else:
             print("❌ 変換失敗")
             print(f"エラー: {result['error']}")
+
+def _clean_markdown_codeblocks_service(html_content: str) -> str:
+    """
+    JSON to HTML変換サービス用のMarkdownコードブロッククリーンアップ - 強化版
+    
+    Args:
+        html_content (str): クリーンアップするHTMLコンテンツ
+        
+    Returns:
+        str: Markdownコードブロックが除去されたHTMLコンテンツ
+    """
+    if not html_content:
+        return html_content
+    
+    import re
+    
+    content = html_content.strip()
+    
+    # Markdownコードブロックの様々なパターンを削除 - 強化版
+    patterns = [
+        r'```html\s*',          # ```html
+        r'```HTML\s*',          # ```HTML  
+        r'```\s*html\s*',       # ``` html
+        r'```\s*HTML\s*',       # ``` HTML
+        r'```\s*',              # 一般的なコードブロック開始
+        r'\s*```',              # コードブロック終了
+        r'`html\s*',            # `html（単一バッククォート）
+        r'`HTML\s*',            # `HTML（単一バッククォート）
+        r'\s*`\s*$',            # 末尾の単一バッククォート
+        r'^\s*`',               # 先頭の単一バッククォート
+    ]
+    
+    for pattern in patterns:
+        content = re.sub(pattern, '', content, flags=re.IGNORECASE | re.MULTILINE)
+    
+    # HTMLの前後にある説明文を削除（より積極的に）
+    explanation_patterns = [
+        r'^[^<]*(?=<)',                           # HTML開始前の説明文
+        r'>[^<]*$',                               # HTML終了後の説明文  
+        r'以下のHTML.*?です[。：]?\s*',              # 「以下のHTML〜です」パターン
+        r'HTML.*?を出力.*?[。：]?\s*',             # 「HTMLを出力〜」パターン
+        r'こちらが.*?HTML.*?[。：]?\s*',           # 「こちらがHTML〜」パターン
+        r'生成された.*?HTML.*?[。：]?\s*',         # 「生成されたHTML〜」パターン
+        r'【[^】]*】',                               # 【〜】形式のラベル
+    ]
+    
+    for pattern in explanation_patterns:
+        content = re.sub(pattern, '', content, flags=re.IGNORECASE)
+    
+    # 空白の正規化
+    content = re.sub(r'\n\s*\n', '\n', content)
+    content = content.strip()
+    
+    # デバッグログ：サービスレベルでのクリーンアップチェック（強化）
+    if '```' in content or '`' in content:
+        logger.warning(f"Service: Markdown code block remnants detected: {content[:100]}...")
+    
+    return content
 
 
 if __name__ == "__main__":

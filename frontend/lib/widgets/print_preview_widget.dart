@@ -57,6 +57,8 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
       ..style.borderRadius = '8px'
       ..style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'
       ..style.overflow = 'auto'
+      ..style.overflowX = 'auto'
+      ..style.overflowY = 'auto'
       ..style.setProperty('-webkit-overflow-scrolling', 'touch');
 
     // A4印刷最適化HTMLコンテンツを作成
@@ -113,22 +115,26 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
             background-color: #f5f5f5;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
-            overflow-y: auto;
+            overflow: auto;
             -webkit-overflow-scrolling: touch;
             height: auto;
             min-height: 100vh;
+            /* モバイルでも固定幅を維持 */
+            min-width: 250mm;
         }
         
-        /* 印刷用コンテナ - A4固定サイズ */
+        /* 印刷用コンテナ - A4固定サイズ（モバイルでも維持） */
         .print-container {
-            width: 210mm;
+            width: 210mm !important;
             min-height: 297mm;
-            max-width: 210mm;
+            max-width: none !important;
             margin: 20px auto;
             padding: 15mm;
             background: white;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
             position: relative;
+            /* モバイルでもサイズを固定 */
+            flex-shrink: 0;
         }
         
         /* 元のa4-sheetクラスがある場合の調整 */
@@ -234,6 +240,29 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
         
         .no-break {
             page-break-inside: avoid;
+        }
+        
+        /* モバイル固定サイズ設定 - レスポンシブを無効化 */
+        @media screen and (max-width: 768px) {
+            html, body {
+                min-width: 250mm !important;
+                overflow-x: auto !important;
+            }
+            
+            .print-container {
+                width: 210mm !important;
+                min-width: 210mm !important;
+                max-width: 210mm !important;
+                margin: 10px auto !important;
+                transform: none !important;
+                zoom: 1 !important;
+            }
+            
+            /* すべての要素のレスポンシブを無効化 */
+            * {
+                min-width: auto !important;
+                max-width: none !important;
+            }
         }
     </style>
 </head>

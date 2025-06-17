@@ -294,8 +294,12 @@ def _create_newsletter_prompt(
 4. 適切な長さ（200-500文字程度）に調整
 5. HTMLタグを使って読みやすくレイアウト
 
-【出力形式】
-HTMLタグを含む学級通信のコンテンツのみを出力してください。説明文は不要です。
+【重要な出力形式】
+- HTMLコンテンツのみを出力してください
+- Markdownコードブロック（```html や ``` など）は絶対に使用しないでください
+- 説明文や前置きは一切不要です
+- HTMLタグから直接開始し、HTMLタグで終了してください
+- 「以下のHTML」「こちらが学級通信です」などの説明は不要です
 
 【学級通信】
 """
@@ -318,21 +322,40 @@ def _clean_and_format_html(html_content: str) -> str:
     # 不要な前後の説明文を削除
     content = html_content.strip()
     
-    # 【重要】Markdownコードブロックの完全除去
+    # 【重要】Markdownコードブロックの完全除去 - 強化版
     # 様々なパターンのMarkdownコードブロックを確実に削除
-    content = re.sub(r'```html\s*', '', content, flags=re.IGNORECASE)
-    content = re.sub(r'```HTML\s*', '', content, flags=re.IGNORECASE)
-    content = re.sub(r'```\s*html\s*', '', content, flags=re.IGNORECASE)
-    content = re.sub(r'```\s*HTML\s*', '', content, flags=re.IGNORECASE)
-    content = re.sub(r'```\s*', '', content)  # 一般的なコードブロック開始
-    content = re.sub(r'\s*```', '', content)  # コードブロック終了
+    patterns_to_remove = [
+        r'```html\s*',              # ```html
+        r'```HTML\s*',              # ```HTML
+        r'```\s*html\s*',           # ``` html
+        r'```\s*HTML\s*',           # ``` HTML
+        r'```\s*',                  # 一般的なコードブロック開始
+        r'\s*```',                  # コードブロック終了
+        r'`html\s*',                # `html
+        r'`HTML\s*',                # `HTML
+        r'\s*`\s*$',                # 末尾の`
+    ]
+    
+    for pattern in patterns_to_remove:
+        content = re.sub(pattern, '', content, flags=re.IGNORECASE | re.MULTILINE)
+    
+    # HTMLの前後にある説明文も除去（より積極的に）
+    content = re.sub(r'^[^<]*(?=<)', '', content)  # HTML開始前の説明文
+    content = re.sub(r'>[^<]*$', '>', content)     # HTML終了後の説明文
     
     # 「【学級通信】」などの不要なテキストを削除
     content = re.sub(r'【[^】]*】', '', content)
     
-    # HTMLコンテンツの先頭と末尾の説明文を削除
-    content = re.sub(r'^[^<]*(?=<)', '', content)  # HTML開始前の説明文
-    content = re.sub(r'>[^<]*$', '>', content)     # HTML終了後の説明文
+    # よくある説明文パターンを削除
+    explanation_patterns = [
+        r'以下のHTML.*?です[。：]?\s*',
+        r'HTML.*?を出力.*?[。：]?\s*',
+        r'こちらが.*?HTML.*?[。：]?\s*',
+        r'生成された.*?HTML.*?[。：]?\s*'
+    ]
+    
+    for pattern in explanation_patterns:
+        content = re.sub(pattern, '', content, flags=re.IGNORECASE)
     
     # 危険なタグを削除
     dangerous_tags = ['script', 'style', 'iframe', 'object', 'embed']
@@ -356,7 +379,7 @@ def _clean_and_format_html(html_content: str) -> str:
     
     # デバッグログ：クリーンアップ後のコンテンツをチェック
     if '```' in content:
-        logger.warning(f"Markdown code block remnants detected in cleaned HTML: {content[:200]}...")
+        logger.warning(f"Markdown code block remnants still detected after enhanced cleanup: {content[:200]}...")
     
     return content
 
