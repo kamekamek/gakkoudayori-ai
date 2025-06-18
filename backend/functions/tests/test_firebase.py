@@ -145,9 +145,6 @@ def test_user_dictionary_service():
         dictionary = dict_service.get_user_dictionary('default')
         print(f'✅ Dictionary loaded: {len(dictionary)} terms')
         
-        # 統計情報取得
-        stats = dict_service.get_dictionary_stats('default')
-        print(f'✅ Dictionary stats: {stats}')
         
         # Speech-to-Textコンテキスト生成
         contexts = dict_service.get_speech_contexts('default')

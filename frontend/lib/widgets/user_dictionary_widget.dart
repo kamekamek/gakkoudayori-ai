@@ -29,7 +29,6 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
 
   // 辞書データ
   final Map<String, dynamic> _dictionaryData = {};
-  final Map<String, dynamic> _stats = {};
   List<UserDictionaryEntry> _customTerms = [];
   List<UserDictionaryEntry> _filteredTerms = [];
 
@@ -66,23 +65,10 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
     try {
       final terms = await _dictionaryService.getTerms(widget.userId);
       
-      // 統計情報の取得（エラーが発生しても用語データは表示する）
-      Map<String, dynamic>? stats;
-      try {
-        stats = await _dictionaryService.getDictionaryStats(userId: widget.userId);
-      } catch (statsError) {
-        if (kDebugMode) {
-          debugPrint('Stats loading error: $statsError');
-        }
-      }
 
       setState(() {
         _customTerms = terms;
         _filterTerms();
-        if (stats != null) {
-          _stats.clear();
-          _stats.addAll(stats);
-        }
       });
     } catch (e) {
       setState(() {
@@ -123,9 +109,9 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
       return;
     }
 
-    // バリエーションを分割（カンマ区切り）
+    // 読み方を設定
     final variations = variationsText.isNotEmpty
-        ? variationsText.split(',').map((v) => v.trim()).toList()
+        ? [variationsText.trim()]
         : <String>[];
 
     setState(() {
@@ -274,7 +260,7 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
 
   void _showEditTermDialog(UserDictionaryEntry entryToEdit) {
     _termController.text = entryToEdit.term;
-    _variationsController.text = entryToEdit.variations.join(', ');
+    _variationsController.text = entryToEdit.variations.isNotEmpty ? entryToEdit.variations.first : '';
 
     showDialog(
       context: context,
@@ -297,11 +283,11 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
               TextField(
                 controller: _variationsController,
                 decoration: InputDecoration(
-                  labelText: '読み方・バリエーション（カンマ区切り）',
-                  hintText: 'たなかたろう, タナカタロウ, 田中',
+                  labelText: '読み方',
+                  hintText: 'たなかたろう',
                   border: OutlineInputBorder(),
                 ),
-                maxLines: 2,
+                maxLines: 1,
               ),
             ],
           ),
@@ -334,7 +320,7 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
     }
 
     final variations = variationsText.isNotEmpty
-        ? variationsText.split(',').map((v) => v.trim()).toList()
+        ? [variationsText.trim()]
         : <String>[];
 
     final newEntry = UserDictionaryEntry(
@@ -399,11 +385,11 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
               TextField(
                 controller: _variationsController,
                 decoration: InputDecoration(
-                  labelText: '読み方・バリエーション（カンマ区切り）',
-                  hintText: 'たなかたろう, タナカタロウ, 田中',
+                  labelText: '読み方',
+                  hintText: 'たなかたろう',
                   border: OutlineInputBorder(),
                 ),
-                maxLines: 2,
+                maxLines: 1,
               ),
             ],
           ),
@@ -463,46 +449,6 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                   padding: EdgeInsets.all(16),
                   child: Column(
                     children: [
-                      // 統計情報カード
-                      Card(
-                        child: Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '辞書統計',
-                                style: GoogleFonts.notoSansJp(
-                                    fontSize: 18, fontWeight: FontWeight.bold),
-                              ),
-                              SizedBox(height: 12),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceAround,
-                                children: [
-                                  _buildStatItem(
-                                    '総用語数',
-                                    '${_customTerms.length}',
-                                    Icons.book,
-                                  ),
-                                  _buildStatItem(
-                                    'カスタム用語',
-                                    '${_stats['custom_terms'] ?? 0}',
-                                    Icons.edit,
-                                  ),
-                                  _buildStatItem(
-                                    '総修正回数',
-                                    '${_stats['usage_stats']?['total_corrections'] ?? 0}',
-                                    Icons.check_circle,
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      SizedBox(height: 16),
 
                       // 用語追加ボタン
                       SizedBox(
@@ -635,7 +581,7 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                                               children: [
                                                 if (term.variations.isNotEmpty)
                                                   Text(
-                                                      '読み: ${term.variations.join(', ')}'),
+                                                      '読み: ${term.variations.isNotEmpty ? term.variations.first : ''}'),
                                               ],
                                             ),
                                             trailing: isDefaultTerm ? null : PopupMenuButton(
@@ -696,28 +642,5 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
     );
   }
 
-  Widget _buildStatItem(String label, String value, IconData icon) {
-    return Column(
-      children: [
-        Icon(icon, size: 32, color: Colors.blue[600]),
-        SizedBox(height: 4),
-        Text(
-          value,
-          style: GoogleFonts.notoSansJp(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.blue[800],
-          ),
-        ),
-        Text(
-          label,
-          style: GoogleFonts.notoSansJp(
-            fontSize: 12,
-            color: Colors.grey[600],
-          ),
-        ),
-      ],
-    );
-  }
 
 }
