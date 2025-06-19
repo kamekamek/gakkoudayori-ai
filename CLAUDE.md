@@ -40,6 +40,10 @@ source venv/bin/activate          # Activate virtual environment
 python start_server.py           # Start local server
 pytest                           # Run tests
 flake8 . && black .              # Lint and format
+
+# ADK-specific testing (after Google ADK migration)
+python test_adk_official_integration.py  # Test official ADK integration
+python adk_official_service.py           # Test ADK service directly
 ```
 
 # 学校だよりAI - Claude Code Action ガイドライン
@@ -51,9 +55,10 @@ flake8 . && black .              # Lint and format
 ### 主要技術スタック
 - **フロントエンド**: Flutter Web
 - **バックエンド**: FastAPI (Python)
-- **AI**: Google Vertex AI (Gemini 1.5 Pro, Speech-to-Text)
+- **AI**: Google Vertex AI (Gemini 2.0 Flash, Speech-to-Text) + **Google ADK v1.4.1**
 - **インフラ**: Google Cloud Platform (Cloud Run, Cloud Storage, Firestore)
 - **認証**: Firebase Authentication
+- **マルチエージェント**: 公式Google Agent Development Kit (ADK)
 
 ## 📋 開発ルール・方針
 
@@ -106,6 +111,8 @@ gakkoudayori-ai/
 │   ├── firebase_service.py   # Firebase統合
 │   ├── speech_recognition_service.py # 音声認識
 │   ├── gemini_api_service.py # Gemini API
+│   ├── adk_official_service.py # 公式Google ADK マルチエージェント
+│   ├── audio_to_json_service.py # 音声→JSON変換統合
 │   ├── html_constraint_service.py # HTML処理
 │   ├── newsletter_generator.py # 通信生成
 │   ├── requirements.txt      # Python依存関係
@@ -203,10 +210,11 @@ async def generate_pdf(
 - **ユーザー辞書**: 学校特有の用語・固有名詞対応
 - **リアルタイム処理**: ストリーミング認識でUX向上
 
-### Gemini活用
+### Gemini + ADK活用
 - **リライト機能**: 教師らしい語り口調への変換
 - **見出し生成**: コンテンツに適した見出し自動生成
 - **レイアウト最適化**: グラレコ風デザインの自動提案
+- **マルチエージェント**: 専門化されたエージェント（content, design, HTML, quality）の協調処理
 
 ### HTMLエディタ
 - **WYSIWYG**: リアルタイムプレビュー機能
@@ -321,7 +329,7 @@ flake8 .
 firebase login
 
 # プロジェクト設定
-firebase use yutori-kyoshitu
+firebase use gakkoudayori-ai
 
 # Functions デプロイ
 firebase deploy --only functions
@@ -465,11 +473,12 @@ git log --oneline -10
 - **Feature-First構造**: 機能別ディレクトリで横断的関心事を分離
 - **Clean Architecture**: core層（共通）とfeatures層（機能固有）の分離
 - **Firebase Functions**: Python FastAPIをFirebase Functionsで実行
-- **音声-AI-HTML-PDF**: Speech-to-Text → Gemini → Quill.js → PDF の処理パイプライン
+- **音声-AI-HTML-PDF**: Speech-to-Text → **Google ADK Multi-Agent** → Quill.js → PDF の処理パイプライン
 - **Provider状態管理**: 特にエディタの複雑な状態を `QuillEditorProvider` で管理
 - **Web特化**: PWAとして動作、ネイティブアプリ非対応
 - **Firebase認証**: 匿名認証とGoogle認証の併用
 - **Cloud Storage**: 生成されたファイルの保存・共有
+- **Google ADK**: 公式フレームワークによる階層的マルチエージェント（coordinator + 4専門エージェント）
 
 ### 重要な技術的制約
 - **Webオンリー**: モバイルアプリ非対応のWeb専用設計
@@ -489,6 +498,33 @@ git log --oneline -10
 2. 実装前に必ずテストコードを作成 (TDD)
 3. `flutter analyze && flutter test` で品質確認
 4. 教育現場での使いやすさを常に意識
+5. **ADK機能開発時**: `use_adk=True`パラメータでテスト、フォールバック動作確認
+
+## 🤖 Google ADK開発ガイドライン
+
+### ADK使用パターン
+```python
+# API呼び出し時のADK使用
+result = convert_speech_to_json(
+    transcribed_text="...",
+    use_adk=True,  # 公式ADKマルチエージェント使用
+    teacher_profile={
+        "name": "田中先生",
+        "writing_style": "温かく親しみやすい", 
+        "grade": "3年1組"
+    }
+)
+```
+
+### ADK vs 従来方式の使い分け
+- **use_adk=True**: 複雑な文章、高品質要求、マルチエージェント協調が必要
+- **use_adk=False**: シンプルな処理、高速応答要求、フォールバック時
+
+### ADK開発時の注意点
+- Vertex AI API有効化必須（本番環境）
+- エラー時の自動フォールバック設計
+- 品質スコア・エンゲージメントスコア活用
+- 階層構造（coordinator → 専門エージェント）理解
 
 質問や不明点があれば、遠慮なく確認してください！
 
@@ -542,10 +578,33 @@ Based on `.cursor/rules/document_management.mdc`, follow these conventions:
 - `services/audio_service.dart`: ブラウザのMediaRecorder API使用
 - `widgets/*_widget.dart`: UI制御とファイルアップロード
 - Backend `speech_recognition_service.py`: Google Speech-to-Text処理
-- Backend `gemini_api_service.py`: AIによるテキストリライト
+- Backend `adk_official_service.py`: 公式Google ADKマルチエージェント処理
+- Backend `audio_to_json_service.py`: ADK統合とフォールバック管理
 
-### 現在の実装状況（プロジェクト完了）
-このプロジェクトは**Google Cloud Japan AI Hackathon Vol.2**向けに完成しており、全62タスクが完了済みです。主要機能は全て実装されています。
+### 最新実装状況（2025年6月更新）
+このプロジェクトは**Google Cloud Japan AI Hackathon Vol.2**向けに基盤が完成しており、最近**公式Google ADK v1.4.1への移行**が完了しました。
+
+#### 🚀 Google ADK移行完了
+- **カスタムADKシミュレーション** → **公式Google ADKフレームワーク v1.4.1**移行完了
+- `adk_official_service.py`: 階層的マルチエージェント実装（coordinator + 4専門エージェント）
+- sub_agentsパターンによる標準準拠のエージェント連携
+- 後方互換性維持（use_adk=True/False対応）
+
+#### 🎯 ADK Multi-Agent Architecture
+```python
+# 公式ADK階層構造
+coordinator_agent = LlmAgent(
+    name="newsletter_coordinator_agent",
+    model="gemini-2.0-flash",
+    sub_agents=[content_agent, design_agent, html_agent, quality_agent]
+)
+```
+
+**専門エージェント構成**:
+- **content_writer_agent**: 教師らしい文章生成
+- **design_specialist_agent**: 季節・学年に応じたデザイン仕様
+- **html_generator_agent**: セマンティックHTML生成
+- **quality_assurance_agent**: 品質チェック・改善提案
 
 ### テスト戦略
 - Unit Tests: `flutter test` (Dart/Flutter用)
