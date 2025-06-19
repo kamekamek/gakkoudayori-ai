@@ -263,6 +263,119 @@ def repair_json_data(json_data: Dict[str, Any], schema: Dict[str, Any]) -> Tuple
     return repaired_data, repairs_made
 
 
+def _convert_adk_to_legacy_format(adk_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    ADKマルチエージェント結果を従来のJSON形式に変換
+    
+    Args:
+        adk_data: ADKから返されたデータ
+        
+    Returns:
+        従来形式のJSONデータ
+    """
+    try:
+        # ADKの結果から必要な情報を抽出
+        optimized_content = adk_data.get("optimized_content", {}).get("optimized_content", {})
+        content_analysis = adk_data.get("content_analysis", {})
+        layout_design = adk_data.get("layout_design", {})
+        
+        # 基本情報の推定
+        inferred_metadata = content_analysis.get("inferred_metadata", {})
+        
+        # セクション情報を従来形式に変換
+        newsletter_sections = optimized_content.get("newsletter_sections", [])
+        sections = []
+        
+        for section in newsletter_sections:
+            sections.append({
+                "type": section.get("section_type", "main"),
+                "title": section.get("title"),
+                "content": section.get("content", ""),
+                "emotion": "positive"  # デフォルト
+            })
+        
+        # カラースキームの変換
+        color_scheme = layout_design.get("color_scheme", {})
+        if not color_scheme:
+            color_scheme = {
+                "primary": "#2c3e50",
+                "secondary": "#3498db", 
+                "accent": "#e74c3c",
+                "background": "#ffffff"
+            }
+        
+        # 従来形式のJSONデータ構造
+        legacy_json = {
+            "school_name": inferred_metadata.get("school_context", "○○小学校"),
+            "grade": inferred_metadata.get("grade_level", "3年1組"),
+            "issue": "第1号",  # ADKからは推定困難なのでデフォルト
+            "issue_date": datetime.now().strftime("%Y年%m月%d日"),
+            "author": {
+                "name": "担任教師",
+                "title": "担任"
+            },
+            "main_title": sections[0].get("title", "学級通信") if sections else "学級通信",
+            "sub_title": None,
+            "season": inferred_metadata.get("season", "春"),
+            "theme": content_analysis.get("key_messages", [{}])[0].get("content", "学級の様子") if content_analysis.get("key_messages") else "学級の様子",
+            "color_scheme": color_scheme,
+            "color_scheme_source": layout_design.get("color_scheme_rationale", "季節に応じた配色"),
+            "sections": sections,
+            "photo_placeholders": {
+                "count": layout_design.get("photo_layout", {}).get("suggested_photo_count", 2),
+                "suggested_positions": [
+                    {
+                        "section_type": "main",
+                        "position": "end_of_section", 
+                        "caption_suggestion": "活動の様子"
+                    }
+                ]
+            },
+            "enhancement_suggestions": adk_data.get("fact_check", {}).get("improvement_suggestions", []),
+            "has_editor_note": False,
+            "editor_note": None,
+            "layout_suggestion": {
+                "page_count": 1,
+                "columns": layout_design.get("layout_structure", {}).get("column_count", 1),
+                "column_ratio": "1:1",
+                "blocks": layout_design.get("layout_structure", {}).get("section_arrangement", ["header", "main", "footer"])
+            },
+            "meta_reasoning": {
+                "title_reason": "ADKマルチエージェントにより最適化されたタイトル",
+                "issue_reason": "新規作成のため第1号と設定",
+                "grade_reason": f"音声内容から{inferred_metadata.get('grade_level', '3年生')}と推定",
+                "author_reason": "教師による作成",
+                "sectioning_strategy_reason": "ADKエージェントによる構造化",
+                "season_reason": f"時期と内容から{inferred_metadata.get('season', '春')}と判定",
+                "color_reason": layout_design.get("color_scheme_rationale", "季節とテーマに基づく配色選択")
+            }
+        }
+        
+        return legacy_json
+        
+    except Exception as e:
+        logger.error(f"ADK to legacy format conversion failed: {e}")
+        # フォールバック: 最小限のデータ構造を返す
+        return {
+            "school_name": "○○小学校",
+            "grade": "3年1組", 
+            "issue": "第1号",
+            "issue_date": datetime.now().strftime("%Y年%m月%d日"),
+            "author": {"name": "担任教師", "title": "担任"},
+            "main_title": "学級通信",
+            "season": "春",
+            "theme": "学級の様子",
+            "sections": [
+                {
+                    "type": "main",
+                    "title": "ADK変換エラー",
+                    "content": "マルチエージェント結果の変換中にエラーが発生しました。",
+                    "emotion": "neutral"
+                }
+            ]
+        }
+
+
 # ==============================================================================
 # JSON検証・抽出機能
 # ==============================================================================
@@ -397,7 +510,9 @@ def convert_speech_to_json(
     custom_context: str = "",
     model_name: str = "gemini-2.5-flash-preview-05-20",
     temperature: float = 0.3,
-    max_output_tokens: int = 8192
+    max_output_tokens: int = 8192,
+    use_adk: bool = False,
+    teacher_profile: Dict[str, Any] = None
 ) -> Dict[str, Any]:
     """
     音声認識テキストをJSONに変換する。検証と自己修復メカニズムを含む。
@@ -411,12 +526,68 @@ def convert_speech_to_json(
         model_name (str): 使用するGeminiモデル名
         temperature (float): 生成の多様性を制御する温度
         max_output_tokens (int): 最大出力トークン数
+        use_adk (bool): ADKマルチエージェントシステムを使用するかどうか
+        teacher_profile (Dict[str, Any]): 教師プロファイル情報（ADK使用時）
 
     Returns:
         Dict[str, Any]: 変換結果。成功時はJSONデータ、失敗時はエラードキュメント
     """
-    logger.info(f"Converting speech to JSON. Text length: {len(transcribed_text)} chars. Style: {style}")
+    logger.info(f"Converting speech to JSON. Text length: {len(transcribed_text)} chars. Style: {style}. Use ADK: {use_adk}")
     
+    # ADKマルチエージェントシステムを使用する場合
+    if use_adk:
+        try:
+            # ADKサービスのインポートとロジック
+            import asyncio
+            from adk_multi_agent_service import generate_newsletter_with_adk
+            
+            # 非同期関数を同期的に実行
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            try:
+                adk_result = loop.run_until_complete(
+                    generate_newsletter_with_adk(
+                        audio_transcript=transcribed_text,
+                        project_id=project_id,
+                        credentials_path=credentials_path,
+                        teacher_profile=teacher_profile or {},
+                        style=style
+                    )
+                )
+                
+                if adk_result["success"]:
+                    # ADK結果を従来のJSON形式に変換
+                    adk_data = adk_result["data"]
+                    optimized_content = adk_data["optimized_content"]["optimized_content"]
+                    
+                    # 従来形式のJSONデータ構造に変換
+                    converted_json = _convert_adk_to_legacy_format(adk_data)
+                    
+                    logger.info(f"ADK multi-agent conversion successful. Total time: {adk_data['processing_metadata']['total_processing_time']:.2f}s")
+                    
+                    return {
+                        "success": True,
+                        "data": converted_json,
+                        "adk_metadata": {
+                            "processing_times": adk_data["processing_metadata"]["agent_processing_times"],
+                            "total_processing_time": adk_data["processing_metadata"]["total_processing_time"],
+                            "quality_scores": adk_data.get("fact_check", {}).get("overall_assessment", {}),
+                            "engagement_score": adk_data.get("optimized_content", {}).get("predicted_impact", {}).get("engagement_score", 0)
+                        }
+                    }
+                else:
+                    logger.warning(f"ADK conversion failed, falling back to traditional method: {adk_result['error']}")
+                    # ADK失敗時は従来の方法にフォールバック
+                    
+            finally:
+                loop.close()
+                
+        except Exception as e:
+            logger.warning(f"ADK system error, falling back to traditional method: {e}")
+            # ADKエラー時は従来の方法にフォールバック
+    
+    # 従来の単一Gemini方式
     full_prompt = _build_prompt(transcribed_text, style, custom_context)
     
     try:

@@ -552,6 +552,8 @@ def convert_speech_to_json():
         # オプションパラメータ
         style = data.get('style', 'classic')
         custom_context = data.get('custom_context', '')
+        use_adk = data.get('use_adk', False)  # ADKマルチエージェント使用フラグ
+        teacher_profile = data.get('teacher_profile', {})  # 教師プロファイル
         
         # Google Cloud認証情報パス（Cloud Run環境ではNone）
         credentials_path = None if os.getenv('K_SERVICE') else os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
@@ -560,13 +562,15 @@ def convert_speech_to_json():
         # 音声→JSON変換サービスをインポート
         from audio_to_json_service import convert_speech_to_json
         
-        # 変換実行
+        # 変換実行（ADKマルチエージェント対応）
         result = convert_speech_to_json(
             transcribed_text=transcribed_text,
             project_id=project_id,
             credentials_path=credentials_path,
             style=style,
-            custom_context=custom_context
+            custom_context=custom_context,
+            use_adk=use_adk,
+            teacher_profile=teacher_profile
         )
         
         return jsonify(result)
