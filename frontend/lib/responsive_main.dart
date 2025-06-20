@@ -442,12 +442,54 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
-            onPressed: (_isGenerating ||
-                    _isProcessing ||
-                    _inputText.trim().isEmpty ||
-                    _selectedStyle.isEmpty)
-                ? null
-                : _generateNewsletterTwoAgent,
+            onPressed: () async {
+              // Get input text from either source
+              final inputText = _textController.text.trim().isNotEmpty 
+                  ? _textController.text.trim()
+                  : _inputText.trim();
+              
+              debugPrint('🚀 Button clicked!');
+              debugPrint('  Controller text: "${_textController.text}"');
+              debugPrint('  _inputText: "$_inputText"');
+              debugPrint('  Final input: "$inputText"');
+              debugPrint('  Selected style: "$_selectedStyle"');
+              
+              // Simple validation - just need text and style
+              if (inputText.isEmpty) {
+                setState(() {
+                  _statusMessage = '❌ テキストを入力してください';
+                });
+                return;
+              }
+              
+              if (_selectedStyle.isEmpty) {
+                setState(() {
+                  _statusMessage = '❌ スタイルを選択してください';
+                });
+                return;
+              }
+              
+              // All good - proceed with generation
+              setState(() {
+                _inputText = inputText; // Sync the input text
+                _isGenerating = true;
+                _isProcessing = true;
+                _statusMessage = '🤖 AI生成中...';
+              });
+              
+              debugPrint('✅ Proceeding with generation...');
+              
+              try {
+                await _generateNewsletterTwoAgent();
+              } catch (e) {
+                debugPrint('❌ Error: $e');
+                setState(() {
+                  _statusMessage = '❌ エラーが発生しました: $e';
+                  _isGenerating = false;
+                  _isProcessing = false;
+                });
+              }
+            },
             icon: Icon(Icons.auto_awesome, size: 20),
             label: Text(
               '学級通信を作成する',
@@ -642,11 +684,20 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
 
   // 新しい2エージェント処理フロー
   Future<void> _generateNewsletterTwoAgent() async {
-    if (_isGenerating || _isProcessing) return;
+    print('🚀 _generateNewsletterTwoAgent called');
+    
+    if (_isGenerating || _isProcessing) {
+      print('  ❌ Already processing, returning');
+      return;
+    }
 
     final inputText =
         _inputText.isNotEmpty ? _inputText : _textController.text.trim();
+    print('  📝 Input text: "$inputText"');
+    print('  🎨 Selected style: "$_selectedStyle"');
+    
     if (inputText.isEmpty) {
+      print('  ❌ Input text is empty');
       setState(() {
         _statusMessage = '❌ 入力テキストが空です。音声録音または文字入力をしてください。';
       });
@@ -658,12 +709,16 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
       _isProcessing = true;
       _statusMessage = '🤖 AI生成中... (2エージェント処理)';
     });
+    
+    print('  📡 Calling API: convertSpeechToJson');
 
     try {
       final jsonResult = await _graphicalRecordService.convertSpeechToJson(
         transcribedText: inputText,
         customContext: 'style:$_selectedStyle',
       );
+      
+      print('  📥 API Response received: ${jsonResult.success}');
 
       if (!jsonResult.success || jsonResult.jsonData == null) {
         throw Exception(jsonResult.error ?? 'Failed to convert speech to JSON');
@@ -684,18 +739,21 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
       );
 
       setState(() {
-        _generatedHtml = htmlResult.htmlContent!;
-        _statusMessage = '🎉 2エージェント処理完了！印刷最適化された学級通信をプレビューで確認してください';
+        _generatedHtml = htmlResult.htmlContent ?? '';
+        _statusMessage = '🎉 学級通信生成完了！プレビューで確認してください';
       });
     } catch (e) {
+      debugPrint('❌ [_generateNewsletterTwoAgent] Error: $e');
       setState(() {
         _statusMessage = '❌ AI生成でエラーが発生しました: $e';
+        _isProcessing = false;
+        _isGenerating = false;
       });
     } finally {
       setState(() {
         _isProcessing = false;
+        _isGenerating = false;
       });
-      _isGenerating = false;
     }
   }
 

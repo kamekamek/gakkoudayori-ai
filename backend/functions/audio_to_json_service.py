@@ -19,6 +19,15 @@ from gemini_api_service import generate_text
 # ロギング設定
 logger = logging.getLogger(__name__)
 
+# ADK関連（公式フレームワーク）
+try:
+    from adk_official_service import generate_newsletter_with_official_adk
+    OFFICIAL_ADK_AVAILABLE = True
+    logger.info("Official ADK service imported successfully")
+except ImportError as e:
+    OFFICIAL_ADK_AVAILABLE = False
+    logger.warning(f"Official ADK service not available: {e}")
+
 # プロンプトディレクトリを定数として定義
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROMPT_DIR = os.path.join(BASE_DIR, "prompts")
@@ -376,6 +385,187 @@ def _convert_adk_to_legacy_format(adk_data: Dict[str, Any]) -> Dict[str, Any]:
         }
 
 
+def _convert_official_adk_to_legacy_format(adk_result: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    公式ADKマルチエージェント結果を従来のJSON形式に変換
+    
+    Args:
+        adk_result: 公式ADKから返された結果
+        
+    Returns:
+        従来形式のJSONデータ
+    """
+    try:
+        # 新しい公式ADK結果構造から情報を抽出
+        data = adk_result.get("data", {})
+        adk_metadata = adk_result.get("adk_metadata", {})
+        
+        # コンテンツの抽出
+        content_text = data.get("content", "")
+        
+        # デザイン仕様の抽出
+        design_spec = {}
+        design_spec_str = data.get("design_spec", "{}")
+        try:
+            design_spec = json.loads(design_spec_str) if isinstance(design_spec_str, str) else design_spec_str
+        except json.JSONDecodeError:
+            design_spec = {}
+        
+        # HTMLの抽出
+        final_html = data.get("html", "")
+        
+        # セクションの抽出（既に構造化されている場合）
+        sections = data.get("sections", [])
+        if not sections and content_text:
+            # セクションが提供されていない場合は、コンテンツから簡単なセクションを生成
+            sections = [
+                {
+                    "type": "title",
+                    "content": "学級通信",
+                    "style": "heading"
+                },
+                {
+                    "type": "paragraph", 
+                    "content": content_text,
+                    "style": "body_text"
+                }
+            ]
+        
+        # 品質スコアの抽出
+        quality_score = adk_metadata.get("quality_score", 85)
+        
+        # 現在日時の取得
+        current_date = datetime.now()
+        
+        # 季節の判定
+        season_map = {
+            (3, 4, 5): "春",
+            (6, 7, 8): "夏", 
+            (9, 10, 11): "秋",
+            (12, 1, 2): "冬"
+        }
+        
+        current_season = "春"
+        for months, season in season_map.items():
+            if current_date.month in months:
+                current_season = season
+                break
+        
+        # カラースキームの抽出
+        color_scheme = design_spec.get("color_scheme", {})
+        if not color_scheme:
+            color_scheme = {
+                "primary": "#4CAF50",
+                "secondary": "#81C784", 
+                "accent": "#FFC107",
+                "background": "#ffffff"
+            }
+        
+        # コンテンツからセクションを生成（簡単な分割）
+        sections = []
+        if content_text:
+            # テキストを段落で分割してセクションを作成
+            paragraphs = [p.strip() for p in content_text.split('\n\n') if p.strip()]
+            
+            for i, paragraph in enumerate(paragraphs[:5]):  # 最大5セクション
+                section_type = "header" if i == 0 else "main"
+                sections.append({
+                    "type": section_type,
+                    "title": f"セクション{i+1}" if i > 0 else "メインタイトル",
+                    "content": paragraph,
+                    "emotion": "positive"
+                })
+        
+        # セクションが空の場合はデフォルトを追加
+        if not sections:
+            sections = [
+                {
+                    "type": "header",
+                    "title": "学級通信",
+                    "content": "今日の学級の様子をお伝えします。",
+                    "emotion": "positive"
+                }
+            ]
+        
+        # 従来形式のJSONデータ構造
+        legacy_json = {
+            "school_name": "○○小学校",
+            "grade": adk_result.get("input_data", {}).get("grade_level", "3年1組"),
+            "issue": "第1号",
+            "issue_date": current_date.strftime("%Y年%m月%d日"),
+            "author": {
+                "name": "担任教師",
+                "title": "担任"
+            },
+            "main_title": "学級通信",
+            "season": current_season,
+            "theme": "学級の様子",
+            "sections": sections,
+            "visual_elements": {
+                "layout": design_spec.get("layout_type", "modern"),
+                "color_scheme": color_scheme,
+                "fonts": design_spec.get("fonts", {
+                    "heading": "Noto Sans JP",
+                    "body": "Hiragino Sans"
+                }),
+                "season_elements": design_spec.get("visual_elements", {}).get("illustration_style", current_season)
+            },
+            "metadata": {
+                "generation_timestamp": current_date.isoformat(),
+                "processing_method": "official_adk_multi_agent",
+                "content_length": len(content_text),
+                "quality_score": quality_score,
+                "html_available": bool(final_html),
+                "agents_used": adk_result.get("agents_executed", [])
+            },
+            "generated_html": final_html,
+            "color_theme": {
+                "primary_color": color_scheme.get("primary", "#4CAF50"),
+                "secondary_color": color_scheme.get("secondary", "#81C784"),
+                "accent_color": color_scheme.get("accent", "#FFC107"),
+                "season": current_season,
+                "color_reason": f"{current_season}の季節感を表現した配色選択"
+            }
+        }
+        
+        return legacy_json
+        
+    except Exception as e:
+        logger.error(f"Official ADK to legacy format conversion failed: {e}")
+        # フォールバック: 最小限のデータ構造を返す
+        return {
+            "school_name": "○○小学校",
+            "grade": "3年1組", 
+            "issue": "第1号",
+            "issue_date": datetime.now().strftime("%Y年%m月%d日"),
+            "author": {"name": "担任教師", "title": "担任"},
+            "main_title": "学級通信",
+            "season": "春",
+            "theme": "学級の様子",
+            "sections": [
+                {
+                    "type": "header",
+                    "title": "学級通信",
+                    "content": "今日の学級の様子をお伝えします。",
+                    "emotion": "positive"
+                }
+            ],
+            "visual_elements": {
+                "layout": "modern",
+                "color_scheme": {
+                    "primary": "#4CAF50",
+                    "secondary": "#81C784",
+                    "accent": "#FFC107"
+                }
+            },
+            "metadata": {
+                "generation_timestamp": datetime.now().isoformat(),
+                "processing_method": "official_adk_fallback",
+                "error": str(e)
+            }
+        }
+
+
 # ==============================================================================
 # JSON検証・抽出機能
 # ==============================================================================
@@ -537,51 +727,52 @@ def convert_speech_to_json(
     # ADKマルチエージェントシステムを使用する場合
     if use_adk:
         try:
-            # ADKサービスのインポートとロジック
+            # 公式ADKサービスを使用
             import asyncio
-            from adk_multi_agent_service import generate_newsletter_with_adk
             
-            # 非同期関数を同期的に実行
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            
-            try:
-                adk_result = loop.run_until_complete(
-                    generate_newsletter_with_adk(
-                        audio_transcript=transcribed_text,
-                        project_id=project_id,
-                        credentials_path=credentials_path,
-                        teacher_profile=teacher_profile or {},
-                        style=style
-                    )
-                )
+            if not OFFICIAL_ADK_AVAILABLE:
+                logger.warning("Official ADK service not available, falling back to traditional method")
+            else:
+                # 非同期関数を同期的に実行
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
                 
-                if adk_result["success"]:
-                    # ADK結果を従来のJSON形式に変換
-                    adk_data = adk_result["data"]
-                    optimized_content = adk_data["optimized_content"]["optimized_content"]
+                try:
+                    adk_result = loop.run_until_complete(
+                        generate_newsletter_with_official_adk(
+                            audio_transcript=transcribed_text,
+                            teacher_profile=teacher_profile,
+                            grade_level=teacher_profile.get('grade', '3年1組') if teacher_profile else '3年1組'
+                        )
+                    )
                     
-                    # 従来形式のJSONデータ構造に変換
-                    converted_json = _convert_adk_to_legacy_format(adk_data)
-                    
-                    logger.info(f"ADK multi-agent conversion successful. Total time: {adk_data['processing_metadata']['total_processing_time']:.2f}s")
-                    
-                    return {
-                        "success": True,
-                        "data": converted_json,
-                        "adk_metadata": {
-                            "processing_times": adk_data["processing_metadata"]["agent_processing_times"],
-                            "total_processing_time": adk_data["processing_metadata"]["total_processing_time"],
-                            "quality_scores": adk_data.get("fact_check", {}).get("overall_assessment", {}),
-                            "engagement_score": adk_data.get("optimized_content", {}).get("predicted_impact", {}).get("engagement_score", 0)
+                    if adk_result["success"]:
+                        # 公式ADK結果を従来のJSON形式に変換
+                        converted_json = _convert_official_adk_to_legacy_format(adk_result)
+                        
+                        logger.info(f"Official ADK multi-agent conversion successful")
+                        
+                        return {
+                            "success": True,
+                            "data": converted_json,
+                            "adk_metadata": {
+                                "generation_method": adk_result.get("generation_method", "official_adk_multi_agent"),
+                                "agents_executed": adk_result.get("agents_executed", []),
+                                "content_generation": adk_result.get("content_generation", {}),
+                                "design_generation": adk_result.get("design_generation", {}),
+                                "html_generation": adk_result.get("html_generation", {}),
+                                "quality_check": adk_result.get("quality_check", {})
+                            }
                         }
-                    }
-                else:
-                    logger.warning(f"ADK conversion failed, falling back to traditional method: {adk_result['error']}")
-                    # ADK失敗時は従来の方法にフォールバック
-                    
-            finally:
-                loop.close()
+                    else:
+                        logger.warning(f"ADK conversion failed, falling back to traditional method: {adk_result.get('error', 'Unknown error')}")
+                        # ADK失敗時は従来の方法にフォールバック
+                        
+                except Exception as adk_error:
+                    logger.warning(f"ADK system error, falling back to traditional method: {adk_error}")
+                    # ADKエラー時は従来の方法にフォールバック
+                finally:
+                    loop.close()
                 
         except Exception as e:
             logger.warning(f"ADK system error, falling back to traditional method: {e}")

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Direct Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        button { padding: 10px 20px; margin: 10px 0; background: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .result { margin: 10px 0; padding: 10px; background: #f8f9fa; border-left: 4px solid #007bff; }
+        .error { border-left-color: #dc3545; background: #f8d7da; }
+        .success { border-left-color: #28a745; background: #d4edda; }
+        textarea { width: 100%; height: 100px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 API Direct Test - 学校だよりAI</h1>
+        
+        <div class="test-section">
+            <h2>📡 Backend API Connection Test</h2>
+            <button onclick="testBackendConnection()">Test Backend Connection</button>
+            <div id="connectionResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>📝 Text Input → AI Generation Test</h2>
+            <textarea id="testInput" placeholder="学級通信の内容を入力してください...">今日は運動会でした。子どもたちは最後まで頑張りました。
+
+【運動会の様子】
+・かけっこでは3年生の田中さんが最後まで諦めずに走り切りました
+・玉入れでは赤組と白組が接戦を繰り広げ、最終的に赤組が勝利しました
+
+【保護者の皆様へ】
+多くの保護者の方にお越しいただき、子どもたちも大変嬉しそうでした。
+
+【今後の予定】
+11月15日に学習発表会を開催予定です。</textarea>
+            
+            <div>
+                <label>スタイル選択:</label>
+                <select id="styleSelect">
+                    <option value="classic">クラシック</option>
+                    <option value="modern">モダン</option>
+                </select>
+            </div>
+            
+            <button onclick="testFullWorkflow()">🚀 Complete Workflow Test</button>
+            <div id="workflowResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>📋 Test Results</h2>
+            <div id="allResults"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8081/api/v1/ai';
+        
+        function showResult(elementId, message, isError = false, isSuccess = false) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="result ${isError ? 'error' : ''} ${isSuccess ? 'success' : ''}">${message}</div>`;
+        }
+        
+        function addToResults(message) {
+            const allResults = document.getElementById('allResults');
+            allResults.innerHTML += `<div class="result">${new Date().toLocaleTimeString()}: ${message}</div>`;
+        }
+        
+        async function testBackendConnection() {
+            showResult('connectionResult', '🔄 Testing backend connection...', false, false);
+            addToResults('Testing backend connection...');
+            
+            try {
+                // Test basic connectivity
+                const response = await fetch(`${API_BASE_URL}/health`, { method: 'GET' });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    showResult('connectionResult', `✅ Backend connection successful! Response: ${JSON.stringify(data)}`, false, true);
+                    addToResults('✅ Backend connection successful');
+                    return true;
+                } else {
+                    showResult('connectionResult', `⚠️ Backend responded with status ${response.status}. Server might be running but endpoint not found.`, true, false);
+                    addToResults(`⚠️ Backend status: ${response.status}`);
+                    return false;
+                }
+            } catch (error) {
+                showResult('connectionResult', `❌ Backend connection failed: ${error.message}. Make sure backend server is running on port 8081.`, true, false);
+                addToResults(`❌ Backend connection failed: ${error.message}`);
+                return false;
+            }
+        }
+        
+        async function testFullWorkflow() {
+            showResult('workflowResult', '🚀 Starting full workflow test...', false, false);
+            addToResults('🚀 Starting full workflow test...');
+            
+            const inputText = document.getElementById('testInput').value.trim();
+            const selectedStyle = document.getElementById('styleSelect').value;
+            
+            if (!inputText) {
+                showResult('workflowResult', '❌ Please enter some text to test', true, false);
+                return;
+            }
+            
+            try {
+                // Step 1: Speech to JSON
+                addToResults('📡 Step 1: Calling speech-to-json API...');
+                const jsonResponse = await fetch(`${API_BASE_URL}/speech-to-json`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        transcribed_text: inputText,
+                        custom_context: `style:${selectedStyle}`
+                    })
+                });
+                
+                if (!jsonResponse.ok) {
+                    throw new Error(`Speech-to-JSON API failed with status ${jsonResponse.status}`);
+                }
+                
+                const jsonData = await jsonResponse.json();
+                addToResults(`✅ Step 1 completed: ${jsonData.success ? 'Success' : 'Failed'}`);
+                
+                if (!jsonData.success || !jsonData.data) {
+                    throw new Error(`Speech-to-JSON failed: ${jsonData.error || 'Unknown error'}`);
+                }
+                
+                // Step 2: JSON to Graphical Record
+                addToResults('🎨 Step 2: Calling json-to-graphical-record API...');
+                const htmlResponse = await fetch(`${API_BASE_URL}/json-to-graphical-record`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        json_data: jsonData.data,
+                        template: selectedStyle === 'classic' ? 'classic_newsletter' : 'modern_newsletter',
+                        custom_style: 'newsletter_optimized_for_print'
+                    })
+                });
+                
+                if (!htmlResponse.ok) {
+                    throw new Error(`JSON-to-HTML API failed with status ${htmlResponse.status}`);
+                }
+                
+                const htmlData = await htmlResponse.json();
+                addToResults(`✅ Step 2 completed: ${htmlData.success ? 'Success' : 'Failed'}`);
+                
+                if (!htmlData.success || !htmlData.data) {
+                    throw new Error(`JSON-to-HTML failed: ${htmlData.error || 'Unknown error'}`);
+                }
+                
+                // Show success
+                showResult('workflowResult', `🎉 Full workflow completed successfully! 
+                    <br>📊 JSON Data Length: ${JSON.stringify(jsonData.data).length} chars
+                    <br>📄 HTML Content Length: ${htmlData.data.html_content ? htmlData.data.html_content.length : 0} chars
+                    <br>⏱️ Processing Time: ${htmlData.data.processing_time_ms}ms`, false, true);
+                
+                addToResults('🎉 Full workflow completed successfully!');
+                
+                return true;
+                
+            } catch (error) {
+                showResult('workflowResult', `❌ Workflow failed: ${error.message}`, true, false);
+                addToResults(`❌ Workflow failed: ${error.message}`);
+                return false;
+            }
+        }
+        
+        // Auto-test connection on page load
+        window.onload = function() {
+            addToResults('🔧 Page loaded, ready for testing');
+        };
+    </script>
+</body>
+</html>

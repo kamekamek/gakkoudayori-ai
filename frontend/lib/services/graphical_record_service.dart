@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 
@@ -12,17 +13,29 @@ class GraphicalRecordService {
     required String transcribedText,
     String customContext = '',
   }) async {
+    final url = '$_baseUrl/speech-to-json';
+    final requestBody = {
+      'transcribed_text': transcribedText,
+      'custom_context': customContext,
+    };
+    
+    // Debug logging
+    debugPrint('🌐 [GraphicalRecordService] Making API request:');
+    debugPrint('  URL: $url');
+    debugPrint('  Base URL: $_baseUrl');
+    debugPrint('  Request body: ${jsonEncode(requestBody)}');
+    
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/speech-to-json'),
+        Uri.parse(url),
         headers: {
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({
-          'transcribed_text': transcribedText,
-          'custom_context': customContext,
-        }),
+        body: jsonEncode(requestBody),
       );
+      
+      debugPrint('  Response status: ${response.statusCode}');
+      debugPrint('  Response body preview: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}...');
 
       final data = jsonDecode(response.body);
 
