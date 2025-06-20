@@ -38,6 +38,32 @@ from html_constraint_service import generate_constrained_html
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# ADK準拠システム（条件付きインポート）
+try:
+    from adk_compliant_orchestrator import generate_newsletter_with_adk_compliant
+    ADK_COMPLIANT_AVAILABLE = True
+    logger.info("ADK準拠システムが利用可能です")
+except ImportError as e:
+    ADK_COMPLIANT_AVAILABLE = False
+    logger.warning(f"ADK準拠システムのインポートに失敗: {e}")
+    
+# 既存システム
+from audio_to_json_service import convert_speech_to_json
+
+# 対話式システム（新規追加）
+try:
+    from conversational_api_service import (
+        start_conversational_newsletter,
+        process_conversation_response,
+        get_conversation_status,
+        get_conversation_history
+    )
+    CONVERSATIONAL_AVAILABLE = True
+    logger.info("対話式システムが利用可能です")
+except ImportError as e:
+    CONVERSATIONAL_AVAILABLE = False
+    logger.warning(f"対話式システムのインポートに失敗: {e}")
+
 # Flaskアプリケーション作成
 app = Flask(__name__)
 # CORS設定 - 本番とローカル開発環境の両方を許可
@@ -85,6 +111,70 @@ def get_firestore_client():
 
 # アプリケーション起動時にFirebase初期化
 firebase_initialized = init_firebase()
+
+# ==============================================================================
+# ADK準拠システム移行制御
+# ==============================================================================
+
+def get_migration_percentage() -> int:
+    """現在の移行率を取得"""
+    # 環境変数から移行率を取得（デフォルト5%）
+    migration_rate = int(os.getenv('ADK_MIGRATION_PERCENTAGE', '5'))
+    # 最大100%に制限
+    return min(migration_rate, 100)
+
+def should_use_new_system(migration_percentage: int) -> bool:
+    """新システム使用判定"""
+    # リクエストIPアドレスベースの一貫した振り分け
+    try:
+        user_hash = hash(request.remote_addr or 'default') % 100
+        return user_hash < migration_percentage
+    except:
+        # フォールバック: ランダム
+        import random
+        return random.randint(0, 99) < migration_percentage
+
+def emergency_fallback(
+    transcribed_text: str, 
+    project_id: str, 
+    credentials_path: str,
+    style: str,
+    teacher_profile: dict
+) -> dict:
+    """緊急時フォールバック処理"""
+    try:
+        logger.info("Executing emergency fallback")
+        result = convert_speech_to_json(
+            transcribed_text=transcribed_text,
+            project_id=project_id,
+            credentials_path=credentials_path,
+            style=style,
+            custom_context='',
+            use_adk=False,
+            teacher_profile=teacher_profile
+        )
+        
+        # フォールバック情報を追加
+        result['system_metadata'] = {
+            "system_used": "emergency_fallback",
+            "fallback_triggered": True,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Emergency fallback also failed: {e}")
+        return {
+            'success': False,
+            'error': f'All systems failed: {str(e)}',
+            'error_code': 'COMPLETE_SYSTEM_FAILURE',
+            'system_metadata': {
+                "system_used": "none",
+                "complete_failure": True,
+                "timestamp": datetime.now().isoformat()
+            }
+        }
 
 @app.route('/')
 def hello_world():
@@ -555,6 +645,16 @@ def convert_speech_to_json():
         use_adk = data.get('use_adk', False)  # ADKマルチエージェント使用フラグ
         teacher_profile = data.get('teacher_profile', {})  # 教師プロファイル
         
+        # ADK準拠システム制御（新規追加）
+        use_adk_compliant = data.get('use_adk_compliant', False)  # ADK準拠システム使用フラグ
+        migration_percentage = get_migration_percentage()  # 段階的移行率
+        force_legacy = data.get('force_legacy', False)  # 強制レガシーモード
+        
+        # Phase 2拡張パラメータ
+        enable_pdf = data.get('enable_pdf', True)  # PDF生成有効化
+        enable_images = data.get('enable_images', True)  # 画像生成有効化
+        classroom_settings = data.get('classroom_settings', None)  # Classroom配布設定
+        
         # Google Cloud認証情報パス（Cloud Run環境ではNone）
         credentials_path = None if os.getenv('K_SERVICE') else os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
         project_id = os.getenv('GOOGLE_CLOUD_PROJECT', 'gakkoudayori-ai')
@@ -562,16 +662,138 @@ def convert_speech_to_json():
         # 音声→JSON変換サービスをインポート
         from audio_to_json_service import convert_speech_to_json
         
-        # 変換実行（ADKマルチエージェント対応）
-        result = convert_speech_to_json(
-            transcribed_text=transcribed_text,
-            project_id=project_id,
-            credentials_path=credentials_path,
-            style=style,
-            custom_context=custom_context,
-            use_adk=use_adk,
-            teacher_profile=teacher_profile
+        # システム選択ロジック（段階的移行対応）
+        should_use_adk_compliant = (
+            ADK_COMPLIANT_AVAILABLE and 
+            not force_legacy and
+            (use_adk_compliant or should_use_new_system(migration_percentage))
         )
+        
+        logger.info(f"System selection: ADK_COMPLIANT={should_use_adk_compliant}, migration_rate={migration_percentage}%")
+        
+        try:
+            if should_use_adk_compliant:
+                # ADK準拠システム使用
+                logger.info("Using ADK compliant system")
+                import asyncio
+                
+                # 非同期実行のためのラッパー
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                
+                try:
+                    result = loop.run_until_complete(
+                        generate_newsletter_with_adk_compliant(
+                            audio_transcript=transcribed_text,
+                            project_id=project_id,
+                            credentials_path=credentials_path,
+                            grade_level=teacher_profile.get('grade_level', '3年1組'),
+                            style=style,
+                            use_parallel_processing=True,
+                            quality_threshold=80
+                        )
+                    )
+                    
+                    # ADK準拠結果の適応
+                    if result.get('status') == 'success':
+                        adk_result = {
+                            "success": True,
+                            "data": {
+                                "json_data": result.get('final_output', {}),
+                                "html_content": result.get('final_output', {}).get('html_result', {}).get('html', ''),
+                                "quality_score": result.get('quality_check', {}).get('score', 0),
+                                "processing_info": {
+                                    "workflow_type": result.get('workflow_type'),
+                                    "processing_time": result.get('processing_time_seconds'),
+                                    "execution_id": result.get('execution_id')
+                                }
+                            },
+                            "system_metadata": {
+                                "system_used": "adk_compliant",
+                                "adk_compliant": True,
+                                "migration_percentage": migration_percentage,
+                                "timestamp": result.get('timestamp')
+                            }
+                        }
+                        result = adk_result
+                    else:
+                        # ADK準拠システム失敗時のフォールバック
+                        logger.warning("ADK compliant system failed, falling back to legacy")
+                        result = emergency_fallback(transcribed_text, project_id, credentials_path, style, teacher_profile)
+                        
+                finally:
+                    loop.close()
+                    
+            elif use_adk and (enable_pdf or enable_images or classroom_settings):
+                # 既存ADKマルチエージェント（Phase 2機能付き）使用
+                logger.info("Using legacy ADK multi-agent system")
+                import asyncio
+                from adk_multi_agent_service import generate_newsletter_with_adk
+                
+                # 非同期実行のためのラッパー
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                
+                try:
+                    result = loop.run_until_complete(
+                        generate_newsletter_with_adk(
+                            audio_transcript=transcribed_text,
+                            project_id=project_id,
+                            credentials_path=credentials_path,
+                            grade_level=teacher_profile.get('grade_level', '3年1組'),
+                            style=style,
+                            enable_pdf=enable_pdf,
+                            enable_images=enable_images,
+                            classroom_settings=classroom_settings
+                        )
+                    )
+                    
+                    # 従来形式への適応
+                    if result.get("success"):
+                        # ADK結果を従来のJSON形式にラップ
+                        adk_result = {
+                            "success": True,
+                            "data": {
+                                "json_data": result,  # ADK結果全体を含む
+                                "html_content": result.get("html"),
+                                "pdf_data": result.get("pdf_output"),
+                                "media_data": result.get("media_enhancement"),
+                                "classroom_data": result.get("classroom_distribution")
+                            },
+                            "system_metadata": {
+                                "system_used": "legacy_adk",
+                                "generation_method": result.get("generation_method"),
+                                "agents_used": result.get("agents_used"),
+                                "phase2_features": result.get("phase2_features")
+                            }
+                        }
+                        result = adk_result
+                        
+                finally:
+                    loop.close()
+            else:
+                # 従来の変換処理
+                logger.info("Using legacy system")
+                result = convert_speech_to_json(
+                    transcribed_text=transcribed_text,
+                    project_id=project_id,
+                    credentials_path=credentials_path,
+                    style=style,
+                    custom_context=custom_context,
+                    use_adk=use_adk,
+                    teacher_profile=teacher_profile
+                )
+                
+                # システム情報追加
+                result['system_metadata'] = {
+                    "system_used": "legacy",
+                    "migration_percentage": migration_percentage,
+                    "timestamp": datetime.now().isoformat()
+                }
+            
+        except Exception as e:
+            logger.error(f"Primary system failed, attempting emergency fallback: {e}")
+            result = emergency_fallback(transcribed_text, project_id, credentials_path, style, teacher_profile)
         
         return jsonify(result)
         
@@ -1119,3 +1341,153 @@ def debug_dictionary():
             'error': str(e),
             'error_type': type(e).__name__
         }), 500
+
+# ==============================================================================
+# 対話式学級通信作成API（新規追加）
+# ==============================================================================
+
+@app.route("/api/v1/ai/conversation/start", methods=["POST"])
+def start_conversation():
+    """対話式学級通信作成開始"""
+    try:
+        if not CONVERSATIONAL_AVAILABLE:
+            return jsonify({
+                "success": False,
+                "error": "対話式システムが利用できません",
+                "error_code": "CONVERSATIONAL_NOT_AVAILABLE"
+            }), 503
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                "success": False,
+                "error": "No JSON data provided",
+                "error_code": "MISSING_DATA"
+            }), 400
+        
+        # 必須パラメータ
+        audio_transcript = data.get("audio_transcript", "")
+        if not audio_transcript.strip():
+            return jsonify({
+                "success": False,
+                "error": "Audio transcript is required",
+                "error_code": "MISSING_TRANSCRIPT"
+            }), 400
+        
+        # オプションパラメータ
+        user_id = data.get("user_id", "default")
+        teacher_profile = data.get("teacher_profile", {})
+        
+        # 対話開始
+        result = start_conversational_newsletter(
+            audio_transcript=audio_transcript,
+            user_id=user_id,
+            teacher_profile=teacher_profile
+        )
+        
+        if result["success"]:
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 500
+            
+    except Exception as e:
+        logger.error(f"Start conversation error: {e}")
+        return jsonify({
+            "success": False,
+            "error": f"対話開始エラー: {str(e)}",
+            "error_code": "CONVERSATION_START_ERROR"
+        }), 500
+
+@app.route("/api/v1/ai/conversation/<session_id>/respond", methods=["POST"])
+def respond_to_conversation(session_id: str):
+    """対話応答処理"""
+    try:
+        if not CONVERSATIONAL_AVAILABLE:
+            return jsonify({
+                "success": False,
+                "error": "対話式システムが利用できません",
+                "error_code": "CONVERSATIONAL_NOT_AVAILABLE"
+            }), 503
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                "success": False,
+                "error": "No JSON data provided",
+                "error_code": "MISSING_DATA"
+            }), 400
+        
+        # ユーザー応答処理
+        result = process_conversation_response(
+            session_id=session_id,
+            user_response=data
+        )
+        
+        if result["success"]:
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 400 if "SESSION_NOT_FOUND" in result.get("error_code", "") else 500
+            
+    except Exception as e:
+        logger.error(f"Conversation response error: {e}")
+        return jsonify({
+            "success": False,
+            "error": f"対話応答エラー: {str(e)}",
+            "error_code": "CONVERSATION_RESPONSE_ERROR"
+        }), 500
+
+@app.route("/api/v1/ai/conversation/<session_id>/status", methods=["GET"])
+def get_conversation_status_endpoint(session_id: str):
+    """対話状態取得"""
+    try:
+        if not CONVERSATIONAL_AVAILABLE:
+            return jsonify({
+                "success": False,
+                "error": "対話式システムが利用できません",
+                "error_code": "CONVERSATIONAL_NOT_AVAILABLE"
+            }), 503
+        
+        result = get_conversation_status(session_id)
+        
+        if result["success"]:
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 404 if "SESSION_NOT_FOUND" in result.get("error_code", "") else 500
+            
+    except Exception as e:
+        logger.error(f"Get conversation status error: {e}")
+        return jsonify({
+            "success": False,
+            "error": f"対話状態取得エラー: {str(e)}",
+            "error_code": "CONVERSATION_STATUS_ERROR"
+        }), 500
+
+@app.route("/api/v1/ai/conversation/<session_id>/history", methods=["GET"])
+def get_conversation_history_endpoint(session_id: str):
+    """対話履歴取得"""
+    try:
+        if not CONVERSATIONAL_AVAILABLE:
+            return jsonify({
+                "success": False,
+                "error": "対話式システムが利用できません",
+                "error_code": "CONVERSATIONAL_NOT_AVAILABLE"
+            }), 503
+        
+        result = get_conversation_history(session_id)
+        
+        if result["success"]:
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 404 if "SESSION_NOT_FOUND" in result.get("error_code", "") else 500
+            
+    except Exception as e:
+        logger.error(f"Get conversation history error: {e}")
+        return jsonify({
+            "success": False,
+            "error": f"対話履歴取得エラー: {str(e)}",
+            "error_code": "CONVERSATION_HISTORY_ERROR"
+        }), 500
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8081, debug=True)
+

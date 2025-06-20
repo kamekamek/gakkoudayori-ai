@@ -315,12 +315,66 @@ class NewsletterADKService:
             """,
             tools=[]
         )
+        
+        # 6. PDF出力エージェント（Phase 2新規追加）
+        self.agents['pdf_output'] = None  # 遅延初期化
+        
+        # 7. メディアエージェント（Phase 2新規追加）
+        self.agents['media'] = None  # 遅延初期化
+        
+        # 8. Classroom統合エージェント（Phase 2新規追加）
+        self.agents['classroom_integration'] = None  # 遅延初期化
+    
+    def _initialize_phase2_agents(self):
+        """Phase 2エージェントの遅延初期化"""
+        
+        # PDF出力エージェント
+        if self.agents['pdf_output'] is None:
+            try:
+                from pdf_output_agent import PDFOutputAgent
+                self.agents['pdf_output'] = PDFOutputAgent(
+                    self.project_id, 
+                    self.credentials_path
+                )
+                logger.info("PDF出力エージェント初期化完了")
+            except ImportError as e:
+                logger.warning(f"PDF出力エージェント初期化失敗: {e}")
+                self.agents['pdf_output'] = False
+        
+        # メディアエージェント
+        if self.agents['media'] is None:
+            try:
+                from media_agent import MediaAgent
+                self.agents['media'] = MediaAgent(
+                    self.project_id,
+                    self.credentials_path
+                )
+                logger.info("メディアエージェント初期化完了")
+            except ImportError as e:
+                logger.warning(f"メディアエージェント初期化失敗: {e}")
+                self.agents['media'] = False
+        
+        # Classroom統合エージェント
+        if self.agents['classroom_integration'] is None:
+            try:
+                from classroom_integration_agent import ClassroomIntegrationAgent
+                self.agents['classroom_integration'] = ClassroomIntegrationAgent(
+                    self.project_id,
+                    self.credentials_path
+                )
+                logger.info("Classroom統合エージェント初期化完了")
+            except ImportError as e:
+                logger.warning(f"Classroom統合エージェント初期化失敗: {e}")
+                self.agents['classroom_integration'] = False
     
     async def generate_newsletter_adk(
         self,
         audio_transcript: str,
         grade_level: str = "3年1組",
-        style: str = "modern"
+        style: str = "modern",
+        enable_pdf: bool = True,
+        enable_images: bool = True,
+        classroom_settings: Dict[str, Any] = None
     ) -> Dict[str, Any]:
         """ADKマルチエージェントを使用した学級通信生成"""
         
@@ -328,6 +382,10 @@ class NewsletterADKService:
             return await self._fallback_generation(audio_transcript, grade_level, style)
         
         try:
+            # Phase 2エージェントの初期化
+            if enable_pdf or enable_images or classroom_settings:
+                self._initialize_phase2_agents()
+            
             # Phase 1: コンテンツ分析と生成
             logger.info("Phase 1: Content generation started")
             content_result = await self._run_agent_task(
@@ -356,16 +414,100 @@ class NewsletterADKService:
                 f"HTML: {html_result}\n内容: {content_result}"
             )
             
+            # === Phase 2拡張フェーズ ===
+            enhanced_html = html_result
+            pdf_data = None
+            media_data = None
+            classroom_data = None
+            
+            # Phase 5: メディア強化（画像生成・挿入）
+            if enable_images and self.agents['media'] and self.agents['media'] is not False:
+                logger.info("Phase 5: Media enhancement started")
+                try:
+                    media_result = await self.agents['media'].enhance_newsletter_with_media(
+                        html_content=html_result,
+                        newsletter_data={
+                            "main_title": f"{grade_level} 学級通信",
+                            "grade": grade_level,
+                            "sections": [{"type": "main", "content": content_result}]
+                        },
+                        options={"max_images": 2, "image_style": "cartoon"}
+                    )
+                    
+                    if media_result["success"]:
+                        enhanced_html = media_result["data"]["enhanced_html"]
+                        media_data = media_result["data"]
+                        logger.info("メディア強化完了")
+                    else:
+                        logger.warning(f"メディア強化失敗: {media_result['error']}")
+                        
+                except Exception as e:
+                    logger.error(f"メディア強化エラー: {e}")
+            
+            # Phase 6: PDF生成
+            if enable_pdf and self.agents['pdf_output'] and self.agents['pdf_output'] is not False:
+                logger.info("Phase 6: PDF generation started")
+                try:
+                    pdf_result = await self.agents['pdf_output'].generate_newsletter_pdf(
+                        html_content=enhanced_html,
+                        newsletter_data={
+                            "main_title": f"{grade_level} 学級通信",
+                            "grade": grade_level,
+                            "issue_date": datetime.now().strftime("%Y年%m月%d日")
+                        },
+                        options={"page_size": "A4", "auto_optimize": True}
+                    )
+                    
+                    if pdf_result["success"]:
+                        pdf_data = pdf_result["data"]
+                        logger.info("PDF生成完了")
+                    else:
+                        logger.warning(f"PDF生成失敗: {pdf_result['error']}")
+                        
+                except Exception as e:
+                    logger.error(f"PDF生成エラー: {e}")
+            
+            # Phase 7: Classroom配布
+            if classroom_settings and pdf_data and self.agents['classroom_integration'] and self.agents['classroom_integration'] is not False:
+                logger.info("Phase 7: Classroom distribution started")
+                try:
+                    classroom_result = await self.agents['classroom_integration'].distribute_newsletter_to_classroom(
+                        pdf_path=pdf_data["pdf_path"],
+                        newsletter_data={
+                            "main_title": f"{grade_level} 学級通信",
+                            "grade": grade_level,
+                            "issue_date": datetime.now().strftime("%Y年%m月%d日")
+                        },
+                        classroom_settings=classroom_settings
+                    )
+                    
+                    if classroom_result["success"]:
+                        classroom_data = classroom_result["data"]
+                        logger.info("Classroom配布完了")
+                    else:
+                        logger.warning(f"Classroom配布失敗: {classroom_result['error']}")
+                        
+                except Exception as e:
+                    logger.error(f"Classroom配布エラー: {e}")
+            
             # 結果の統合
             result = {
                 "success": True,
                 "content": content_result,
                 "design_spec": design_result, 
-                "html": html_result,
+                "html": enhanced_html,
                 "quality_feedback": quality_result,
-                "generation_method": "adk_multi_agent",
+                "pdf_output": pdf_data,
+                "media_enhancement": media_data,
+                "classroom_distribution": classroom_data,
+                "generation_method": "adk_multi_agent_phase2",
                 "timestamp": datetime.now().isoformat(),
-                "agents_used": list(self.agents.keys())
+                "agents_used": list(self.agents.keys()),
+                "phase2_features": {
+                    "pdf_enabled": enable_pdf,
+                    "images_enabled": enable_images,
+                    "classroom_enabled": classroom_settings is not None
+                }
             }
             
             logger.info("ADK multi-agent generation completed successfully")
@@ -469,10 +611,13 @@ async def generate_newsletter_with_adk(
     project_id: str,
     credentials_path: str,
     grade_level: str = "3年1組",
-    style: str = "modern"
+    style: str = "modern",
+    enable_pdf: bool = True,
+    enable_images: bool = True,
+    classroom_settings: Dict[str, Any] = None
 ) -> Dict[str, Any]:
     """
-    ADKマルチエージェントシステムを使用した学級通信生成
+    ADKマルチエージェントシステムを使用した学級通信生成（Phase 2拡張版）
     
     Args:
         audio_transcript: 音声認識結果
@@ -480,16 +625,22 @@ async def generate_newsletter_with_adk(
         credentials_path: 認証情報ファイルパス
         grade_level: 対象学年
         style: 生成スタイル
+        enable_pdf: PDF生成を有効にするか
+        enable_images: 画像生成・挿入を有効にするか
+        classroom_settings: Google Classroom配布設定
     
     Returns:
-        Dict[str, Any]: 生成結果
+        Dict[str, Any]: 生成結果（HTML、PDF、配布結果含む）
     """
     service = NewsletterADKService(project_id, credentials_path)
     
     result = await service.generate_newsletter_adk(
         audio_transcript=audio_transcript,
         grade_level=grade_level,
-        style=style
+        style=style,
+        enable_pdf=enable_pdf,
+        enable_images=enable_images,
+        classroom_settings=classroom_settings
     )
     
     return result
