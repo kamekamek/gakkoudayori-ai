@@ -1,0 +1,154 @@
+site_name: 学校だよりAI ドキュメント
+site_description: 音声入力とAIを活用した学級通信作成システム
+site_author: 亀ちゃん
+site_url: https://gakkoudayori-ai.example.com
+
+# Repository
+repo_name: gakkoudayori-ai
+repo_url: https://github.com/your-repo/gakkoudayori-ai
+edit_uri: edit/main/docs/
+
+# Copyright
+copyright: Copyright &copy; 2025 学校だよりAI Project
+
+# Configuration
+theme:
+  name: material
+  language: ja
+  palette:
+    # Palette toggle for light mode
+    - scheme: default
+      primary: blue
+      accent: orange
+      toggle:
+        icon: material/brightness-7
+        name: ダークモードに切り替え
+    # Palette toggle for dark mode
+    - scheme: slate
+      primary: blue
+      accent: orange
+      toggle:
+        icon: material/brightness-4
+        name: ライトモードに切り替え
+  font:
+    text: Noto Sans JP
+    code: Roboto Mono
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - search.share
+    - toc.follow
+    - content.code.copy
+    - content.action.edit
+    - content.action.view
+
+# Plugins
+plugins:
+  - search:
+      lang: ja
+  - git-revision-date-localized:
+      type: datetime
+      locale: ja
+  - minify:
+      minify_html: true
+  - mermaid2
+
+# Markdown extensions
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+      emoji_index: !!python/name:materialx.emoji.twemoji
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink:
+      repo_url_shorthand: true
+      user: your-username
+      repo: gakkoudayori-ai
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+# Page tree
+nav:
+  - ホーム:
+    - index.md
+  - はじめに:
+    - getting-started/overview.md
+    - getting-started/quickstart.md
+    - getting-started/user-stories.md
+    - getting-started/requirements-original.md
+  - 開発ガイド:
+    - guides/ai-workflow.md
+    - guides/editing.md
+    - ADK ワークフロー: guides/adk-workflow.md
+  - リファレンス:
+    - Tools:
+      - reference/tools/index.md
+      - reference/tools/speech_to_text_tool.md
+      - reference/tools/user_dict_tool.md
+    - Agents:
+      - reference/agents/index.md
+    - API:
+      - reference/api/endpoints.md
+      - reference/api/endpoints-archive.md
+    - スキーマ:
+      - reference/schema/data-model.md
+      - reference/schema/firestore-schema-archive.md
+  - アーキテクチャ:
+    - ADR:
+      - adr/001-flutter-web-only.md
+      - adr/002-quill-js-integration.md
+    - デザイン:
+      - design/ui-mockups/README.md
+  - リリース:
+    - release-notes/v0.1.0.md
+
+# Extra
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/your-repo/gakkoudayori-ai
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/gakkoudayori_ai
+  generator: false
+  version:
+    provider: mike
+
+# Custom CSS
+extra_css:
+  - stylesheets/extra.css
+
+# Custom JavaScript
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
