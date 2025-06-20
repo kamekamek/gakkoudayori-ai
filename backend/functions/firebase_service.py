@@ -3,7 +3,7 @@ Firebase Admin SDKの初期化とFirestoreクライアントの提供
 """
 import os
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 import firebase_admin
 from firebase_admin import credentials, firestore, storage
@@ -91,6 +91,25 @@ def get_firestore_client():
         return firestore.client()
     except Exception as e:
         logger.error(f"Error getting Firestore client after initialization: {e}", exc_info=True)
+        return None
+
+
+def get_storage_bucket():
+    """
+    Firebase Storageバケットを取得する
+    
+    Returns:
+        storage.bucket: Storageバケット
+    """
+    try:
+        if not firebase_initialized:
+            if not initialize_firebase():
+                logger.error("Cannot get storage bucket because Firebase initialization failed.")
+                return None
+        
+        return storage.bucket()
+    except Exception as e:
+        logger.error(f"Error getting storage bucket: {e}", exc_info=True)
         return None
 
 

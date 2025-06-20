@@ -914,6 +914,231 @@ def get_newsletter_templates():
         }), 500
 
 # ==============================================================================
+# 画像アップロード・管理エンドポイント
+# ==============================================================================
+
+@app.route('/api/v1/images/upload', methods=['POST'])
+def upload_images():
+    """
+    音声入力時の画像アップロード
+    複数画像の同時アップロード対応
+    """
+    try:
+        # ファイルアップロード確認
+        uploaded_files = request.files.getlist('image_files')
+        if not uploaded_files:
+            return jsonify({
+                'success': False,
+                'error': 'No image files provided',
+                'error_code': 'MISSING_FILES'
+            }), 400
+        
+        # パラメータ取得
+        user_id = request.form.get('user_id', 'anonymous')
+        category = request.form.get('category', 'newsletter')
+        
+        results = []
+        from firebase_service import get_storage_bucket
+        import time
+        
+        for file in uploaded_files:
+            # ファイル名チェック
+            if file.filename == '':
+                continue
+                
+            # 画像バリデーション
+            if not _validate_image_file(file):
+                continue
+                
+            # ファイル名生成
+            timestamp = int(time.time())
+            safe_filename = _sanitize_filename(file.filename)
+            filename = f"{timestamp}_{safe_filename}"
+            blob_path = f"images/{user_id}/{category}/{filename}"
+            
+            # Firebase Storageにアップロード
+            bucket = get_storage_bucket()
+            if not bucket:
+                logger.error("Could not get storage bucket")
+                continue
+                
+            blob = bucket.blob(blob_path)
+            
+            # ファイルを読み取ってアップロード
+            file.seek(0)  # ファイルポインタをリセット
+            blob.upload_from_file(file, content_type=file.content_type)
+            
+            # 署名付きURL生成（24時間有効）
+            from datetime import datetime, timedelta
+            expiration = datetime.utcnow() + timedelta(hours=24)
+            signed_url = blob.generate_signed_url(
+                expiration=expiration,
+                method='GET'
+            )
+            
+            results.append({
+                'filename': filename,
+                'url': signed_url,
+                'blob_path': blob_path,
+                'content_type': file.content_type,
+                'size': blob.size
+            })
+            
+            logger.info(f"Image uploaded successfully: {blob_path}")
+        
+        if results:
+            return jsonify({
+                'success': True,
+                'data': {
+                    'images': results,
+                    'upload_count': len(results),
+                    'user_id': user_id,
+                    'category': category
+                }
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'No valid images could be uploaded',
+                'error_code': 'NO_VALID_IMAGES'
+            }), 400
+            
+    except Exception as e:
+        logger.error(f"Image upload error: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': f'Image upload failed: {str(e)}',
+            'error_code': 'UPLOAD_ERROR'
+        }), 500
+
+
+@app.route('/api/v1/images/refresh-url', methods=['POST'])
+def refresh_image_url():
+    """
+    画像URLの更新（期限切れ対応）
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No JSON data provided',
+                'error_code': 'MISSING_DATA'
+            }), 400
+        
+        blob_path = data.get('blob_path')
+        user_id = data.get('user_id')
+        
+        if not blob_path:
+            return jsonify({
+                'success': False,
+                'error': 'Blob path is required',
+                'error_code': 'MISSING_BLOB_PATH'
+            }), 400
+        
+        # 権限チェック（匿名ユーザーは除く）
+        if user_id != 'anonymous' and not blob_path.startswith(f"images/{user_id}/"):
+            return jsonify({
+                'success': False,
+                'error': 'Access denied to this image',
+                'error_code': 'ACCESS_DENIED'
+            }), 403
+        
+        # 新しい署名付きURL生成
+        from firebase_service import get_storage_bucket
+        from datetime import datetime, timedelta
+        
+        bucket = get_storage_bucket()
+        if not bucket:
+            return jsonify({
+                'success': False,
+                'error': 'Storage service unavailable',
+                'error_code': 'STORAGE_UNAVAILABLE'
+            }), 503
+        
+        blob = bucket.blob(blob_path)
+        
+        # ファイル存在確認
+        if not blob.exists():
+            return jsonify({
+                'success': False,
+                'error': 'Image not found',
+                'error_code': 'IMAGE_NOT_FOUND'
+            }), 404
+        
+        # 新しい署名付きURL生成
+        expiration = datetime.utcnow() + timedelta(hours=24)
+        signed_url = blob.generate_signed_url(
+            expiration=expiration,
+            method='GET'
+        )
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'url': signed_url,
+                'blob_path': blob_path,
+                'expires_at': expiration.isoformat()
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"URL refresh error: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': f'URL refresh failed: {str(e)}',
+            'error_code': 'REFRESH_ERROR'
+        }), 500
+
+
+def _validate_image_file(file) -> bool:
+    """画像ファイルバリデーション"""
+    # ファイルタイプチェック
+    allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+    if file.content_type not in allowed_types:
+        logger.warning(f"Invalid file type: {file.content_type}")
+        return False
+    
+    # ファイルサイズチェック（5MB上限）
+    max_size = 5 * 1024 * 1024  # 5MB
+    file.seek(0, 2)  # ファイル末尾へ
+    file_size = file.tell()
+    file.seek(0)  # ファイル先頭に戻す
+    
+    if file_size > max_size:
+        logger.warning(f"File too large: {file_size} bytes")
+        return False
+    
+    if file_size == 0:
+        logger.warning("Empty file")
+        return False
+    
+    return True
+
+
+def _sanitize_filename(filename: str) -> str:
+    """ファイル名のサニタイズ"""
+    import re
+    
+    # 拡張子を保持
+    name, ext = os.path.splitext(filename)
+    
+    # 英数字とハイフン、アンダースコアのみ許可
+    safe_name = re.sub(r'[^a-zA-Z0-9\-_]', '', name)
+    
+    # 空の場合はデフォルト名
+    if not safe_name:
+        safe_name = 'image'
+    
+    # 長さ制限（拡張子含めて50文字以内）
+    max_length = 50 - len(ext)
+    if len(safe_name) > max_length:
+        safe_name = safe_name[:max_length]
+    
+    return safe_name + ext
+
+
+# ==============================================================================
 # PDF生成エンドポイント
 # ==============================================================================
 

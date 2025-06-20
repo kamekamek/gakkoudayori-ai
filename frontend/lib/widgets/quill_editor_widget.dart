@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:html' as html;
 import 'dart:ui_web' as ui_web;
+import '../services/image_service.dart';
 
 /// Quill.js WYSIWYGエディタウィジェット (Flutter Web版)
 /// HtmlElementViewとiframeを使用してQuill.js HTMLファイルを表示
@@ -14,6 +15,7 @@ class QuillEditorWidget extends StatefulWidget {
   final Function()? onEditorReady;
   final double height;
   final String initialTheme;
+  final List<String>? availableImages;
 
   const QuillEditorWidget({
     Key? key,
@@ -25,6 +27,7 @@ class QuillEditorWidget extends StatefulWidget {
     this.onEditorReady,
     this.height = 500,
     this.initialTheme = 'spring',
+    this.availableImages,
   }) : super(key: key);
 
   @override
@@ -37,6 +40,7 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
   String _currentContent = '';
   String _currentTheme = 'spring';
   final String _viewType = 'quill-editor-iframe';
+  List<String> _availableImages = [];
 
   // 通信用のメッセージハンドラ
   html.EventListener? _messageHandler;
@@ -45,6 +49,7 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
   void initState() {
     super.initState();
     _currentTheme = widget.initialTheme;
+    _availableImages = widget.availableImages ?? [];
     _initializeIframe();
     _setupMessageListener();
   }
@@ -68,6 +73,13 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
               _handleHtmlUpdate(html);
             } else if (data.startsWith('QUILL_READY')) {
               _handleQuillReady();
+            }
+          } else if (data is Map) {
+            // オブジェクト形式のメッセージ
+            if (data['type'] == 'REQUEST_IMAGE_INSERT') {
+              _showImageSelector();
+            } else if (data['type'] == 'IMAGE_DROPPED') {
+              _handleImageDrop(data['fileCount']);
             }
           }
         } catch (e) {
@@ -233,6 +245,174 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
     } catch (e) {
       if (kDebugMode) debugPrint('❌ [QuillEditor] テーマ変更エラー: $e');
     }
+  }
+
+  /// 画像を挿入
+  Future<void> insertImage(String imageUrl, [String altText = '']) async {
+    try {
+      final iframeWindow = _iframeElement.contentWindow;
+      if (iframeWindow == null) return;
+
+      // JavaScript側の画像挿入関数を呼び出し
+      iframeWindow.postMessage({
+        'type': 'INSERT_IMAGE',
+        'url': imageUrl,
+        'altText': altText,
+      }, '*');
+
+      if (kDebugMode) debugPrint('📷 [QuillEditor] 画像挿入完了: $imageUrl');
+    } catch (e) {
+      if (kDebugMode) debugPrint('❌ [QuillEditor] 画像挿入エラー: $e');
+    }
+  }
+
+  /// 複数画像の一括挿入
+  Future<void> insertMultipleImages(List<String> imageUrls) async {
+    try {
+      final iframeWindow = _iframeElement.contentWindow;
+      if (iframeWindow == null) return;
+
+      final images = imageUrls.map((url) => {'url': url, 'altText': ''}).toList();
+
+      iframeWindow.postMessage({
+        'type': 'INSERT_MULTIPLE_IMAGES',
+        'images': images,
+      }, '*');
+
+      if (kDebugMode) debugPrint('📷 [QuillEditor] 複数画像挿入完了: ${imageUrls.length}枚');
+    } catch (e) {
+      if (kDebugMode) debugPrint('❌ [QuillEditor] 複数画像挿入エラー: $e');
+    }
+  }
+
+  /// 利用可能な画像リストを設定
+  void setAvailableImages(List<String> imageUrls) {
+    setState(() {
+      _availableImages = imageUrls;
+    });
+  }
+
+  /// 画像選択ダイアログ表示
+  void _showImageSelector() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('📷 画像を挿入'),
+        content: Container(
+          width: 300,
+          height: 400,
+          child: _availableImages.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.image_not_supported, size: 64, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text('利用可能な画像がありません'),
+                      SizedBox(height: 8),
+                      Text(
+                        '音声入力画面で画像をアップロードしてください',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                )
+              : GridView.builder(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing: 8,
+                  ),
+                  itemCount: _availableImages.length,
+                  itemBuilder: (context, index) {
+                    final imageUrl = _availableImages[index];
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        insertImage(imageUrl);
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey[300]!),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: Colors.grey[100],
+                                child: Icon(Icons.error, color: Colors.grey),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('キャンセル'),
+          ),
+          ElevatedButton(
+            onPressed: _selectNewImage,
+            child: Text('新しい画像を追加'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 新しい画像の選択・アップロード
+  Future<void> _selectNewImage() async {
+    try {
+      Navigator.of(context).pop(); // ダイアログを閉じる
+
+      final selectedFiles = await ImageService.selectImages(multiple: false);
+      if (selectedFiles == null || selectedFiles.isEmpty) return;
+
+      final file = selectedFiles.first;
+
+      // アップロード処理
+      final uploadResults = await ImageService.uploadImages(
+        [file],
+        'current_user_id', // 実際のユーザーIDを使用
+      );
+
+      if (uploadResults.isNotEmpty) {
+        final imageUrl = uploadResults.first.url;
+        _availableImages.add(imageUrl);
+
+        // 画像をエディタに挿入
+        await insertImage(imageUrl);
+      }
+    } catch (e) {
+      _showError('画像アップロードエラー: $e');
+    }
+  }
+
+  void _handleImageDrop(int fileCount) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('画像のドラッグ&ドロップ機能は開発中です (${fileCount}枚)'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
 
   /// PDF生成要求処理

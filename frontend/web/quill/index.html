@@ -240,6 +240,31 @@
             color: #0c5460;
             text-align: center;
         }
+
+        /* ドラッグ&ドロップ視覚効果 */
+        .ql-editor.drag-over {
+            border: 2px dashed #007bff !important;
+            background-color: rgba(0, 123, 255, 0.1) !important;
+        }
+
+        /* 画像のレスポンシブ表示 */
+        .ql-editor img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin: 4px 0;
+        }
+
+        /* スマホでの画像表示最適化 */
+        @media (max-width: 768px) {
+            .ql-editor img {
+                max-width: 100%;
+                height: auto;
+                border-radius: 2px;
+                margin: 2px 0;
+            }
+        }
     </style>
 </head>
 <body>
@@ -288,6 +313,9 @@
             // テキスト配置
             [{ 'align': [] }],
             
+            // 画像挿入
+            ['image'],
+            
             // 色設定（シンプル）
             [{ 'color': ['#000000', '#e60000', '#ff9900', '#ffff00', '#008a00', '#0066cc', '#9933ff'] }],
             [{ 'background': ['#ffffff', '#ffeaa7', '#fab1a0', '#fd79a8', '#fdcb6e', '#55a3ff', '#a29bfe'] }],
@@ -296,11 +324,30 @@
             ['clean']
         ];
 
+        // 画像ハンドラー関数
+        function imageHandler() {
+            // Flutter側に画像挿入要求を送信
+            try {
+                window.parent.postMessage({
+                    type: 'REQUEST_IMAGE_INSERT'
+                }, '*');
+                updateStatus('📷 画像選択ダイアログを開いています...');
+            } catch (e) {
+                console.log('❌ [QuillBridge] 画像挿入要求エラー:', e);
+                updateStatus('❌ 画像挿入要求に失敗しました');
+            }
+        }
+
         // Quill.js インスタンス作成
         const quill = new Quill('#quill-editor', {
             theme: 'snow',
             modules: {
-                toolbar: toolbarOptions
+                toolbar: {
+                    container: toolbarOptions,
+                    handlers: {
+                        image: imageHandler  // カスタム画像ハンドラー
+                    }
+                }
             },
             placeholder: '学級通信の内容を入力してください...\n\n例：\n■ 今日の活動\n・運動会の練習をしました\n・算数の授業では掛け算を学習しました\n\n■ お知らせ\n・明日は体操服を忘れずに持参してください'
         });
@@ -339,6 +386,86 @@
                 'winter': '冬'
             };
             return names[theme] || theme;
+        }
+
+        // 画像管理機能
+        
+        // 画像挿入関数
+        function insertImage(imageUrl, altText = '') {
+            try {
+                const range = quill.getSelection();
+                if (range) {
+                    quill.insertEmbed(range.index, 'image', imageUrl);
+                    quill.setSelection(range.index + 1);
+                } else {
+                    // カーソル位置がない場合は末尾に挿入
+                    const length = quill.getLength();
+                    quill.insertEmbed(length - 1, 'image', imageUrl);
+                }
+                
+                updateStatus(`📷 画像を挿入しました: ${altText || 'image'}`);
+                console.log('📷 [QuillBridge] 画像挿入完了:', imageUrl);
+            } catch (error) {
+                updateStatus(`❌ 画像挿入エラー: ${error.message}`);
+                console.log('❌ [QuillBridge] 画像挿入エラー:', error);
+            }
+        }
+
+        // 複数画像の一括挿入
+        function insertMultipleImages(images) {
+            try {
+                images.forEach((img, index) => {
+                    setTimeout(() => {
+                        insertImage(img.url, img.altText);
+                    }, index * 100); // 少し間隔を空けて挿入
+                });
+                
+                updateStatus(`📷 ${images.length}枚の画像を挿入しました`);
+            } catch (error) {
+                updateStatus(`❌ 複数画像挿入エラー: ${error.message}`);
+                console.log('❌ [QuillBridge] 複数画像挿入エラー:', error);
+            }
+        }
+
+        // ドラッグ&ドロップ対応
+        function setupDragAndDrop() {
+            const editorContainer = document.getElementById('quill-editor');
+            
+            editorContainer.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+                editorContainer.classList.add('drag-over');
+            });
+
+            editorContainer.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                editorContainer.classList.remove('drag-over');
+            });
+
+            editorContainer.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                editorContainer.classList.remove('drag-over');
+                
+                const files = Array.from(e.dataTransfer.files);
+                const imageFiles = files.filter(file => file.type.startsWith('image/'));
+                
+                if (imageFiles.length > 0) {
+                    updateStatus(`📷 ${imageFiles.length}枚の画像がドロップされました`);
+                    
+                    // Flutter側にドロップされた画像の処理を依頼
+                    try {
+                        window.parent.postMessage({
+                            type: 'IMAGE_DROPPED',
+                            fileCount: imageFiles.length
+                        }, '*');
+                    } catch (e) {
+                        console.log('❌ [QuillBridge] ドロップ通知エラー:', e);
+                        updateStatus('❌ ドラッグ&ドロップ機能は開発中です');
+                    }
+                } else {
+                    updateStatus('❌ 画像ファイルのみドロップできます');
+                }
+            });
         }
 
         // Flutter ↔ JavaScript Bridge機能
@@ -441,6 +568,17 @@
             try {
                 const message = event.data;
                 
+                // 画像挿入コマンドの処理
+                if (message && typeof message === 'object') {
+                    if (message.type === 'INSERT_IMAGE') {
+                        insertImage(message.url, message.altText);
+                        return;
+                    } else if (message.type === 'INSERT_MULTIPLE_IMAGES') {
+                        insertMultipleImages(message.images);
+                        return;
+                    }
+                }
+                
                 // EXECコマンドの処理
                 if (typeof message === 'string' && message.startsWith('EXEC:')) {
                     const script = message.substring(5);
@@ -464,10 +602,15 @@
         };
         window.quillClear = clearContent;
         window.quillSwitchTheme = switchTheme;
+        window.quillInsertImage = insertImage;
+        window.quillInsertMultipleImages = insertMultipleImages;
         
         // 初期化完了を通知
         window.addEventListener('load', function() {
             updateStatus('✅ Quill.js エディタ初期化完了');
+            
+            // ドラッグ&ドロップ機能を設定
+            setupDragAndDrop();
             
             // Flutter側に準備完了を通知（シンプルな文字列形式）
             try {

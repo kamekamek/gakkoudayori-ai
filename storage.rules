@@ -1,10 +1,25 @@
 rules_version = '2';
 
-// Craft rules based on data in your Firestore database
-// allow write: if firestore.get(
-//    /databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin;
 service firebase.storage {
   match /b/{bucket}/o {
+    // 学級通信画像の読み取り許可（公開可能）
+    match /images/{userId}/newsletter/{imageId} {
+      allow read: if true;  // 学級通信は公開可能
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // 一時画像の読み書き許可
+    match /images/{userId}/temp/{sessionId}/{imageId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // 匿名ユーザー用の画像（認証なしでも許可）
+    match /images/anonymous/{sessionId}/{imageId} {
+      allow read: if true;
+      allow write: if true;
+    }
+    
+    // デフォルトで拒否
     match /{allPaths=**} {
       allow read, write: if false;
     }
