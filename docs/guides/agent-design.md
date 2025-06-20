@@ -2,24 +2,32 @@
 
 このドキュメントは、学校だよりAIの全体的なワークフローと、Google Agent Development Kit (ADK) に基づくエージェントの設計思想を解説します。
 
-## 1. 設計思想: Tool と Agent の分離
+## 1. 設計思想: Google ADK アーキテクチャ
 
-本プロジェクトでは、Google ADKの設計思想に基づき、コンポーネントを「Tool」と「Agent」に明確に分離します。
+本プロジェクトでは、Google Agent Development Kit (ADK) の設計思想に基づき、コンポーネントを「Tool」と「Agent」に明確に分離します。
 
--   **Tool**: 単一の責務を持つ再利用可能なコンポーネントです。外部APIのラッパーや、特定のデータ変換処理などが該当します。状態を持たず、入力に対して決定論的な出力を返します。
--   **Agent**: 複数のToolを組み合わせて、特定の目標を達成するためのワークフローを管理します。状態管理、ロジックの分岐、エラーハンドリング、リトライ処理などを担当します。
+### ADK の特徴
+- **モデル非依存**: 任意のLLMモデルと連携可能
+- **デプロイ非依存**: ローカル、クラウド、Docker等に対応
+- **モジュラー設計**: 再利用可能なコンポーネント構成
+
+### コンポーネント分離
+-   **Tool**: 単一機能を持つ関数型コンポーネント。`@tool` デコレータで定義し、`run_async()` メソッドを実装。外部API呼び出しや特定データ変換処理を担当。
+-   **Agent**: `BaseAgent` を継承し、複数Toolの協調やワークフロー管理を担当。`_run_async_impl()` メソッドで実行ロジックを定義。
 
 この分離により、各コンポーネントの責務が明確になり、テスト容易性と再利用性が向上します。
 
 ### Tool・Agent マッピング
 
-| 機能フェーズ      | 実装形態      | コンポーネント名（例）        | 理由                                       |
+| 機能フェーズ      | 実装形態      | コンポーネント名              | 理由                                       |
 | ----------------- | ------------- | ----------------------------- | ------------------------------------------ |
 | 音声 → テキスト   | **Tool**      | `SpeechToTextTool`            | 単一API呼び出し（Google Speech-to-Text）   |
-| 固有名詞補正      | **Tool**      | `UserDictionaryTool`          | ローカル辞書置換だけで完結し状態管理不要     |
+| 固有名詞補正      | **Tool**      | `UserDictLookupTool`          | ローカル辞書置換だけで完結し状態管理不要     |  
 | 文章リライト・整形 | **Agent**     | `RewriteAgent`                | 対話や指示に基づき、整形方針を自律的に判断 |
-| HTMLテンプレート充填 | **Tool**      | `HtmlTemplateTool`            | パラメータをテンプレートに挿入するだけの単純処理 |
-| HTML → PDF変換   | **Tool**      | `PdfExportTool`               | 外部ライブラリのラッパー                   |
+| HTMLテンプレート充填 | **Tool**      | `RenderTemplateTool`          | パラメータをテンプレートに挿入するだけの単純処理 |
+| HTML → PDF変換   | **Tool**      | `HtmlToPdfTool`               | 外部ライブラリのラッパー                   |
+| Classroom投稿     | **Tool**      | `PostClassroomTool`           | Google Classroom API呼び出し              |
+| LINE通知          | **Tool**      | `LineNotifyTool`              | LINE Notify API呼び出し                   |
 | **ワークフロー全体** | **Agent**     | `OrchestratorAgent`           | 複数Tool/Agentの呼び出し順序・リトライ・分岐を制御 |
 
 ---
@@ -165,39 +173,21 @@ class HtmlTemplateTool:
 
 ## 4. ディレクトリ構造
 
-ADKの思想に基づき、以下のディレクトリ構造で実装を進めます。`backend/functions` 配下に `agents` と `tools` を配置します。
+ADKの思想に基づき、以下のディレクトリ構造で実装を進めます。
 
 ```
-new-agent/
-├─ backend/
-│  └─ functions/
-│     ├─ agents/               # Agent 実装
-│     │  ├─ __init__.py
-│     │  ├─ orchestrator_agent.py
-│     │  └─ rewrite_agent.py
-│     └─ tools/                # Tool 実装
-│        ├─ __init__.py
-│        ├─ speech_to_text_tool.py
-│        ├─ user_dictionary_tool.py
-│        ├─ html_template_tool.py
-│        └─ pdf_export_tool.py
-└─ docs/
-   ├─ guides/
-   │  └─ adk-workflow.md  (このファイル)
-   └─ reference/
-      ├─ agents/
-      │  ├─ orchestrator_agent.md
-      │  └─ rewrite_agent.md
-      └─ tools/
-         ├─ speech_to_text_tool.md
-         └─ ... (各Toolの仕様書)
+
+│  ├─ agents/               # Agent 実装
+│  │  ├─ __init__.py
+│  │  ├─ orchestrator_agent.py
+│  │  └─ rewrite_agent.py
+│  └─ tools/                # Tool 実装
+│     ├─ __init__.py
+│     ├─ speech_to_text_tool.py
+│     ├─ user_dictionary_tool.py
+│     ├─ html_template_tool.py
+│     └─ pdf_export_tool.py
 
 ```
 
 ---
-
-## 5. 関連ドキュメント
-
-- [ADR-0002: Use ADK](../adr/adr-0002-use-adk.md)
-- [ADR-0003: Layout Agent vs Tool Decision](../adr/adr-0003-layout-agent-vs-tool.md)
-- [AI機能ワークフロー](./ai-workflow.md)

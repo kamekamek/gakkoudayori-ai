@@ -26,7 +26,7 @@ HTMLエディターエージェントを別途作成するのではなく、**HT
 3. **パフォーマンス**: 直接的なツール呼び出しは、エージェントオーケストレーションよりも低レイテンシ
 4. **ユーザー制御**: ユーザーはAI駆動の自動編集ではなく、編集を直接制御する必要がある
 
-### Architecture Benefits
+### アーキテクチャの利点
 
 ```mermaid
 graph LR
@@ -38,7 +38,7 @@ graph LR
     style C fill:#f3e5f5
 ```
 
-**Vs. Agent Architecture (rejected):**
+**エージェントアーキテクチャとの比較（却下）:**
 
 ```mermaid
 graph LR
@@ -50,26 +50,26 @@ graph LR
     style B fill:#ffebee
 ```
 
-### Specific Advantages
+### 具体的な利点
 
-1. **Reduced Complexity**
-   - No need for agent orchestration logic
-   - Simpler error handling
-   - Direct data flow
+1. **複雑性の削減**
+   - エージェントオーケストレーションロジックが不要
+   - よりシンプルなエラーハンドリング
+   - 直接的なデータフロー
 
-2. **Better User Experience**
-   - Faster response times
-   - More predictable behavior
-   - Easier debugging
+2. **より良いユーザーエクスペリエンス**
+   - より高速な応答時間
+   - より予測可能な動作
+   - デバッグの容易さ
 
-3. **Cost Efficiency**
-   - Lower API call costs
-   - Reduced infrastructure overhead
-   - Simpler deployment
+3. **コスト効率**
+   - より低いAPI呼び出しコスト
+   - インフラストラクチャオーバーヘッドの削減
+   - よりシンプルなデプロイメント
 
-## Alternatives Considered
+## 検討した代替案
 
-### Option 1: Full HTML Editor Agent
+### 選択肢1: 完全なHTMLエディターエージェント
 ```python
 class HtmlEditorAgent:
     def __init__(self):
@@ -80,17 +80,17 @@ class HtmlEditorAgent:
         # More complex but could handle advanced scenarios
 ```
 
-**Pros:**
-- Could make intelligent editing suggestions
-- Extensible for future AI-powered features
-- Better separation of concerns
+**メリット:**
+- インテリジェントな編集提案が可能
+- 将来のAI機能拡張に適している
+- 関心の分離がより良い
 
-**Cons:**
-- Over-engineered for current needs
-- Higher latency and complexity
-- Users want control, not AI automation
+**デメリット:**
+- 現在のニーズに対してオーバーエンジニアリング
+- より高いレイテンシと複雑性
+- ユーザーはAI自動化ではなく制御を求める
 
-### Option 2: Tool + Prompt System (Rejected)
+### 選択肢2: ツール + プロンプトシステム（却下）
 ```python
 @tool
 async def html_editor_tool(html: str, editing_prompts: List[str]) -> str:
@@ -98,31 +98,31 @@ async def html_editor_tool(html: str, editing_prompts: List[str]) -> str:
     # Hybrid approach between tool and agent
 ```
 
-**Pros:**
-- Some automation while keeping tool simplicity
-- Could adapt behavior based on prompts
+**メリット:**
+- ツールのシンプルさを保ちながら一部の自動化が可能
+- プロンプトに基づいて動作を適応させることができる
 
-**Cons:**
-- Confusing interface
-- Hard to predict behavior
-- Not needed for WYSIWYG editing
+**デメリット:**
+- 混乱を招くインターフェース
+- 動作の予測が困難
+- WYSIWYG編集には不要
 
-### Option 3: Micro-Agents (Rejected)
-- Separate agents for text editing, image insertion, validation
-- Complex orchestration between multiple agents
+### 選択肢3: マイクロエージェント（却下）
+- テキスト編集、画像挿入、バリデーション用の個別エージェント
+- 複数エージェント間の複雑なオーケストレーション
 
-**Pros:**
-- Maximum modularity
-- Each agent has single responsibility
+**メリット:**
+- 最大限のモジュラリティ
+- 各エージェントが単一の責任を持つ
 
-**Cons:**
-- Massive complexity overhead
-- Poor user experience
-- Not suitable for interactive editing
+**デメリット:**
+- 巨大な複雑性のオーバーヘッド
+- 貧弱なユーザーエクスペリエンス
+- インタラクティブな編集に適さない
 
-## Implementation Details
+## 実装詳細
 
-### Tool Interface
+### ツールインターフェース
 ```python
 @tool
 async def html_editor_tool(
@@ -137,56 +137,56 @@ async def html_editor_tool(
     """
 ```
 
-### Integration Points
-1. **With LayoutAgent**: Receives generated HTML with editable regions
-2. **With Image Upload Tool**: Automatic integration when user inserts images
-3. **With PDF ExportAgent**: Passes edited HTML for PDF generation
+### 統合ポイント
+1. **LayoutAgentとの統合**: 編集可能領域を持つ生成されたHTMLを受け取る
+2. **Image Upload Toolとの統合**: ユーザーが画像を挿入する際の自動統合
+3. **PDF ExportAgentとの統合**: PDF生成のために編集されたHTMLを渡す
 
-### Future Extensibility
-The tool architecture allows for future enhancements:
-- AI-powered content suggestions (as optional features)
-- Advanced validation rules
-- Custom editing plugins
-- Multi-user collaborative editing
+### 将来の拡張性
+ツールアーキテクチャは将来の機能拡張を可能にします：
+- AI駆動のコンテンツ提案（オプション機能として）
+- 高度なバリデーションルール
+- カスタム編集プラグイン
+- マルチユーザー協調編集
 
-## Consequences
+## 結果
 
-### Positive
-- **Simpler codebase**: Less complex than agent architecture
-- **Better performance**: Direct tool calls, no agent overhead
-- **Easier testing**: Unit tests for pure functions
-- **User control**: Users have direct control over editing
-- **Clear data flow**: HTML → Edit → HTML (no side effects)
+### ポジティブ
+- **よりシンプルなコードベース**: エージェントアーキテクチャより複雑でない
+- **より良いパフォーマンス**: 直接的なツール呼び出し、エージェントオーバーヘッドなし
+- **テストの容易さ**: 純粋関数のユニットテスト
+- **ユーザー制御**: ユーザーは編集を直接制御できる
+- **明確なデータフロー**: HTML → 編集 → HTML（副作用なし）
 
-### Negative
-- **Limited automation**: Cannot make autonomous editing decisions
-- **Future limitations**: If we need complex AI editing, would need refactoring
-- **Tool coupling**: Image Upload Tool is tightly coupled with HTML Editor
+### ネガティブ
+- **限定的な自動化**: 自律的な編集決定ができない
+- **将来の制限**: 複雑なAI編集が必要になった場合、リファクタリングが必要
+- **ツールの結合**: Image Upload ToolはHTML Editorと密結合
 
-### Migration Path
-If we later need agent capabilities:
-1. Keep existing tool for backward compatibility
-2. Create HtmlEditorAgent that wraps the tool
-3. Gradual migration based on use cases
+### 移行パス
+後でエージェント機能が必要になった場合：
+1. 下位互換性のために既存のツールを保持
+2. ツールをラップするHtmlEditorAgentを作成
+3. ユースケースに基づく段階的な移行
 
-## Monitoring and Success Metrics
+## 監視と成功指標
 
-### Performance Metrics
-- Tool response time < 100ms for editor launch
-- Image upload integration < 500ms per image
-- User satisfaction score > 4.0/5.0
+### パフォーマンス指標
+- エディター起動のツール応答時間 < 100ms
+- 画像アップロード統合 < 500ms/画像
+- ユーザー満足度スコア > 4.0/5.0
 
-### Architecture Metrics
-- Code complexity (cyclomatic complexity < 10)
-- Test coverage > 90%
-- Integration failure rate < 1%
+### アーキテクチャ指標
+- コード複雑度（循環的複雑度 < 10）
+- テストカバレッジ > 90%
+- 統合失敗率 < 1%
 
-## Related Decisions
+## 関連する決定
 
 - [ADR-0001: Agent Development Kit Adoption](adr-0001-adk-adoption.md)
 - [ADR-0002: Firebase Storage for Images](adr-0002-firebase-storage.md)
 
-## References
+## 参考文献
 
 - [Google ADK Documentation](https://developers.google.com/adk)
 - [Agent vs Tool Design Patterns](https://cloud.google.com/blog/topics/ai/agent-design-patterns)
@@ -195,6 +195,6 @@ If we later need agent capabilities:
 
 ---
 
-**Decision Date**: 2024-06-20  
-**Decision Makers**: Architecture Team  
-**Review Date**: 2024-09-20 (3 months)
+**決定日**: 2024-06-20  
+**決定者**: アーキテクチャチーム  
+**レビュー日**: 2024-09-20（3ヶ月後）
