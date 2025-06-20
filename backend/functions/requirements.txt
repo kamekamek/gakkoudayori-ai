@@ -15,6 +15,11 @@ google-cloud-speech==2.26.1
 google-cloud-storage==2.17.0
 google-generativeai==0.7.1
 
+# ADK & Multi-Agent Support
+# TODO: Add official Google ADK SDK when available
+# Currently using Vertex AI as the underlying engine for agents
+vertexai==1.56.0
+
 # PDF & Image Processing
 weasyprint==62.3
 Pillow==10.4.0

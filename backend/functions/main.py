@@ -34,6 +34,11 @@ from user_dictionary_service import (
 from gemini_api_service import generate_text
 from html_constraint_service import generate_constrained_html
 
+# ADK関連インポート
+from ai_service_interface import AIConfig, AIServiceFactory, HybridAIService, ContentRequest
+from vertex_ai_service import VertexAIService
+from adk_multi_agent_service import ADKMultiAgentService
+
 # ログ設定
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -85,6 +90,64 @@ def get_firestore_client():
 
 # アプリケーション起動時にFirebase初期化
 firebase_initialized = init_firebase()
+
+# ADK設定初期化
+def get_ai_config(provider_type="hybrid"):
+    """AI設定を取得"""
+    project_id = os.getenv('GOOGLE_CLOUD_PROJECT', 'gakkoudayori-ai')
+    credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', '')
+    
+    if provider_type == "vertex_ai":
+        return AIConfig(
+            provider="vertex_ai",
+            model_name="gemini-1.5-flash",
+            project_id=project_id,
+            credentials_path=credentials_path,
+            location="us-central1",
+            temperature=0.2,
+            max_output_tokens=2048
+        )
+    elif provider_type == "adk":
+        return AIConfig(
+            provider="adk_multi_agent",
+            model_name="gemini-1.5-flash",
+            project_id=project_id,
+            credentials_path=credentials_path,
+            location="us-central1",
+            multi_agent_enabled=True,
+            temperature=0.2,
+            max_output_tokens=2048
+        )
+    else:
+        # ハイブリッド設定の場合は両方の設定を返す
+        vertex_config = get_ai_config("vertex_ai")
+        adk_config = get_ai_config("adk")
+        return vertex_config, adk_config
+
+# AIサービスを初期化
+ai_service = None
+try:
+    # 環境変数でプロバイダーを制御 (default: hybrid)
+    ai_provider = os.getenv('AI_PROVIDER', 'hybrid')
+    
+    if ai_provider == 'hybrid':
+        vertex_config, adk_config = get_ai_config("hybrid")
+        ai_service = HybridAIService(vertex_config, adk_config)
+        logger.info("Initialized Hybrid AI Service (Vertex AI + ADK)")
+    else:
+        config = get_ai_config(ai_provider)
+        ai_service = AIServiceFactory.create_service(config)
+        logger.info(f"Initialized {ai_provider} AI Service")
+        
+except Exception as e:
+    logger.error(f"Failed to initialize AI service: {e}")
+    # フォールバックとしてVertex AIを使用
+    try:
+        config = get_ai_config("vertex_ai")
+        ai_service = VertexAIService(config)
+        logger.info("Fallback to Vertex AI Service")
+    except Exception as fallback_error:
+        logger.error(f"Fallback AI service initialization failed: {fallback_error}")
 
 @app.route('/')
 def hello_world():
@@ -737,9 +800,17 @@ def generate_html_content():
         }), 500
 
 @app.route('/api/v1/ai/generate-newsletter', methods=['POST'])
-def generate_newsletter():
-    """学級通信自動生成エンドポイント（統合版）"""
+async def generate_newsletter():
+    """学級通信自動生成エンドポイント（ADK対応版）"""
     try:
+        # AIサービスが初期化されているかチェック
+        if ai_service is None:
+            return jsonify({
+                'success': False,
+                'error': 'AI service not initialized',
+                'error_code': 'SERVICE_UNAVAILABLE'
+            }), 503
+        
         # リクエストデータ取得
         data = request.get_json()
         if not data:
@@ -764,84 +835,77 @@ def generate_newsletter():
         target_audience = data.get('target_audience', 'parents')
         season = data.get('season', 'auto')
         custom_instruction = data.get('custom_instruction', '')
-        
-        # 認証情報パス（Cloud Run環境ではNone）
-        credentials_path = None if os.getenv('K_SERVICE') else os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
-        project_id = os.getenv('GOOGLE_CLOUD_PROJECT', 'gakkoudayori-ai')
+        context = data.get('context', None)  # ADK用コンテキスト
         
         # 季節自動判定
         if season == 'auto':
             season = _detect_season_from_text(speech_text)
         
-        # カスタム指示を含むプロンプト構築
-        newsletter_instruction = f"""
-        形式: {template_type}形式の学級通信
-        対象読者: {target_audience}
-        季節: {season}
-        挨拶文含める: {include_greeting}
-        """
+        # カスタム指示をテキストに統合
+        enhanced_text = speech_text
         if custom_instruction:
-            newsletter_instruction += f"\n追加指示: {custom_instruction}"
+            enhanced_text += f"\n\n追加指示: {custom_instruction}"
         
-        # 統合されたHTML生成APIを使用
-        result = generate_constrained_html(
-            prompt=speech_text,
-            project_id=project_id,
-            credentials_path=credentials_path,
-            custom_instruction=newsletter_instruction,
-            season_theme=season,
-            document_type='class_newsletter'
+        # ADK/Vertex AI用のリクエスト構築
+        newsletter_request = ContentRequest(
+            text=enhanced_text,
+            template_type=template_type,
+            include_greeting=include_greeting,
+            target_audience=target_audience,
+            season=season,
+            context=context
         )
         
-        # レスポンスハンドリングを改善
-        html_content = None
-        validation_info = None
-        ai_metadata = None
-        processing_time_ms = 0
-        timestamp = datetime.utcnow().isoformat()
-
-        if result.get('success'):
-            # 完全に成功した場合
-            data = result.get('data', {})
-            html_content = data.get('html_content')
-            validation_info = data.get('validation_info')
-            ai_metadata = data.get('ai_metadata')
-            processing_time_ms = data.get('processing_time_ms', 0)
-            timestamp = result.get('timestamp', timestamp)
-
-        elif result.get('code') == 'HTML_VALIDATION_FILTERING_ERROR':
-            details = result.get('details', {})
-            if 'filtered_html_preview' in details:
-                # フィルタリングはされたが、コンテンツ自体は存在する場合
-                logger.warning(f"HTML validation filtering occurred: {details.get('validation_issues')}")
-                html_content = details['filtered_html_preview']
-                validation_info = details  # フィルタリング情報を詳細として詰める
-                ai_metadata = details.get('ai_metadata', {}) # 部分的なメタデータでも取得
-                processing_time_ms = details.get('processing_time_ms', 0)
-                timestamp = result.get('timestamp', timestamp)
+        # 新しいAIサービス（ADK対応）で学級通信生成
+        result = await ai_service.generate_newsletter(newsletter_request)
         
-        if html_content is not None:
-            # 成功レスポンスを構築
+        # ADK/Vertex AI結果のレスポンス処理
+        if result.get('success'):
+            # 成功した場合
+            data = result.get('data', {})
+            processing_phases = result.get('processing_phases', [])
+            
+            # 成功レスポンスを構築（API仕様に準拠）
             newsletter_data = {
                 'success': True,
                 'data': {
-                    'newsletter_html': html_content,
-                    'original_speech': speech_text,
-                    'template_type': template_type,
-                    'season': season,
-                    'processing_time_ms': processing_time_ms,
-                    'generated_at': timestamp,
-                    'word_count': len(html_content.split()),
-                    'character_count': len(html_content),
-                    'validation_info': validation_info,
-                    'ai_metadata': ai_metadata
+                    'newsletter_html': data.get('newsletter_html', ''),
+                    'original_speech': data.get('original_speech', speech_text),
+                    'template_type': data.get('template_type', template_type),
+                    'season': data.get('season', season),
+                    'processing_time_ms': data.get('ai_metadata', {}).get('processing_time_ms', 0),
+                    'generated_at': data.get('generated_at', datetime.utcnow().isoformat()),
+                    'word_count': data.get('ai_metadata', {}).get('word_count', 0),
+                    'character_count': data.get('ai_metadata', {}).get('character_count', 0),
+                    'ai_metadata': {
+                        **data.get('ai_metadata', {}),
+                        'processing_phases': len(processing_phases) if processing_phases else 1,
+                        'agents_used': [phase.get('agent_name') for phase in processing_phases] if processing_phases else ['single_model']
+                    },
+                    'processing_phases': processing_phases  # ADK固有の詳細情報
                 }
             }
+            
+            # ハイブリッドサービスの場合は使用されたプロバイダー情報をログ出力
+            provider = data.get('ai_metadata', {}).get('provider', 'unknown')
+            logger.info(f"Newsletter generated using {provider} provider")
+            
             return jsonify(newsletter_data), 200
         else:
-            # 上記以外のエラーは従来通り500エラーとして処理
-            logger.error(f"Newsletter generation failed with unhandled error: {result}")
-            return jsonify(result), 500
+            # エラーが発生した場合
+            error_info = result.get('error', {})
+            error_code = error_info.get('code', 'GENERATION_ERROR')
+            error_message = error_info.get('message', 'Newsletter generation failed')
+            
+            logger.error(f"Newsletter generation failed: {error_message}")
+            
+            return jsonify({
+                'success': False,
+                'error': error_message,
+                'error_code': error_code,
+                'details': error_info.get('details', {}),
+                'processing_phases': result.get('processing_phases', [])
+            }), 500
             
     except Exception as e:
         logger.error(f"Newsletter generation endpoint error: {e}")
@@ -888,6 +952,87 @@ def _detect_season_from_text(text: str) -> str:
                 return season
     
     return base_season
+
+@app.route('/api/v1/ai/service-info', methods=['GET'])
+async def get_ai_service_info():
+    """AIサービス情報取得エンドポイント"""
+    try:
+        if ai_service is None:
+            return jsonify({
+                'success': False,
+                'error': 'AI service not initialized',
+                'error_code': 'SERVICE_UNAVAILABLE'
+            }), 503
+        
+        # サービス情報取得
+        service_info = ai_service.get_service_info()
+        
+        # 接続確認
+        connection_result = await ai_service.check_connection()
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'service_info': service_info,
+                'connection_status': connection_result,
+                'environment': {
+                    'ai_provider': os.getenv('AI_PROVIDER', 'hybrid'),
+                    'project_id': os.getenv('GOOGLE_CLOUD_PROJECT', 'gakkoudayori-ai'),
+                    'is_cloud_run': bool(os.getenv('K_SERVICE'))
+                }
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"AI service info error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'error_code': 'SERVICE_INFO_ERROR'
+        }), 500
+
+@app.route('/api/v1/ai/switch-provider', methods=['POST'])
+def switch_ai_provider():
+    """AIプロバイダー切り替えエンドポイント（開発用）"""
+    try:
+        data = request.get_json()
+        new_provider = data.get('provider', 'hybrid')
+        
+        if new_provider not in ['vertex_ai', 'adk_multi_agent', 'hybrid']:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid provider specified',
+                'error_code': 'INVALID_PROVIDER'
+            }), 400
+        
+        global ai_service
+        
+        # 新しいプロバイダーでサービス初期化
+        if new_provider == 'hybrid':
+            vertex_config, adk_config = get_ai_config("hybrid")
+            ai_service = HybridAIService(vertex_config, adk_config)
+        else:
+            config = get_ai_config(new_provider)
+            ai_service = AIServiceFactory.create_service(config)
+        
+        logger.info(f"AI provider switched to: {new_provider}")
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'new_provider': new_provider,
+                'service_info': ai_service.get_service_info(),
+                'message': f'AI provider switched to {new_provider}'
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"AI provider switch error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'error_code': 'PROVIDER_SWITCH_ERROR'
+        }), 500
 
 @app.route('/api/v1/ai/newsletter-templates', methods=['GET'])
 def get_newsletter_templates():
