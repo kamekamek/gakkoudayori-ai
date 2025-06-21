@@ -35,6 +35,53 @@ cd frontend
 flutter run -d chrome
 ```
 
+## 🎯 Makefileの代替コマンド（Windows用）
+
+### Windowsバッチファイルでの実行
+
+プロジェクトには`Makefile`が用意されていますが、WindowsではMakeコマンドがデフォルトで使えません。
+そのため、Windows用のバッチファイルを用意しています。
+
+#### 利用可能なコマンド
+
+```batch
+# scriptsディレクトリに移動
+cd scripts
+
+# 統合コマンドランチャーで実行
+windows-commands.bat help        # 使用可能なコマンド一覧表示
+windows-commands.bat dev         # フロントエンド開発サーバー起動
+windows-commands.bat backend     # バックエンド開発サーバー起動
+windows-commands.bat test        # 全テスト実行
+windows-commands.bat build       # プロダクションビルド
+windows-commands.bat setup       # Python環境セットアップ
+
+# または個別バッチファイルを直接実行
+win-dev.bat                      # フロントエンド開発サーバー起動
+win-backend-dev.bat              # バックエンド開発サーバー起動
+win-backend-setup.bat            # Python環境セットアップ
+win-test.bat                     # テスト実行
+win-build.bat                    # ビルド実行
+```
+
+#### Make for Windowsのインストール（オプション）
+
+Makefileを直接使いたい場合は、以下の方法でMakeをインストールできます：
+
+```powershell
+# Chocolateyを使用
+choco install make
+
+# Scoopを使用
+scoop install make
+
+# インストール後、Makefileのコマンドが使用可能
+make help          # ヘルプ表示
+make dev           # フロントエンド開発
+make backend-dev   # バックエンド開発
+make test          # テスト実行
+```
+
 ## 📋 インストールされるツール
 
 自動セットアップで以下のツールがインストールされます：
