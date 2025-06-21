@@ -233,3 +233,4 @@ tmux-*.log
 # - ドキュメント（docs/）
 # - テスト用モックデータ（test/fixtures/）
 .firebase/*
+claude-code.sh
