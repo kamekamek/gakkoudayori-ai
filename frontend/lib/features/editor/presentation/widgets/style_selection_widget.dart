@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'adk_agent_dashboard.dart'; // NewsletterStyle enum
+import '../../../../core/models/models.dart';
 
 /// スタイル選択ウィジェット
 /// 

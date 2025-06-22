@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../services/audio_service.dart';
-import '../services/graphical_record_service.dart';
-import '../services/user_dictionary_service.dart';
-import '../widgets/print_preview_widget.dart';
-import '../widgets/user_dictionary_widget.dart';
+import '../../../../core/services/services.dart';
+import '../../../editor/presentation/widgets/print_preview_widget.dart';
+import '../../../settings/presentation/widgets/user_dictionary_widget.dart';
+import '../../../../core/models/models.dart';
 import 'dart:html' as html;
 
 /// 学校だよりAI メイン作成画面

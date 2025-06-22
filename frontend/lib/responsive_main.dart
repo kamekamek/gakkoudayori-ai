@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'pages/newsletter_creation_page.dart';
+import 'features/chat/presentation/pages/newsletter_creation_page.dart';
 
 /// 学校だよりAI - レスポンシブ対応版
 void main() {

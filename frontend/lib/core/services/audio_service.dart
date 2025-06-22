@@ -4,7 +4,7 @@ import 'dart:js_util' as js_util;
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import '../config/app_config.dart';
+import '../../config/app_config.dart';
 
 /// 音声録音サービス (Phase R2)
 /// JavaScript の Web Audio API と連携

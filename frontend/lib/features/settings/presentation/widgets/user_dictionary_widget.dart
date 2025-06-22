@@ -2,8 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import '../config/app_config.dart';
-import '../services/user_dictionary_service.dart';
+import '../../../../config/app_config.dart';
+import '../../../../core/services/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// ユーザー辞書管理ウィジェット

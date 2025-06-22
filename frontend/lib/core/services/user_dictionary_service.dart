@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import '../config/app_config.dart';
+import '../../config/app_config.dart';
 
 /// フロントエンド用ユーザー辞書サービス
 /// バックエンドのユーザー辞書APIと連携して文字起こし結果を修正
