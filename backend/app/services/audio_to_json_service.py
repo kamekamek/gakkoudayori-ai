@@ -19,15 +19,6 @@ from .gemini_api_service import generate_text
 # ロギング設定
 logger = logging.getLogger(__name__)
 
-# ADK関連（公式フレームワーク）
-try:
-    from .adk_official_service import generate_newsletter_with_official_adk
-    OFFICIAL_ADK_AVAILABLE = True
-    logger.info("Official ADK service imported successfully")
-except ImportError as e:
-    OFFICIAL_ADK_AVAILABLE = False
-    logger.warning(f"Official ADK service not available: {e}")
-
 # プロンプトディレクトリを定数として定義
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROMPT_DIR = os.path.join(BASE_DIR, "prompts")

@@ -17,6 +17,7 @@ import logging
 import json
 from typing import Optional, AsyncGenerator
 from datetime import datetime
+import asyncio
 
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
@@ -35,7 +36,7 @@ from models.adk_models import (
 )
 from services.adk_session_service import FirestoreSessionService
 from services.firebase_service import get_firestore_client
-from services.newsletter_generator import NewsletterGenerator
+from services.newsletter_generator import generate_newsletter_from_speech
 
 logger = logging.getLogger(__name__)
 
@@ -140,47 +141,34 @@ async def chat_with_agent(request: ChatRequest) -> ChatResponse:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/newsletter/generate", response_model=NewsletterGenerationResponse, summary="学級通信を生成")
+@router.post("/generate_newsletter", response_model=NewsletterGenerationResponse, summary="学級通信を生成")
 async def generate_newsletter(request: NewsletterGenerationRequest) -> NewsletterGenerationResponse:
-    """学級通信生成を開始するエンドポイント"""
+    """学級通信を生成するエンドポイント"""
     try:
-        session_id = request.session_id or str(uuid.uuid4())
-        
-        # チャットリクエストとして処理
-        chat_request = ChatRequest(
-            message=request.initial_request,
-            user_id=request.user_id,
-            session_id=session_id,
-            metadata={"purpose": "newsletter_generation"}
+        # 関数を直接呼び出す
+        result = await asyncio.to_thread(
+            generate_newsletter_from_speech,
+            speech_text=request.speech_text,
+            template_type=request.template_type,
+            include_greeting=request.include_greeting,
+            target_audience=request.target_audience,
+            season=request.season
         )
-        
-        # エージェントとチャット
-        response = await chat_with_agent(chat_request)
-        
-        # セッション情報を取得
-        session_service = get_session_service()
-        session = await session_service.get(session_id)
-        
-        # レスポンスを作成
-        messages = []
-        if session and hasattr(session, 'history'):
-            for item in session.history:
-                messages.append(ChatMessage(
-                    role=item.get('role', 'assistant'),
-                    content=str(item.get('content', '')),
-                    timestamp=datetime.utcnow()
-                ))
-        
-        return NewsletterGenerationResponse(
-            session_id=session_id,
-            status="completed" if response.html_output else "in_progress",
-            html_content=response.html_output,
-            messages=messages
-        )
-        
+
+        if result.get('success'):
+            return NewsletterGenerationResponse(
+                success=True,
+                data=result.get('data')
+            )
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail=f"ニュースレターの生成に失敗しました: {result.get('error')}"
+            )
+
     except Exception as e:
-        logger.error(f"Error in generate_newsletter: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception(f"ニュースレター生成中に予期せぬエラーが発生: {e}")
+        raise HTTPException(status_code=500, detail=f"サーバー内部エラー: {str(e)}")
 
 
 @router.get("/sessions/{session_id}", response_model=SessionInfo, summary="セッション情報を取得")
