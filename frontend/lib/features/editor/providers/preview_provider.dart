@@ -35,6 +35,44 @@ class PreviewProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // テスト用サンプルHTMLの設定
+  void loadSampleContent() {
+    const sampleHtml = '''
+<h1>🌸 1年1組 学級通信 🌸</h1>
+<p><strong>日付:</strong> 2024年6月22日</p>
+
+<h2>📚 今日の学習</h2>
+<ul>
+  <li><strong>国語:</strong> ひらがなの練習をしました</li>
+  <li><strong>算数:</strong> 数の数え方を学びました</li>
+  <li><strong>図工:</strong> クレヨンで絵を描きました</li>
+</ul>
+
+<h2>🎯 今日のできごと</h2>
+<p>今日は朝の会で<span style="color: #e60000;"><strong>みんなで元気よく挨拶</strong></span>ができました。
+休み時間には校庭で<em>ドッジボール</em>をして楽しく過ごしました。</p>
+
+<h2>📢 明日の予定</h2>
+<ol>
+  <li>体育の授業があります → <strong>体操服を忘れずに</strong></li>
+  <li>図書の時間があります</li>
+  <li>給食は<span style="background-color: #ffeaa7;">カレーライス</span>です</li>
+</ol>
+
+<h2>🏠 お家の方へ</h2>
+<p>今週も子どもたちはよく頑張りました。宿題の音読を一緒に聞いていただけると嬉しいです。</p>
+
+<p style="text-align: right;"><em>担任: 田中先生</em></p>
+''';
+    updateHtmlContent(sampleHtml);
+  }
+
+  // コンテンツをクリア
+  void clearContent() {
+    _htmlContent = '';
+    notifyListeners();
+  }
+
   // スタイルの選択
   void selectStyle(String style) {
     _selectedStyle = style;

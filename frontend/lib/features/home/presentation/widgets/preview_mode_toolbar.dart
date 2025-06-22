@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../editor/providers/preview_provider.dart';
 
 /// プレビューモード切り替えツールバー
@@ -64,6 +65,17 @@ class PreviewModeToolbar extends StatelessWidget {
           ),
           
           const Spacer(),
+          
+          // サンプル読み込みボタン（常に表示）
+          _buildActionButton(
+            context,
+            icon: Icons.article,
+            tooltip: 'サンプル読み込み',
+            onPressed: () => _loadSampleContent(context),
+            color: Colors.orange,
+          ),
+          
+          const SizedBox(width: 8),
           
           // アクションボタン群
           if (canExecuteActions) ...[
@@ -184,6 +196,16 @@ class PreviewModeToolbar extends StatelessWidget {
             child: const Text('了解'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _loadSampleContent(BuildContext context) {
+    context.read<PreviewProvider>().loadSampleContent();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('📄 サンプル学級通信を読み込みました'),
+        duration: Duration(seconds: 2),
       ),
     );
   }
