@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../../services/adk_agent_service.dart';
 import '../../providers/adk_chat_provider.dart';
 import '../../../home/presentation/widgets/audio_waveform_widget.dart';
 
@@ -66,13 +65,8 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => AdkChatProvider(
-        adkService: AdkAgentService(),
-        userId: widget.userId,
-      ),
-      child: Consumer<AdkChatProvider>(
-        builder: (context, provider, _) {
+    return Consumer<AdkChatProvider>(
+      builder: (context, provider, _) {
           // HTMLが生成されたらコールバックを呼び出す
           if (provider.generatedHtml != null &&
               widget.onHtmlGenerated != null) {
@@ -291,8 +285,7 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
             ],
           );
         },
-      ),
-    );
+      );
   }
 
   Widget _buildMessageBubble(MutableChatMessage message) {

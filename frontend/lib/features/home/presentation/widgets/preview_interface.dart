@@ -188,16 +188,6 @@ class PreviewInterface extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed: () => _openSimpleQuillEditor(context),
-              icon: const Icon(Icons.speed, size: 20),
-              label: const Text('シンプルエディタを開く'),
-              style: OutlinedButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              ),
-            ),
           ],
         ),
       ),
@@ -300,7 +290,10 @@ class PreviewInterface extends StatelessWidget {
   }
 
   void _regenerateContent(BuildContext context) {
-    context.read<NewsletterProvider>().generateNewsletter('classic');
+    context.read<NewsletterProvider>().generateNewsletter();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('コンテンツの再生成を実行します。')),
+    );
   }
 
   void _openQuillEditor(BuildContext context) {
@@ -313,13 +306,27 @@ class PreviewInterface extends StatelessWidget {
     );
   }
 
-  void _openSimpleQuillEditor(BuildContext context) {
-    html.window.open('/quill-test.html', '_blank');
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('⚡ シンプルエディタを新しいタブで開きました'),
-        duration: Duration(seconds: 2),
-      ),
-    );
+  void _showEditDialog(BuildContext context) {
+    final previewProvider =
+        Provider.of<PreviewProvider>(context, listen: false);
+    showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+              title: const Text('HTMLコンテンツの編集'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: QuillEditorWidget(),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('キャンセル'),
+                ),
+                TextButton(
+                  onPressed: () => _openQuillEditor(context),
+                  child: const Text('開く'),
+                ),
+              ],
+            ));
   }
 }
