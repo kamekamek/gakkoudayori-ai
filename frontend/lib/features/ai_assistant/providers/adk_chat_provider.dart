@@ -25,7 +25,7 @@ class AdkChatProvider extends ChangeNotifier {
     required this.userId,
   }) : _adkService = adkService;
 
-  /// メッセージを送信
+  /// メッセージを送信（ストリーミング対応）
   Future<void> sendMessage(String message) async {
     if (_isProcessing) return;
 
@@ -35,78 +35,7 @@ class AdkChatProvider extends ChangeNotifier {
       content: message,
       timestamp: DateTime.now(),
     ));
-    
-    _isProcessing = true;
-    _error = null;
-    notifyListeners();
 
-    try {
-      // 学級通信作成のトリガーかチェック
-      if (_shouldStartNewsletterGeneration(message)) {
-        // 学級通信生成を開始
-        final response = await _adkService.startNewsletterGeneration(
-          initialRequest: message,
-          userId: userId,
-          sessionId: _sessionId,
-        );
-
-        _sessionId = response.sessionId;
-        
-        // レスポンスのメッセージを追加
-        if (response.messages.isNotEmpty) {
-          _messages.addAll(
-            response.messages
-              .where((m) => m.role != 'user')
-              .map((m) => MutableChatMessage.fromChatMessage(m))
-          );
-        }
-
-        // HTMLが生成されたら保存
-        if (response.htmlContent != null) {
-          _generatedHtml = response.htmlContent;
-        }
-      } else {
-        // 通常のチャット
-        final response = await _adkService.sendChatMessage(
-          message: message,
-          userId: userId,
-          sessionId: _sessionId,
-        );
-
-        _sessionId = response.sessionId;
-        
-        // アシスタントのメッセージを追加
-        _messages.add(MutableChatMessage(
-          role: 'assistant',
-          content: response.message,
-          timestamp: DateTime.now(),
-        ));
-
-        // HTMLが生成されたら保存
-        if (response.htmlOutput != null) {
-          _generatedHtml = response.htmlOutput;
-        }
-      }
-    } catch (e) {
-      _error = e.toString();
-      debugPrint('Error sending message: $e');
-    } finally {
-      _isProcessing = false;
-      notifyListeners();
-    }
-  }
-
-  /// ストリーミングでメッセージを送信
-  Future<void> sendMessageStreaming(String message) async {
-    if (_isProcessing) return;
-
-    // ユーザーメッセージを追加
-    _messages.add(MutableChatMessage(
-      role: 'user',
-      content: message,
-      timestamp: DateTime.now(),
-    ));
-    
     _isProcessing = true;
     _error = null;
     notifyListeners();
@@ -129,7 +58,7 @@ class AdkChatProvider extends ChangeNotifier {
 
       await for (final event in stream) {
         _sessionId = event.sessionId;
-        
+
         switch (event.type) {
           case 'message':
             // メッセージを追加していく
@@ -174,10 +103,10 @@ class AdkChatProvider extends ChangeNotifier {
   /// 学級通信生成を開始すべきかチェック
   bool _shouldStartNewsletterGeneration(String message) {
     final lowerMessage = message.toLowerCase();
-    return lowerMessage.contains('学級通信') || 
-           lowerMessage.contains('がっきゅうつうしん') ||
-           lowerMessage.contains('おたより') ||
-           lowerMessage.contains('newsletter');
+    return lowerMessage.contains('学級通信') ||
+        lowerMessage.contains('がっきゅうつうしん') ||
+        lowerMessage.contains('おたより') ||
+        lowerMessage.contains('newsletter');
   }
 
   @override

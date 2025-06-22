@@ -18,6 +18,7 @@ class AudioService {
   Function(String)? _onAudioRecorded;
   Function(bool)? _onRecordingStateChanged;
   Function(String)? _onTranscriptionCompleted;
+  Function(double)? _onAudioLevelChanged;
 
   bool get isRecording => _isRecording;
 
@@ -34,6 +35,11 @@ class AudioService {
   /// 文字起こし完了時のコールバック設定
   void setOnTranscriptionCompleted(Function(String transcript) callback) {
     _onTranscriptionCompleted = callback;
+  }
+
+  /// 音声レベル変更時のコールバック設定（波形表示用）
+  void setOnAudioLevelChanged(Function(double level) callback) {
+    _onAudioLevelChanged = callback;
   }
 
   /// JavaScript Bridge初期化
@@ -67,6 +73,16 @@ class AudioService {
         _performSpeechToText(audioData);
       } catch (e) {
         if (kDebugMode) debugPrint('❌ [AudioService] 音声データ処理エラー: $e');
+      }
+    });
+
+    // JavaScript側からの音声レベル受信（波形表示用）
+    js.context['onAudioLevelChanged'] = js.allowInterop((level) {
+      try {
+        final audioLevel = (level as num).toDouble();
+        _onAudioLevelChanged?.call(audioLevel);
+      } catch (e) {
+        if (kDebugMode) debugPrint('❌ [AudioService] 音声レベル処理エラー: $e');
       }
     });
 
@@ -178,6 +194,7 @@ class AudioService {
     _onAudioRecorded = null;
     _onRecordingStateChanged = null;
     _onTranscriptionCompleted = null;
+    _onAudioLevelChanged = null;
 
     // JavaScript側のクリーンアップ
     try {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'audio_waveform_widget.dart';
 
 /// チャット入力エリア
 class ChatInputArea extends StatefulWidget {
@@ -6,6 +7,8 @@ class ChatInputArea extends StatefulWidget {
   final bool isVoiceRecording;
   final VoidCallback? onVoiceRecordingToggle;
   final VoidCallback? onImageUpload;
+  final String? transcriptionResult;
+  final double audioLevel;
 
   const ChatInputArea({
     super.key,
@@ -13,6 +16,8 @@ class ChatInputArea extends StatefulWidget {
     required this.isVoiceRecording,
     this.onVoiceRecordingToggle,
     this.onImageUpload,
+    this.transcriptionResult,
+    this.audioLevel = 0.0,
   });
 
   @override
@@ -23,6 +28,21 @@ class _ChatInputAreaState extends State<ChatInputArea> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   bool _isComposing = false;
+
+  @override
+  void didUpdateWidget(ChatInputArea oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    
+    // 文字起こし結果が更新された場合、テキストフィールドに設定
+    if (widget.transcriptionResult != null && 
+        widget.transcriptionResult != oldWidget.transcriptionResult &&
+        widget.transcriptionResult!.isNotEmpty) {
+      _controller.text = widget.transcriptionResult!;
+      setState(() {
+        _isComposing = widget.transcriptionResult!.trim().isNotEmpty;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -46,34 +66,41 @@ class _ChatInputAreaState extends State<ChatInputArea> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 音声録音中の表示
+          // 音声録音中の表示（波形付き）
           if (widget.isVoiceRecording)
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(16),
               margin: const EdgeInsets.only(bottom: 12),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.errorContainer,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Row(
+              child: Column(
                 children: [
-                  SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Theme.of(context).colorScheme.error,
+                  Row(
+                    children: [
+                      AnimatedMicIcon(
+                        isRecording: widget.isVoiceRecording,
+                        color: Theme.of(context).colorScheme.error,
+                        size: 20,
                       ),
-                    ),
+                      const SizedBox(width: 12),
+                      Text(
+                        '🎤 録音中... タップで停止',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onErrorContainer,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  Text(
-                    '🎤 録音中... タップで停止',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onErrorContainer,
-                      fontWeight: FontWeight.w500,
-                    ),
+                  const SizedBox(height: 12),
+                  AudioWaveformWidget(
+                    audioLevel: widget.audioLevel,
+                    isRecording: widget.isVoiceRecording,
+                    color: Theme.of(context).colorScheme.error,
+                    barCount: 7,
+                    height: 30,
                   ),
                 ],
               ),
