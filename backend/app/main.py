@@ -36,7 +36,10 @@ from services.pdf_generator import generate_pdf_from_html, get_pdf_info
 
 # FastAPIをインポート
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from asgiref.wsgi import WsgiToAsgi
+import uvicorn
 
 # Firebase Admin SDKを初期化
 # 環境変数で初期化済みかチェックすることで、複数回呼び出しを避ける
@@ -46,7 +49,7 @@ if not os.getenv("FIREBASE_APP_INITIALIZED"):
 
 # appディレクトリからメインのAPIルーターをインポート
 # (この後のステップで、FastAPIインスタンスはこのファイルで作成されるようにリファクタリングします)
-from app.api.v1.router import router as api_v1_router
+from api.v1.router import router as api_v1_router
 
 # ログ設定
 logging.basicConfig(level=logging.INFO)
@@ -68,15 +71,20 @@ preview_origin_pattern = r"https://gakkoudayori-ai--pr-\d+\.web\.app"
 # ステージング環境のURLパターン (例: https://gakkoudayori-ai--staging-abc123.web.app) にマッチする正規表現
 staging_origin_pattern = r"https://gakkoudayori-ai--staging-[a-z0-9]+\.web\.app"
 
-CORS(app, origins=[
-    "https://gakkoudayori-ai.web.app",  # 本番フロントエンド
-    "https://gakkoudayori-ai--staging.web.app",  # ステージングフロントエンド (固定)
-    re.compile(staging_origin_pattern), # ステージング環境 (可変ID付き)
-    re.compile(preview_origin_pattern), # プレビュー環境 (正規表現)
-    "http://localhost:3000",
-    "http://localhost:5000",
-    "http://localhost:8080"
-])
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://gakkoudayori-ai.web.app",
+        "https://gakkoudayori-ai--staging.web.app",
+        "http://localhost:3000",
+        "http://localhost:5000",
+        "http://localhost:8080"
+    ],
+    allow_origin_regex=f"({preview_origin_pattern}|{staging_origin_pattern})",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Firebase初期化
 def init_firebase():
@@ -108,250 +116,41 @@ def get_firestore_client():
 # アプリケーション起動時にFirebase初期化
 firebase_initialized = init_firebase()
 
-@app.route('/')
-def hello_world():
-    """ヘルスチェックエンドポイント"""
-    return jsonify({
+@app.get("/", summary="基本ヘルスチェック")
+def read_root():
+    """サービスの稼働状況とタイムスタンプを返します。"""
+    return {
         'status': 'ok',
         'service': 'gakkoudayori-ai-backend',
         'timestamp': datetime.utcnow().isoformat(),
-        'firebase_initialized': firebase_initialized
-    })
+    }
 
-@app.route('/health', methods=['GET'])
-def health():
-    """詳細ヘルスチェック"""
+@app.get("/health", summary="詳細ヘルスチェック")
+def read_health():
+    """Firebaseの接続状況など、より詳細なヘルスチェックを行います。"""
     try:
         health_result = health_check()
-        status = 'healthy' if all([
-            health_result.get('firebase_initialized'),
-            health_result.get('firestore_accessible'),
-            health_result.get('storage_accessible')
-        ]) else 'unhealthy'
-        
-        health_result['status'] = status
-        return jsonify(health_result), 200 if status == 'healthy' else 503
+        status_code = 200 if health_result.get('status') == 'healthy' else 503
+        return JSONResponse(content=health_result, status_code=status_code)
     except Exception as e:
-        logger.error(f"Health check error: {e}")
-        return jsonify({
-            'status': 'error',
-            'error': str(e),
-            'message': "Health check failed (simplified error response)"  # datetimeを削除
-        }), 500
+        logger.error(f"Health check error: {e}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={'status': 'error', 'message': 'Health check failed unexpectedly.'}
+        )
 
-@app.route('/config', methods=['GET'])
-def config():
-    """Firebase設定情報取得"""
+@app.get("/config", summary="Firebase設定情報の取得")
+def read_config():
+    """フロントエンドが必要とするFirebaseの設定情報を返します。"""
     try:
         config_info = get_firebase_config()
-        return jsonify(config_info)
+        return config_info
     except Exception as e:
-        logger.error(f"Config retrieval error: {e}")
-        return jsonify({
-            "status": "ok",
-            "message": "Health check successful (simplified)"
-        }), 500
-
-# ==============================================================================
-# 新フロー: 音声→JSON→HTMLグラレコ エンドポイント
-# ==============================================================================
-
-@app.route('/api/v1/ai/speech-to-json', methods=['POST'])
-def convert_speech_to_json():
-    """音声認識結果をJSON構造化データに変換"""
-    try:
-        # リクエストデータ取得
-        data = request.get_json()
-        if not data:
-            return jsonify({
-                'success': False,
-                'error': 'No JSON data provided',
-                'error_code': 'MISSING_DATA'
-            }), 400
-        
-        # 必須パラメータチェック
-        transcribed_text = data.get('transcribed_text', '')
-        if not transcribed_text.strip():
-            return jsonify({
-                'success': False,
-                'error': 'Transcribed text is required',
-                'error_code': 'MISSING_TRANSCRIBED_TEXT'
-            }), 400
-        
-        # オプションパラメータ
-        style = data.get('style', 'classic')
-        custom_context = data.get('custom_context', '')
-        use_adk = data.get('use_adk', False)  # ADKマルチエージェント使用フラグ
-        teacher_profile = data.get('teacher_profile', {})  # 教師プロファイル
-        
-        # Google Cloud認証情報パス（Cloud Run環境ではNone）
-        credentials_path = None if os.getenv('K_SERVICE') else os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
-        project_id = os.getenv('GOOGLE_CLOUD_PROJECT', 'gakkoudayori-ai')
-        
-        # 変換実行（ADKマルチエージェント対応）
-        result = convert_speech_to_json(
-            transcribed_text=transcribed_text,
-            project_id=project_id,
-            credentials_path=credentials_path,
-            style=style,
-            custom_context=custom_context,
-            use_adk=use_adk,
-            teacher_profile=teacher_profile
+        logger.error(f"Config retrieval error: {e}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={'status': 'error', 'message': 'Failed to retrieve Firebase config.'}
         )
-        
-        return jsonify(result)
-        
-    except Exception as e:
-        logger.error(f"Speech to JSON conversion error: {e}")
-        return jsonify({
-            'success': False,
-            'error': f'Internal server error: {str(e)}',
-            'error_code': 'INTERNAL_ERROR'
-        }), 500
-
-@app.route('/api/v1/ai/json-to-graphical-record', methods=['POST'])
-def handle_json_to_graphical_record():
-    """JSON構造化データからHTMLグラレコを生成"""
-    try:
-        # リクエストデータ取得
-        data = request.get_json()
-        if not data:
-            return jsonify({
-                'success': False,
-                'error': 'No JSON data provided',
-                'error_code': 'MISSING_DATA'
-            }), 400
-        
-        # 必須パラメータチェック
-        json_data = data.get('json_data')
-        if not json_data:
-            return jsonify({
-                'success': False,
-                'error': 'JSON data is required',
-                'error_code': 'MISSING_JSON_DATA'
-            }), 400
-        
-        # オプションパラメータ
-        template = data.get('template', 'classic')
-        custom_style = data.get('custom_style', '')
-        
-        # Google Cloud認証情報パス（Cloud Run環境ではNone）
-        credentials_path = None if os.getenv('K_SERVICE') else os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
-        project_id = os.getenv('GOOGLE_CLOUD_PROJECT', 'gakkoudayori-ai')
-        
-        # 変換実行
-        result = convert_json_to_graphical_record(
-            json_data=json_data,
-            project_id=project_id,
-            credentials_path=credentials_path,
-            template=template,
-            custom_style=custom_style,
-            max_output_tokens=8192  # HTMLが途中で切れないように増加
-        )
-        
-        # サービスからの戻り値がシリアライズ可能か確認
-        if not isinstance(result, dict) or 'success' not in result:
-             logger.error(f"Invalid response from service: {result}")
-             raise TypeError("Service returned a non-serializable object")
-
-        if result.get("success"):
-            return jsonify(result), 200
-        else:
-            # エラーレスポンスもJSONとして返す
-            error_info = result.get("error", {"code": "UNKNOWN_ERROR", "message": "An unknown error occurred"})
-            return jsonify({"success": False, "error": error_info}), 400
-
-    except Exception as e:
-        logger.error(f"JSON to graphical record conversion error: {e}", exc_info=True)
-        # 予期せぬ例外をキャッチして500エラーを返す
-        return jsonify({
-            "success": False,
-            "error": {
-                "code": "INTERNAL_SERVER_ERROR",
-                "message": str(e)
-            }
-        }), 500
-
-
-# ==============================================================================
-# PDF生成エンドポイント
-# ==============================================================================
-
-@app.route('/api/v1/ai/generate-pdf', methods=['POST'])
-def generate_pdf():
-    """HTML学級通信をPDFに変換"""
-    try:
-        # リクエストデータ取得
-        data = request.get_json()
-        if not data:
-            return jsonify({
-                'success': False,
-                'error': 'No JSON data provided',
-                'error_code': 'MISSING_DATA'
-            }), 400
-        
-        # 必須パラメータチェック
-        html_content = data.get('html_content', '')
-        if not html_content.strip():
-            return jsonify({
-                'success': False,
-                'error': 'HTML content is required',
-                'error_code': 'MISSING_HTML_CONTENT'
-            }), 400
-        
-        # 【重要】HTMLコンテンツのMarkdownコードブロッククリーンアップ
-        html_content = _clean_html_for_pdf(html_content)
-        
-        # オプションパラメータ
-        title = data.get('title', '学級通信')
-        page_size = data.get('page_size', 'A4')
-        margin = data.get('margin', '15mm')  # プレビューと統一
-        include_header = data.get('include_header', False)
-        include_footer = data.get('include_footer', False)
-        custom_css = data.get('custom_css', '')
-        
-        # PDF生成実行
-        result = generate_pdf_from_html(
-            html_content=html_content,
-            title=title,
-            page_size=page_size,
-            margin=margin,
-            include_header=include_header,
-            include_footer=include_footer,
-            custom_css=custom_css
-        )
-        
-        if result['success']:
-            return jsonify(result), 200
-        else:
-            return jsonify(result), 500
-            
-    except Exception as e:
-        logger.error(f"PDF generation endpoint error: {e}")
-        return jsonify({
-            'success': False,
-            'error': f'PDF generation failed: {str(e)}',
-            'error_code': 'PDF_GENERATION_ERROR'
-        }), 500
-
-@app.route('/api/v1/ai/pdf-info/<path:pdf_id>', methods=['GET'])
-def get_pdf_info_endpoint(pdf_id):
-    """PDF情報取得エンドポイント"""
-    try:
-        result = get_pdf_info(f"/tmp/{pdf_id}.pdf")
-        
-        if result['success']:
-            return jsonify(result), 200
-        else:
-            return jsonify(result), 404
-            
-    except Exception as e:
-        logger.error(f"PDF info endpoint error: {e}")
-        return jsonify({
-            'success': False,
-            'error': f'Failed to get PDF info: {str(e)}',
-            'error_code': 'PDF_INFO_ERROR'
-        }), 500
 
 # ==============================================================================
 # ヘルパー関数
@@ -418,20 +217,18 @@ def _clean_html_for_pdf(html_content: str) -> str:
 @app.errorhandler(404)
 def not_found(error):
     """404エラーハンドラー"""
-    return jsonify({
-        'error': 'Not Found',
-        'message': 'The requested endpoint was not found',
-        'timestamp': datetime.utcnow().isoformat()
-    }), 404
+    return JSONResponse(
+        status_code=404,
+        content={'error': 'Not Found', 'message': 'The requested endpoint was not found', 'timestamp': datetime.utcnow().isoformat()}
+    )
 
 @app.errorhandler(500)
 def internal_error(error):
     """500エラーハンドラー"""
-    return jsonify({
-        'error': 'Internal Server Error',
-        'message': 'An unexpected error occurred',
-        'timestamp': datetime.utcnow().isoformat()
-    }), 500
+    return JSONResponse(
+        status_code=500,
+        content={'error': 'Internal Server Error', 'message': 'An unexpected error occurred', 'timestamp': datetime.utcnow().isoformat()}
+    )
 
 # Cloud Functions用のエントリーポイント
 @https_fn.on_request(max_instances=10)
@@ -445,6 +242,5 @@ def api(req: https_fn.Request) -> https_fn.Response:
 # ローカル開発用
 if __name__ == '__main__':
     # 本番環境とローカル開発の両方に対応
-    import uvicorn
     port = int(os.environ.get('PORT', 8081))
-    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True, log_level="info")
