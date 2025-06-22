@@ -22,6 +22,10 @@ make reset-dev
 
 # Full CI pipeline locally (before commits)
 make ci-test
+
+# Single command to run a specific test
+cd backend/functions && pytest test_specific_file.py -v
+cd frontend && flutter test test/specific_test.dart
 ```
 
 ### Flutter Web Development
@@ -623,6 +627,13 @@ coordinator_agent = LlmAgent(
 - 音声ファイルのサイズ制限（Cloud Speech-to-Text上限）
 - PDF生成処理のタイムアウト
 
+### Critical Architecture Patterns
+- **Audio Processing**: Web Audio API → MediaRecorder → Cloud Speech-to-Text → ADK Multi-Agent → Quill.js Delta → PDF
+- **State Management**: Provider pattern with `ChangeNotifier` for UI state, services for business logic
+- **Cross-Platform Bridge**: Flutter ↔ JavaScript communication via `dart:js` and postMessage
+- **Firebase Integration**: Authentication → Firestore (user data) → Cloud Storage (generated files)
+- **Error Handling**: Graceful degradation with fallback modes for all AI services
+
 ## 📋 Task Management & TDD Integration
 
 ### Required Task Management Flow
@@ -682,9 +693,15 @@ The application uses dart-define for configuration:
 ### Key Project Context
 - **Project Status**: Completed for Google Cloud Japan AI Hackathon Vol.2
 - **Architecture**: Web-only Flutter app with Python FastAPI backend
-- **Main Flow**: Voice → Speech-to-Text → Gemini AI → Quill.js Editor → PDF
+- **Main Flow**: Voice → Speech-to-Text → ADK Multi-Agent → Quill.js Editor → PDF
 - **Target Users**: Teachers creating school newsletters efficiently
 - **Goal**: Reduce newsletter creation time from 2-3 hours to under 20 minutes
+
+### Development Workflow Tips
+- **Branch Management**: Main branch deployment ready, feature branches for development
+- **API Testing**: Use `curl` commands in backend/functions/test_*.json for quick API validation
+- **Debug Mode**: Enable verbose logging with `ENVIRONMENT=development` in API calls
+- **Hot Reload**: Frontend auto-reloads during development, backend requires restart for code changes
 
 ### Testing Strategy
 ```bash
