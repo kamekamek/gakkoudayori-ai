@@ -79,41 +79,71 @@ class AudioRecorder {
     // マイクアクセス許可を取得
     async requestMicrophoneAccess() {
         try {
-            // iOS用の設定
-            const constraints = this.isIOS ? {
-                audio: {
-                    echoCancellation: true,
-                    noiseSuppression: true,
-                    autoGainControl: true
-                }
-            } : {
-                audio: {
-                    sampleRate: 16000,    // Speech-to-Text最適化（16kHzに統一）
-                    channelCount: 1,      // モノラル
-                    echoCancellation: true,
-                    noiseSuppression: true
-                }
-            };
+            console.log('🎤 マイクアクセス許可要求開始...');
+            console.log('🌍 現在のURL:', location.href);
+            console.log('🔒 プロトコル:', location.protocol);
+            console.log('📱 iOS判定:', this.isIOS);
             
             // ブラウザ互換性チェック
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                throw new Error('このブラウザは音声録音に対応していません');
+            if (!navigator.mediaDevices) {
+                throw new Error('navigator.mediaDevices が利用できません');
             }
+            
+            if (!navigator.mediaDevices.getUserMedia) {
+                throw new Error('navigator.mediaDevices.getUserMedia が利用できません');
+            }
+            
+            console.log('✅ ブラウザ互換性チェック通過');
             
             // HTTPSチェック（iOS必須）
             if (this.isIOS && location.protocol !== 'https:' && location.hostname !== 'localhost') {
                 throw new Error('iOSでは音声録音にHTTPS接続が必要です');
             }
             
+            // シンプルな制約から開始
+            let constraints = { audio: true };
+            
+            console.log('🎙️ getUserMedia呼び出し中... 制約:', constraints);
             this.stream = await navigator.mediaDevices.getUserMedia(constraints);
-            console.log('🎤 マイクアクセス許可取得成功');
+            
+            console.log('✅ getUserMedia成功!');
             console.log('📊 ストリーム情報:', {
+                id: this.stream.id,
+                active: this.stream.active,
                 tracks: this.stream.getAudioTracks().length,
-                settings: this.stream.getAudioTracks()[0]?.getSettings()
+                trackInfo: this.stream.getAudioTracks().map(track => ({
+                    id: track.id,
+                    kind: track.kind,
+                    label: track.label,
+                    enabled: track.enabled,
+                    muted: track.muted,
+                    readyState: track.readyState,
+                    settings: track.getSettings ? track.getSettings() : 'getSettings未対応'
+                }))
             });
+            
             return true;
         } catch (error) {
-            console.error('❌ マイクアクセス拒否:', error);
+            console.error('❌ マイクアクセス失敗:');
+            console.error('  - エラー名:', error.name);
+            console.error('  - エラーメッセージ:', error.message);
+            console.error('  - スタック:', error.stack);
+            
+            // 具体的なエラー情報を提供
+            if (error.name === 'NotAllowedError') {
+                console.error('  → ユーザーがマイクアクセスを拒否しました');
+            } else if (error.name === 'NotFoundError') {
+                console.error('  → マイクデバイスが見つかりません');
+            } else if (error.name === 'NotReadableError') {
+                console.error('  → マイクデバイスが他のアプリケーションで使用中です');
+            } else if (error.name === 'OverconstrainedError') {
+                console.error('  → 指定された制約を満たすデバイスがありません');
+            } else if (error.name === 'TypeError') {
+                console.error('  → 制約の形式が間違っています');
+            } else if (error.name === 'SecurityError') {
+                console.error('  → セキュリティエラー（HTTPS必須など）');
+            }
+            
             return false;
         }
     }
@@ -350,10 +380,15 @@ class AudioRecorder {
     startAudioLevelMonitoring() {
         if (!this.stream) return;
         
+        // 前回のモニタリングをクリーンアップ
+        if (this.levelMonitoringContext) {
+            this.levelMonitoringContext.close();
+        }
+        
         // オーディオコンテキスト作成
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const source = audioContext.createMediaStreamSource(this.stream);
-        const analyser = audioContext.createAnalyser();
+        this.levelMonitoringContext = new (window.AudioContext || window.webkitAudioContext)();
+        const source = this.levelMonitoringContext.createMediaStreamSource(this.stream);
+        const analyser = this.levelMonitoringContext.createAnalyser();
         
         analyser.fftSize = 512;  // より高精度に
         const bufferLength = analyser.frequencyBinCount;
@@ -361,7 +396,7 @@ class AudioRecorder {
         
         source.connect(analyser);
         
-        console.log('🎙️ 音声レベル監視開始（感度アップ版）');
+        console.log('🎙️ 音声レベル監視開始（Flutter通知版）');
         
         // 音声レベル監視ループ
         const monitorLevel = () => {
@@ -376,6 +411,14 @@ class AudioRecorder {
             }
             const average = sum / bufferLength;
             
+            // 正規化された音声レベル（0.0 - 1.0）
+            const normalizedLevel = Math.min(1.0, average / 128.0);
+            
+            // Flutter側に音声レベルを通知
+            if (window.onAudioLevelChanged) {
+                window.onAudioLevelChanged(normalizedLevel);
+            }
+            
             // 音声レベルをコンソールに表示（感度を大幅アップ）
             if (average > 1) {  // 閾値を20→1に下げて超敏感に
                 const level = Math.min(5, Math.floor(average / 10));  // 30→10に変更
@@ -385,7 +428,7 @@ class AudioRecorder {
                 console.log(`🎙️ 微弱音声検出: ${Math.round(average * 10)/10} (マイクはアクティブ)`);
             }
             
-            setTimeout(monitorLevel, 300); // 0.3秒間隔で頻繁チェック
+            setTimeout(monitorLevel, 100); // 0.1秒間隔でよりリアルタイムに
         };
         
         monitorLevel();
@@ -605,6 +648,12 @@ class AudioRecorder {
         if (this.audioContext) {
             this.audioContext.close();
             this.audioContext = null;
+        }
+        
+        // レベル監視用AudioContext解放
+        if (this.levelMonitoringContext) {
+            this.levelMonitoringContext.close();
+            this.levelMonitoringContext = null;
         }
         
         this.mediaRecorder = null;

@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
 import '../../../services/adk_agent_service.dart';
+import '../../../services/audio_service.dart';
 
 /// ADKチャットの状態管理プロバイダー
 class AdkChatProvider extends ChangeNotifier {
   final AdkAgentService _adkService;
+  final AudioService _audioService = AudioService();
   final String userId;
 
   // 状態
@@ -12,6 +14,11 @@ class AdkChatProvider extends ChangeNotifier {
   bool _isProcessing = false;
   String? _error;
   String? _generatedHtml;
+  
+  // 音声関連状態
+  bool _isVoiceRecording = false;
+  double _audioLevel = 0.0;
+  String? _transcriptionResult;
 
   // ゲッター
   List<MutableChatMessage> get messages => _messages;
@@ -19,15 +26,43 @@ class AdkChatProvider extends ChangeNotifier {
   bool get isProcessing => _isProcessing;
   String? get error => _error;
   String? get generatedHtml => _generatedHtml;
+  bool get isVoiceRecording => _isVoiceRecording;
+  double get audioLevel => _audioLevel;
+  String? get transcriptionResult => _transcriptionResult;
 
   AdkChatProvider({
     required AdkAgentService adkService,
     required this.userId,
-  }) : _adkService = adkService;
+  }) : _adkService = adkService {
+    _initializeAudioService();
+  }
+  
+  void _initializeAudioService() {
+    _audioService.initializeJavaScriptBridge();
+    
+    _audioService.setOnRecordingStateChanged((isRecording) {
+      _isVoiceRecording = isRecording;
+      notifyListeners();
+    });
+    
+    _audioService.setOnTranscriptionCompleted((transcript) {
+      _transcriptionResult = transcript;
+      notifyListeners();
+    });
+    
+    _audioService.setOnAudioLevelChanged((level) {
+      _audioLevel = level;
+      notifyListeners();
+    });
+  }
 
   /// メッセージを送信（ストリーミング対応）
   Future<void> sendMessage(String message) async {
-    if (_isProcessing) return;
+    debugPrint('[AdkChatProvider] sendMessage called with message: "$message"');
+    if (_isProcessing) {
+      debugPrint('[AdkChatProvider] Already processing, aborting.');
+      return;
+    }
 
     // ユーザーメッセージを追加
     _messages.add(MutableChatMessage(
@@ -41,6 +76,7 @@ class AdkChatProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      debugPrint('[AdkChatProvider] Starting stream process...');
       // アシスタントメッセージを準備
       final assistantMessage = MutableChatMessage(
         role: 'assistant',
@@ -50,6 +86,7 @@ class AdkChatProvider extends ChangeNotifier {
       _messages.add(assistantMessage);
 
       // ストリーミング開始
+      debugPrint('[AdkChatProvider] Calling _adkService.streamChatSSE...');
       final stream = _adkService.streamChatSSE(
         message: message,
         userId: userId,
@@ -58,6 +95,8 @@ class AdkChatProvider extends ChangeNotifier {
 
       await for (final event in stream) {
         _sessionId = event.sessionId;
+        debugPrint(
+            '[AdkChatProvider] Received stream event: type=${event.type}, data=${event.data}');
 
         switch (event.type) {
           case 'message':
@@ -76,11 +115,13 @@ class AdkChatProvider extends ChangeNotifier {
             break;
         }
       }
+      debugPrint('[AdkChatProvider] Stream finished.');
     } catch (e) {
       _error = e.toString();
-      debugPrint('Error in streaming: $e');
+      debugPrint('[AdkChatProvider] Error in sendMessage: $e');
     } finally {
       _isProcessing = false;
+      debugPrint('[AdkChatProvider] Set isProcessing to false.');
       notifyListeners();
     }
   }
@@ -91,6 +132,8 @@ class AdkChatProvider extends ChangeNotifier {
     _sessionId = null;
     _generatedHtml = null;
     _error = null;
+    _transcriptionResult = null;
+    _audioLevel = 0.0;
     notifyListeners();
   }
 
@@ -98,6 +141,16 @@ class AdkChatProvider extends ChangeNotifier {
   void clearError() {
     _error = null;
     notifyListeners();
+  }
+
+  /// 音声録音開始
+  Future<bool> startVoiceRecording() async {
+    return await _audioService.startRecording();
+  }
+
+  /// 音声録音停止
+  Future<bool> stopVoiceRecording() async {
+    return await _audioService.stopRecording();
   }
 
   /// 学級通信生成を開始すべきかチェック

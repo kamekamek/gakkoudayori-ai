@@ -1,21 +1,27 @@
 import 'package:flutter/foundation.dart';
+import '../../../services/adk_agent_service.dart';
+import '../../ai_assistant/providers/adk_chat_provider.dart';
 
 /// 学級通信全体の状態管理
 class NewsletterProvider extends ChangeNotifier {
+  final AdkAgentService adkAgentService;
+  final AdkChatProvider adkChatProvider;
+
   // 基本情報
   String _schoolName = '';
   String _className = '';
   String _teacherName = '';
-  
+
   // 学級通信の内容
   String _title = '';
   String _content = '';
   String _generatedHtml = '';
-  
+
   // 処理状態
   bool _isGenerating = false;
   bool _isProcessing = false;
   String _statusMessage = '🎤 音声録音または文字入力で学級通信を作成してください';
+  String? _error;
 
   // Getters
   String get schoolName => _schoolName;
@@ -27,16 +33,22 @@ class NewsletterProvider extends ChangeNotifier {
   bool get isGenerating => _isGenerating;
   bool get isProcessing => _isProcessing;
   String get statusMessage => _statusMessage;
+  String? get error => _error;
+
+  NewsletterProvider({
+    required this.adkAgentService,
+    required this.adkChatProvider,
+  });
 
   // 基本情報の設定
   void updateSchoolInfo({
     String? schoolName,
-    String? className, 
+    String? className,
     String? teacherName,
   }) {
-    if (schoolName != null) _schoolName = schoolName;
-    if (className != null) _className = className;
-    if (teacherName != null) _teacherName = teacherName;
+    _schoolName = schoolName ?? _schoolName;
+    _className = className ?? _className;
+    _teacherName = teacherName ?? _teacherName;
     notifyListeners();
   }
 
@@ -84,50 +96,34 @@ class NewsletterProvider extends ChangeNotifier {
   }
 
   // 学級通信の生成
-  Future<void> generateNewsletter(String style) async {
-    if (_content.isEmpty) {
-      updateStatus('❌ 入力内容が空です。まず内容を入力してください。');
-      return;
+  Future<String?> generateNewsletter() async {
+    if (_isGenerating) return null;
+
+    final userId = adkChatProvider.userId;
+    final sessionId = adkChatProvider.sessionId;
+
+    if (sessionId == null) {
+      _error = 'チャットセッションが開始されていません。';
+      notifyListeners();
+      return null;
     }
 
-    setGenerating(true);
-    setProcessing(true);
-    updateStatus('🤖 AI生成中...');
+    _isGenerating = true;
+    _error = null;
+    notifyListeners();
 
     try {
-      // TODO: 実際のAI生成処理を実装
-      await Future.delayed(const Duration(seconds: 2)); // 模擬処理
-
-      // 仮のHTML生成
-      final html = '''
-        <div style="font-family: 'Noto Sans JP', sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">
-          <header style="text-align: center; border-bottom: 2px solid #2196F3; padding-bottom: 10px; margin-bottom: 20px;">
-            <h1 style="color: #2196F3; margin: 0;">$_schoolName $_className 学級通信</h1>
-          </header>
-          
-          <main>
-            <h2 style="color: #FF9800; display: flex; align-items: center;">
-              🏃‍♂️ $_title
-            </h2>
-            
-            <div style="line-height: 1.6; color: #424242;">
-              ${_content.replaceAll('\n', '<br>')}
-            </div>
-          </main>
-          
-          <footer style="margin-top: 30px; text-align: center; color: #757575; font-size: 14px;">
-            <p>$_teacherName</p>
-          </footer>
-        </div>
-      ''';
-
-      updateGeneratedHtml(html);
-      updateStatus('🎉 学級通信の生成が完了しました！');
+      final htmlContent = await adkAgentService.generateNewsletter(
+        userId: userId,
+        sessionId: sessionId,
+      );
+      return htmlContent;
     } catch (e) {
-      updateStatus('❌ 生成中にエラーが発生しました: $e');
+      _error = '学級通信の生成に失敗しました: $e';
+      return null;
     } finally {
-      setGenerating(false);
-      setProcessing(false);
+      _isGenerating = false;
+      notifyListeners();
     }
   }
 }

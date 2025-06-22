@@ -63,10 +63,10 @@ class PreviewInterface extends StatelessWidget {
     switch (previewProvider.currentMode) {
       case PreviewMode.preview:
         return _buildPreviewMode(context, previewProvider.htmlContent);
-      
+
       case PreviewMode.edit:
         return _buildEditMode(context, previewProvider.htmlContent);
-      
+
       case PreviewMode.printView:
         return _buildPrintViewMode(context, previewProvider.htmlContent);
     }
@@ -88,15 +88,15 @@ class PreviewInterface extends StatelessWidget {
             Text(
               '学級通信のプレビュー',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
             ),
             const SizedBox(height: 8),
             Text(
               'AIとの会話後に「生成」ボタンを押すと、\nこちらに学級通信が表示されます',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -126,16 +126,16 @@ class PreviewInterface extends StatelessWidget {
             Text(
               'AI生成中...',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.bold,
-              ),
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 8),
             Text(
               statusMessage,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -160,16 +160,16 @@ class PreviewInterface extends StatelessWidget {
             Text(
               '編集モード',
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.bold,
-              ),
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 16),
             Text(
               '高速で安定したQuillエディタを\n別ウィンドウで開きます',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
@@ -180,7 +180,8 @@ class PreviewInterface extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                 textStyle: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -193,7 +194,8 @@ class PreviewInterface extends StatelessWidget {
               icon: const Icon(Icons.speed, size: 20),
               label: const Text('シンプルエディタを開く'),
               style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
             ),
           ],
@@ -229,7 +231,6 @@ class PreviewInterface extends StatelessWidget {
       ),
     );
   }
-
 
   Widget _buildPrintViewMode(BuildContext context, String htmlContent) {
     return Container(

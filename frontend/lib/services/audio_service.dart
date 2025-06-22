@@ -94,6 +94,17 @@ class AudioService {
     try {
       if (kDebugMode) debugPrint('🎤 [AudioService] 録音開始要求');
 
+      // JavaScript環境チェック
+      if (js.context['startRecording'] == null) {
+        if (kDebugMode) debugPrint('❌ [AudioService] startRecording関数がJavaScriptで利用できません');
+        return false;
+      }
+
+      if (js.context['audioRecorder'] == null) {
+        if (kDebugMode) debugPrint('❌ [AudioService] audioRecorderインスタンスがJavaScriptで利用できません');
+        return false;
+      }
+
       // JavaScript側の録音開始関数を呼び出し
       if (kDebugMode) debugPrint('🔗 [AudioService] JavaScript関数呼び出し開始');
       final jsResult = js.context.callMethod('startRecording');
@@ -110,11 +121,18 @@ class AudioService {
       if (js_util.hasProperty(jsResult, 'then')) {
         // Promiseの場合
         if (kDebugMode) debugPrint('🔗 [AudioService] Promise検出 - 非同期待機中');
-        result = await js_util.promiseToFuture<bool>(jsResult);
+        try {
+          final promiseResult = await js_util.promiseToFuture(jsResult);
+          if (kDebugMode) debugPrint('🔗 [AudioService] Promise結果: $promiseResult (${promiseResult.runtimeType})');
+          result = promiseResult == true || promiseResult == 'true' || promiseResult == 1;
+        } catch (promiseError) {
+          if (kDebugMode) debugPrint('❌ [AudioService] Promise実行エラー: $promiseError');
+          return false;
+        }
       } else {
         // 同期的な戻り値の場合
-        if (kDebugMode) debugPrint('🔗 [AudioService] 同期的戻り値検出');
-        result = jsResult as bool;
+        if (kDebugMode) debugPrint('🔗 [AudioService] 同期的戻り値検出: $jsResult (${jsResult.runtimeType})');
+        result = jsResult == true || jsResult == 'true' || jsResult == 1;
       }
 
       if (kDebugMode) debugPrint('🔗 [AudioService] 最終結果: $result');
@@ -128,6 +146,7 @@ class AudioService {
       }
     } catch (e) {
       if (kDebugMode) debugPrint('❌ [AudioService] 録音開始エラー: $e');
+      if (kDebugMode) debugPrint('  エラー詳細: ${e.runtimeType}');
       return false;
     }
   }

@@ -314,10 +314,19 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
 async def chat_with_agent_stream(request: ChatRequest):
     """Server-Sent Eventsを使用したストリーミングチャット"""
     session_id = request.session_id or str(uuid.uuid4())
+    logger.info(f"[/chat/stream] New request. session_id: {session_id}, user_id: {request.user_id}")
+    logger.info(f"Message: {request.message}")
     
     async def generate() -> AsyncGenerator[str, None]:
         try:
             runner = get_runner()
+
+            # セッションの状態を事前にログ出力
+            session_before = await get_session_service().get(session_id)
+            if session_before:
+                logger.info(f"Session history before processing: {[MessageToDict(c._pb) for c in session_before.history]}")
+            else:
+                logger.info("No existing session found. Creating a new one.")
             
             # ユーザーメッセージを作成
             user_message = types.Content(
@@ -335,6 +344,8 @@ async def chat_with_agent_stream(request: ChatRequest):
             
             # イベントをストリーミング
             async for event in events_async:
+                logger.debug(f"ADK Event received: {event}")
+
                 event_data = {
                     "session_id": session_id,
                     "type": "message",
@@ -353,6 +364,7 @@ async def chat_with_agent_stream(request: ChatRequest):
                                     event_data['type'] = 'complete'
                 
                 # SSE形式で送信
+                logger.info(f"Sending SSE data: {event_data}")
                 yield f"data: {json.dumps(event_data)}\n\n"
                 
         except Exception as e:
@@ -362,6 +374,7 @@ async def chat_with_agent_stream(request: ChatRequest):
                 "type": "error",
                 "data": str(e)
             }
+            logger.error(f"Sending SSE error: {error_data}")
             yield f"data: {json.dumps(error_data)}\n\n"
     
     return StreamingResponse(generate(), media_type="text/event-stream")

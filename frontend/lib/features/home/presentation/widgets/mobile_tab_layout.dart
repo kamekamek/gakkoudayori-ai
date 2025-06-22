@@ -1,82 +1,41 @@
 import 'package:flutter/material.dart';
-import 'chat_interface.dart';
+import 'package:provider/provider.dart';
+
+import '../../../ai_assistant/presentation/widgets/adk_chat_widget.dart';
+import '../../../editor/providers/image_provider.dart';
+import '../../../editor/providers/preview_provider.dart';
 import 'preview_interface.dart';
 
-/// モバイル版タブレイアウト
-class MobileTabLayout extends StatefulWidget {
+/// モバイル用のタブレイアウト
+class MobileTabLayout extends StatelessWidget {
   const MobileTabLayout({super.key});
 
   @override
-  State<MobileTabLayout> createState() => _MobileTabLayoutState();
-}
-
-class _MobileTabLayoutState extends State<MobileTabLayout>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // タブバー
-        Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            border: Border(
-              bottom: BorderSide(
-                color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
-              ),
-            ),
-          ),
-          child: TabBar(
-            controller: _tabController,
-            labelColor: Theme.of(context).colorScheme.primary,
-            unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
-            indicatorColor: Theme.of(context).colorScheme.primary,
-            indicatorWeight: 3,
-            labelStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-            unselectedLabelStyle: Theme.of(context).textTheme.titleMedium,
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          automaticallyImplyLeading: false,
+          toolbarHeight: 0,
+          bottom: TabBar(
             tabs: const [
-              Tab(
-                icon: Icon(Icons.chat, size: 20),
-                text: 'チャット',
-              ),
-              Tab(
-                icon: Icon(Icons.preview, size: 20),
-                text: 'プレビュー',
-              ),
+              Tab(icon: Icon(Icons.chat), text: 'チャット'),
+              Tab(icon: Icon(Icons.preview), text: 'プレビュー'),
             ],
+            labelColor: Theme.of(context).primaryColor,
+            unselectedLabelColor: Colors.grey,
           ),
         ),
-
-        // タブコンテンツ
-        Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            children: const [
-              // チャットタブ
-              ChatInterface(),
-              
-              // プレビュータブ
-              PreviewInterface(),
-            ],
-          ),
+        body: const TabBarView(
+          children: [
+            // チャットタブ
+            AdkChatWidget(userId: 'user_12345'),
+            // プレビュータブ
+            PreviewInterface(),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

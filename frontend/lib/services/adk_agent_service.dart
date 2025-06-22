@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../config/app_config.dart';
+import 'package:flutter/foundation.dart';
 
 /// ADKエージェントとの通信を管理するサービス
 class AdkAgentService {
@@ -66,7 +67,8 @@ class AdkAgentService {
         final data = jsonDecode(response.body);
         return NewsletterGenerationResponse.fromJson(data);
       } else {
-        throw Exception('Failed to start newsletter generation: ${response.body}');
+        throw Exception(
+            'Failed to start newsletter generation: ${response.body}');
       }
     } catch (e) {
       throw Exception('Error starting newsletter generation: $e');
@@ -161,46 +163,94 @@ class AdkAgentService {
   }) async* {
     try {
       final url = Uri.parse('$_baseUrl/adk/chat/stream');
+      final body = {
+        'message': message,
+        'user_id': userId,
+        'session_id': sessionId,
+      };
+
+      debugPrint(
+          '[AdkAgentService] Sending POST request to $url with body: ${jsonEncode(body)}');
+
       final request = http.Request('POST', url)
         ..headers['Content-Type'] = 'application/json'
-        ..body = jsonEncode({
-          'message': message,
-          'user_id': userId,
-          'session_id': sessionId,
-        });
+        ..body = jsonEncode(body);
 
       final response = await _httpClient.send(request);
 
+      debugPrint(
+          '[AdkAgentService] Response status code: ${response.statusCode}');
+
       if (response.statusCode == 200) {
-        await for (final chunk in response.stream.transform(utf8.decoder)) {
-          final lines = chunk.split('\n');
-          for (final line in lines) {
-            if (line.startsWith('data: ')) {
-              final data = line.substring(6);
-              if (data.trim().isNotEmpty) {
-                try {
-                  final json = jsonDecode(data);
-                  yield AdkStreamEvent.fromJson(json);
-                } catch (e) {
-                  yield AdkStreamEvent(
-                    sessionId: sessionId ?? '',
-                    type: 'error',
-                    data: 'Error parsing SSE data: $e',
-                  );
+        yield* response.stream
+            .transform(utf8.decoder)
+            .transform(LineSplitter())
+            .map((line) {
+              if (line.startsWith('data: ')) {
+                final data = line.substring(6);
+                if (data.trim().isNotEmpty) {
+                  try {
+                    return AdkStreamEvent.fromJson(jsonDecode(data));
+                  } catch (e) {
+                    return AdkStreamEvent(
+                      sessionId: sessionId ?? '',
+                      type: 'error',
+                      data: 'Error parsing SSE data: $e',
+                    );
+                  }
                 }
               }
-            }
-          }
-        }
+              return null;
+            })
+            .where((event) => event != null)
+            .cast<AdkStreamEvent>();
       } else {
-        throw Exception('Failed to stream chat: ${response.statusCode}');
+        final decodedBody = await response.stream.bytesToString();
+        debugPrint('[AdkAgentService] Error response body: $decodedBody');
+        throw Exception(
+            'Failed to stream chat: ${response.statusCode}, Body: $decodedBody');
       }
     } catch (e) {
+      debugPrint('[AdkAgentService] Exception caught: $e');
       yield AdkStreamEvent(
         sessionId: sessionId ?? '',
         type: 'error',
         data: 'Error streaming chat: $e',
       );
+    }
+  }
+
+  /// 学級通信を生成する
+  Future<String> generateNewsletter({
+    required String userId,
+    required String sessionId,
+  }) async {
+    final url = Uri.parse('$_baseUrl/adk/generate/newsletter');
+    final body = jsonEncode({
+      'user_id': userId,
+      'session_id': sessionId,
+    });
+    debugPrint('[AdkAgentService] Generating newsletter with body: $body');
+
+    try {
+      final response = await _httpClient.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        debugPrint('[AdkAgentService] Newsletter generated successfully.');
+        return data['html_content'] as String;
+      } else {
+        debugPrint(
+            '[AdkAgentService] Failed to generate newsletter. Status: ${response.statusCode}, Body: ${response.body}');
+        throw Exception('Failed to generate newsletter: ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('[AdkAgentService] Error generating newsletter: $e');
+      throw Exception('Error generating newsletter: $e');
     }
   }
 

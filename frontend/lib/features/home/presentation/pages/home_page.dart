@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/newsletter_provider.dart';
-import '../../../ai_assistant/providers/chat_provider.dart';
+import '../../../ai_assistant/presentation/widgets/adk_chat_widget.dart';
 import '../../../editor/providers/preview_provider.dart';
-import '../widgets/chat_interface.dart';
 import '../widgets/preview_interface.dart';
 import '../widgets/mobile_tab_layout.dart';
 
@@ -34,14 +33,13 @@ class _HomePageState extends State<HomePage> {
       className: '1年1組',
       teacherName: '担任の先生',
     );
-    
-    // ChatProviderとPreviewProviderの連携を設定
-    final chatProvider = context.read<ChatProvider>();
-    final previewProvider = context.read<PreviewProvider>();
-    
-    chatProvider.onNewsletterGenerated = (htmlContent) {
-      previewProvider.updateHtmlContent(htmlContent);
-    };
+
+    // final chatProvider = context.read<ChatProvider>();
+    // final previewProvider = context.read<PreviewProvider>();
+
+    // chatProvider.onNewsletterGenerated = (htmlContent) {
+    //   previewProvider.updateHtmlContent(htmlContent);
+    // };
   }
 
   @override
@@ -152,10 +150,10 @@ class DesktopLayout extends StatelessWidget {
                 ),
               ),
             ),
-            child: const ChatInterface(),
+            child: const AdkChatWidget(userId: 'user_12345'),
           ),
         ),
-        
+
         // 右側：プレビューインターフェース
         Expanded(
           flex: 1,
