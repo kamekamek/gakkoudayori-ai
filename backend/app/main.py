@@ -12,24 +12,27 @@ import logging
 import os
 import re
 from datetime import datetime
+from pydantic import BaseModel
 
 # カスタムサービスをインポート
-from firebase_service import (
+from services.firebase_service import (
     initialize_firebase,
-
     health_check,
-    get_firebase_config
+    get_firebase_config,
+    get_firestore_client
 )
-from speech_recognition_service import (
+from services.speech_recognition_service import (
     transcribe_audio_file,
     validate_audio_format,
     get_supported_formats,
-    get_default_speech_contexts
+    get_default_speech_contexts,
 )
-from user_dictionary_service import (
-    UserDictionaryService,
-    create_user_dictionary_service
+from services.user_dictionary_service import (
+    create_user_dictionary_service,
 )
+from services.audio_to_json_service import convert_speech_to_json
+from services.json_to_graphical_record_service import convert_json_to_graphical_record
+from services.pdf_generator import generate_pdf_from_html, get_pdf_info
 
 # FastAPIをインポート
 from fastapi import FastAPI
@@ -55,6 +58,9 @@ app = FastAPI(
     version="1.0.0",
     description="学級通信AIエージェントと通常APIを統合したサーバー"
 )
+
+# v1のAPIルーターをアプリにマウント
+app.include_router(api_v1_router, prefix="/api/v1")
 
 # CORS設定 - 本番とローカル開発環境の両方を許可
 # プレビュー環境のURLパターン (例: https://gakkoudayori-ai--pr-123.web.app) にマッチする正規表現
@@ -144,109 +150,6 @@ def config():
         return jsonify({
             "status": "ok",
             "message": "Health check successful (simplified)"
-        }), 500
-
-# ==============================================================================
-# 音声認識エンドポイント
-# ==============================================================================
-
-@app.route('/api/v1/ai/transcribe', methods=['POST'])
-def transcribe_audio():
-    """音声文字起こしエンドポイント"""
-    try:
-        # ファイルアップロード確認
-        if 'audio_file' not in request.files:
-            return jsonify({
-                'success': False,
-                'error': 'No audio file provided',
-                'error_code': 'MISSING_FILE'
-            }), 400
-        
-        audio_file = request.files['audio_file']
-        if audio_file.filename == '':
-            return jsonify({
-                'success': False,
-                'error': 'No file selected',
-                'error_code': 'EMPTY_FILENAME'
-            }), 400
-        
-        # 音声データ読み込み
-        audio_content = audio_file.read()
-        
-        # 音声フォーマット検証
-        validation_result = validate_audio_format(audio_content)
-        if not validation_result['valid']:
-            return jsonify({
-                'success': False,
-                'error': validation_result['error'],
-                'error_code': validation_result['error_code']
-            }), 400
-        
-        # パラメータ取得
-        language_code = request.form.get('language', 'ja-JP')
-        sample_rate = int(request.form.get('sample_rate', '48000'))  # 48kHzをデフォルトに
-        user_id = request.form.get('user_id', 'default')  # ユーザーIDサポート
-        
-        # ユーザー辞書サービス初期化
-        firestore_client = get_firestore_client()
-        dict_service = create_user_dictionary_service(firestore_client)
-        speech_contexts = dict_service.get_speech_contexts(user_id)
-        
-        # 認証情報パス (Cloud Run環境では不要)
-        credentials_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
-        if credentials_path and not os.path.exists(credentials_path):
-            credentials_path = None
-        
-        # 音声文字起こし実行
-        result = transcribe_audio_file(
-            audio_content=audio_content,
-            credentials_path=credentials_path,
-            language_code=language_code,
-            sample_rate_hertz=sample_rate,
-            speech_contexts=speech_contexts,
-            user_id=user_id,
-            encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16 if validation_result.get('format') == 'WAV' else speech.RecognitionConfig.AudioEncoding.WEBM_OPUS  # ファイル形式に応じてエンコーディングを設定 (デフォルトはWEBM_OPUS)
-        )
-        
-        # ユーザー辞書でポストプロセシング
-        if result['success']:
-            original_transcript = result['data']['transcript']
-            corrected_transcript, corrections = dict_service.correct_transcription(original_transcript, user_id)
-            result['data']['transcript'] = corrected_transcript
-            result['data']['corrections'] = corrections
-            result['data']['original_transcript'] = original_transcript
-        
-        if result['success']:
-            # API仕様に合わせたレスポンス形式
-            response_data = {
-                'success': True,
-                'data': {
-                    'transcript': result['data']['transcript'],
-                    'original_transcript': result['data'].get('original_transcript', ''),
-                    'corrections': result['data'].get('corrections', []),
-                    'confidence': result['data']['confidence'],
-                    'processing_time_ms': result['data']['processing_time_ms'],
-                    'sections': result['data']['sections'],
-                    'audio_info': result['data']['audio_info'],
-                    'validation_info': validation_result,
-                    'user_dictionary_applied': len(result['data'].get('corrections', [])) > 0
-                }
-            }
-            return jsonify(response_data)
-        else:
-            return jsonify({
-                'success': False,
-                'error': result['error'],
-                'error_type': result.get('error_type', 'unknown'),
-                'processing_time_ms': result.get('processing_time_ms', 0)
-            }), 500
-    
-    except Exception as e:
-        logger.error(f"Audio transcription error: {e}")
-        return jsonify({
-            'success': False,
-            'error': f'Transcription failed: {str(e)}',
-            'error_type': 'server_error'
         }), 500
 
 # ==============================================================================
@@ -511,38 +414,6 @@ def suggest_corrections(user_id: str):
         }), 500
 
 
-@app.route('/api/v1/ai/formats', methods=['GET'])
-def get_audio_formats():
-    """サポートされている音声フォーマット一覧取得"""
-    try:
-        formats = get_supported_formats()
-        contexts = get_default_speech_contexts()
-        
-        return jsonify({
-            'success': True,
-            'data': {
-                'supported_formats': formats,
-                'default_contexts': contexts,
-                'max_file_size_mb': 10,
-                'max_duration_seconds': 60,
-                'supported_languages': [
-                    {'code': 'ja-JP', 'name': '日本語'},
-                    {'code': 'en-US', 'name': 'English (US)'},
-                    {'code': 'en-GB', 'name': 'English (UK)'}
-                ]
-            }
-        })
-    except Exception as e:
-        logger.error(f"Format info error: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-# ==============================================================================
-# 新フロー: 音声→JSON→HTMLグラレコ エンドポイント
-# ==============================================================================
-
 @app.route('/api/v1/ai/speech-to-json', methods=['POST'])
 def convert_speech_to_json():
     """音声認識結果をJSON構造化データに変換"""
@@ -574,9 +445,6 @@ def convert_speech_to_json():
         # Google Cloud認証情報パス（Cloud Run環境ではNone）
         credentials_path = None if os.getenv('K_SERVICE') else os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
         project_id = os.getenv('GOOGLE_CLOUD_PROJECT', 'gakkoudayori-ai')
-        
-        # 音声→JSON変換サービスをインポート
-        from audio_to_json_service import convert_speech_to_json
         
         # 変換実行（ADKマルチエージェント対応）
         result = convert_speech_to_json(
@@ -629,9 +497,6 @@ def handle_json_to_graphical_record():
         # Google Cloud認証情報パス（Cloud Run環境ではNone）
         credentials_path = None if os.getenv('K_SERVICE') else os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
         project_id = os.getenv('GOOGLE_CLOUD_PROJECT', 'gakkoudayori-ai')
-        
-        # JSON→HTMLグラレコ変換サービスをインポート
-        from json_to_graphical_record_service import convert_json_to_graphical_record
         
         # 変換実行
         result = convert_json_to_graphical_record(
@@ -705,8 +570,6 @@ def generate_pdf():
         custom_css = data.get('custom_css', '')
         
         # PDF生成実行
-        from pdf_generator import generate_pdf_from_html
-        
         result = generate_pdf_from_html(
             html_content=html_content,
             title=title,
@@ -734,13 +597,7 @@ def generate_pdf():
 def get_pdf_info_endpoint(pdf_id):
     """PDF情報取得エンドポイント"""
     try:
-        from pdf_generator import get_pdf_info
-        
-        # 実際の実装では、pdf_idからファイルパスを解決
-        # ここではダミー実装
-        pdf_path = f"/tmp/{pdf_id}.pdf"
-        
-        result = get_pdf_info(pdf_path)
+        result = get_pdf_info(f"/tmp/{pdf_id}.pdf")
         
         if result['success']:
             return jsonify(result), 200
@@ -847,40 +704,6 @@ def api(req: https_fn.Request) -> https_fn.Response:
 # ローカル開発用
 if __name__ == '__main__':
     # 本番環境とローカル開発の両方に対応
-    import os
+    import uvicorn
     port = int(os.environ.get('PORT', 8081))
-    debug = os.environ.get('FLASK_ENV') != 'production'
-    app.run(debug=debug, host='0.0.0.0', port=port)
-
-# デバッグ用エンドポイント
-@app.route('/api/v1/debug/dictionary', methods=['GET'])
-def debug_dictionary():
-    """辞書サービスのデバッグ情報"""
-    try:
-        logger.info("Debug dictionary service called")
-        
-        # サービス初期化テスト
-        firestore_client = get_firestore_client()
-        dict_service = create_user_dictionary_service(firestore_client)
-        logger.info(f"Dictionary service created: {type(dict_service)}")
-        
-        # デフォルトユーザーの辞書取得テスト
-        default_dict = dict_service.get_user_dictionary("default")
-        logger.info(f"Default dictionary entries: {len(default_dict)}")
-        
-        return jsonify({
-            'success': True,
-            'data': {
-                'service_initialized': True,
-                'default_dictionary_size': len(default_dict),
-                'firebase_initialized': firebase_initialized
-            }
-        })
-        
-    except Exception as e:
-        logger.error(f"Debug dictionary error: {e}", exc_info=True)
-        return jsonify({
-            'success': False,
-            'error': str(e),
-            'error_type': type(e).__name__
-        }), 500
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
