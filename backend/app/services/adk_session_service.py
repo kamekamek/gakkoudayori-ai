@@ -17,14 +17,16 @@ import logging
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
 from google.cloud import firestore
-from google.adk.sessions import Session, SessionService
+from google.adk.sessions import Session
+from google.genai import types as genai_types
+from google.protobuf.json_format import MessageToDict
 from models.adk_models import SessionInfo, ChatMessage
 from firebase_admin import firestore
 
 logger = logging.getLogger(__name__)
 
 
-class FirestoreSessionService(SessionService):
+class FirestoreSessionService:
     """Google ADK用のFirestoreベースのセッションサービス"""
     
     def __init__(self, firestore_client: firestore.Client, collection_name: str = "adk_sessions", ttl_hours: int = 24):
@@ -55,7 +57,9 @@ class FirestoreSessionService(SessionService):
             # ADK Sessionオブジェクトに変換
             return Session(
                 session_id=session_id,
-                history=data.get('history', []),
+                history=[
+                    genai_types.to_content(item) for item in data.get('history', [])
+                ],
                 metadata=data.get('metadata', {})
             )
         except Exception as e:
@@ -68,9 +72,11 @@ class FirestoreSessionService(SessionService):
             doc_ref = self.db.collection(self.collection_name).document(session.session_id)
             
             # セッションデータを準備
+            history_dicts = [MessageToDict(c._pb) for c in session.history]
+
             session_data = {
                 'session_id': session.session_id,
-                'history': session.history,
+                'history': history_dicts,
                 'metadata': session.metadata,
                 'updated_at': datetime.utcnow()
             }
