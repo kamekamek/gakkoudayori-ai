@@ -1,0 +1,142 @@
+/* 学校だよりAI カスタムスタイル */
+
+/* 日本語フォントの最適化 */
+.md-typeset {
+  font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', sans-serif;
+  line-height: 1.8;
+}
+
+/* コードブロックの日本語対応 */
+.md-typeset code {
+  font-family: 'SF Mono', 'Monaco', 'Consolas', 'Roboto Mono', monospace;
+}
+
+/* 見出しのスタイル調整 */
+.md-typeset h1 {
+  color: #2c5aa0;
+  border-bottom: 3px solid #2c5aa0;
+  padding-bottom: 0.5rem;
+}
+
+.md-typeset h2 {
+  color: #2c5aa0;
+  border-left: 4px solid #2c5aa0;
+  padding-left: 1rem;
+}
+
+/* テーブルのスタイル改善 */
+.md-typeset table:not([class]) {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.md-typeset table:not([class]) th {
+  background-color: #f5f5f5;
+  color: #2c5aa0;
+  font-weight: 600;
+}
+
+/* 警告・注意ボックスのカスタマイズ */
+.md-typeset .admonition.note {
+  border-left-color: #2c5aa0;
+}
+
+.md-typeset .admonition.note .admonition-title {
+  background-color: rgba(44, 90, 160, 0.1);
+  color: #2c5aa0;
+}
+
+/* リンクカードスタイル */
+.link-card {
+  display: block;
+  padding: 1rem;
+  margin: 1rem 0;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.link-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: #2c5aa0;
+  transform: translateY(-2px);
+}
+
+.link-card-title {
+  font-size: 1.1em;
+  font-weight: 600;
+  color: #2c5aa0;
+  margin-bottom: 0.5rem;
+}
+
+.link-card-description {
+  color: #666;
+  font-size: 0.9em;
+}
+
+/* コードのシンタックスハイライト調整 */
+.highlight .c1 { color: #6a9955; } /* コメント */
+.highlight .s2 { color: #ce9178; } /* 文字列 */
+.highlight .k { color: #569cd6; }  /* キーワード */
+.highlight .nb { color: #4ec9b0; } /* 組み込み関数 */
+
+/* モバイル対応 */
+@media (max-width: 768px) {
+  .md-typeset h1 {
+    font-size: 1.5em;
+  }
+  
+  .md-typeset h2 {
+    font-size: 1.3em;
+  }
+  
+  .md-typeset table {
+    font-size: 0.8em;
+  }
+}
+
+/* ダークモード対応 */
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #5e7bbf;
+  --md-accent-fg-color: #ff6b35;
+}
+
+[data-md-color-scheme="slate"] .md-typeset h1 {
+  color: #5e7bbf;
+  border-bottom-color: #5e7bbf;
+}
+
+[data-md-color-scheme="slate"] .md-typeset h2 {
+  color: #5e7bbf;
+  border-left-color: #5e7bbf;
+}
+
+/* 季節テーマ対応 */
+.spring-theme { --theme-color: #ffb3ba; }
+.summer-theme { --theme-color: #b3d9ff; }
+.autumn-theme { --theme-color: #ffcc99; }
+.winter-theme { --theme-color: #d1b3ff; }
+
+/* 絵文字のサイズ調整 */
+.md-typeset .twemoji {
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: -0.2em;
+}
+
+/* ページ内ナビゲーションの改善 */
+.md-nav__link--active {
+  color: #2c5aa0;
+  font-weight: 600;
+}
+
+/* コピーボタンのスタイル */
+.md-clipboard {
+  color: #2c5aa0;
+}
+
+.md-clipboard:hover {
+  color: #1d3a6f;
+}
