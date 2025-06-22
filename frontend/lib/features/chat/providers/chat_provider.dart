@@ -49,7 +49,7 @@ class ChatProvider extends ChangeNotifier {
   /// チャット初期化
   Future<void> initialize() async {
     try {
-      await _audioService.initialize();
+      _audioService.initializeJavaScriptBridge();
       _setupAudioCallbacks();
       
       // 初期メッセージを追加
@@ -75,14 +75,12 @@ class ChatProvider extends ChangeNotifier {
       notifyListeners();
     });
 
-    _audioService.setOnTranscriptionReceived((text) {
+    _audioService.setOnTranscriptionCompleted((text) {
       _handleVoiceInput(text);
     });
 
-    _audioService.setOnError((error) {
-      _currentError = error;
-      notifyListeners();
-    });
+    // Note: AudioService doesn't have setOnError method
+    // Error handling is done in individual method calls
   }
 
   /// テキストメッセージ送信

@@ -4,7 +4,7 @@ import '../../../core/services/services.dart';
 import '../../../core/utils/utils.dart';
 
 /// 画像管理の状態管理
-class ImageProvider extends ChangeNotifier {
+class ImageUploadProvider extends ChangeNotifier {
   final List<ImageFile> _images = [];
   final List<ImageUploadResult> _uploadResults = [];
   
@@ -46,9 +46,7 @@ class ImageProvider extends ChangeNotifier {
   List<ImageFile> get filteredImages {
     var filtered = _images.where((image) {
       if (_searchQuery.isEmpty) return true;
-      return image.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-             (image.metadata?.tags?.any((tag) => 
-               tag.toLowerCase().contains(_searchQuery.toLowerCase())) ?? false);
+      return image.name.toLowerCase().contains(_searchQuery.toLowerCase());
     }).toList();
     
     // ソート
@@ -140,9 +138,7 @@ class ImageProvider extends ChangeNotifier {
         _images.add(result.imageFile!);
         
         // 最初の画像をプライマリに設定
-        if (_primaryImage == null) {
-          _primaryImage = result.imageFile!;
-        }
+        _primaryImage ??= result.imageFile!;
       }
       
       _uploadedCount++;

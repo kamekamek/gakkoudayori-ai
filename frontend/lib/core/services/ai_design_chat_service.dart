@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../../config/app_config.dart';
-import '../widgets/ai_design_chat_widget.dart';
-import '../widgets/adk_agent_dashboard.dart';
+import '../models/models.dart';
+import '../models/design_models.dart';
 
 /// AIデザインチャットサービス
 /// 
