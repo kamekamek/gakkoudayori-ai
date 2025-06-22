@@ -46,7 +46,7 @@ class ImageGridView extends StatelessWidget {
               const SizedBox(height: 8),
             ],
             
-            Expanded(
+            Flexible(
               child: GridView.builder(
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: crossAxisCountActual,
@@ -117,22 +117,25 @@ class ImageGridView extends StatelessWidget {
       children: [
         // 検索バー
         Expanded(
-          child: TextField(
-            decoration: InputDecoration(
-              hintText: '画像を検索...',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: imageProvider.searchQuery.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () => imageProvider.setSearchQuery(''),
-                    )
-                  : null,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
+          child: SizedBox(
+            height: 48,
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: '画像を検索...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: imageProvider.searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () => imageProvider.setSearchQuery(''),
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              onChanged: imageProvider.setSearchQuery,
             ),
-            onChanged: imageProvider.setSearchQuery,
           ),
         ),
         

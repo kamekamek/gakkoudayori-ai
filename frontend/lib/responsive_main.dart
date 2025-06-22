@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import 'features/chat/presentation/pages/newsletter_creation_page.dart';
+import 'core/providers/providers.dart';
 
 /// 学校だよりAI - レスポンシブ対応版
 void main() {
@@ -16,7 +18,15 @@ class GakkouDayoriAiApp extends StatelessWidget {
     // Noto Sans JPを基本フォントとして設定
     final baseTextTheme = Theme.of(context).textTheme;
 
-    return MaterialApp(
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AppProvider()),
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
+        ChangeNotifierProvider(create: (_) => NewsletterProvider()),
+        ChangeNotifierProvider(create: (_) => ImageUploadProvider()),
+        ChangeNotifierProvider(create: (_) => ClassroomProvider()),
+      ],
+      child: MaterialApp(
       title: '学校だよりAI',
       theme: ThemeData(
         primarySwatch: Colors.blue,
@@ -54,8 +64,9 @@ class GakkouDayoriAiApp extends StatelessWidget {
               GoogleFonts.notoSansJp(textStyle: baseTextTheme.labelSmall),
         ),
       ),
-      home: NewsletterCreationPage(),
-      debugShowCheckedModeBanner: false,
+        home: NewsletterCreationPage(),
+        debugShowCheckedModeBanner: false,
+      ),
     );
   }
 }

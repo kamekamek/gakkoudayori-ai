@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/services/services.dart';
 import '../../../editor/presentation/widgets/print_preview_widget.dart';
 import '../../../settings/presentation/widgets/user_dictionary_widget.dart';
+import '../../../images/presentation/pages/image_management_page.dart';
 import '../../../../core/models/models.dart';
 import 'dart:html' as html;
 
@@ -380,6 +381,7 @@ class NewsletterCreationPageState extends State<NewsletterCreationPage> {
               ),
               SizedBox(width: 8),
               FloatingActionButton(
+                heroTag: "mic_button",
                 onPressed: _isProcessing ? null : _toggleRecording,
                 backgroundColor: _isRecording ? Colors.red[400] : Colors.blue[600],
                 child: Icon(
@@ -390,6 +392,7 @@ class NewsletterCreationPageState extends State<NewsletterCreationPage> {
               ),
               SizedBox(width: 8),
               FloatingActionButton(
+                heroTag: "send_button",
                 onPressed: _messageController.text.trim().isNotEmpty ? () => _sendTextMessage(_messageController.text) : null,
                 backgroundColor: Colors.green[600],
                 child: Icon(Icons.send, color: Colors.white),
@@ -398,17 +401,38 @@ class NewsletterCreationPageState extends State<NewsletterCreationPage> {
             ],
           ),
           SizedBox(height: 12),
-          ElevatedButton.icon(
-            onPressed: _openUserDictionary,
-            icon: Icon(Icons.book, size: 20),
-            label: Text('📝 辞書管理'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange[600],
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _openUserDictionary,
+                  icon: Icon(Icons.book, size: 20),
+                  label: Text('📝 辞書管理'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange[600],
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
               ),
-            ),
+              SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _openImageManager,
+                  icon: Icon(Icons.photo_library, size: 20),
+                  label: Text('📷 画像管理'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.purple[600],
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -811,6 +835,25 @@ class NewsletterCreationPageState extends State<NewsletterCreationPage> {
         ),
       ),
     );
+  }
+
+  void _openImageManager() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const ImageManagementPage(
+          isSelectionMode: false,
+        ),
+      ),
+    ).then((selectedImages) {
+      if (selectedImages != null && selectedImages is List<ImageFile>) {
+        _addChatMessage(
+          sender: 'ai',
+          message: '✅ ${selectedImages.length}枚の画像が選択されました',
+          type: MessageType.status,
+        );
+        // TODO: 選択された画像を学級通信に統合する処理
+      }
+    });
   }
 
   void _openSettings() {
