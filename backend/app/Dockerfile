@@ -40,9 +40,7 @@ COPY . .
 
 # Set environment variables
 ENV PYTHONPATH=/app
-ENV FLASK_APP=main.py
-ENV FLASK_ENV=production
 
 # Expose port and set entrypoint
 EXPOSE 8080
-CMD ["functions-framework", "--target=api", "--port=8080"] 
+CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:8080", "main:app"] 

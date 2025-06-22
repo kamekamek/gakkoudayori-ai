@@ -35,7 +35,7 @@ class GeneratePdfBody(BaseModel):
     include_footer: bool = Field(False, description="フッターを含めるか")
     custom_css: str = Field("", description="追加のカスタムCSS")
 
-classApiResponse(BaseModel):
+class ApiResponse(BaseModel):
     success: bool
     data: Optional[Dict[str, Any]] = None
     error: Optional[str] = None

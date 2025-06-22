@@ -66,12 +66,12 @@ jobs:
 
       - name: 📦 Python依存関係インストール
         run: |
-          cd backend/functions
+          cd backend/app
           pip install -r requirements.txt
 
       - name: 🧪 Pythonテスト実行
         run: |
-          cd backend/functions
+          cd backend/app
           python -m pytest tests/ -v || echo "⚠️ テストファイルが見つかりません"
 
   # ステージング環境デプロイ（developブランチ）
@@ -99,7 +99,7 @@ jobs:
           cd frontend
           flutter build web \
             --dart-define=ENVIRONMENT=staging \
-            --dart-define=API_BASE_URL=https://yutori-backend-staging-944053509139.asia-northeast1.run.app/api/v1/ai \
+            --dart-define=API_BASE_URL=https://yutori-backend-staging-944053509139.asia-northeast1.run.app/api/v1 \
             --release
 
       - name: 🔧 Google Cloud認証
@@ -113,7 +113,7 @@ jobs:
       - name: 🚀 バックエンドイメージビルド（ステージング）
         id: build_staging
         run: |
-          cd backend/functions # Dockerfileがあるディレクトリに移動
+          cd backend/app # Dockerfileがあるディレクトリに移動
           BUILD_ID=$(gcloud builds submit --tag gcr.io/gakkoudayori-ai/yutori-backend-staging:latest . --async --format="value(id)")
           echo "BUILD_ID=$BUILD_ID" >> $GITHUB_OUTPUT
           echo "Build submitted with ID: $BUILD_ID"
@@ -143,7 +143,7 @@ jobs:
             --region asia-northeast1 \
             --allow-unauthenticated \
             --port 8080 \
-            --set-env-vars="ENVIRONMENT=staging,FLASK_ENV=production" # 環境変数を設定
+            --set-env-vars="ENVIRONMENT=staging" # 環境変数を設定
 
       - name: 🌐 フロントエンドデプロイ（ステージング）
         uses: FirebaseExtended/action-hosting-deploy@v0
@@ -180,7 +180,7 @@ jobs:
           cd frontend
           flutter build web \
             --dart-define=ENVIRONMENT=production \
-            --dart-define=API_BASE_URL=https://yutori-backend-944053509139.asia-northeast1.run.app/api/v1/ai \
+            --dart-define=API_BASE_URL=https://yutori-backend-944053509139.asia-northeast1.run.app/api/v1 \
             --release
 
       - name: 🔧 Google Cloud認証
@@ -194,7 +194,7 @@ jobs:
       - name: 🚀 バックエンドイメージビルド（本番）
         id: build_production
         run: |
-          cd backend/functions # Dockerfileがあるディレクトリに移動
+          cd backend/app # Dockerfileがあるディレクトリに移動
           BUILD_ID=$(gcloud builds submit --tag gcr.io/gakkoudayori-ai/yutori-backend:latest . --async --format="value(id)")
           echo "BUILD_ID=$BUILD_ID" >> $GITHUB_OUTPUT
           echo "Build submitted with ID: $BUILD_ID"
@@ -224,7 +224,7 @@ jobs:
             --region asia-northeast1 \
             --allow-unauthenticated \
             --port 8080 \
-            --set-env-vars="ENVIRONMENT=production,FLASK_ENV=production" # 環境変数を設定
+            --set-env-vars="ENVIRONMENT=production" # 環境変数を設定
 
       - name: 🌐 フロントエンドデプロイ（本番）
         uses: FirebaseExtended/action-hosting-deploy@v0
@@ -304,7 +304,7 @@ jobs:
           cd frontend
           flutter build web \
             --dart-define=ENVIRONMENT=preview \
-            --dart-define=API_BASE_URL=https://yutori-backend-944053509139.asia-northeast1.run.app/api/v1/ai \
+            --dart-define=API_BASE_URL=https://yutori-backend-944053509139.asia-northeast1.run.app/api/v1 \
             --release
 
       - name: 👀 プレビューデプロイ
