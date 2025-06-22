@@ -13,6 +13,7 @@ import os
 import re
 from datetime import datetime
 from pydantic import BaseModel
+from dotenv import load_dotenv
 
 # カスタムサービスをインポート
 from services.firebase_service import (
@@ -35,11 +36,14 @@ from services.json_to_graphical_record_service import convert_json_to_graphical_
 from services.pdf_generator import generate_pdf_from_html, get_pdf_info
 
 # FastAPIをインポート
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from asgiref.wsgi import WsgiToAsgi
 import uvicorn
+
+# .envファイルから環境変数を読み込む
+load_dotenv()
 
 # Firebase Admin SDKを初期化
 # 環境変数で初期化済みかチェックすることで、複数回呼び出しを避ける
@@ -55,32 +59,24 @@ from api.v1.router import router as api_v1_router
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Flaskアプリケーション作成
+# FastAPIアプリケーションのインスタンスを作成
 app = FastAPI(
-    title="Gakkoudayori AI Backend",
+    title="学校だよりAI API",
+    description="学校だよりAIのバックエンドAPIです。音声文字起こし、AIによる文章生成、PDF出力機能を提供します。",
     version="1.0.0",
-    description="学級通信AIエージェントと通常APIを統合したサーバー"
 )
 
-# v1のAPIルーターをアプリにマウント
-app.include_router(api_v1_router, prefix="/api/v1")
-
-# CORS設定 - 本番とローカル開発環境の両方を許可
-# プレビュー環境のURLパターン (例: https://gakkoudayori-ai--pr-123.web.app) にマッチする正規表現
-preview_origin_pattern = r"https://gakkoudayori-ai--pr-\d+\.web\.app"
-# ステージング環境のURLパターン (例: https://gakkoudayori-ai--staging-abc123.web.app) にマッチする正規表現
-staging_origin_pattern = r"https://gakkoudayori-ai--staging-[a-z0-9]+\.web\.app"
+# CORS (Cross-Origin Resource Sharing) の設定
+origins = [
+    "http://localhost",
+    "http://localhost:8080",  # Flutter Web開発サーバー
+    # NOTE: デプロイ先のフロントエンドURLを本番環境では追加してください
+    #例: "https://your-production-domain.web.app"
+]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://gakkoudayori-ai.web.app",
-        "https://gakkoudayori-ai--staging.web.app",
-        "http://localhost:3000",
-        "http://localhost:5000",
-        "http://localhost:8080"
-    ],
-    allow_origin_regex=f"({preview_origin_pattern}|{staging_origin_pattern})",
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -116,103 +112,29 @@ def get_firestore_client():
 # アプリケーション起動時にFirebase初期化
 firebase_initialized = init_firebase()
 
-@app.get("/", summary="基本ヘルスチェック")
-def read_root():
-    """サービスの稼働状況とタイムスタンプを返します。"""
-    return {
-        'status': 'ok',
-        'service': 'gakkoudayori-ai-backend',
-        'timestamp': datetime.utcnow().isoformat(),
-    }
+# API v1のルーターをインクルード
+# 全てのv1エンドポイントは /api/v1 プレフィックスを持つ
+app.include_router(api_v1_router, prefix="/api/v1")
 
-@app.get("/health", summary="詳細ヘルスチェック")
-def read_health():
-    """Firebaseの接続状況など、より詳細なヘルスチェックを行います。"""
-    try:
-        health_result = health_check()
-        status_code = 200 if health_result.get('status') == 'healthy' else 503
-        return JSONResponse(content=health_result, status_code=status_code)
-    except Exception as e:
-        logger.error(f"Health check error: {e}", exc_info=True)
-        return JSONResponse(
-            status_code=500,
-            content={'status': 'error', 'message': 'Health check failed unexpectedly.'}
-        )
-
-@app.get("/config", summary="Firebase設定情報の取得")
-def read_config():
-    """フロントエンドが必要とするFirebaseの設定情報を返します。"""
-    try:
-        config_info = get_firebase_config()
-        return config_info
-    except Exception as e:
-        logger.error(f"Config retrieval error: {e}", exc_info=True)
-        return JSONResponse(
-            status_code=500,
-            content={'status': 'error', 'message': 'Failed to retrieve Firebase config.'}
-        )
-
-# ==============================================================================
-# ヘルパー関数
-# ==============================================================================
-
-def _clean_html_for_pdf(html_content: str) -> str:
+# ヘルスチェック用のエンドポイント
+@app.get("/health", tags=["System"])
+async def health_check():
     """
-    PDF生成前にHTMLからMarkdownコードブロックを除去 - 強化版
-    
-    Args:
-        html_content (str): クリーンアップするHTMLコンテンツ
-        
-    Returns:
-        str: Markdownコードブロックが除去されたHTMLコンテンツ
+    アプリケーションの稼働状況を確認するためのヘルスチェックエンドポイント。
     """
-    if not html_content:
-        return html_content
-    
-    import re
-    
-    content = html_content.strip()
-    
-    # Markdownコードブロックの様々なパターンを削除 - 強化版
-    patterns = [
-        r'```html\s*',          # ```html
-        r'```HTML\s*',          # ```HTML  
-        r'```\s*html\s*',       # ``` html
-        r'```\s*HTML\s*',       # ``` HTML
-        r'```\s*',              # 一般的なコードブロック開始
-        r'\s*```',              # コードブロック終了
-        r'`html\s*',            # `html（単一バッククォート）
-        r'`HTML\s*',            # `HTML（単一バッククォート）
-        r'\s*`\s*$',            # 末尾の単一バッククォート
-        r'^\s*`',               # 先頭の単一バッククォート
-    ]
-    
-    for pattern in patterns:
-        content = re.sub(pattern, '', content, flags=re.IGNORECASE | re.MULTILINE)
-    
-    # HTMLの前後にある説明文を削除（より積極的に）
-    explanation_patterns = [
-        r'^[^<]*(?=<)',                           # HTML開始前の説明文
-        r'>[^<]*$',                               # HTML終了後の説明文  
-        r'以下のHTML.*?です[。：]?\s*',              # 「以下のHTML〜です」パターン
-        r'HTML.*?を出力.*?[。：]?\s*',             # 「HTMLを出力〜」パターン
-        r'こちらが.*?HTML.*?[。：]?\s*',           # 「こちらがHTML〜」パターン
-        r'生成された.*?HTML.*?[。：]?\s*',         # 「生成されたHTML〜」パターン
-        r'【[^】]*】',                               # 【〜】形式のラベル
-    ]
-    
-    for pattern in explanation_patterns:
-        content = re.sub(pattern, '', content, flags=re.IGNORECASE)
-    
-    # 空白の正規化
-    content = re.sub(r'\n\s*\n', '\n', content)
-    content = content.strip()
-    
-    # デバッグログ：PDFエンドポイントでのクリーンアップチェック（強化）
-    if '```' in content or '`' in content:
-        logger.warning(f"PDF endpoint: Markdown/backtick remnants detected after enhanced cleanup: {content[:100]}...")
-    
-    return content
+    return {"status": "ok"}
+
+# サーバー起動時の処理（デバッグ用）
+@app.on_event("startup")
+async def startup_event():
+    print("🚀 FastAPI application startup")
+    project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
+    if not project_id:
+        print("⚠️  Warning: GOOGLE_CLOUD_PROJECT environment variable is not set.")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    print("👋 FastAPI application shutdown")
 
 @app.errorhandler(404)
 def not_found(error):
