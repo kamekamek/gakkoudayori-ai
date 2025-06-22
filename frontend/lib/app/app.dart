@@ -5,6 +5,7 @@ import '../core/router/app_router.dart';
 import '../features/home/providers/newsletter_provider.dart';
 import '../features/ai_assistant/providers/chat_provider.dart';
 import '../features/editor/providers/preview_provider.dart';
+import '../features/editor/providers/image_provider.dart';
 
 /// 学校だよりAIアプリのメインアプリケーション
 class GakkouDayoriAiApp extends StatelessWidget {
@@ -18,6 +19,7 @@ class GakkouDayoriAiApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => NewsletterProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(create: (_) => PreviewProvider()),
+        ChangeNotifierProvider(create: (_) => ImageManagementProvider()),
       ],
       child: MaterialApp.router(
         title: '学校だよりAI',

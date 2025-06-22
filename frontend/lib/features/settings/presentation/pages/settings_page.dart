@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../../home/providers/newsletter_provider.dart';
+import '../../../../widgets/user_dictionary_widget.dart';
 
 /// 設定画面
 class SettingsPage extends StatefulWidget {
@@ -221,17 +222,20 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   void _openUserDictionary() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('ユーザー辞書'),
-        content: const Text('ユーザー辞書機能は現在開発中です。\n次のアップデートでご利用いただけるようになります。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('了解'),
-          ),
-        ],
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => UserDictionaryWidget(
+          userId: 'default', // TODO: 実際のユーザーIDを使用
+          onDictionaryUpdated: () {
+            // 辞書更新時の処理（必要に応じて）
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('ユーザー辞書が更新されました'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          },
+        ),
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../ai_assistant/providers/chat_provider.dart';
+import '../../../editor/presentation/widgets/image_upload_widget.dart';
 import 'chat_message_bubble.dart';
 import 'chat_input_area.dart';
 
@@ -56,15 +57,21 @@ class _ChatInterfaceState extends State<ChatInterface> {
                     ),
                   ),
                   // 学級通信生成ボタン
-                  OutlinedButton.icon(
+                  ElevatedButton.icon(
                     onPressed: chatProvider.messages.where((m) => m.isUser).isNotEmpty && !chatProvider.isAiTyping
                         ? () => chatProvider.generateNewsletter()
                         : null,
-                    icon: const Icon(Icons.article, size: 16),
-                    label: const Text('生成', style: TextStyle(fontSize: 12)),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      minimumSize: const Size(60, 32),
+                    icon: const Icon(Icons.article, size: 18),
+                    label: const Text('生成', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.secondary,
+                      foregroundColor: Theme.of(context).colorScheme.onSecondary,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      minimumSize: const Size(80, 36),
+                      elevation: 3,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -134,6 +141,7 @@ class _ChatInterfaceState extends State<ChatInterface> {
               },
               isVoiceRecording: chatProvider.isVoiceRecording,
               onVoiceRecordingToggle: () => _handleVoiceRecordingToggle(chatProvider),
+              onImageUpload: () => _showImageUploadDialog(),
             ),
           ],
         );
@@ -229,6 +237,64 @@ class _ChatInterfaceState extends State<ChatInterface> {
             child: const Text('クリア'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showImageUploadDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        child: SizedBox(
+          width: 600,
+          height: 500,
+          child: Column(
+            children: [
+              // ダイアログヘッダー
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.photo_library,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        '画像アップロード',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close),
+                      tooltip: '閉じる',
+                    ),
+                  ],
+                ),
+              ),
+              
+              // 画像アップロードウィジェット
+              Expanded(
+                child: ImageUploadWidget(
+                  showHeader: false,
+                  onImagesChanged: () {
+                    // 画像が変更されたときの処理
+                    // 必要に応じてチャットにメッセージを追加
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

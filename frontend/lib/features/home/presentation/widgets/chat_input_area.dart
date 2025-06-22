@@ -5,12 +5,14 @@ class ChatInputArea extends StatefulWidget {
   final Function(String) onMessageSent;
   final bool isVoiceRecording;
   final VoidCallback? onVoiceRecordingToggle;
+  final VoidCallback? onImageUpload;
 
   const ChatInputArea({
     super.key,
     required this.onMessageSent,
     required this.isVoiceRecording,
     this.onVoiceRecordingToggle,
+    this.onImageUpload,
   });
 
   @override
@@ -120,6 +122,24 @@ class _ChatInputAreaState extends State<ChatInputArea> {
                           )
                         : null,
                   ),
+                ),
+              ),
+              
+              const SizedBox(width: 8),
+              
+              // 画像アップロードボタン
+              Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.tertiary,
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  onPressed: widget.onImageUpload,
+                  icon: Icon(
+                    Icons.photo_camera,
+                    color: Theme.of(context).colorScheme.onTertiary,
+                  ),
+                  tooltip: '画像追加',
                 ),
               ),
               
