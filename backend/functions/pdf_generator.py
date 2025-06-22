@@ -14,6 +14,7 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 import asyncio
 from pathlib import Path
+import re
 
 # PDF生成関連
 try:
@@ -124,43 +125,62 @@ def generate_pdf_from_html(
                 'processing_time_ms': int((time.time() - start_time) * 1000)
             }
         
-        # 利用可能な日本語フォントを取得
-        available_fonts = _get_available_japanese_fonts()
-        font_family = ", ".join([f'"{font}"' for font in available_fonts])
+        # フォント処理のログレベルを一時的に変更
+        import logging
+        font_logger = logging.getLogger('fontTools')
+        original_level = font_logger.level
+        font_logger.setLevel(logging.WARNING)  # INFO以下のログを抑制
         
-        # HTML文書を構築
-        full_html = _build_complete_html_document(
-            html_content=html_content,
-            title=title,
-            page_size=page_size,
-            margin=margin,
-            include_header=include_header,
-            include_footer=include_footer,
-            custom_css=custom_css,
-            font_family=font_family
-        )
-        
-        # 出力パス決定（Cloud Run環境対応）
-        if output_path is None:
-            # Cloud Run環境では/tmpディレクトリを使用
-            temp_dir = '/tmp' if os.path.exists('/tmp') else tempfile.gettempdir()
-            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf', dir=temp_dir)
-            output_path = temp_file.name
-            temp_file.close()
-            logger.info(f"Using temporary file: {output_path}")
-        
-        # PDF生成実行（日本語フォント対応）
-        logger.info(f"Generating PDF: {output_path}")
-        logger.info(f"Using font family: {font_family}")
-        
-        # HTMLドキュメント作成（WeasyPrint 60.x対応）
-        # WeasyPrint HTMLドキュメント作成
-        html_doc = HTML(string=full_html)
-        
-        # PDF生成
-        html_doc.write_pdf(output_path)
-        
-        logger.info("PDF generation completed with Japanese font support")
+        try:
+            # 利用可能な日本語フォントを取得
+            available_fonts = _get_available_japanese_fonts()
+            font_family = ", ".join([f'"{font}"' for font in available_fonts])
+            
+            # デバッグ用：HTMLコンテンツの先頭を確認
+            html_preview = html_content[:200] + "..." if len(html_content) > 200 else html_content
+            logger.info(f"入力HTMLプレビュー: {html_preview}")
+            
+            # HTML文書を構築
+            full_html = _build_complete_html_document(
+                html_content=html_content,
+                title=title,
+                page_size=page_size,
+                margin=margin,
+                include_header=include_header,
+                include_footer=include_footer,
+                custom_css=custom_css,
+                font_family=font_family
+            )
+            
+            # デバッグ用：生成されたHTML文書の先頭を確認
+            full_html_preview = full_html[:300] + "..." if len(full_html) > 300 else full_html
+            logger.info(f"生成HTML文書プレビュー: {full_html_preview}")
+            
+            # 出力パス決定（Cloud Run環境対応）
+            if output_path is None:
+                # Cloud Run環境では/tmpディレクトリを使用
+                temp_dir = '/tmp' if os.path.exists('/tmp') else tempfile.gettempdir()
+                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf', dir=temp_dir)
+                output_path = temp_file.name
+                temp_file.close()
+                logger.info(f"Using temporary file: {output_path}")
+            
+            # PDF生成実行（日本語フォント対応）
+            logger.info(f"Generating PDF: {output_path}")
+            logger.info(f"Using font family: {font_family}")
+            
+            # HTMLドキュメント作成（WeasyPrint 60.x対応）
+            # WeasyPrint HTMLドキュメント作成
+            html_doc = HTML(string=full_html)
+            
+            # PDF生成
+            html_doc.write_pdf(output_path)
+            
+            logger.info("PDF generation completed with Japanese font support")
+            
+        finally:
+            # フォント処理のログレベルを元に戻す
+            font_logger.setLevel(original_level)
         
         # ファイル情報取得
         file_size = os.path.getsize(output_path)
@@ -239,12 +259,98 @@ def _build_complete_html_document(
         str: 完全なHTML文書
     """
     
+    # HTMLコンテンツの前処理と検査
+    clean_html_content = html_content.strip()
+    
+    # 【重要】Markdownコードブロックのクリーンアップを追加
+    clean_html_content = _clean_markdown_codeblocks_pdf(clean_html_content)
+    
+    # 既に完全なHTMLドキュメントかチェック
+    html_lower = clean_html_content.lower()
+    is_complete_html = (
+        '<!doctype html>' in html_lower and
+        '<html' in html_lower and
+        '</html>' in html_lower and
+        '<head' in html_lower and
+        '<body' in html_lower and
+        '</body>' in html_lower
+    )
+    
+    # 既に完全なHTMLドキュメントの場合は、そのまま返す（PDF用CSS調整のみ）
+    if is_complete_html:
+        logger.info("完全なHTMLドキュメントを検出：PDF用CSS調整のみ実行")
+        
+        # PDF用CSSの追加
+        pdf_css = f"""
+        /* 日本語フォント対応 - プレビューと統一 */
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
+        
+        @page {{
+            size: {page_size};
+            margin: {margin};
+            @bottom-center {{
+                content: counter(page);
+                font-family: 'Noto Sans JP', sans-serif;
+                font-size: 10pt;
+                color: #666;
+            }}
+        }}
+        
+        @page:first {{
+            @bottom-center {{
+                content: none;
+            }}
+        }}
+        
+        body {{
+            font-family: 'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic', sans-serif !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }}
+        
+        .a4-sheet {{
+            width: 100% !important;
+            min-height: auto !important;
+            margin: 0 !important;
+            padding: 10mm !important;
+            box-shadow: none !important;
+            background: white !important;
+        }}
+        
+        .print-container {{
+            width: 100% !important;
+            min-height: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            box-shadow: none !important;
+        }}
+        
+        {custom_css}
+        """
+        
+        # 既存のスタイルタグ内にPDF用CSSを追加
+        if "<style>" in clean_html_content and "</style>" in clean_html_content:
+            clean_html_content = clean_html_content.replace("</style>", f"\n{pdf_css}\n</style>", 1)
+        else:
+            # head内にスタイルタグを追加
+            head_end = clean_html_content.find("</head>")
+            if head_end != -1:
+                clean_html_content = (
+                    clean_html_content[:head_end] +
+                    f"<style>{pdf_css}</style>\n" +
+                    clean_html_content[head_end:]
+                )
+        
+        return clean_html_content
+    
+    # 以下、不完全なHTMLの場合の従来処理
+    
     # 元のHTMLコンテンツからスタイルを抽出
     original_styles = ""
-    if "<style>" in html_content and "</style>" in html_content:
-        start_idx = html_content.find("<style>") + 7
-        end_idx = html_content.find("</style>")
-        original_styles = html_content[start_idx:end_idx]
+    if "<style>" in clean_html_content and "</style>" in clean_html_content:
+        start_idx = clean_html_content.find("<style>") + 7
+        end_idx = clean_html_content.find("</style>")
+        original_styles = clean_html_content[start_idx:end_idx]
     
     # PDF用CSS（最小限の調整のみ）
     pdf_css = f"""
@@ -377,11 +483,13 @@ def _build_complete_html_document(
     """
     
     # HTMLコンテンツからstyleタグを除去（重複を防ぐため）
-    clean_html_content = html_content
     if "<style>" in clean_html_content and "</style>" in clean_html_content:
         start_idx = clean_html_content.find("<style>")
         end_idx = clean_html_content.find("</style>") + 8
         clean_html_content = clean_html_content[:start_idx] + clean_html_content[end_idx:]
+    
+    # HTMLタグやDOCTYPE宣言を除去（bodyコンテンツのみに）
+    clean_html_content = _extract_body_content(clean_html_content)
     
     # 既存のヘッダーがある場合は追加ヘッダーを無効化
     has_existing_header = any(tag in html_content.lower() for tag in ['<h1', '<header', 'class="newsletter-header"', 'class="a4-sheet"'])
@@ -431,6 +539,35 @@ def _build_complete_html_document(
     """
     
     return complete_html
+
+def _extract_body_content(html_content: str) -> str:
+    """
+    HTMLからbodyコンテンツのみを抽出
+    - 完全なHTMLドキュメントからbody内容のみを取得
+    - HTMLタグやDOCTYPE宣言を除去
+    """
+    content = html_content.strip()
+    
+    # body要素の抽出を試行
+    body_match = re.search(r'<body[^>]*>(.*?)</body>', content, re.DOTALL | re.IGNORECASE)
+    if body_match:
+        return body_match.group(1).strip()
+    
+    # body要素がない場合、HTML要素の抽出を試行
+    html_match = re.search(r'<html[^>]*>(.*?)</html>', content, re.DOTALL | re.IGNORECASE)
+    if html_match:
+        html_content_inner = html_match.group(1).strip()
+        # head要素を除去
+        html_content_inner = re.sub(r'<head[^>]*>.*?</head>', '', html_content_inner, flags=re.DOTALL | re.IGNORECASE)
+        return html_content_inner.strip()
+    
+    # DOCTYPEとhtmlタグを除去
+    content = re.sub(r'<!DOCTYPE[^>]*>', '', content, flags=re.IGNORECASE)
+    content = re.sub(r'</?html[^>]*>', '', content, flags=re.IGNORECASE)
+    content = re.sub(r'<head[^>]*>.*?</head>', '', content, flags=re.DOTALL | re.IGNORECASE)
+    content = re.sub(r'</?body[^>]*>', '', content, flags=re.IGNORECASE)
+    
+    return content.strip()
 
 def _get_pdf_page_count(pdf_path: str) -> int:
     """
@@ -682,6 +819,64 @@ def test_pdf_generation() -> bool:
     except Exception as e:
         print(f"❌ テストエラー: {e}")
         return False
+
+def _clean_markdown_codeblocks_pdf(html_content: str) -> str:
+    """
+    PDF生成前にHTMLからMarkdownコードブロックを完全に除去 - 強化版
+    
+    Args:
+        html_content (str): クリーンアップするHTMLコンテンツ
+        
+    Returns:
+        str: Markdownコードブロックが除去されたHTMLコンテンツ
+    """
+    if not html_content:
+        return html_content
+    
+    content = html_content.strip()
+    
+    # Markdownコードブロックの様々なパターンを削除 - PDF用強化版
+    patterns = [
+        r'```html\s*',          # ```html
+        r'```HTML\s*',          # ```HTML  
+        r'```\s*html\s*',       # ``` html
+        r'```\s*HTML\s*',       # ``` HTML
+        r'```\s*',              # 一般的なコードブロック開始
+        r'\s*```',              # コードブロック終了
+        r'`html\s*',            # `html（単一バッククォート）
+        r'`HTML\s*',            # `HTML（単一バッククォート）
+        r'\s*`\s*$',            # 末尾の単一バッククォート
+        r'^\s*`',               # 先頭の単一バッククォート
+    ]
+    
+    for pattern in patterns:
+        content = re.sub(pattern, '', content, flags=re.IGNORECASE | re.MULTILINE)
+    
+    # HTMLの前後にある説明文を削除（PDF用強化）
+    explanation_patterns = [
+        r'^[^<]*(?=<)',                           # HTML開始前の説明文
+        r'>[^<]*$',                               # HTML終了後の説明文  
+        r'以下のHTML.*?です[。：]?\s*',              # 「以下のHTML〜です」パターン
+        r'HTML.*?を出力.*?[。：]?\s*',             # 「HTMLを出力〜」パターン
+        r'こちらが.*?HTML.*?[。：]?\s*',           # 「こちらがHTML〜」パターン
+        r'生成された.*?HTML.*?[。：]?\s*',         # 「生成されたHTML〜」パターン
+        r'【[^】]*】',                               # 【〜】形式のラベル
+    ]
+    
+    for pattern in explanation_patterns:
+        content = re.sub(pattern, '', content, flags=re.IGNORECASE)
+    
+    # 空白の正規化
+    content = re.sub(r'\n\s*\n', '\n', content)
+    content = content.strip()
+    
+    # デバッグログ：PDF生成前のクリーンアップチェック（強化）
+    if '```' in content or '`' in content:
+        logger.warning(f"PDF generation: Markdown/backtick remnants detected after enhanced cleanup: {content[:100]}...")
+    
+    logger.debug(f"PDF HTML content after enhanced markdown cleanup: {content[:200]}...")
+    
+    return content
 
 if __name__ == '__main__':
     success = test_pdf_generation()

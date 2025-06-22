@@ -28,7 +28,6 @@ class DictionaryTerm:
     """辞書エントリのデータクラス"""
     term: str
     variations: List[str]
-    category: str = "custom"
     confidence: float = 1.0
     usage_count: int = 0
     phonetic_key: str = ""
@@ -251,7 +250,7 @@ class UserDictionaryService:
             logger.error(f"Failed to load user dictionary: {e}")
             return DEFAULT_SCHOOL_TERMS
     
-    def add_custom_term(self, user_id: str, term: str, variations: List[str], category: str = "custom") -> bool:
+    def add_custom_term(self, user_id: str, term: str, variations: List[str]) -> bool:
         """
         カスタム用語を追加
         
@@ -283,7 +282,6 @@ class UserDictionaryService:
             term_obj = DictionaryTerm(
                 term=term,
                 variations=variations,
-                category=category,
                 phonetic_key=self.phonetic_matcher.get_phonetic_key(term),
                 created_at=datetime.now()
             )
@@ -306,7 +304,7 @@ class UserDictionaryService:
             logger.error(f"Failed to add custom term: {e}")
             return False
 
-    def update_custom_term(self, user_id: str, term: str, variations: List[str], category: str = "custom") -> bool:
+    def update_custom_term(self, user_id: str, term: str, variations: List[str]) -> bool:
         """
         カスタム用語を更新
         
@@ -314,7 +312,6 @@ class UserDictionaryService:
             user_id (str): ユーザーID
             term (str): 更新対象の用語
             variations (List[str]): 新しい読み方のバリエーション
-            category (str): 新しいカテゴリ
             
         Returns:
             bool: 成功可否
@@ -340,7 +337,6 @@ class UserDictionaryService:
             term_obj = DictionaryTerm(
                 term=term,
                 variations=variations,
-                category=category,
                 phonetic_key=self.phonetic_matcher.get_phonetic_key(term),
                 # created_at は既存のものを維持、last_used は更新時に設定も可能
                 created_at=datetime.fromisoformat(data['custom_terms'][term]['created_at']) if data['custom_terms'][term].get('created_at') else datetime.now(),
@@ -536,60 +532,7 @@ class UserDictionaryService:
         except Exception as e:
             logger.error(f"Failed to update usage stats: {e}")
     
-    def get_dictionary_stats(self, user_id: str = "default") -> Dict[str, Any]:
-        """
-        辞書統計情報取得（使用統計込み）
-        
-        Args:
-            user_id (str): ユーザーID
-            
-        Returns:
-            Dict[str, Any]: 統計情報
-        """
-        dictionary = self.get_user_dictionary(user_id)
-        custom_terms = self._load_custom_dictionary(user_id)
-        usage_stats = self._get_usage_stats(user_id)
-        
-        # カテゴリ別統計
-        categories = {}
-        for term, data in custom_terms.items():
-            if isinstance(data, dict) and 'category' in data:
-                category = data['category']
-                categories[category] = categories.get(category, 0) + 1
-        
-        return {
-            'total_terms': len(dictionary),
-            'default_terms': len(DEFAULT_SCHOOL_TERMS),
-            'custom_terms': len(custom_terms),
-            'total_variations': sum(len(variations) if isinstance(variations, list) else len(variations.get('variations', [])) for variations in dictionary.values()),
-            'categories': categories,
-            'usage_stats': {
-                'most_used_terms': sorted(
-                    [(term, stats['count']) for term, stats in usage_stats.items()],
-                    key=lambda x: x[1],
-                    reverse=True
-                )[:10],
-                'total_corrections': sum(stats['count'] for stats in usage_stats.values())
-            }
-        }
     
-    def _get_usage_stats(self, user_id: str) -> Dict[str, Dict[str, Any]]:
-        """使用統計を取得"""
-        try:
-            if not self.db:
-                return {}
-            
-            doc_ref = self.db.collection('user_dictionaries').document(user_id)
-            doc = doc_ref.get()
-            
-            if doc.exists:
-                data = doc.to_dict()
-                return data.get('usage_stats', {})
-            return {}
-            
-        except Exception as e:
-            logger.error(f"Failed to get usage stats: {e}")
-            return {}
     
     def suggest_corrections(self, text: str, user_id: str = "default") -> List[Dict[str, Any]]:
         """テキストに対する修正候補を提案"""
@@ -683,11 +626,6 @@ def test_user_dictionary_service():
     corrected = service.correct_transcription(test_transcript, "test_user")
     print(f"   元: {test_transcript}")
     print(f"   補正: {corrected}")
-    
-    # 4. 統計情報
-    print("\n4. 辞書統計...")
-    stats = service.get_dictionary_stats("test_user")
-    print(f"   統計: {stats}")
     
     print("\n✅ ユーザー辞書サービステスト完了")
 

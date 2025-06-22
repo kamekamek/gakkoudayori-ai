@@ -1,21 +1,21 @@
-// 学級通信エディタ - ウィジェットテスト
+// 学校だよりAI - ウィジェットテスト
 //
-// 学級通信エディタアプリの基本的なウィジェットテストを実行します。
+// 学校だよりAIアプリの基本的なウィジェットテストを実行します。
 // 主要なUI要素の存在確認とユーザーインタラクションをテストします。
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('学級通信エディタ 基本テスト', () {
+  group('学校だよりAI 基本テスト', () {
     testWidgets('MaterialAppが正常に作成される', (WidgetTester tester) async {
       // シンプルなMaterialAppをテスト
       await tester.pumpWidget(
         MaterialApp(
-          title: '学級通信エディタ',
+          title: '学校だよりAI',
           home: Scaffold(
             appBar: AppBar(
-              title: const Text('学級通信エディタ'),
+              title: const Text('学校だよりAI'),
             ),
             body: const Center(
               child: Text('テスト用アプリ'),
@@ -25,7 +25,7 @@ void main() {
       );
 
       // アプリタイトルが表示されることを確認
-      expect(find.text('学級通信エディタ'), findsAtLeastNWidgets(1));
+      expect(find.text('学校だよりAI'), findsAtLeastNWidgets(1));
 
       // テスト用テキストが表示されることを確認
       expect(find.text('テスト用アプリ'), findsOneWidget);

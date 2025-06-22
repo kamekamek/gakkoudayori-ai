@@ -86,7 +86,7 @@ class ConnectionStatus(TypedDict):
 def get_gemini_client(
     project_id: str,
     credentials_path: str,
-    model_name: str = "gemini-1.5-flash",
+    model_name: str = "gemini-2.5-flash-preview-05-20",
     location: str = "us-central1"
 ) -> Optional[GenerativeModel]:
     """
@@ -95,7 +95,7 @@ def get_gemini_client(
     Args:
         project_id (str): Google CloudプロジェクトID
         credentials_path (str): サービスアカウントキーファイルのパス
-        model_name (str, optional): 使用するGeminiモデル名. デフォルトは "gemini-2.0-flash-exp"
+        model_name (str, optional): 使用するGeminiモデル名. デフォルトは "gemini-2.5-flash-preview-05-20"
         location (str, optional): APIリージョン. デフォルトは "us-central1"
         
     Returns:
@@ -149,9 +149,9 @@ def generate_text(
     prompt: str,
     project_id: str,
     credentials_path: str,
-    model_name: str = "gemini-1.5-flash",
+    model_name: str = "gemini-2.5-flash-preview-05-20",
     temperature: float = 0.2,
-    max_output_tokens: int = 1024,
+    max_output_tokens: int = 8192,
     top_k: int = 40,
     top_p: float = 0.8,
     location: str = "us-central1"
@@ -198,7 +198,7 @@ def generate_text(
                 }
             }
         
-        # 生成設定を渡す
+        # 生成設定を渡す（安全性設定も含める）
         generation_config = GenerationConfig(
             temperature=temperature,
             max_output_tokens=max_output_tokens,
@@ -260,9 +260,9 @@ def generate_text_with_context(
     context: List[Dict[str, str]],
     project_id: str,
     credentials_path: str,
-    model_name: str = "gemini-1.5-flash",
+    model_name: str = "gemini-2.5-flash-preview-05-20",
     temperature: float = 0.2,
-    max_output_tokens: int = 1024,
+    max_output_tokens: int = 8192,
     top_k: int = 40,
     top_p: float = 0.8,
     location: str = "us-central1"
@@ -391,7 +391,7 @@ def generate_text_with_context(
 def check_gemini_connection(
     project_id: str,
     credentials_path: str,
-    model_name: str = "gemini-1.5-flash",
+    model_name: str = "gemini-2.5-flash-preview-05-20",
     location: str = "us-central1"
 ) -> Dict[str, Any]:
     """
@@ -514,6 +514,18 @@ def handle_gemini_error(error: Exception, start_time: Optional[float] = None) ->
         error_code = "FILE_NOT_FOUND"
         error_type = "RESOURCE_ERROR"
         logger.error(f"File not found error: {error_msg}")
+    elif "MAX_TOKENS" in error_msg or "finish_reason" in error_msg:
+        error_code = "MAX_TOKENS_EXCEEDED"
+        error_type = "TOKEN_LIMIT_ERROR"
+        logger.error(f"Max tokens exceeded error: {error_msg}")
+    elif "safety filters" in error_msg.lower() or "blocked" in error_msg.lower():
+        error_code = "SAFETY_FILTER_BLOCKED"
+        error_type = "CONTENT_FILTER_ERROR"
+        logger.error(f"Safety filter blocked: {error_msg}")
+    elif "Cannot get the response text" in error_msg or "no parts" in error_msg:
+        error_code = "RESPONSE_GENERATION_FAILED"
+        error_type = "GENERATION_ERROR"
+        logger.error(f"Response generation failed: {error_msg}")
     else:
         error_code = "GENERAL_ERROR"
         error_type = "INTERNAL_ERROR"

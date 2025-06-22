@@ -244,13 +244,11 @@ def get_user_dictionary(user_id: str):
         firestore_client = get_firestore_client()
         dict_service = create_user_dictionary_service(firestore_client)
         dictionary = dict_service.get_user_dictionary(user_id)
-        stats = dict_service.get_dictionary_stats(user_id)
         
         return jsonify({
             'success': True,
             'data': {
                 'dictionary': dictionary,
-                'stats': stats,
                 'user_id': user_id
             }
         })
@@ -280,7 +278,6 @@ def add_custom_term(user_id: str):
         
         term = data.get('term')
         variations = data.get('variations', [])
-        category = data.get('category', 'custom')
         
         if not term:
             logger.error("Term is required but not provided")
@@ -302,7 +299,7 @@ def add_custom_term(user_id: str):
         
         # カスタム用語追加
         logger.info(f"Adding custom term: {term} with variations: {variations}")
-        success = dict_service.add_custom_term(user_id, term, variations, category)
+        success = dict_service.add_custom_term(user_id, term, variations)
         logger.info(f"Add custom term result: {success}")
         
         if success:
@@ -310,8 +307,7 @@ def add_custom_term(user_id: str):
                 'success': True,
                 'data': {
                     'term': term,
-                    'variations': variations,
-                    'category': category
+                    'variations': variations
                 }
             })
         else:
@@ -338,7 +334,6 @@ def update_user_dictionary_term(user_id: str, term_name: str):
             return jsonify({'success': False, 'error': 'No JSON data provided'}), 400
         
         variations = data.get('variations')
-        category = data.get('category', 'custom')
         
         if variations is None: # variations は空リストを許容するが、キー自体がないのはエラー
             return jsonify({'success': False, 'error': 'Variations are required'}), 400
@@ -346,7 +341,7 @@ def update_user_dictionary_term(user_id: str, term_name: str):
         firestore_client = get_firestore_client()
         dict_service = create_user_dictionary_service(firestore_client)
         
-        success = dict_service.update_custom_term(user_id, term_name, variations, category)
+        success = dict_service.update_custom_term(user_id, term_name, variations)
         
         if success:
             return jsonify({
@@ -354,7 +349,6 @@ def update_user_dictionary_term(user_id: str, term_name: str):
                 'data': {
                     'term': term_name,
                     'variations': variations,
-                    'category': category,
                     'message': f'Term "{term_name}" updated successfully.'
                 }
             })
@@ -500,25 +494,6 @@ def suggest_corrections(user_id: str):
             'error': str(e)
         }), 500
 
-@app.route('/api/v1/dictionary/<user_id>/stats', methods=['GET'])
-def get_dictionary_stats(user_id: str):
-    """辞書統計情報取得"""
-    try:
-        firestore_client = get_firestore_client()
-        dict_service = create_user_dictionary_service(firestore_client)
-        stats = dict_service.get_dictionary_stats(user_id)
-        
-        return jsonify({
-            'success': True,
-            'data': stats
-        })
-        
-    except Exception as e:
-        logger.error(f"Get dictionary stats error: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
 
 @app.route('/api/v1/ai/formats', methods=['GET'])
 def get_audio_formats():
@@ -821,6 +796,10 @@ def generate_newsletter():
                 timestamp = result.get('timestamp', timestamp)
         
         if html_content is not None:
+            # \n や \\n を <br> に置換して、HTMLでの改行を確実にする
+            # プレビューで意図しない \n が表示される問題への対処
+            html_content = html_content.replace('\\n', '<br />').replace('\n', '<br />')
+
             # 成功レスポンスを構築
             newsletter_data = {
                 'success': True,
@@ -939,6 +918,9 @@ def generate_pdf():
                 'error_code': 'MISSING_HTML_CONTENT'
             }), 400
         
+        # 【重要】HTMLコンテンツのMarkdownコードブロッククリーンアップ
+        html_content = _clean_html_for_pdf(html_content)
+        
         # オプションパラメータ
         title = data.get('title', '学級通信')
         page_size = data.get('page_size', 'A4')
@@ -998,6 +980,68 @@ def get_pdf_info_endpoint(pdf_id):
             'error_code': 'PDF_INFO_ERROR'
         }), 500
 
+# ==============================================================================
+# ヘルパー関数
+# ==============================================================================
+
+def _clean_html_for_pdf(html_content: str) -> str:
+    """
+    PDF生成前にHTMLからMarkdownコードブロックを除去 - 強化版
+    
+    Args:
+        html_content (str): クリーンアップするHTMLコンテンツ
+        
+    Returns:
+        str: Markdownコードブロックが除去されたHTMLコンテンツ
+    """
+    if not html_content:
+        return html_content
+    
+    import re
+    
+    content = html_content.strip()
+    
+    # Markdownコードブロックの様々なパターンを削除 - 強化版
+    patterns = [
+        r'```html\s*',          # ```html
+        r'```HTML\s*',          # ```HTML  
+        r'```\s*html\s*',       # ``` html
+        r'```\s*HTML\s*',       # ``` HTML
+        r'```\s*',              # 一般的なコードブロック開始
+        r'\s*```',              # コードブロック終了
+        r'`html\s*',            # `html（単一バッククォート）
+        r'`HTML\s*',            # `HTML（単一バッククォート）
+        r'\s*`\s*$',            # 末尾の単一バッククォート
+        r'^\s*`',               # 先頭の単一バッククォート
+    ]
+    
+    for pattern in patterns:
+        content = re.sub(pattern, '', content, flags=re.IGNORECASE | re.MULTILINE)
+    
+    # HTMLの前後にある説明文を削除（より積極的に）
+    explanation_patterns = [
+        r'^[^<]*(?=<)',                           # HTML開始前の説明文
+        r'>[^<]*$',                               # HTML終了後の説明文  
+        r'以下のHTML.*?です[。：]?\s*',              # 「以下のHTML〜です」パターン
+        r'HTML.*?を出力.*?[。：]?\s*',             # 「HTMLを出力〜」パターン
+        r'こちらが.*?HTML.*?[。：]?\s*',           # 「こちらがHTML〜」パターン
+        r'生成された.*?HTML.*?[。：]?\s*',         # 「生成されたHTML〜」パターン
+        r'【[^】]*】',                               # 【〜】形式のラベル
+    ]
+    
+    for pattern in explanation_patterns:
+        content = re.sub(pattern, '', content, flags=re.IGNORECASE)
+    
+    # 空白の正規化
+    content = re.sub(r'\n\s*\n', '\n', content)
+    content = content.strip()
+    
+    # デバッグログ：PDFエンドポイントでのクリーンアップチェック（強化）
+    if '```' in content or '`' in content:
+        logger.warning(f"PDF endpoint: Markdown/backtick remnants detected after enhanced cleanup: {content[:100]}...")
+    
+    return content
+
 @app.errorhandler(404)
 def not_found(error):
     """404エラーハンドラー"""
@@ -1055,16 +1099,11 @@ def debug_dictionary():
         default_dict = dict_service.get_user_dictionary("default")
         logger.info(f"Default dictionary entries: {len(default_dict)}")
         
-        # 統計情報取得テスト
-        stats = dict_service.get_dictionary_stats("default")
-        logger.info(f"Dictionary stats: {stats}")
-        
         return jsonify({
             'success': True,
             'data': {
                 'service_initialized': True,
                 'default_dictionary_size': len(default_dict),
-                'stats': stats,
                 'firebase_initialized': firebase_initialized
             }
         })

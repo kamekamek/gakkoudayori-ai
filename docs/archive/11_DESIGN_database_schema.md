@@ -129,7 +129,7 @@ interface DocumentDocument {
   // AI関連
   ai_metadata: {
     generated_by_ai: boolean;
-    model_version: string;        // "gemini-2.0-flash-exp"
+    model_version: string;        // "gemini-2.5-pro-preview-03-25"
     generation_time_ms: number;
     confidence_score: number;     // 0.0-1.0
     original_transcript: string;  // 元の音声文字起こし
@@ -466,7 +466,7 @@ const systemConfig = {
   app_version: "1.0.0",
   maintenance_mode: false,
   ai_models: {
-    current_version: "gemini-2.0-flash-exp",
+    current_version: "gemini-2.5-pro-preview-03-25",
     fallback_version: "gemini-1.0-pro"
   },
   rate_limits: {

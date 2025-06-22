@@ -1,16 +1,21 @@
-# 学級通信エディタ - 環境管理Makefile
+# 学校だよりAI - 環境管理Makefile
 
-.PHONY: help dev prod staging build-dev build-prod deploy deploy-frontend deploy-backend deploy-all deploy-staging deploy-preview ci-setup test lint format reset-dev
+.PHONY: help dev prod staging build-dev build-prod deploy deploy-frontend deploy-backend deploy-all deploy-staging deploy-preview ci-setup test lint format reset-dev backend-dev backend-test backend-setup
 
 # デフォルトターゲット
 help:
-	@echo "🎯 学級通信エディタ - 利用可能なコマンド:"
+	@echo "🎯 学校だよりAI - 利用可能なコマンド:"
 	@echo ""
 	@echo "📱 フロントエンド:"
 	@echo "  make dev          - 開発環境で起動"
 	@echo "  make staging      - ステージング環境で起動"
 	@echo "  make build-dev    - 開発環境用ビルド"
 	@echo "  make build-prod   - 本番環境用ビルド"
+	@echo ""
+	@echo "🐍 バックエンド:"
+	@echo "  make backend-dev   - バックエンド開発サーバー起動"
+	@echo "  make backend-setup - Python環境セットアップ"
+	@echo "  make backend-test  - Pythonテスト実行"
 	@echo ""
 	@echo "🧪 テスト・品質:"
 	@echo "  make test         - 全テスト実行"
@@ -146,4 +151,29 @@ deploy-staging:
 reset-dev:
 	@echo "🔄 開発環境リセット中..."
 	cd frontend && flutter clean && flutter pub get
-	@echo "✅ 開発環境リセット完了" 
+	@echo "✅ 開発環境リセット完了"
+
+# バックエンド開発サーバー起動
+backend-dev:
+	@echo "🐍 バックエンド開発サーバー起動中..."
+	@echo "📦 仮想環境アクティベート..."
+	cd backend/functions && \
+		(test -d venv || python -m venv venv) && \
+		. venv/bin/activate && \
+		python start_server.py
+
+# Python環境セットアップ
+backend-setup:
+	@echo "🐍 Python環境セットアップ中..."
+	cd backend/functions && \
+		python -m venv venv && \
+		. venv/bin/activate && \
+		pip install -r requirements.txt
+	@echo "✅ Python環境セットアップ完了"
+
+# Pythonテスト実行
+backend-test:
+	@echo "🧪 Pythonテスト実行中..."
+	cd backend/functions && \
+		. venv/bin/activate && \
+		python -m pytest tests/ -v 

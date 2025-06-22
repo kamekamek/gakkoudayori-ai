@@ -101,7 +101,6 @@ def initialize_user_dictionary():
             'custom_terms': {
                 'テスト用語': {
                     'variations': ['てすとようご', 'テスト用語'],
-                    'category': 'custom',
                     'confidence': 1.0,
                     'usage_count': 0,
                     'created_at': datetime.now().isoformat()
@@ -146,9 +145,6 @@ def test_user_dictionary_service():
         dictionary = dict_service.get_user_dictionary('default')
         print(f'✅ Dictionary loaded: {len(dictionary)} terms')
         
-        # 統計情報取得
-        stats = dict_service.get_dictionary_stats('default')
-        print(f'✅ Dictionary stats: {stats}')
         
         # Speech-to-Textコンテキスト生成
         contexts = dict_service.get_speech_contexts('default')
