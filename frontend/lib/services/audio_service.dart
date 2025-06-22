@@ -89,7 +89,7 @@ class AudioService {
     if (kDebugMode) debugPrint('🔗 [AudioService] JavaScript Bridge初期化完了');
   }
 
-  /// 録音開始
+  /// 録音開始（シンプル版 - Promise処理をスキップ）
   Future<bool> startRecording() async {
     try {
       if (kDebugMode) debugPrint('🎤 [AudioService] 録音開始要求');
@@ -105,48 +105,20 @@ class AudioService {
         return false;
       }
 
-      // JavaScript側の録音開始関数を呼び出し
+      // JavaScript側の録音開始関数を呼び出し（戻り値は無視し、コールバックに依存）
       if (kDebugMode) debugPrint('🔗 [AudioService] JavaScript関数呼び出し開始');
-      final jsResult = js.context.callMethod('startRecording');
-      if (kDebugMode) debugPrint('🔗 [AudioService] Promise待機開始');
-
-      // JavaScript関数の戻り値をチェック
-      if (jsResult == null) {
-        if (kDebugMode) debugPrint('❌ [AudioService] JavaScript関数が null を返しました');
-        return false;
-      }
-
-      // Promiseかどうか確認
-      bool result;
-      if (js_util.hasProperty(jsResult, 'then')) {
-        // Promiseの場合
-        if (kDebugMode) debugPrint('🔗 [AudioService] Promise検出 - 非同期待機中');
-        try {
-          final promiseResult = await js_util.promiseToFuture(jsResult);
-          if (kDebugMode) debugPrint('🔗 [AudioService] Promise結果: $promiseResult (${promiseResult.runtimeType})');
-          result = promiseResult == true || promiseResult == 'true' || promiseResult == 1;
-        } catch (promiseError) {
-          if (kDebugMode) debugPrint('❌ [AudioService] Promise実行エラー: $promiseError');
-          return false;
-        }
-      } else {
-        // 同期的な戻り値の場合
-        if (kDebugMode) debugPrint('🔗 [AudioService] 同期的戻り値検出: $jsResult (${jsResult.runtimeType})');
-        result = jsResult == true || jsResult == 'true' || jsResult == 1;
-      }
-
-      if (kDebugMode) debugPrint('🔗 [AudioService] 最終結果: $result');
-
-      if (result == true) {
-        if (kDebugMode) debugPrint('✅ [AudioService] 録音開始成功');
+      try {
+        js.context.callMethod('startRecording');
+        if (kDebugMode) debugPrint('✅ [AudioService] JavaScript関数呼び出し成功（Promise処理をスキップ）');
+        // コールバックで実際の録音状態が管理されるため、ここでは成功と判定
         return true;
-      } else {
-        if (kDebugMode) debugPrint('❌ [AudioService] 録音開始失敗 - 戻り値: $result');
+      } catch (jsError) {
+        if (kDebugMode) debugPrint('❌ [AudioService] JavaScript呼び出しエラー: $jsError');
         return false;
       }
+
     } catch (e) {
       if (kDebugMode) debugPrint('❌ [AudioService] 録音開始エラー: $e');
-      if (kDebugMode) debugPrint('  エラー詳細: ${e.runtimeType}');
       return false;
     }
   }

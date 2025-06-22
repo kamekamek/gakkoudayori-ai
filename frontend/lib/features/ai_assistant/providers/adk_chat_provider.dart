@@ -38,14 +38,17 @@ class AdkChatProvider extends ChangeNotifier {
   }
   
   void _initializeAudioService() {
+    debugPrint('[AdkChatProvider] Initializing audio service...');
     _audioService.initializeJavaScriptBridge();
     
     _audioService.setOnRecordingStateChanged((isRecording) {
+      debugPrint('[AdkChatProvider] Recording state changed: $isRecording');
       _isVoiceRecording = isRecording;
       notifyListeners();
     });
     
     _audioService.setOnTranscriptionCompleted((transcript) {
+      debugPrint('[AdkChatProvider] Transcription completed: $transcript');
       _transcriptionResult = transcript;
       notifyListeners();
     });
@@ -54,6 +57,8 @@ class AdkChatProvider extends ChangeNotifier {
       _audioLevel = level;
       notifyListeners();
     });
+    
+    debugPrint('[AdkChatProvider] Audio service initialization complete');
   }
 
   /// メッセージを送信（ストリーミング対応）
@@ -145,12 +150,18 @@ class AdkChatProvider extends ChangeNotifier {
 
   /// 音声録音開始
   Future<bool> startVoiceRecording() async {
-    return await _audioService.startRecording();
+    debugPrint('[AdkChatProvider] startVoiceRecording called');
+    final result = await _audioService.startRecording();
+    debugPrint('[AdkChatProvider] startVoiceRecording result: $result');
+    return result;
   }
 
   /// 音声録音停止
   Future<bool> stopVoiceRecording() async {
-    return await _audioService.stopRecording();
+    debugPrint('[AdkChatProvider] stopVoiceRecording called');
+    final result = await _audioService.stopRecording();
+    debugPrint('[AdkChatProvider] stopVoiceRecording result: $result');
+    return result;
   }
 
   /// 学級通信生成を開始すべきかチェック

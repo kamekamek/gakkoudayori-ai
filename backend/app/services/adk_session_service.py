@@ -55,8 +55,9 @@ class FirestoreSessionService:
                         return None
             
             # ADK Sessionオブジェクトに変換
+            # Firestoreのフィールド名(id)をADKのsession_idにマッピング
             return Session(
-                session_id=session_id,
+                session_id=data.get('id', session_id),
                 history=[
                     genai_types.to_content(item) for item in data.get('history', [])
                 ],
@@ -73,11 +74,16 @@ class FirestoreSessionService:
             
             # セッションデータを準備
             history_dicts = [MessageToDict(c._pb) for c in session.history]
+            
+            # メタデータから必要な情報を取得
+            user_id = session.metadata.get('user_id', 'unknown_user')
 
             session_data = {
-                'session_id': session.session_id,
+                'id': session.session_id,  # Pydanticモデルの'id'フィールドにマッピング
+                'userId': user_id,
+                'appName': 'gakkoudayori-app', # 固定値またはメタデータから取得
                 'history': history_dicts,
-                'metadata': session.metadata,
+                'metadata': session.metadata, # 元のメタデータも保持
                 'updated_at': datetime.utcnow()
             }
             
@@ -87,7 +93,7 @@ class FirestoreSessionService:
                 session_data['created_at'] = datetime.utcnow()
             
             doc_ref.set(session_data, merge=True)
-            logger.info(f"Session {session.session_id} saved successfully")
+            logger.info(f"Session {session.session_id} saved successfully with mapped data.")
         except Exception as e:
             logger.error(f"Error saving session {session.session_id}: {e}")
             raise

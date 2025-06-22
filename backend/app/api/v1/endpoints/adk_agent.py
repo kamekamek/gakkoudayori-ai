@@ -321,13 +321,28 @@ async def chat_with_agent_stream(request: ChatRequest):
         try:
             runner = get_runner()
 
-            # セッションの状態を事前にログ出力
-            session_before = await get_session_service().get(session_id)
-            if session_before:
-                logger.info(f"Session history before processing: {[MessageToDict(c._pb) for c in session_before.history]}")
+            # セッションを取得・更新
+            session_service = get_session_service()
+            session = await session_service.get(session_id)
+            
+            if session:
+                logger.info(f"Session history before processing: {[MessageToDict(c._pb) for c in session.history]}")
+                # メタデータを更新
+                if request.metadata:
+                    session.metadata.update(request.metadata)
+                    await session_service.save(session)
             else:
                 logger.info("No existing session found. Creating a new one.")
-            
+                # メタデータを持つ新しいセッションを作成
+                session_metadata = request.metadata or {}
+                session_metadata['user_id'] = request.user_id # ユーザーIDをメタデータに含める
+
+                session = Session(
+                    session_id=session_id,
+                    metadata=session_metadata
+                )
+                await session_service.save(session)
+
             # ユーザーメッセージを作成
             user_message = types.Content(
                 role="user",
@@ -338,8 +353,7 @@ async def chat_with_agent_stream(request: ChatRequest):
             events_async = runner.run_async(
                 session_id=session_id,
                 user_id=request.user_id,
-                new_message=user_message,
-                metadata=request.metadata
+                new_message=user_message
             )
             
             # イベントをストリーミング
