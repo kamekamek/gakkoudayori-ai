@@ -6,27 +6,35 @@
 
 ```
 ui-mockups/
-├── README.md                    # このファイル
-├── wireframes/                  # ワイヤーフレーム
-│   ├── login-flow.png          # ログインフロー
-│   ├── dashboard.png           # ダッシュボード
-│   ├── editor-layout.png       # エディタレイアウト
-│   └── mobile-responsive.png   # モバイル対応
-├── mockups/                     # 高解像度モックアップ
-│   ├── home-screen.png         # ホーム画面
-│   ├── voice-input.png         # 音声入力画面
-│   ├── ai-processing.png       # AI処理中画面
-│   ├── editor-wysiwyg.png      # WYSIWYGエディタ
-│   └── pdf-preview.png         # PDFプレビュー
-├── user-flows/                  # ユーザーフロー図
-│   ├── complete-workflow.png   # 完全ワークフロー
-│   ├── voice-to-pdf.png        # 音声→PDF変換フロー
-│   └── error-scenarios.png     # エラーシナリオ
-└── design-system/              # デザインシステム
-    ├── colors.png              # カラーパレット
-    ├── typography.png          # タイポグラフィ
-    ├── components.png          # コンポーネントライブラリ
-    └── icons.png               # アイコンセット
+├── README.md                          # このファイル（総合ガイド）
+├── ui-design-mockup.md               # メインUI設計（チャットボット形式）
+├── preview-editor-specification.md    # プレビュー・編集機能仕様
+├── preview-mode-examples.md          # 各プレビューモードの画面例
+├── classroom-integration-spec.md      # Classroom連携・画像アップロード仕様
+├── user-flow-v1.png                  # ユーザーフロー図
+├── wireframes/                        # ワイヤーフレーム
+│   ├── chat-interface.png            # チャットインターフェース
+│   ├── preview-modes.png             # プレビューモード切り替え
+│   ├── image-upload.png              # 画像アップロード
+│   ├── classroom-post.png            # Classroom投稿
+│   └── mobile-responsive.png         # モバイル対応
+├── mockups/                           # 高解像度モックアップ
+│   ├── chat-bot-interface.png        # チャットボット画面
+│   ├── multi-preview-modes.png       # マルチプレビューモード
+│   ├── image-upload-flow.png         # 画像アップロード画面
+│   ├── classroom-integration.png     # Classroom連携画面
+│   └── pdf-print-preview.png         # PDF・印刷プレビュー
+├── user-flows/                        # ユーザーフロー図
+│   ├── chat-to-newsletter.png        # チャット→学級通信フロー
+│   ├── image-integration.png         # 画像統合フロー
+│   ├── classroom-posting.png         # Classroom投稿フロー
+│   └── error-scenarios.png           # エラーシナリオ
+└── design-system/                     # デザインシステム
+    ├── colors-education.png          # 教育現場向けカラーパレット
+    ├── typography-japanese.png       # 日本語タイポグラフィ
+    ├── chat-components.png           # チャットコンポーネント
+    ├── preview-components.png        # プレビューコンポーネント
+    └── icons-education.png           # 教育関連アイコンセット
 ```
 
 ## 🎨 デザインコンセプト
@@ -48,35 +56,46 @@ ui-mockups/
 
 ## 🎯 主要画面の設計思想
 
-### ホーム画面
+### チャットボット画面（メイン）
 ```
-目的: 新規作成と過去の文書へのアクセス
-レイアウト: FAB + カード一覧
-重要な要素: 
-- 「新しい学校だより」FABボタン（右下）
-- 最近の文書（上部）
-- 検索・フィルター（ヘッダー）
-```
-
-### 音声入力画面
-```
-目的: ストレスフリーな音声録音
-レイアウト: 中央集約型
+目的: 自然な会話で学級通信の情報収集
+レイアウト: 左右分割（チャット + プレビュー）
 重要な要素:
-- 大きな録音ボタン（画面中央）
-- リアルタイム文字起こし（下部）
-- 録音状態の視覚的フィードバック
-```
-
-### エディタ画面
-```
-目的: 直感的な文書編集
-レイアウト: 2カラム（エディタ + プレビュー）
-重要な要素:
-- WYSIWYGエディタ（左）
+- AI⇄教師の対話インターフェース（左）
 - リアルタイムプレビュー（右）
-- ツールバー（上部固定）
-- AI支援パネル（折りたたみ式）
+- 音声入力・テキスト入力両対応
+- スマホではタブ切り替え
+```
+
+### プレビュー・編集画面
+```
+目的: 多様なプレビューモードと編集機能
+レイアウト: モード切り替え型
+重要な要素:
+- [編集] [印刷ビュー] [PDF] [📚Classroom] [🔄] ボタン
+- 読み取り専用プレビュー
+- インライン編集モード
+- 全画面印刷ビュー
+```
+
+### 画像アップロード画面
+```
+目的: 簡単な画像追加・管理
+レイアウト: 4つの入力方法 + 一覧表示
+重要な要素:
+- ファイル選択・カメラ撮影・URL・AI生成
+- サムネイル一覧・編集・削除機能
+- ドラッグ&ドロップ対応（デスクトップ）
+```
+
+### Classroom投稿画面
+```
+目的: 学級通信の直接配信
+レイアウト: 設定フォーム + プレビュー
+重要な要素:
+- Google認証・クラス選択
+- タイトル・説明文・予約投稿設定
+- 添付ファイル確認・投稿プレビュー
 ```
 
 ## 📱 レスポンシブデザイン
@@ -224,22 +243,44 @@ $font-weight-bold: 700;
 - [ ] 実装可能性の検証
 - [ ] パフォーマンス影響の評価
 
-## 🚀 今後の予定
+## 🔗 関連ドキュメント
 
-### Phase 1（基本デザイン）
-- [ ] 全主要画面のモックアップ完成
-- [ ] デザインシステムの確立
-- [ ] アクセシビリティガイドライン策定
+### 📄 詳細仕様書
+1. **[ui-design-mockup.md](ui-design-mockup.md)** - チャットボット形式のメインUI設計
+2. **[preview-editor-specification.md](preview-editor-specification.md)** - プレビュー・編集機能の技術仕様
+3. **[preview-mode-examples.md](preview-mode-examples.md)** - 各プレビューモードの画面例
+4. **[classroom-integration-spec.md](classroom-integration-spec.md)** - Classroom連携・画像アップロード仕様
 
-### Phase 2（応用デザイン）
+### 🎨 新機能の概要
+- **チャットボット形式**: AI⇄教師の自然な対話で情報収集
+- **マルチプレビューモード**: 編集・印刷ビュー・PDF・Classroom投稿
+- **画像統合**: アップロード・編集・レイアウト調整
+- **Classroom連携**: 直接投稿・予約投稿・一元管理
+
+## 🚀 実装優先度
+
+### Phase 1（基本UI）✅ 設計完了
+- [x] チャットボット形式の基本設計
+- [x] レスポンシブレイアウト（デスクトップ・モバイル）
+- [x] プレビューモード切り替え設計
+
+### Phase 2（画像・編集機能）📝 設計完了・実装待ち
+- [x] 画像アップロード機能設計
+- [x] インライン編集機能設計
+- [x] 印刷ビュー・PDF出力設計
+- [ ] 実装・テスト
+
+### Phase 3（Classroom連携）📝 設計完了・実装待ち
+- [x] Google Classroom API連携設計
+- [x] 投稿機能・予約投稿設計
+- [x] 認証・権限管理設計
+- [ ] 実装・テスト
+
+### Phase 4（UX向上）🔄 継続改善
 - [ ] マイクロインタラクション設計
 - [ ] アニメーション仕様
-- [ ] ダークモード対応
-
-### Phase 3（拡張デザイン）
-- [ ] マルチテーマ対応
-- [ ] カスタマイズ機能
-- [ ] 多言語対応UI
+- [ ] アクセシビリティ強化
+- [ ] パフォーマンス最適化
 
 ---
 
