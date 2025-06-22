@@ -52,6 +52,7 @@ requests>=2.32.4
 aiohttp>=3.9.0
 # Environment variable management
 python-dotenv==1.0.1
+litellm>=1.63.11
 
 # ------------------------------------------------------------------------------
 # Development & Testing

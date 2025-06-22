@@ -15,7 +15,7 @@
 from google.adk.agents import Agent
 from google.adk.models.lite_llm import LiteLlm
 
-MODEL_GEMINI_2_0_FLASH = "gemini-2.0-flash"
+MODEL_GEMINI = "gemini-2.5-flash"
 
 GENERATOR_INSTRUCTION = """
 # HTML生成AIエージェント用システムプロンプト（v2.0）
@@ -49,7 +49,7 @@ def create_generator_agent() -> Agent:
     """Generatorエージェントを作成します。"""
     return Agent(
         name="generator_agent",
-        model=LiteLlm(MODEL_GEMINI_2_0_FLASH),
+        model=LiteLlm(MODEL_GEMINI),
         instruction=GENERATOR_INSTRUCTION,
         description="JSONデータを受け取り、HTML形式の学級通信を生成します。",
         # このエージェントは外部ツールを必要とせず、入力に基づいて動作します

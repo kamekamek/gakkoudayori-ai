@@ -14,13 +14,13 @@
 
 from google.adk.agents import Agent
 from google.adk.models.lite_llm import LiteLlm
-from dayori_agents_2.agents.planner_agent import create_planner_agent
-from dayori_agents_2.agents.generator_agent import create_generator_agent
+from .planner_agent import create_planner_agent
+from .generator_agent import create_generator_agent
 
-MODEL_GEMINI_2_0_FLASH = "gemini-2.0-flash"
+MODEL_GEMINI = "gemini-2.5-flash"
 
 ORCHESTRATOR_INSTRUCTION = """
-# 学級通信作成オーケストレーターAI（v2.0）
+# 学級通信作成オーケストレーターAI（v2.1）
 
 ## ■ あなたの役割
 あなたは、学級通信作成プロセス全体を厳密に管理する、高性能な司令塔（オーケストレーター）です。
@@ -28,8 +28,8 @@ ORCHESTRATOR_INSTRUCTION = """
 
 ## ■ 厳密なワークフロー
 1.  **トリガー**: ユーザーから「学級通信を作りたい」といった趣旨の依頼を受けたら、ワークフローを開始します。
-2.  **ステップ1: Plannerの実行**: `planner_agent` を呼び出し、ユーザーとの対話を委任します。`planner_agent` が通信の構成案をJSON形式で出力するまで、あなたは待機します。
-3.  **ステップ2: Generatorへのデータ連携**: `planner_agent` から出力されたJSONを、**一切変更せずに、そのままの内容で** `generator_agent` への入力として渡します。あなたの解釈や変更を加えてはいけません。
+2.  **ステップ1: Plannerへの移譲**: ユーザーの最初の依頼を `user_request` という引数名で `planner_agent` に渡し、対話を委任します。`planner_agent` が通信の構成案をJSON形式で出力するまで、あなたは待機します。
+3.  **ステップ2: Generatorへのデータ連携**: `planner_agent` から出力されたJSONを、**一切変更せずに、そのままの内容で** `planner_json_output` という引数名で `generator_agent` への入力として渡します。あなたの解釈や変更を加えてはいけません。
 4.  **ステップ3: Generatorの実行**: `generator_agent` を呼び出し、HTMLの生成を委任します。
 5.  **最終出力**: `generator_agent` が生成したHTMLを、ユーザーへの最終的な回答として出力します。この際、HTMLコード以外の余計な文言（「お待たせしました」など）は一切含めないでください。
 
@@ -50,7 +50,7 @@ def create_orchestrator_agent() -> Agent:
 
     return Agent(
         name="orchestrator_agent",
-        model=LiteLlm(MODEL_GEMINI_2_0_FLASH),
+        model=LiteLlm(MODEL_GEMINI),
         instruction=ORCHESTRATOR_INSTRUCTION,
         description="学級通信の作成プロセス全体を管理し、サブエージェントにタスクを委任します。",
         sub_agents=[planner_agent, generator_agent],
