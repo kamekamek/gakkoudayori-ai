@@ -34,10 +34,10 @@ class FirestoreSessionService:
         self.collection_name = collection_name
         self.ttl_hours = ttl_hours
     
-    async def get_session(self, id: str) -> Optional[AdkSession]:
+    async def get_session(self, app_name: str, user_id: str, session_id: str) -> Optional[AdkSession]:
         """セッションを取得"""
         try:
-            doc_ref = self.db.collection(self.collection_name).document(id)
+            doc_ref = self.db.collection(self.collection_name).document(session_id)
             doc = doc_ref.get()
             
             if not doc.exists:
@@ -45,21 +45,25 @@ class FirestoreSessionService:
             
             data = doc.to_dict()
             
+            # app_nameとuser_idの検証
+            if data.get('app_name') != app_name or data.get('user_id') != user_id:
+                return None
+            
             # TTLチェック
             if 'updated_at' in data:
                 updated_at = data['updated_at']
                 if isinstance(updated_at, datetime):
                     if datetime.utcnow() - updated_at > timedelta(hours=self.ttl_hours):
-                        await self.delete_session(id)
+                        await self.delete_session(app_name, user_id, session_id)
                         return None
             
             # Pydanticモデルの標準的な方法でデシリアライズ
             return AdkSession.model_validate(data)
         except Exception as e:
-            logger.error(f"Error getting session {id}: {e}", exc_info=True)
+            logger.error(f"Error getting session {session_id}: {e}", exc_info=True)
             return None
     
-    async def save_session(self, session: AdkSession) -> None:
+    async def save_session(self, session: AdkSession, app_name: Optional[str] = None) -> None:
         """セッションを保存"""
         try:
             # Pydanticモデルの標準的な方法でシリアライズ
@@ -78,20 +82,45 @@ class FirestoreSessionService:
             logger.error(f"Error saving session {getattr(session, 'id', 'unknown')}: {e}", exc_info=True)
             raise
     
-    async def delete_session(self, id: str) -> None:
+    async def create_session(self, app_name: str, user_id: str, session_id: Optional[str] = None, state: Optional[Dict[str, Any]] = None) -> AdkSession:
+        """新しいセッションを作成"""
+        try:
+            if session_id is None:
+                session_id = str(uuid.uuid4())
+            
+            # ADKのSessionオブジェクトを作成
+            session = AdkSession(
+                id=session_id,
+                app_name=app_name,
+                user_id=user_id,
+                state=state or {},
+                events=[],
+                metadata={}
+            )
+            
+            # Firestoreに保存
+            await self.save_session(session, app_name)
+            
+            logger.info(f"Session {session_id} created successfully")
+            return session
+        except Exception as e:
+            logger.error(f"Error creating session: {e}", exc_info=True)
+            raise
+
+    async def delete_session(self, app_name: str, user_id: str, session_id: str) -> None:
         """セッションを削除"""
         try:
-            doc_ref = self.db.collection(self.collection_name).document(id)
+            doc_ref = self.db.collection(self.collection_name).document(session_id)
             doc_ref.delete()
-            logger.info(f"Session {id} deleted successfully")
+            logger.info(f"Session {session_id} deleted successfully")
         except Exception as e:
-            logger.error(f"Error deleting session {id}: {e}")
+            logger.error(f"Error deleting session {session_id}: {e}")
             raise
     
-    async def list_sessions(self, user_id: str) -> List[SessionInfo]:
+    async def list_sessions(self, app_name: str, user_id: str) -> List[AdkSession]:
         """ユーザーのセッション一覧を取得"""
         try:
-            query = self.db.collection(self.collection_name).where('metadata.user_id', '==', user_id)
+            query = self.db.collection(self.collection_name).where('user_id', '==', user_id).where('app_name', '==', app_name)
             docs = query.stream()
             
             sessions = []
@@ -102,20 +131,28 @@ class FirestoreSessionService:
                 updated_at = data.get('updated_at', datetime.utcnow())
                 if isinstance(updated_at, datetime):
                     if datetime.utcnow() - updated_at <= timedelta(hours=self.ttl_hours):
-                        sessions.append(SessionInfo(
-                            session_id=data.get('id'),
-                            user_id=data.get('userId'),
-                            created_at=data.get('created_at', updated_at),
-                            updated_at=updated_at,
-                            messages=self._convert_history_to_messages(data.get('history', [])),
-                            status=data.get('metadata', {}).get('status', 'active'),
-                            agent_state=data.get('metadata', {}).get('agent_state')
-                        ))
+                        # AdkSessionオブジェクトを作成
+                        session = AdkSession.model_validate(data)
+                        sessions.append(session)
             
             return sessions
         except Exception as e:
             logger.error(f"Error listing sessions for user {user_id}: {e}")
             return []
+
+    async def append_event(self, session: AdkSession, event) -> None:
+        """セッションにイベントを追加"""
+        try:
+            # セッションのeventsリストにイベントを追加
+            session.events.append(event)
+            
+            # セッションを保存
+            await self.save_session(session)
+            
+            logger.info(f"Event appended to session {session.id}")
+        except Exception as e:
+            logger.error(f"Error appending event to session {session.id}: {e}", exc_info=True)
+            raise
     
     def _convert_history_to_messages(self, history: List[Dict[str, Any]]) -> List[ChatMessage]:
         """ADKのhistoryをChatMessageリストに変換"""
