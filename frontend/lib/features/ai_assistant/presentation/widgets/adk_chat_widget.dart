@@ -214,10 +214,10 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
                             child: AdvancedAudioWaveformWidget(
                               audioLevel: provider.audioLevel,
                               isRecording: provider.isVoiceRecording,
-                              color: Theme.of(context).colorScheme.error,
+                              color: Colors.white,
                               barCount: 20,
-                              height: 20,
-                              style: WaveformStyle.ripple, // おしゃれな波紋エフェクト
+                              height: 32,
+                              style: WaveformStyle.ripple, // 波紋エフェクト
                             ),
                           ),
                           
