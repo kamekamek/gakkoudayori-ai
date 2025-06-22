@@ -19,87 +19,56 @@ from typing import Optional, AsyncGenerator
 from datetime import datetime
 import asyncio
 
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import StreamingResponse
-from google.adk.runners import Runner
 from google.adk.sessions import Session as AdkSession
 # from google.generativeai import types # 古い使い方なので削除
 from google.protobuf.json_format import MessageToDict
 from google.cloud import firestore
-from google.generativeai.client import get_default_generative_client
-from google.generativeai.client import get_default_generative_async_client
+# from google.generativeai.client import get_default_generative_client # 不要
+# from google.generativeai.client import get_default_generative_async_client # 不要
+
+# main.pyからapp_contextをインポート
+# from main import app_context
 
 from models.adk_models import (
     ChatRequest, ChatResponse, SessionInfo, ErrorResponse,
     NewsletterGenerationRequest, NewsletterGenerationResponse,
     AgentEvent, ChatMessage
 )
-from services.adk_session_service import FirestoreSessionService
-from services.firebase_service import get_firestore_client
+# services.adk_session_serviceはcore.dependencies経由で呼ばれるので直接は不要
 from services.newsletter_generator import generate_newsletter_from_speech
+# core.dependenciesから必要な関数をインポート
+from core.dependencies import get_session_service, get_orchestrator_agent
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# グローバル変数として保持
-_orchestrator_agent = None
-_session_service = None
-_runner = None
-
-
-def get_orchestrator_agent():
-    """OrchestratorAgentをセットアップして返す"""
-    from adk.agents.orchestrator_agent import create_orchestrator_agent
-    global _orchestrator_agent
-    if _orchestrator_agent is None:
-        _orchestrator_agent = create_orchestrator_agent()
-    return _orchestrator_agent
-
-
-def get_session_service() -> FirestoreSessionService:
-    """セッションサービスのシングルトンを取得"""
-    global _session_service
-    if _session_service is None:
-        firestore_client = get_firestore_client()
-        _session_service = FirestoreSessionService(firestore_client)
-    return _session_service
-
-
-def get_runner() -> Runner:
-    """ADK Runnerのシングルトンを取得"""
-    global _runner
-    if _runner is None:
-        _runner = Runner(
-            app_name="gakkoudayori-ai",
-            agent=get_orchestrator_agent(),
-            session_service=get_session_service()
-        )
-    return _runner
-
 
 @router.post("/chat", response_model=ChatResponse, summary="エージェントとチャット")
-async def chat_with_agent(request: ChatRequest) -> ChatResponse:
+async def chat_with_agent(request: Request, chat_request: ChatRequest) -> ChatResponse:
     """エージェントとの対話を行うエンドポイント"""
     try:
         # セッションIDの生成または使用
-        session_id = request.session_id or str(uuid.uuid4())
+        session_id = chat_request.session_id or str(uuid.uuid4())
         
-        # ランナーを取得
-        runner = get_runner()
-        
+        # request.app.stateからRunnerを取得
+        runner = getattr(request.app.state, 'adk_runner', None)
+        if not runner:
+            raise HTTPException(status_code=503, detail="ADK Runner is not available. Please ensure the server is started with ADK support.")
+
         # ユーザーメッセージを作成
         user_message = {
             "role": "user",
-            "parts": [{"text": request.message}]
+            "parts": [{"text": chat_request.message}]
         }
         
         # エージェントを非同期実行
         events_async = runner.run_async(
             session_id=session_id,
-            user_id=request.user_id,
+            user_id=chat_request.user_id,
             new_message=user_message,
-            metadata=request.metadata
         )
         
         # イベントを収集
@@ -176,7 +145,7 @@ async def get_session(session_id: str) -> SessionInfo:
     """セッション情報を取得するエンドポイント"""
     try:
         session_service = get_session_service()
-        session = await session_service.get(session_id)
+        session = await session_service.get_session(session_id)
         
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
@@ -191,14 +160,16 @@ async def get_session(session_id: str) -> SessionInfo:
                     timestamp=datetime.utcnow()
                 ))
         
+        # sessionオブジェクトがPydanticモデルであることを想定
+        metadata = session.metadata or {}
         return SessionInfo(
             session_id=session_id,
-            user_id=session.metadata.get('user_id', ''),
-            created_at=session.metadata.get('created_at', datetime.utcnow()),
-            updated_at=session.metadata.get('updated_at', datetime.utcnow()),
+            user_id=metadata.get('user_id', ''),
+            created_at=metadata.get('created_at', datetime.utcnow()),
+            updated_at=metadata.get('updated_at', datetime.utcnow()),
             messages=messages,
-            status=session.metadata.get('status', 'active'),
-            agent_state=session.metadata.get('agent_state')
+            status=metadata.get('status', 'active'),
+            agent_state=metadata.get('agent_state')
         )
         
     except HTTPException:
@@ -213,7 +184,7 @@ async def delete_session(session_id: str):
     """セッションを削除するエンドポイント"""
     try:
         session_service = get_session_service()
-        await session_service.delete(session_id)
+        await session_service.delete_session(session_id)
         return {"message": "Session deleted successfully"}
         
     except Exception as e:
@@ -227,7 +198,11 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
     await websocket.accept()
     
     try:
-        runner = get_runner()
+        runner = getattr(websocket.app.state, 'adk_runner', None)
+        if not runner:
+            await websocket.send_json({"error": "ADK Runner is not available. Please ensure the server is started with ADK support."})
+            await websocket.close()
+            return
         
         while True:
             # クライアントからメッセージを受信
@@ -304,29 +279,30 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
 
 
 @router.post("/chat/stream", summary="ストリーミングチャット")
-async def chat_with_agent_stream(request: ChatRequest):
+async def chat_with_agent_stream(request: Request, chat_request: ChatRequest):
     """Server-Sent Eventsを使用したストリーミングチャット"""
-    session_id = request.session_id or str(uuid.uuid4())
-    logger.info(f"[/chat/stream] New request. session_id: {session_id}, user_id: {request.user_id}")
-    logger.info(f"Message: {request.message}")
+    session_id = chat_request.session_id or str(uuid.uuid4())
+    logger.info(f"[/chat/stream] New request. session_id: {session_id}, user_id: {chat_request.user_id}")
+    logger.info(f"Message: {chat_request.message}")
     
     async def generate() -> AsyncGenerator[str, None]:
         try:
-            runner = get_runner()
+            # ADK Runnerの取得を安全に行う
+            runner = getattr(request.app.state, 'adk_runner', None)
+            if not runner:
+                raise RuntimeError("ADK Runner is not initialized. Please ensure the server is started with ADK support.")
 
             # ユーザーメッセージを作成
             user_message = {
                 "role": "user",
-                "parts": [{"text": request.message}]
+                "parts": [{"text": chat_request.message}]
             }
             
             # ADK Runnerはセッションサービスを通じてセッションを自動的に管理します。
-            # 手動でのセッション取得や作成は不要です。
             events_async = runner.run_async(
                 session_id=session_id,
-                user_id=request.user_id,
+                user_id=chat_request.user_id,
                 new_message=user_message,
-                metadata=request.metadata or {}
             )
             
             # イベントをストリーミング
@@ -364,4 +340,6 @@ async def chat_with_agent_stream(request: ChatRequest):
             logger.error(f"Sending SSE error: {error_data}")
             yield f"data: {json.dumps(error_data)}\n\n"
     
+    # BodyとRequestを両方受け取るため、リクエストモデルを手動で注入
+    # StreamingResponseのコンストラクタ内で直接リクエストボディを扱うことはできない
     return StreamingResponse(generate(), media_type="text/event-stream")

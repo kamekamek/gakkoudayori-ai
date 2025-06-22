@@ -34,7 +34,7 @@ class FirestoreSessionService:
         self.collection_name = collection_name
         self.ttl_hours = ttl_hours
     
-    async def get(self, id: str) -> Optional[AdkSession]:
+    async def get_session(self, id: str) -> Optional[AdkSession]:
         """セッションを取得"""
         try:
             doc_ref = self.db.collection(self.collection_name).document(id)
@@ -50,7 +50,7 @@ class FirestoreSessionService:
                 updated_at = data['updated_at']
                 if isinstance(updated_at, datetime):
                     if datetime.utcnow() - updated_at > timedelta(hours=self.ttl_hours):
-                        await self.delete(id)
+                        await self.delete_session(id)
                         return None
             
             # Pydanticモデルの標準的な方法でデシリアライズ
@@ -59,7 +59,7 @@ class FirestoreSessionService:
             logger.error(f"Error getting session {id}: {e}", exc_info=True)
             return None
     
-    async def save(self, session: AdkSession) -> None:
+    async def save_session(self, session: AdkSession) -> None:
         """セッションを保存"""
         try:
             # Pydanticモデルの標準的な方法でシリアライズ
@@ -78,7 +78,7 @@ class FirestoreSessionService:
             logger.error(f"Error saving session {getattr(session, 'id', 'unknown')}: {e}", exc_info=True)
             raise
     
-    async def delete(self, id: str) -> None:
+    async def delete_session(self, id: str) -> None:
         """セッションを削除"""
         try:
             doc_ref = self.db.collection(self.collection_name).document(id)

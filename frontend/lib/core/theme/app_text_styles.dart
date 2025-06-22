@@ -6,25 +6,25 @@ import 'package:google_fonts/google_fonts.dart';
 class AppTextStyles {
   AppTextStyles._();
 
-  // ベースフォントファミリー
-  static String get fontFamily => GoogleFonts.notoSansJp().fontFamily!;
+  // ベースフォントファミリー（フォールバック付き）
+  static String get fontFamily => GoogleFonts.notoSansJp().fontFamily ?? 'Hiragino Kaku Gothic ProN';
 
   // 見出しスタイル
-  static TextStyle get displayLarge => GoogleFonts.notoSansJp(
+  static TextStyle get displayLarge => _safeGoogleFont(
     fontSize: 57,
     fontWeight: FontWeight.w400,
     letterSpacing: -0.25,
     height: 1.12,
   );
 
-  static TextStyle get displayMedium => GoogleFonts.notoSansJp(
+  static TextStyle get displayMedium => _safeGoogleFont(
     fontSize: 45,
     fontWeight: FontWeight.w400,
     letterSpacing: 0,
     height: 1.16,
   );
 
-  static TextStyle get displaySmall => GoogleFonts.notoSansJp(
+  static TextStyle get displaySmall => _safeGoogleFont(
     fontSize: 36,
     fontWeight: FontWeight.w400,
     letterSpacing: 0,
@@ -32,21 +32,21 @@ class AppTextStyles {
   );
 
   // ヘッドラインスタイル
-  static TextStyle get headlineLarge => GoogleFonts.notoSansJp(
+  static TextStyle get headlineLarge => _safeGoogleFont(
     fontSize: 32,
     fontWeight: FontWeight.w600,
     letterSpacing: 0,
     height: 1.25,
   );
 
-  static TextStyle get headlineMedium => GoogleFonts.notoSansJp(
+  static TextStyle get headlineMedium => _safeGoogleFont(
     fontSize: 28,
     fontWeight: FontWeight.w600,
     letterSpacing: 0,
     height: 1.29,
   );
 
-  static TextStyle get headlineSmall => GoogleFonts.notoSansJp(
+  static TextStyle get headlineSmall => _safeGoogleFont(
     fontSize: 24,
     fontWeight: FontWeight.w600,
     letterSpacing: 0,
@@ -54,21 +54,21 @@ class AppTextStyles {
   );
 
   // タイトルスタイル
-  static TextStyle get titleLarge => GoogleFonts.notoSansJp(
+  static TextStyle get titleLarge => _safeGoogleFont(
     fontSize: 22,
     fontWeight: FontWeight.w500,
     letterSpacing: 0,
     height: 1.27,
   );
 
-  static TextStyle get titleMedium => GoogleFonts.notoSansJp(
+  static TextStyle get titleMedium => _safeGoogleFont(
     fontSize: 16,
     fontWeight: FontWeight.w500,
     letterSpacing: 0.15,
     height: 1.50,
   );
 
-  static TextStyle get titleSmall => GoogleFonts.notoSansJp(
+  static TextStyle get titleSmall => _safeGoogleFont(
     fontSize: 14,
     fontWeight: FontWeight.w500,
     letterSpacing: 0.1,
@@ -76,21 +76,21 @@ class AppTextStyles {
   );
 
   // ボディテキストスタイル
-  static TextStyle get bodyLarge => GoogleFonts.notoSansJp(
+  static TextStyle get bodyLarge => _safeGoogleFont(
     fontSize: 16,
     fontWeight: FontWeight.w400,
     letterSpacing: 0.15,
     height: 1.50,
   );
 
-  static TextStyle get bodyMedium => GoogleFonts.notoSansJp(
+  static TextStyle get bodyMedium => _safeGoogleFont(
     fontSize: 14,
     fontWeight: FontWeight.w400,
     letterSpacing: 0.25,
     height: 1.43,
   );
 
-  static TextStyle get bodySmall => GoogleFonts.notoSansJp(
+  static TextStyle get bodySmall => _safeGoogleFont(
     fontSize: 12,
     fontWeight: FontWeight.w400,
     letterSpacing: 0.4,
@@ -98,21 +98,21 @@ class AppTextStyles {
   );
 
   // ラベル・UIテキストスタイル
-  static TextStyle get labelLarge => GoogleFonts.notoSansJp(
+  static TextStyle get labelLarge => _safeGoogleFont(
     fontSize: 14,
     fontWeight: FontWeight.w500,
     letterSpacing: 0.1,
     height: 1.43,
   );
 
-  static TextStyle get labelMedium => GoogleFonts.notoSansJp(
+  static TextStyle get labelMedium => _safeGoogleFont(
     fontSize: 12,
     fontWeight: FontWeight.w500,
     letterSpacing: 0.5,
     height: 1.33,
   );
 
-  static TextStyle get labelSmall => GoogleFonts.notoSansJp(
+  static TextStyle get labelSmall => _safeGoogleFont(
     fontSize: 11,
     fontWeight: FontWeight.w500,
     letterSpacing: 0.5,
@@ -122,7 +122,7 @@ class AppTextStyles {
   // アプリ固有スタイル
   
   /// AppBarタイトル用スタイル
-  static TextStyle get appBarTitle => GoogleFonts.notoSansJp(
+  static TextStyle get appBarTitle => _safeGoogleFont(
     fontSize: 20,
     fontWeight: FontWeight.w600,
     letterSpacing: 0.15,
@@ -130,7 +130,7 @@ class AppTextStyles {
   );
 
   /// ボタンテキスト用スタイル
-  static TextStyle get buttonText => GoogleFonts.notoSansJp(
+  static TextStyle get buttonText => _safeGoogleFont(
     fontSize: 14,
     fontWeight: FontWeight.w500,
     letterSpacing: 0.1,
@@ -138,7 +138,7 @@ class AppTextStyles {
   );
 
   /// ステータスメッセージ用スタイル
-  static TextStyle get statusMessage => GoogleFonts.notoSansJp(
+  static TextStyle get statusMessage => _safeGoogleFont(
     fontSize: 14,
     fontWeight: FontWeight.w400,
     letterSpacing: 0.25,
@@ -163,4 +163,30 @@ class AppTextStyles {
     labelMedium: labelMedium,
     labelSmall: labelSmall,
   );
+
+  /// Google Fontsの安全なロード（フォールバック付き）
+  static TextStyle _safeGoogleFont({
+    required double fontSize,
+    required FontWeight fontWeight,
+    required double letterSpacing,
+    required double height,
+  }) {
+    try {
+      return GoogleFonts.notoSansJp(
+        fontSize: fontSize,
+        fontWeight: fontWeight,
+        letterSpacing: letterSpacing,
+        height: height,
+      );
+    } catch (e) {
+      // ネットワークエラー時のフォールバック
+      return TextStyle(
+        fontFamily: 'Hiragino Kaku Gothic ProN',
+        fontSize: fontSize,
+        fontWeight: fontWeight,
+        letterSpacing: letterSpacing,
+        height: height,
+      );
+    }
+  }
 }

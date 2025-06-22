@@ -23,13 +23,32 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
+from contextlib import asynccontextmanager
 
 # Firebase Admin SDKを初期化
 from firebase_admin import initialize_app
 
+# ADK Runner関連のインポート
+from google.adk.runners import Runner
+from core.dependencies import get_orchestrator_agent, get_session_service
+
 # ログ設定
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # アプリケーション起動時に実行
+    logger.info("Initializing ADK Runner...")
+    app.state.adk_runner = Runner(
+        app_name="gakkoudayori-ai",
+        agent=get_orchestrator_agent(),
+        session_service=get_session_service()
+    )
+    logger.info("ADK Runner initialized successfully.")
+    yield
+    # アプリケーション終了時に実行
+    logger.info("Cleaning up resources...")
 
 # Firebase Admin SDKを初期化
 if not os.getenv("FIREBASE_APP_INITIALIZED"):
@@ -44,7 +63,8 @@ if not os.getenv("FIREBASE_APP_INITIALIZED"):
 app = FastAPI(
     title="Gakkoudayori AI Backend",
     version="1.0.0",
-    description="学級通信AIエージェントと通常APIを統合したサーバー"
+    description="学級通信AIエージェントと通常APIを統合したサーバー",
+    lifespan=lifespan
 )
 
 # v1のAPIルーターをアプリにマウント
