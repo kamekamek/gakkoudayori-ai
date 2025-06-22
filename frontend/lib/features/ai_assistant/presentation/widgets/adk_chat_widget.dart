@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/adk_chat_provider.dart';
 import '../../../home/presentation/widgets/audio_waveform_widget.dart';
+import '../../../home/presentation/widgets/advanced_audio_waveform_widget.dart';
 
 /// ADKエージェントとのチャットウィジェット
 class AdkChatWidget extends StatefulWidget {
@@ -159,43 +160,91 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
                   ),
                 ),
 
-              // 音声録音中の表示（波形付き）
+              // 音声録音中の表示（スタイリッシュ版）
               if (provider.isVoiceRecording)
                 Container(
-                  padding: const EdgeInsets.all(16),
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.errorContainer,
-                    borderRadius: BorderRadius.circular(12),
+                    gradient: LinearGradient(
+                      colors: [
+                        Theme.of(context).colorScheme.errorContainer.withOpacity(0.9),
+                        Theme.of(context).colorScheme.errorContainer.withOpacity(0.7),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Theme.of(context).colorScheme.error.withOpacity(0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.error.withOpacity(0.2),
+                      width: 1,
+                    ),
                   ),
-                  child: Column(
-                    children: [
-                      Row(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      child: Row(
                         children: [
-                          AnimatedMicIcon(
-                            isRecording: provider.isVoiceRecording,
-                            color: Theme.of(context).colorScheme.error,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            '🎤 録音中... タップで停止',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(context).colorScheme.onErrorContainer,
-                              fontWeight: FontWeight.w500,
+                          // アニメーション付きマイクアイコン
+                          Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Theme.of(context).colorScheme.error.withOpacity(0.2),
                             ),
+                            child: AnimatedMicIcon(
+                              isRecording: provider.isVoiceRecording,
+                              color: Theme.of(context).colorScheme.error,
+                              size: 16,
+                            ),
+                          ),
+                          
+                          const SizedBox(width: 12),
+                          
+                          // メイン波形表示
+                          Expanded(
+                            flex: 3,
+                            child: AdvancedAudioWaveformWidget(
+                              audioLevel: provider.audioLevel,
+                              isRecording: provider.isVoiceRecording,
+                              color: Theme.of(context).colorScheme.error,
+                              barCount: 20,
+                              height: 20,
+                              style: WaveformStyle.bars, // より細かいバー表示
+                            ),
+                          ),
+                          
+                          const SizedBox(width: 12),
+                          
+                          // ステータステキストとドットアニメーション
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '録音中',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.onErrorContainer,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              RecordingDotsIndicator(
+                                color: Theme.of(context).colorScheme.error,
+                                size: 4,
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
-                      AudioWaveformWidget(
-                        audioLevel: provider.audioLevel,
-                        isRecording: provider.isVoiceRecording,
-                        color: Theme.of(context).colorScheme.error,
-                        barCount: 7,
-                        height: 30,
-                      ),
-                    ],
+                    ),
                   ),
                 ),
 

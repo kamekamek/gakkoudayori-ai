@@ -17,7 +17,7 @@ import logging
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
 from google.cloud import firestore
-from google.adk.sessions import Session
+from google.adk.sessions import Session as AdkSession
 from google.genai import types as genai_types
 from google.protobuf.json_format import MessageToDict
 from models.adk_models import SessionInfo, ChatMessage
@@ -34,7 +34,7 @@ class FirestoreSessionService:
         self.collection_name = collection_name
         self.ttl_hours = ttl_hours
     
-    async def get(self, session_id: str) -> Optional[Session]:
+    async def get(self, session_id: str) -> Optional[AdkSession]:
         """セッションを取得"""
         try:
             doc_ref = self.db.collection(self.collection_name).document(session_id)
@@ -56,7 +56,7 @@ class FirestoreSessionService:
             
             # ADK Sessionオブジェクトに変換
             # Firestoreのフィールド名(id)をADKのsession_idにマッピング
-            return Session(
+            return AdkSession(
                 session_id=data.get('id', session_id),
                 history=[
                     genai_types.to_content(item) for item in data.get('history', [])
@@ -67,7 +67,7 @@ class FirestoreSessionService:
             logger.error(f"Error getting session {session_id}: {e}")
             return None
     
-    async def save(self, session: Session) -> None:
+    async def save(self, session: AdkSession) -> None:
         """セッションを保存"""
         try:
             doc_ref = self.db.collection(self.collection_name).document(session.session_id)

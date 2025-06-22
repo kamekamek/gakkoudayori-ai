@@ -18,11 +18,15 @@ import json
 from typing import Optional, AsyncGenerator
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, Depends, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 from google.adk.runners import Runner
-from google.adk.sessions import Session
-from google.genai import types
+from google.adk.sessions import Session as AdkSession
+from google.generativeai import types
+from google.protobuf.json_format import MessageToDict
+from google.cloud import firestore
+from google.generativeai.client import get_default_generative_client
+from google.generativeai.client import get_default_generative_async_client
 
 from models.adk_models import (
     ChatRequest, ChatResponse, SessionInfo, ErrorResponse,
@@ -31,7 +35,7 @@ from models.adk_models import (
 )
 from services.adk_session_service import FirestoreSessionService
 from services.firebase_service import get_firestore_client
-from adk.agents.orchestrator_agent import create_orchestrator_agent
+from services.newsletter_generator import NewsletterGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +48,8 @@ _runner = None
 
 
 def get_orchestrator_agent():
-    """オーケストレーターエージェントのシングルトンを取得"""
+    """OrchestratorAgentをセットアップして返す"""
+    from adk.agents.orchestrator_agent import create_orchestrator_agent
     global _orchestrator_agent
     if _orchestrator_agent is None:
         _orchestrator_agent = create_orchestrator_agent()
@@ -337,7 +342,7 @@ async def chat_with_agent_stream(request: ChatRequest):
                 session_metadata = request.metadata or {}
                 session_metadata['user_id'] = request.user_id # ユーザーIDをメタデータに含める
 
-                session = Session(
+                session = AdkSession( # エイリアスを使ってインスタンス化
                     session_id=session_id,
                     metadata=session_metadata
                 )
