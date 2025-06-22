@@ -158,15 +158,15 @@ backend-dev:
 	@echo "🐍 バックエンド開発サーバー起動中..."
 	@echo "📦 仮想環境アクティベート..."
 	cd backend/app && \
-		(test -d venv || python -m venv venv) && \
+		(test -d venv || python3.11 -m venv venv) && \
 		. venv/bin/activate && \
-		uvicorn main:app --host 0.0.0.0 --port 8081 --reload
+		uvicorn main_local:app --host 0.0.0.0 --port 8081 --reload
 
 # Python環境セットアップ
 backend-setup:
 	@echo "🐍 Python環境セットアップ中..."
 	cd backend/app && \
-		python -m venv venv && \
+		python3.11 -m venv venv && \
 		. venv/bin/activate && \
 		pip install -r requirements.txt
 	@echo "✅ Python環境セットアップ完了"

@@ -19,6 +19,9 @@ dependencies:
   # API呼び出し（STT・Gemini）
   http: ^1.1.0
   
+  # WebSocket通信
+  web_socket_channel: ^3.0.0
+  
   # Web Audio API, JavaScript Bridge
   web: ^1.1.0
   

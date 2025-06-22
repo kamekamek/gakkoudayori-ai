@@ -4,7 +4,7 @@ class AppConfig {
   // 環境変数から取得、デフォルト値を設定
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://localhost:8081/api/v1/ai',
+    defaultValue: 'http://localhost:8081/api/v1',
   );
 
   static const String environment = String.fromEnvironment(
@@ -35,7 +35,8 @@ class AppConfig {
     }
 
     if (!apiBaseUrl.startsWith('http')) {
-      if (kDebugMode) debugPrint('❌ Error: API_BASE_URL must start with http:// or https://');
+      if (kDebugMode)
+        debugPrint('❌ Error: API_BASE_URL must start with http:// or https://');
       return false;
     }
 

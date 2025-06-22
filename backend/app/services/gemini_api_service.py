@@ -33,7 +33,7 @@ import vertexai
 from vertexai.generative_models import GenerativeModel, Part, GenerationConfig
 
 # 認証サービスを利用
-from gcp_auth_service import initialize_gcp_credentials
+from .gcp_auth_service import initialize_gcp_credentials
 
 # ロギング設定
 logging.basicConfig(

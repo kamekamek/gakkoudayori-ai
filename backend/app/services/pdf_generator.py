@@ -820,7 +820,7 @@ def test_pdf_generation() -> bool:
         print(f"❌ テストエラー: {e}")
         return False
 
-def _clean_markdown_codeblocks_pdf(html_content: str) -> str:
+def _clean_html_for_pdf(html_content: str) -> str:
     """
     PDF生成前にHTMLからMarkdownコードブロックを完全に除去 - 強化版
     

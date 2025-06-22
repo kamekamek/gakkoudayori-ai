@@ -39,7 +39,7 @@ def initialize_speech_client(credentials_path: str = None) -> Optional[speech.Sp
     """
     try:
         # Cloud Run環境では Secret Manager からサービスアカウントキーを取得
-        from firebase_service import get_credentials_from_secret_manager
+        from .firebase_service import get_credentials_from_secret_manager
         credentials = get_credentials_from_secret_manager()
         
         if credentials:

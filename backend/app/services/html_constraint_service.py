@@ -13,7 +13,7 @@ from typing import Dict, Any, List, Optional, Tuple
 from bs4 import BeautifulSoup # BeautifulSoup4をインポート
 
 # Gemini APIサービスを利用
-from gemini_api_service import generate_text, get_gemini_client
+from .gemini_api_service import generate_text, get_gemini_client
 
 # ロギング設定
 logging.basicConfig(

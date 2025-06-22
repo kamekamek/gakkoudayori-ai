@@ -14,14 +14,14 @@ from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
 
 # Gemini API関連
-from gemini_api_service import generate_text
+from .gemini_api_service import generate_text
 
 # ロギング設定
 logger = logging.getLogger(__name__)
 
 # ADK関連（公式フレームワーク）
 try:
-    from adk_official_service import generate_newsletter_with_official_adk
+    from .adk_official_service import generate_newsletter_with_official_adk
     OFFICIAL_ADK_AVAILABLE = True
     logger.info("Official ADK service imported successfully")
 except ImportError as e:

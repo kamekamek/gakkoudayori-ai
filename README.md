@@ -65,7 +65,7 @@
 ```
 Flutter Web App (フロントエンド)
     ↓ HTTPS API
-FastAPI Backend (バックエンド)
+FastAPI Backend (バックエンド on Cloud Run)
     ↓ 
 ┌─ Vertex AI ────┬─ Firebase ──────┬─ WeasyPrint ─┐
 │  - Gemini Pro  │  - Auth         │  - PDF生成    │
@@ -86,82 +86,84 @@ FastAPI Backend (バックエンド)
 3. [🏆 プロジェクト完了報告](docs/archive/PROJECT_COMPLETION_SUMMARY.md) - 最終成果物
 
 **💻 開発者**
-1. [📋 開発ガイド](docs/development_guide.md) - 環境構築・開発手順
-2. [🏗️ システム設計](docs/system_architecture.md) - 技術アーキテクチャ
-3. [🧪 テストガイド](docs/testing_guide.md) - テスト実行・品質管理
+1. [🏗️ システム設計](docs/system_architecture.md) - 技術アーキテクチャ
+2. [🧪 テストガイド](docs/testing_guide.md) - テスト実行・品質管理
 
 ### 🛠️ 開発環境構築
 
+#### 1. プロジェクトクローン
 ```bash
-# 1. プロジェクトクローン
+# GitHubからプロジェクトをクローンします
 git clone https://github.com/kamekamek/gakkoudayori-ai.git
 cd gakkoudayori-ai
-
-# 2. 環境設定確認
-./scripts/check_env.sh
-
-# 3. APIキー設定
-export GEMINI_API_KEY=your_api_key_here
-export SPEECH_TO_TEXT_API_KEY=your_api_key_here
-
-# 4. 開発環境起動
-make dev
 ```
 
-### 🎉 プロジェクト完了状況
+#### 2. バックエンドサーバー起動 (FastAPI on Cloud Run)
 
-**🏆 全62タスク完了 (100%) - プロジェクト完成** ✅
+**ターミナル1**で以下のコマンドを実行します。
 
-| 機能カテゴリ | 状況 | 主要成果物 |
-|------------|------|-----------|
-| **音声入力システム** | ✅ 完了 | Web Audio API統合・STT連携 |
-| **AI文章生成** | ✅ 完了 | Gemini Pro完全統合・学級通信特化 |
-| **WYSIWYGエディタ** | ✅ 完了 | Quill.js・Delta/HTML変換・季節テーマ |
-| **PDF出力配信** | ✅ 完了 | WeasyPrint・日本語フォント・A4最適化 |
-| **Firebase統合** | ✅ 完了 | 認証・Firestore・Storage完全連携 |
-| **レスポンシブUI** | ✅ 完了 | PC/タブレット/モバイル完全対応 |
+```bash
+# 1. バックエンドディレクトリへ移動
+cd backend
 
----
+# 2. Python仮想環境を作成し、有効化
+python3 -m venv venv
+source venv/bin/activate
 
-## 🎖️ ハッカソン適合性
+# 3. 必要なライブラリをインストール
+pip install -r app/requirements.txt
 
-### ✅ 必須条件クリア
-- **Google Cloud アプリケーション**: Vertex AI・Speech-to-Text ✅
-- **AI機能活用**: Gemini 1.5 Pro完全統合 ✅
+# 4. 環境変数を設定
+#    app/.env ファイルを新規作成し、実際の値を記述してください
+cp app/.env.example app/.env
+# 例:
+# GOOGLE_CLOUD_PROJECT="your-gcp-project-id"
+# GEMINI_API_KEY="your-gemini-api-key"
 
-### 🏆 特別賞対象
-- **Flutter賞**: Flutter Web使用 ✅
-- **Firebase賞**: Authentication・Firestore・Storage使用 ✅
-- **Deep Dive賞**: 複数Google Cloudサービス活用 ✅
+# 5. FastAPIサーバーを起動
+cd app
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
+> サーバーは `http://localhost:8000` で起動します。
+> APIドキュメントは `http://localhost:8000/docs` で確認できます。
+
+#### 3. フロントエンドサーバー起動 (Flutter)
+
+**ターミナル2**で以下のコマンドを実行します。
+
+```bash
+# 1. フロントエンドディレクトリへ移動
+cd frontend
+
+# 2. 必要なパッケージをインストール
+flutter pub get
+
+# 3. (初回のみ) Firebaseプロジェクトと連携
+# flutterfire configure
+
+# 4. Flutter Webアプリを起動
+#    バックエンドのURLを指定して実行します
+flutter run -d chrome --web-port 8080 --dart-define=API_BASE_URL=http://localhost:8000
+```
+> アプリケーションが `http://localhost:8080` で自動的に開きます。
 
 ---
 
 ## 🔐 セキュリティ・設定管理
 
-### Firebase設定
+### Firebase設定 (Frontend)
 
-Firebase設定ファイル `frontend/lib/firebase_options.dart` の管理：
+Firebase設定ファイル `frontend/lib/firebase_options.dart` が必要です。
+プロジェクトにFirebaseを接続していない場合は、`flutterfire configure`コマンドで生成してください。
 
-```bash
-# テンプレートから実際の設定ファイルを作成
-cp frontend/lib/firebase_options.dart.template frontend/lib/firebase_options.dart
+### 環境変数 (Backend)
 
-# 実際のFirebase設定値を設定（エディタで編集）
-# - API Key: AIzaSyAROJC6oomnN4tl1Sv27fcE5yaB_vIzXxc
-# - Project ID: yutori-kyoshitu
-# - App ID: 1:309920383305:web:fa0ae9890d4e7bf2355a98
+バックエンドの環境変数は `backend/app/.env` ファイルで管理します。`.env.example`をコピーして作成してください。
+
 ```
-
-### 環境変数
-
-```bash
-# Frontend (.env)
-FIREBASE_API_KEY=your_api_key_here
-FIREBASE_PROJECT_ID=your_project_id_here
-
-# Backend (backend/functions/.env)
-GOOGLE_CLOUD_PROJECT=your_project_id_here
-GEMINI_API_KEY=your_gemini_api_key_here
+# backend/app/.env.example
+GOOGLE_CLOUD_PROJECT="your-gcp-project-id"
+GEMINI_API_KEY="your-gemini-api-key"
 ```
 
 ---

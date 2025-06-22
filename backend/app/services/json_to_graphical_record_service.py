@@ -14,7 +14,7 @@ from datetime import datetime
 import re
 
 # Gemini API関連
-from gemini_api_service import generate_text
+from .gemini_api_service import generate_text
 
 # ロギング設定
 logger = logging.getLogger(__name__)
