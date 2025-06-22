@@ -23,7 +23,7 @@ from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 from google.adk.runners import Runner
 from google.adk.sessions import Session as AdkSession
-from google.generativeai import types
+# from google.generativeai import types # 古い使い方なので削除
 from google.protobuf.json_format import MessageToDict
 from google.cloud import firestore
 from google.generativeai.client import get_default_generative_client
@@ -89,10 +89,10 @@ async def chat_with_agent(request: ChatRequest) -> ChatResponse:
         runner = get_runner()
         
         # ユーザーメッセージを作成
-        user_message = types.Content(
-            role="user",
-            parts=[types.Part(text=request.message)]
-        )
+        user_message = {
+            "role": "user",
+            "parts": [{"text": request.message}]
+        }
         
         # エージェントを非同期実行
         events_async = runner.run_async(
@@ -242,10 +242,10 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 continue
             
             # ユーザーメッセージを作成
-            user_message = types.Content(
-                role="user",
-                parts=[types.Part(text=message)]
-            )
+            user_message = {
+                "role": "user",
+                "parts": [{"text": message}]
+            }
             
             # エージェントを非同期実行
             events_async = runner.run_async(
@@ -315,10 +315,10 @@ async def chat_with_agent_stream(request: ChatRequest):
             runner = get_runner()
 
             # ユーザーメッセージを作成
-            user_message = types.Content(
-                role="user",
-                parts=[types.Part(text=request.message)]
-            )
+            user_message = {
+                "role": "user",
+                "parts": [{"text": request.message}]
+            }
             
             # ADK Runnerはセッションサービスを通じてセッションを自動的に管理します。
             # 手動でのセッション取得や作成は不要です。
