@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'dart:html' as html;
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import '../core/models/image_file.dart';
@@ -29,18 +30,42 @@ class WebImageUploadService {
       // ファイル選択ダイアログを表示
       input.click();
 
-      // ファイル選択完了を待機
-      await for (final event in input.onChange) {
-        if (input.files?.isNotEmpty == true) {
-          break;
+      // ファイル選択を待機（タイムアウト付き）
+      bool hasUserInteracted = false;
+      
+      final changeCompleter = Completer<void>();
+      late html.EventListener changeListener;
+      changeListener = (html.Event event) {
+        hasUserInteracted = true;
+        if (!changeCompleter.isCompleted) {
+          changeCompleter.complete();
         }
+      };
+      
+      input.addEventListener('change', changeListener);
+      
+      // タイムアウト（5秒）でキャンセル扱いにする
+      final timeoutTimer = Timer(Duration(seconds: 5), () {
+        if (!changeCompleter.isCompleted) {
+          changeCompleter.complete();
+        }
+      });
+      
+      try {
+        await changeCompleter.future;
+      } finally {
+        input.removeEventListener('change', changeListener);
+        timeoutTimer.cancel();
       }
 
       final files = input.files;
       if (files == null || files.isEmpty) {
-        if (kDebugMode) debugPrint('📁 [WebImageUpload] ファイル選択キャンセル');
+        final status = hasUserInteracted ? 'ファイル選択完了（0件）' : 'ファイル選択キャンセル';
+        if (kDebugMode) debugPrint('📁 [WebImageUpload] $status');
         return [];
       }
+      
+      if (kDebugMode) debugPrint('📁 [WebImageUpload] ファイル選択完了: ${files.length}件');
 
       final imageFiles = <ImageFile>[];
 
