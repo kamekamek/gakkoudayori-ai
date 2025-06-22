@@ -217,7 +217,7 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
                               color: Theme.of(context).colorScheme.error,
                               barCount: 20,
                               height: 20,
-                              style: WaveformStyle.bars, // より細かいバー表示
+                              style: WaveformStyle.ripple, // おしゃれな波紋エフェクト
                             ),
                           ),
                           

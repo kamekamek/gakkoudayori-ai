@@ -34,10 +34,10 @@ class FirestoreSessionService:
         self.collection_name = collection_name
         self.ttl_hours = ttl_hours
     
-    async def get(self, session_id: str) -> Optional[AdkSession]:
+    async def get(self, id: str) -> Optional[AdkSession]:
         """セッションを取得"""
         try:
-            doc_ref = self.db.collection(self.collection_name).document(session_id)
+            doc_ref = self.db.collection(self.collection_name).document(id)
             doc = doc_ref.get()
             
             if not doc.exists:
@@ -50,62 +50,42 @@ class FirestoreSessionService:
                 updated_at = data['updated_at']
                 if isinstance(updated_at, datetime):
                     if datetime.utcnow() - updated_at > timedelta(hours=self.ttl_hours):
-                        # セッションが期限切れ
-                        await self.delete(session_id)
+                        await self.delete(id)
                         return None
             
-            # ADK Sessionオブジェクトに変換
-            # Firestoreのフィールド名(id)をADKのsession_idにマッピング
-            return AdkSession(
-                session_id=data.get('id', session_id),
-                history=[
-                    genai_types.to_content(item) for item in data.get('history', [])
-                ],
-                metadata=data.get('metadata', {})
-            )
+            # Pydanticモデルの標準的な方法でデシリアライズ
+            return AdkSession.model_validate(data)
         except Exception as e:
-            logger.error(f"Error getting session {session_id}: {e}")
+            logger.error(f"Error getting session {id}: {e}", exc_info=True)
             return None
     
     async def save(self, session: AdkSession) -> None:
         """セッションを保存"""
         try:
-            doc_ref = self.db.collection(self.collection_name).document(session.session_id)
+            # Pydanticモデルの標準的な方法でシリアライズ
+            session_data = session.model_dump(mode='json')
+            session_data['updated_at'] = datetime.utcnow()
             
-            # セッションデータを準備
-            history_dicts = [MessageToDict(c._pb) for c in session.history]
+            doc_ref = self.db.collection(self.collection_name).document(session.id)
             
-            # メタデータから必要な情報を取得
-            user_id = session.metadata.get('user_id', 'unknown_user')
-
-            session_data = {
-                'id': session.session_id,  # Pydanticモデルの'id'フィールドにマッピング
-                'userId': user_id,
-                'appName': 'gakkoudayori-app', # 固定値またはメタデータから取得
-                'history': history_dicts,
-                'metadata': session.metadata, # 元のメタデータも保持
-                'updated_at': datetime.utcnow()
-            }
-            
-            # 新規作成の場合はcreated_atも設定
             doc = doc_ref.get()
             if not doc.exists:
                 session_data['created_at'] = datetime.utcnow()
             
             doc_ref.set(session_data, merge=True)
-            logger.info(f"Session {session.session_id} saved successfully with mapped data.")
+            logger.info(f"Session {session.id} saved successfully.")
         except Exception as e:
-            logger.error(f"Error saving session {session.session_id}: {e}")
+            logger.error(f"Error saving session {getattr(session, 'id', 'unknown')}: {e}", exc_info=True)
             raise
     
-    async def delete(self, session_id: str) -> None:
+    async def delete(self, id: str) -> None:
         """セッションを削除"""
         try:
-            doc_ref = self.db.collection(self.collection_name).document(session_id)
+            doc_ref = self.db.collection(self.collection_name).document(id)
             doc_ref.delete()
-            logger.info(f"Session {session_id} deleted successfully")
+            logger.info(f"Session {id} deleted successfully")
         except Exception as e:
-            logger.error(f"Error deleting session {session_id}: {e}")
+            logger.error(f"Error deleting session {id}: {e}")
             raise
     
     async def list_sessions(self, user_id: str) -> List[SessionInfo]:
@@ -123,8 +103,8 @@ class FirestoreSessionService:
                 if isinstance(updated_at, datetime):
                     if datetime.utcnow() - updated_at <= timedelta(hours=self.ttl_hours):
                         sessions.append(SessionInfo(
-                            session_id=data['session_id'],
-                            user_id=user_id,
+                            session_id=data.get('id'),
+                            user_id=data.get('userId'),
                             created_at=data.get('created_at', updated_at),
                             updated_at=updated_at,
                             messages=self._convert_history_to_messages(data.get('history', [])),
