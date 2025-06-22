@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
+import 'dart:html' as html;
 import '../../../editor/providers/preview_provider.dart';
 import '../../providers/newsletter_provider.dart';
 import 'preview_mode_toolbar.dart';
@@ -145,24 +146,58 @@ class PreviewInterface extends StatelessWidget {
 
   Widget _buildEditMode(BuildContext context, String htmlContent) {
     return Container(
-      padding: const EdgeInsets.all(16),
-      child: QuillEditorWidget(
-        initialContent: htmlContent,
-        contentFormat: 'html',
-        height: double.infinity,
-        onContentChanged: (html) {
-          // リアルタイムでプレビューを更新
-          context.read<PreviewProvider>().updateHtmlContent(html);
-        },
-        onEditorReady: () {
-          // エディタ準備完了時の処理
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('📝 編集モードが準備できました'),
-              duration: Duration(seconds: 2),
+      padding: const EdgeInsets.all(32),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.edit_note,
+              size: 64,
+              color: Theme.of(context).colorScheme.primary,
             ),
-          );
-        },
+            const SizedBox(height: 24),
+            Text(
+              '編集モード',
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '高速で安定したQuillエディタを\n別ウィンドウで開きます',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: () => _openQuillEditor(context),
+              icon: const Icon(Icons.open_in_new, size: 20),
+              label: const Text('Quillエディタを開く'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                textStyle: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: () => _openSimpleQuillEditor(context),
+              icon: const Icon(Icons.speed, size: 20),
+              label: const Text('シンプルエディタを開く'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -265,5 +300,25 @@ class PreviewInterface extends StatelessWidget {
 
   void _regenerateContent(BuildContext context) {
     context.read<NewsletterProvider>().generateNewsletter('classic');
+  }
+
+  void _openQuillEditor(BuildContext context) {
+    html.window.open('/quill/', '_blank');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('📝 Quillエディタを新しいタブで開きました'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _openSimpleQuillEditor(BuildContext context) {
+    html.window.open('/quill-test.html', '_blank');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('⚡ シンプルエディタを新しいタブで開きました'),
+        duration: Duration(seconds: 2),
+      ),
+    );
   }
 }
