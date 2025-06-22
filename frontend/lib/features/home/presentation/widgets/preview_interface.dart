@@ -4,6 +4,7 @@ import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import '../../../editor/providers/preview_provider.dart';
 import '../../providers/newsletter_provider.dart';
 import 'preview_mode_toolbar.dart';
+import '../../../../widgets/quill_editor_widget.dart';
 
 /// プレビューインターフェース（右側パネル）
 class PreviewInterface extends StatelessWidget {
@@ -142,6 +143,30 @@ class PreviewInterface extends StatelessWidget {
     );
   }
 
+  Widget _buildEditMode(BuildContext context, String htmlContent) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: QuillEditorWidget(
+        initialContent: htmlContent,
+        contentFormat: 'html',
+        height: double.infinity,
+        onContentChanged: (html) {
+          // リアルタイムでプレビューを更新
+          context.read<PreviewProvider>().updateHtmlContent(html);
+        },
+        onEditorReady: () {
+          // エディタ準備完了時の処理
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('📝 編集モードが準備できました'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildPreviewMode(BuildContext context, String htmlContent) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -170,81 +195,6 @@ class PreviewInterface extends StatelessWidget {
     );
   }
 
-  Widget _buildEditMode(BuildContext context, String htmlContent) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 800),
-        margin: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
-            width: 2,
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // 編集ツールバー
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.edit,
-                      color: Theme.of(context).colorScheme.primary,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '編集モード',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Spacer(),
-                    TextButton.icon(
-                      onPressed: () {
-                        context.read<PreviewProvider>().switchMode(PreviewMode.preview);
-                      },
-                      icon: const Icon(Icons.save, size: 16),
-                      label: const Text('保存'),
-                    ),
-                  ],
-                ),
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // 編集可能コンテンツ（仮実装）
-              HtmlWidget(
-                htmlContent,
-                textStyle: Theme.of(context).textTheme.bodyMedium,
-              ),
-              
-              const SizedBox(height: 16),
-              
-              Text(
-                '💡 編集機能は開発中です。現在はプレビューのみ対応しています。',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.outline,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildPrintViewMode(BuildContext context, String htmlContent) {
     return Container(

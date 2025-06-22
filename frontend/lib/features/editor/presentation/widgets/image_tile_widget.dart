@@ -49,10 +49,12 @@ class _ImageTileWidgetState extends State<ImageTileWidget> {
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // 画像表示エリア
-              Expanded(
+              SizedBox(
+                height: 120, // 固定高さを設定
                 child: _buildImageDisplay(),
               ),
               
