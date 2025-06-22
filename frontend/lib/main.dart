@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'responsive_main.dart' as responsive;
+import 'app/app.dart';
 import 'config/app_config.dart';
 
-/// 学校だよりAI - レスポンシブ対応版エントリーポイント
+/// 学校だよりAI - エントリーポイント
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -13,5 +13,5 @@ void main() {
         'Invalid configuration. Please check your environment variables.');
   }
 
-  runApp(responsive.GakkouDayoriAiApp());
+  runApp(const GakkouDayoriAiApp());
 }

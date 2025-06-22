@@ -10,6 +10,12 @@ dependencies:
   flutter:
     sdk: flutter
   
+  # 状態管理
+  provider: ^6.1.2
+  
+  # ルーティング
+  go_router: ^14.2.0
+  
   # API呼び出し（STT・Gemini）
   http: ^1.1.0
   
@@ -19,6 +25,8 @@ dependencies:
   # HTML Widget for rendering HTML content
   flutter_widget_from_html: ^0.15.0
   flutter_widget_from_html_core: ^0.15.0
+  
+  # フォント・デザイン
   google_fonts: ^6.2.1
 
 dev_dependencies:
