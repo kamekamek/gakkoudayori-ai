@@ -53,6 +53,15 @@ dependencies:
   # フォント・デザイン
   google_fonts: ^6.2.1
   
+  # PDF保存・ダウンロード機能
+  universal_html: ^2.2.4
+  path_provider: ^2.1.3
+  
+  # Google APIs (Classroom統合)
+  googleapis: ^13.1.0
+  googleapis_auth: ^1.6.0
+  google_sign_in: ^6.2.1
+  
   flutter_html: ^3.0.0-beta.2
   html_editor_enhanced: ^2.5.1
 

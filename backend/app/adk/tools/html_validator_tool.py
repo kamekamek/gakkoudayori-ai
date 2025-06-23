@@ -1,38 +1,45 @@
-from adk.tools import BaseTool
+from google.adk.tools import BaseTool
 import html5lib
 import io
+from pydantic import Field
+from pydantic import BaseModel
 
 class HtmlValidatorTool(BaseTool):
-    """
-    Validates the syntax of an HTML string.
-    """
-    name = "html_validator"
-    description = "Validates an HTML string using html5lib. Returns whether the HTML is valid and a list of errors if any."
+    """HTMLの構文が正しいか、必須要素が含まれているかを検証するツール。"""
 
-    async def __call__(self, html: str) -> dict:
+    class HtmlValidatorToolSchema(BaseModel):
+        html_body: str = Field(..., description="検証するHTMLのbody部分の文字列。")
+
+    def __init__(self):
+        super().__init__(
+            name="html_validator",
+            description="HTMLの構文が正しいか、必須要素（例：h1, pなど）が含まれているかを検証します。",
+        )
+
+    def _run(self, html_body: str) -> str:
         """
-        Parses the HTML string and checks for errors.
+        指定されたHTML文字列の妥当性を検証します。
 
         Args:
-            html: The HTML content to validate.
+            html_body: The HTML content to validate.
 
         Returns:
-            A dictionary with 'valid' (boolean) and 'errors' (list of strings).
+            A string indicating the result of the validation.
         """
-        if not isinstance(html, str):
-            return {"valid": False, "errors": ["Invalid input: HTML must be a string."]}
+        if not isinstance(html_body, str):
+            return "Invalid input: HTML must be a string."
 
         parser = html5lib.HTMLParser(strict=True)
         try:
-            parser.parse(io.StringIO(html))
+            parser.parse(io.StringIO(html_body))
             # strict=Trueでも例外を発生させないエラーがparser.errorsに格納されることがある
             errors = [
                 html5lib.constants.E.get(error_code, "Unknown error") % error_params
                 for error_code, error_params in parser.errors
             ]
             if errors:
-                return {"valid": False, "errors": errors}
-            return {"valid": True, "errors": []}
+                return f"Invalid HTML. Errors: {', '.join(errors)}"
+            return "Valid HTML."
         except Exception as e:
             #致命的なパースエラーを捕捉
-            return {"valid": False, "errors": [str(e)]} 
+            return f"Fatal parse error: {str(e)}" 

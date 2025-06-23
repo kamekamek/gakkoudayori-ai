@@ -12,9 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from google.adk.agents import Agent, Context
-from google.adk.models import Message
+import json
+from typing import AsyncGenerator
+
+from google.adk.agents import Agent
+from google.adk.agents.invocation_context import InvocationContext
+from google.adk.events.event import Event
 from google.adk.models.lite_llm import LiteLlm
+from google.genai import types as genai_types
 
 from ..tools import HtmlValidatorTool
 
@@ -63,21 +68,40 @@ class GeneratorAgent(Agent):
             tools=[HtmlValidatorTool()],
         )
 
-    async def _run_async_impl(self, ctx: Context) -> Message:
+    async def _run_async_impl(
+        self, ctx: InvocationContext
+    ) -> AsyncGenerator[Event, None]:
         # Plannerが生成した構成案を読み込む
         if not ctx.artifact_exists("outline.json"):
             error_message = "HTML生成に必要な構成案（outline.json）が見つかりません。"
             await ctx.emit({"type": "error", "message": error_message})
-            return Message(content=error_message)
+            yield Event(
+                author=self.name,
+                content=genai_types.Content(
+                    parts=[genai_types.Part(text=error_message)]
+                ),
+            )
+            return
 
         json_content = ctx.load_artifact("outline.json").decode("utf-8")
-        
+
         # LLMを呼び出してHTMLを生成
         # AgentのデフォルトのLLM呼び出し機能を活用
-        llm_response = await self.model.generate(
-            prompt=self.instruction, user_input=json_content
-        )
-        html = llm_response.text
+        try:
+            llm_response = await self.model.generate(
+                prompt=self.instruction, user_input=json_content
+            )
+            html = llm_response.text
+        except Exception as e:
+            error_message = f"HTML生成中にエラーが発生しました: {e}"
+            await ctx.emit({"type": "error", "message": error_message})
+            yield Event(
+                author=self.name,
+                content=genai_types.Content(
+                    parts=[genai_types.Part(text=error_message)]
+                ),
+            )
+            return
 
         # 生成されたHTMLをクライアントにストリーミング
         await ctx.emit({"type": "html", "html": html})
@@ -90,9 +114,12 @@ class GeneratorAgent(Agent):
 
         # 生成したHTMLをアーティファクトとして保存
         ctx.save_artifact("newsletter.html", html.encode("utf-8"))
-        
+
         # 最終的な結果を返す
-        return Message(content=html)
+        yield Event(
+            author=self.name,
+            content=genai_types.Content(parts=[genai_types.Part(text=html)]),
+        )
 
 
 def create_generator_agent() -> Agent:

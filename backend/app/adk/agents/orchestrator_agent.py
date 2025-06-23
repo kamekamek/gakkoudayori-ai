@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from google.adk.agents import RunnerAgent, Context
+from google.adk.agents import SequentialAgent
+from google.adk.agents.invocation_context import InvocationContext
 from google.adk.models.lite_llm import LiteLlm
 from .planner_agent import create_planner_agent
 from .generator_agent import create_generator_agent
@@ -39,7 +40,7 @@ ORCHESTRATOR_INSTRUCTION = """
 - ワークフローの途中経過（「処理中です」など）は一切出力せず、ステップ4と5の出力のみを行ってください。
 """
 
-class NewsletterOrchestrator(RunnerAgent):
+class NewsletterOrchestrator(SequentialAgent):
     """
     学級通信の作成プロセス全体を管理するオーケストレーターエージェント。
     ユーザーの指示に基づいて、PlannerAgentとGeneratorAgentを制御します。
@@ -54,7 +55,7 @@ class NewsletterOrchestrator(RunnerAgent):
             ]
         )
 
-    async def _run_async_impl(self, ctx: Context):
+    async def _run_async_impl(self, ctx: InvocationContext):
         """エージェントの実行ロジック"""
         msg = ctx.get_user_message().strip()
 
@@ -84,7 +85,7 @@ class NewsletterOrchestrator(RunnerAgent):
         # await ctx.emit({"type": "info", "message": "コマンド /create を使用して開始するか、/edit を使用して編集してください。"})
 
 
-def create_orchestrator_agent() -> RunnerAgent:
+def create_orchestrator_agent() -> SequentialAgent:
     """
     Orchestratorエージェントのインスタンスを作成します。
     """
