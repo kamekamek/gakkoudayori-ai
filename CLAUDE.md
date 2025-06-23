@@ -441,7 +441,7 @@ git log --oneline -10
 ## 📚 参考ドキュメント
 
 - [タスク管理](docs/tasks.md) - 実装進捗管理 (58タスク、現在4/58完了)
-- [要件定義](docs/01_REQUIREMENT_overview.md) - 機能要件・非機能要件
+- [要件定義](docs/archive/01_REQUIREMENT_overview.md) - 機能要件・非機能要件
 - [システム設計](docs/archive/11_DESIGN_database_schema.md) - データベース・アーキテクチャ詳細
 - [API仕様](docs/archive/30_API_endpoints.md) - エンドポイント設計
 

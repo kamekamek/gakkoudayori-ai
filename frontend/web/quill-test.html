@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quill.js テスト</title>
+    <link href="https://cdn.jsdelivr.net/npm/quill@2.0.0/dist/quill.snow.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif;
+            margin: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .header {
+            padding: 16px;
+            background: #007bff;
+            color: white;
+            border-radius: 8px 8px 0 0;
+            text-align: center;
+        }
+        #editor {
+            height: 400px;
+        }
+        .status {
+            padding: 12px;
+            background: #e7f3ff;
+            text-align: center;
+            border-radius: 0 0 8px 8px;
+            border-top: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📝 Quill.js エディタテスト</h1>
+            <p>読み込み速度確認用</p>
+        </div>
+        
+        <div id="editor">
+            <h2>🌸 学級通信テスト</h2>
+            <p>このテキストを<strong>自由に編集</strong>してください。</p>
+            <ul>
+                <li>見出しの変更</li>
+                <li><em>文字スタイル</em>の変更</li>
+                <li><span style="color: red;">色</span>の変更</li>
+            </ul>
+        </div>
+        
+        <div class="status" id="status">
+            🔄 Quill.js 読み込み中...
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/quill@2.0.0/dist/quill.js"></script>
+    <script>
+        console.log('🔥 Script開始');
+        
+        // 読み込み時間測定
+        const startTime = Date.now();
+        
+        try {
+            // Quill.js初期化
+            const quill = new Quill('#editor', {
+                theme: 'snow',
+                modules: {
+                    toolbar: [
+                        [{ 'header': [1, 2, 3, false] }],
+                        ['bold', 'italic', 'underline'],
+                        [{ 'color': [] }, { 'background': [] }],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        ['clean']
+                    ]
+                },
+                placeholder: 'ここに入力してください...'
+            });
+            
+            const loadTime = Date.now() - startTime;
+            console.log(`✅ Quill.js初期化完了: ${loadTime}ms`);
+            
+            document.getElementById('status').innerHTML = 
+                `✅ Quill.js 読み込み完了 (${loadTime}ms) - 編集してみてください！`;
+            document.getElementById('status').style.background = '#d4edda';
+            
+        } catch (error) {
+            console.error('❌ Quill.js初期化エラー:', error);
+            document.getElementById('status').innerHTML = 
+                `❌ エラーが発生しました: ${error.message}`;
+            document.getElementById('status').style.background = '#f8d7da';
+        }
+    </script>
+</body>
+</html>

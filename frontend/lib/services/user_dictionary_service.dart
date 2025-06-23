@@ -31,9 +31,7 @@ class UserDictionaryEntry {
 }
 
 class UserDictionaryService {
-  static String get _baseUrl {
-    return AppConfig.apiBaseUrl.replaceAll('/api/v1/ai', '');
-  }
+  
 
   /// 文字起こし結果をユーザー辞書で修正
   ///
@@ -49,7 +47,7 @@ class UserDictionaryService {
   }) async {
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/api/v1/dictionary/$userId/correct'),
+        Uri.parse('${AppConfig.apiBaseUrl}/dictionary/$userId/correct'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -102,7 +100,7 @@ class UserDictionaryService {
   }) async {
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/api/v1/dictionary/$userId/learn'),
+        Uri.parse('${AppConfig.apiBaseUrl}/dictionary/$userId/learn'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -130,7 +128,7 @@ class UserDictionaryService {
       }
       
       final response = await http.get(
-        Uri.parse('$_baseUrl/api/v1/dictionary/$userId'),
+        Uri.parse('${AppConfig.apiBaseUrl}/dictionary/$userId'),
       );
 
       if (kDebugMode) {
@@ -240,7 +238,7 @@ class UserDictionaryService {
   Future<bool> addTerm(String userId, UserDictionaryEntry entry) async {
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/api/v1/dictionary/$userId/terms'),
+        Uri.parse('${AppConfig.apiBaseUrl}/dictionary/$userId/terms'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(entry.toJson()),
       );
@@ -258,7 +256,7 @@ class UserDictionaryService {
   Future<bool> updateTerm(String userId, String originalTerm, UserDictionaryEntry entry) async {
     try {
       final response = await http.put(
-        Uri.parse('$_baseUrl/api/v1/dictionary/$userId/terms/$originalTerm'),
+        Uri.parse('${AppConfig.apiBaseUrl}/dictionary/$userId/terms/$originalTerm'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(entry.toJson()),
       );
@@ -276,7 +274,7 @@ class UserDictionaryService {
   Future<bool> deleteTerm(String userId, String term) async {
     try {
       final response = await http.delete(
-        Uri.parse('$_baseUrl/api/v1/dictionary/$userId/terms/$term'),
+        Uri.parse('${AppConfig.apiBaseUrl}/dictionary/$userId/terms/$term'),
       );
       final data = jsonDecode(response.body);
       return response.statusCode == 200 && data['success'] == true;

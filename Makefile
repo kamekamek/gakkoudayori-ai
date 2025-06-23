@@ -17,6 +17,11 @@ help:
 	@echo "  make backend-setup - Python環境セットアップ"
 	@echo "  make backend-test  - Pythonテスト実行"
 	@echo ""
+	@echo "🐍 バックエンド:"
+	@echo "  make backend-dev   - バックエンド開発サーバー起動"
+	@echo "  make backend-setup - Python環境セットアップ"
+	@echo "  make backend-test  - Pythonテスト実行"
+	@echo ""
 	@echo "🧪 テスト・品質:"
 	@echo "  make test         - 全テスト実行"
 	@echo "  make lint         - 静的解析実行"
@@ -38,21 +43,21 @@ dev:
 	@echo "🔧 開発環境で起動中..."
 	cd frontend && flutter run -d chrome \
 		--dart-define=ENVIRONMENT=development \
-		--dart-define=API_BASE_URL=http://localhost:8081/api/v1/ai
+		--dart-define=API_BASE_URL=http://localhost:8081/api/v1
 
 # ステージング環境で起動
 staging:
 	@echo "🧪 ステージング環境で起動中..."
 	cd frontend && flutter run -d chrome \
 		--dart-define=ENVIRONMENT=staging \
-		--dart-define=API_BASE_URL=https://staging-yutori-backend.asia-northeast1.run.app/api/v1/ai
+		--dart-define=API_BASE_URL=https://staging-yutori-backend.asia-northeast1.run.app/api/v1
 
 # 開発環境用ビルド
 build-dev:
 	@echo "🔧 開発環境用ビルド中..."
 	cd frontend && flutter build web \
 		--dart-define=ENVIRONMENT=development \
-		--dart-define=API_BASE_URL=http://localhost:8081/api/v1/ai \
+		--dart-define=API_BASE_URL=http://localhost:8081/api/v1 \
 		--debug
 
 # 本番環境用ビルド
@@ -60,7 +65,7 @@ build-prod:
 	@echo "🚀 本番環境用ビルド中..."
 	cd frontend && flutter build web \
 		--dart-define=ENVIRONMENT=production \
-		--dart-define=API_BASE_URL=https://yutori-backend-944053509139.asia-northeast1.run.app/api/v1/ai \
+		--dart-define=API_BASE_URL=https://yutori-backend-944053509139.asia-northeast1.run.app/api/v1 \
 		--release
 
 # テスト実行
@@ -69,7 +74,7 @@ test:
 	@echo "📱 Flutterテスト..."
 	cd frontend && flutter test
 	@echo "🐍 Pythonテスト..."
-	cd backend/functions && python -m pytest tests/ -v || echo "⚠️ テストファイルが見つかりません"
+	cd backend/app && python -m pytest tests/ -v || echo "⚠️ テストファイルが見つかりません"
 
 # 静的解析
 lint:
@@ -77,7 +82,7 @@ lint:
 	@echo "📱 Flutter解析..."
 	cd frontend && flutter analyze
 	@echo "🐍 Python解析..."
-	cd backend/functions && python -m flake8 . --max-line-length=120 || echo "⚠️ flake8がインストールされていません"
+	cd backend/app && python -m flake8 . --max-line-length=120 || echo "⚠️ flake8がインストールされていません"
 
 # コードフォーマット
 format:
@@ -85,7 +90,7 @@ format:
 	@echo "📱 Flutterフォーマット..."
 	cd frontend && dart format .
 	@echo "🐍 Pythonフォーマット..."
-	cd backend/functions && python -m black . || echo "⚠️ blackがインストールされていません"
+	cd backend/app && python -m black . || echo "⚠️ blackがインストールされていません"
 
 # CI/CD環境セットアップ
 ci-setup:
@@ -93,7 +98,7 @@ ci-setup:
 	@echo "📦 Flutter依存関係取得..."
 	cd frontend && flutter pub get
 	@echo "📦 Python依存関係インストール..."
-	cd backend/functions && pip install -r requirements.txt
+	cd backend/app && pip install -r requirements.txt
 	@echo "✅ CI/CD環境セットアップ完了"
 
 # CI環境でのテスト実行
@@ -108,7 +113,7 @@ deploy-frontend: build-prod
 # バックエンドデプロイ
 deploy-backend:
 	@echo "📤 バックエンドをCloud Runにデプロイ中 (Dockerfile使用)..."
-	cd backend/functions && gcloud run deploy yutori-backend \
+	cd backend/app && gcloud run deploy yutori-backend \
 		--source=. \
 		--region=asia-northeast1 \
 		--allow-unauthenticated \
@@ -131,7 +136,7 @@ deploy-preview:
 	@echo "👀 プレビューデプロイ中..."
 	cd frontend && flutter build web \
 		--dart-define=ENVIRONMENT=preview \
-		--dart-define=API_BASE_URL=https://yutori-backend-944053509139.asia-northeast1.run.app/api/v1/ai \
+		--dart-define=API_BASE_URL=https://yutori-backend-944053509139.asia-northeast1.run.app/api/v1 \
 		--release
 	firebase hosting:channel:deploy preview --expires 7d
 
@@ -140,7 +145,7 @@ deploy-staging:
 	@echo "🧪 ステージング環境用ビルド中..."
 	cd frontend && flutter build web \
 		--dart-define=ENVIRONMENT=staging \
-		--dart-define=API_BASE_URL=https://staging-yutori-backend.asia-northeast1.run.app/api/v1/ai \
+		--dart-define=API_BASE_URL=https://staging-yutori-backend.asia-northeast1.run.app/api/v1 \
 		--release
 	@echo "📤 ステージング環境にデプロイ中..."
 	firebase hosting:channel:deploy staging --expires 30d
@@ -157,16 +162,16 @@ reset-dev:
 backend-dev:
 	@echo "🐍 バックエンド開発サーバー起動中..."
 	@echo "📦 仮想環境アクティベート..."
-	cd backend/functions && \
-		(test -d venv || python -m venv venv) && \
+	cd backend/app && \
+		(test -d venv || python3.11 -m venv venv) && \
 		. venv/bin/activate && \
-		python start_server.py
+		uvicorn main_local:app --host 0.0.0.0 --port 8081 --reload
 
 # Python環境セットアップ
 backend-setup:
 	@echo "🐍 Python環境セットアップ中..."
-	cd backend/functions && \
-		python -m venv venv && \
+	cd backend/app && \
+		python3.11 -m venv venv && \
 		. venv/bin/activate && \
 		pip install -r requirements.txt
 	@echo "✅ Python環境セットアップ完了"
@@ -174,6 +179,6 @@ backend-setup:
 # Pythonテスト実行
 backend-test:
 	@echo "🧪 Pythonテスト実行中..."
-	cd backend/functions && \
+	cd backend/app && \
 		. venv/bin/activate && \
 		python -m pytest tests/ -v 

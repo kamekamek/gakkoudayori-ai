@@ -1,0 +1,129 @@
+site_name: 学校だよりAI - ADK Documentation
+site_description: Google ADK integration for school newsletter generation
+site_author: Gakkoudayori AI Team
+
+# Repository
+repo_name: gakkoudayori/new-agent
+repo_url: https://github.com/gakkoudayori/new-agent
+
+# Theme configuration
+theme:
+  name: material
+  language: ja
+  palette:
+    # Light mode
+    - scheme: default
+      primary: green
+      accent: green
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Dark mode
+    - scheme: slate
+      primary: green
+      accent: green
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+
+# Extensions
+markdown_extensions:
+  - admonition
+  - codehilite:
+      guess_lang: false
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.critic
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+  - pymdownx.highlight:
+      linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+# Plugins
+plugins:
+  - search:
+      lang: 
+        - ja
+        - en
+  - mermaid2:
+      arguments:
+        theme: forest
+
+# Navigation
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Overview: getting-started/overview.md
+    - Quick Start: getting-started/quick-start.md
+    - Installation: getting-started/installation.md
+  - Guides:
+    - ADK Workflow: guides/adk-workflow.md
+    - Firebase Setup: guides/firebase-setup.md  
+    - Image Optimization: guides/image-optimization.md
+  - Reference:
+    - Agents:
+      - Layout Agent: reference/agents/layout_agent.md
+      - PDF Export Agent: reference/agents/pdf_export_agent.md
+    - Tools:
+      - HTML Editor Tool: reference/tools/html_editor_tool.md
+      - Image Upload Tool: reference/tools/image_upload_tool.md
+      - HTML to PDF Tool: reference/tools/html_to_pdf_tool.md
+  - Architecture:
+    - ADR Index: adr/index.md
+    - ADR-0001 ADK Adoption: adr/adr-0001-adk-adoption.md
+    - ADR-0002 Firebase Storage: adr/adr-0002-firebase-storage.md
+    - ADR-0003 Layout Agent vs Tool: adr/adr-0003-layout-agent-vs-tool.md
+  - Development:
+    - Requirements: 01-REQ.md
+    - Project Backlog: BACKLOG.md
+
+# Extra CSS and JavaScript
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/extra.js
+  - https://unpkg.com/mermaid@8.9.2/dist/mermaid.min.js
+
+# Extra configuration
+extra:
+  version:
+    provider: mike
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/gakkoudayori/new-agent
+  analytics:
+    provider: google
+    property: G-XXXXXXXXXX
+
+# Copyright
+copyright: Copyright &copy; 2024 Gakkoudayori AI Team
