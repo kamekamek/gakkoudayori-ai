@@ -14,7 +14,7 @@ class AdkChatProvider extends ChangeNotifier {
   bool _isProcessing = false;
   String? _error;
   String? _generatedHtml;
-  
+
   // 音声関連状態
   bool _isVoiceRecording = false;
   double _audioLevel = 0.0;
@@ -36,28 +36,28 @@ class AdkChatProvider extends ChangeNotifier {
   }) : _adkService = adkService {
     _initializeAudioService();
   }
-  
+
   void _initializeAudioService() {
     debugPrint('[AdkChatProvider] Initializing audio service...');
     _audioService.initializeJavaScriptBridge();
-    
+
     _audioService.setOnRecordingStateChanged((isRecording) {
       debugPrint('[AdkChatProvider] Recording state changed: $isRecording');
       _isVoiceRecording = isRecording;
       notifyListeners();
     });
-    
+
     _audioService.setOnTranscriptionCompleted((transcript) {
       debugPrint('[AdkChatProvider] Transcription completed: $transcript');
       _transcriptionResult = transcript;
       notifyListeners();
     });
-    
+
     _audioService.setOnAudioLevelChanged((level) {
       _audioLevel = level;
       notifyListeners();
     });
-    
+
     debugPrint('[AdkChatProvider] Audio service initialization complete');
   }
 
@@ -104,7 +104,7 @@ class AdkChatProvider extends ChangeNotifier {
             '[AdkChatProvider] Received stream event: type=${event.type}, data=${event.data}');
 
         switch (event.type) {
-          case 'message':
+          case 'text':
             // メッセージを追加していく
             assistantMessage.content += event.data;
             notifyListeners();

@@ -22,7 +22,7 @@ import asyncio
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import StreamingResponse
 from google.adk.sessions import Session as AdkSession
-# from google.generativeai import types # 古い使い方なので削除
+from google.genai import types as genai_types
 from google.protobuf.json_format import MessageToDict
 from google.cloud import firestore
 # from google.generativeai.client import get_default_generative_client # 不要
@@ -59,10 +59,10 @@ async def chat_with_agent(request: Request, chat_request: ChatRequest) -> ChatRe
             raise HTTPException(status_code=503, detail="ADK Runner is not available. Please ensure the server is started with ADK support.")
 
         # ユーザーメッセージを作成
-        user_message = {
-            "role": "user",
-            "parts": [{"text": chat_request.message}]
-        }
+        user_message = genai_types.Content(
+            role="user",
+            parts=[genai_types.Part(text=chat_request.message)]
+        )
         
         # エージェントを非同期実行
         events_async = runner.run_async(
@@ -217,10 +217,10 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 continue
             
             # ユーザーメッセージを作成
-            user_message = {
-                "role": "user",
-                "parts": [{"text": message}]
-            }
+            user_message = genai_types.Content(
+                role="user",
+                parts=[genai_types.Part(text=message)]
+            )
             
             # エージェントを非同期実行
             events_async = runner.run_async(
@@ -293,10 +293,27 @@ async def chat_with_agent_stream(request: Request, chat_request: ChatRequest):
                 raise RuntimeError("ADK Runner is not initialized. Please ensure the server is started with ADK support.")
 
             # ユーザーメッセージを作成
-            user_message = {
-                "role": "user",
-                "parts": [{"text": chat_request.message}]
-            }
+            user_message = genai_types.Content(
+                role="user",
+                parts=[genai_types.Part(text=chat_request.message)]
+            )
+            
+            # セッションが存在しない場合は事前に作成
+            session_service = get_session_service()
+            existing_session = await session_service.get_session(
+                session_id=session_id,
+                app_name="gakkoudayori-ai",
+                user_id=chat_request.user_id
+            )
+            
+            if not existing_session:
+                logger.info(f"Creating new session: {session_id}")
+                await session_service.create_session(
+                    session_id=session_id,
+                    app_name="gakkoudayori-ai",
+                    user_id=chat_request.user_id,
+                    state={}
+                )
             
             # ADK Runnerはセッションサービスを通じてセッションを自動的に管理します。
             events_async = runner.run_async(
@@ -306,30 +323,32 @@ async def chat_with_agent_stream(request: Request, chat_request: ChatRequest):
             )
             
             # イベントをストリーミング
+            html_buffer = ""
             async for event in events_async:
                 logger.debug(f"ADK Event received: {event}")
 
-                event_data = {
-                    "session_id": session_id,
-                    "type": "message",
-                    "data": ""
-                }
-                
                 # イベントの内容を解析
-                if hasattr(event, 'content') and event.content:
-                    if hasattr(event.content, 'parts'):
-                        for part in event.content.parts:
-                            if hasattr(part, 'text'):
-                                event_data['data'] = part.text
-                                
-                                # HTMLかチェック
-                                if part.text.strip().startswith('<!DOCTYPE html>'):
-                                    event_data['type'] = 'complete'
-                
-                # SSE形式で送信
-                logger.info(f"Sending SSE data: {event_data}")
-                yield f"data: {json.dumps(event_data)}\n\n"
-                
+                if event and event.content and event.content.parts:
+                    for part in event.content.parts:
+                        logger.debug(f"Processing part: {part}")
+                        
+                        # part.textが存在し、Noneでないことを確認
+                        if part.text:
+                            # HTMLコンテンツの処理
+                            if part.text.strip().startswith('<!DOCTYPE html>') or html_buffer:
+                                html_buffer += part.text
+                                if '</html>' in html_buffer:
+                                    logger.info("Detected complete HTML content.")
+                                    yield f"data: {json.dumps({'session_id': session_id, 'type': 'complete', 'data': html_buffer})}\n\n"
+                                    html_buffer = ""
+                            # 通常のテキストストリーム
+                            else:
+                                logger.debug(f"Streaming text part: {part.text}")
+                                yield f"data: {json.dumps({'session_id': session_id, 'type': 'text', 'data': part.text})}\n\n"
+                        # ツール呼び出しなど、テキスト以外のパートをログに出力
+                        else:
+                            logger.info(f"Received non-text part: {part}")
+
         except Exception as e:
             logger.error(f"Streaming error: {e}", exc_info=True)
             error_data = {
