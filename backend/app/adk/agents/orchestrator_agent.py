@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from google.adk.agents import Agent
+from google.adk.agents import RunnerAgent, Context
 from google.adk.models.lite_llm import LiteLlm
 from .planner_agent import create_planner_agent
 from .generator_agent import create_generator_agent
@@ -39,19 +39,53 @@ ORCHESTRATOR_INSTRUCTION = """
 - ワークフローの途中経過（「処理中です」など）は一切出力せず、ステップ4と5の出力のみを行ってください。
 """
 
-def create_orchestrator_agent() -> Agent:
+class NewsletterOrchestrator(RunnerAgent):
     """
-    Orchestratorエージェントを作成します。
-    このエージェントは、PlannerとGeneratorをサブエージェントとして持ち、
-    学級通信の作成プロセス全体を管理します。
+    学級通信の作成プロセス全体を管理するオーケストレーターエージェント。
+    ユーザーの指示に基づいて、PlannerAgentとGeneratorAgentを制御します。
     """
-    planner_agent = create_planner_agent()
-    generator_agent = create_generator_agent()
+    def __init__(self):
+        super().__init__(
+            name="orchestrator_agent",
+            description="学級通信の作成プロセス全体を管理し、サブエージェントにタスクを委任します。",
+            sub_agents=[
+                create_planner_agent(),
+                create_generator_agent(),
+            ]
+        )
 
-    return Agent(
-        name="orchestrator_agent",
-        model=LiteLlm(MODEL_GEMINI),
-        instruction=ORCHESTRATOR_INSTRUCTION,
-        description="学級通信の作成プロセス全体を管理し、サブエージェントにタスクを委任します。",
-        sub_agents=[planner_agent, generator_agent],
-    )
+    async def _run_async_impl(self, ctx: Context):
+        """エージェントの実行ロジック"""
+        msg = ctx.get_user_message().strip()
+
+        # ❶ 初回リクエスト
+        if msg.startswith("/create"):
+            await ctx.transfer_to_agent("planner_agent")
+            return
+
+        # ❷ Planner 完了後 → Generator
+        # この条件は、Plannerが完了し、Generatorが未実行の状態を示す
+        if ctx.artifact_exists("outline.json") and not ctx.artifact_exists("newsletter.html"):
+            await ctx.transfer_to_agent("generator_agent")
+            return
+
+        # ❸ /edit コマンド：全文差し替え
+        if msg.startswith("/edit"):
+            # HTMLコンテンツは "/edit" コマンドの後の部分
+            html = msg[len("/edit"):].lstrip()
+            ctx.save_artifact("newsletter.html", html.encode("utf-8"))
+            # 更新されたHTMLをクライアントに送信
+            await ctx.emit({"type": "html", "html": html})
+            return
+
+        # デフォルトの動作：何もしない、またはヘルプメッセージを返す
+        # ここでは何もしないことで、意図しないループを防ぐ
+        # 必要であれば、ユーザーに次のアクションを促すメッセージをemitできる
+        # await ctx.emit({"type": "info", "message": "コマンド /create を使用して開始するか、/edit を使用して編集してください。"})
+
+
+def create_orchestrator_agent() -> RunnerAgent:
+    """
+    Orchestratorエージェントのインスタンスを作成します。
+    """
+    return NewsletterOrchestrator()

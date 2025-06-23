@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from google.adk.agents import Agent
+from google.adk.agents import Agent, Context
+from google.adk.models import Message
 from google.adk.models.lite_llm import LiteLlm
+
+from ..tools import HtmlValidatorTool
 
 MODEL_GEMINI = "gemini-2.5-flash"
 
@@ -45,13 +48,53 @@ GENERATOR_INSTRUCTION = """
 - 外部のCSSや画像ファイルをリンクしないでください。
 """
 
+
+class GeneratorAgent(Agent):
+    """
+    JSONからHTMLを生成し、検証するエージェント。
+    """
+
+    def __init__(self):
+        super().__init__(
+            name="generator_agent",
+            model=LiteLlm(MODEL_GEMINI),
+            instruction=GENERATOR_INSTRUCTION,
+            description="JSONデータを受け取り、HTML形式の学級通信を生成します。",
+            tools=[HtmlValidatorTool()],
+        )
+
+    async def _run_async_impl(self, ctx: Context) -> Message:
+        # Plannerが生成した構成案を読み込む
+        if not ctx.artifact_exists("outline.json"):
+            error_message = "HTML生成に必要な構成案（outline.json）が見つかりません。"
+            await ctx.emit({"type": "error", "message": error_message})
+            return Message(content=error_message)
+
+        json_content = ctx.load_artifact("outline.json").decode("utf-8")
+        
+        # LLMを呼び出してHTMLを生成
+        # AgentのデフォルトのLLM呼び出し機能を活用
+        llm_response = await self.model.generate(
+            prompt=self.instruction, user_input=json_content
+        )
+        html = llm_response.text
+
+        # 生成されたHTMLをクライアントにストリーミング
+        await ctx.emit({"type": "html", "html": html})
+
+        # HTMLを検証
+        validation_result = await self.call_tool("html_validator", html=html)
+
+        # 検証結果をクライアントにストリーミング
+        await ctx.emit({"type": "audit", **validation_result})
+
+        # 生成したHTMLをアーティファクトとして保存
+        ctx.save_artifact("newsletter.html", html.encode("utf-8"))
+        
+        # 最終的な結果を返す
+        return Message(content=html)
+
+
 def create_generator_agent() -> Agent:
     """Generatorエージェントを作成します。"""
-    return Agent(
-        name="generator_agent",
-        model=LiteLlm(MODEL_GEMINI),
-        instruction=GENERATOR_INSTRUCTION,
-        description="JSONデータを受け取り、HTML形式の学級通信を生成します。",
-        # このエージェントは外部ツールを必要とせず、入力に基づいて動作します
-        tools=[],
-    )
+    return GeneratorAgent()

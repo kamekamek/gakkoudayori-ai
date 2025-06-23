@@ -25,6 +25,8 @@ from google.adk.sessions import Session as AdkSession
 from google.genai import types as genai_types
 from google.protobuf.json_format import MessageToDict
 from google.cloud import firestore
+from sse_starlette.sse import EventSourceResponse
+from google.adk.runners import Runner
 # from google.generativeai.client import get_default_generative_client # 不要
 # from google.generativeai.client import get_default_generative_async_client # 不要
 
@@ -46,68 +48,63 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.post("/chat", response_model=ChatResponse, summary="エージェントとチャット")
-async def chat_with_agent(request: Request, chat_request: ChatRequest) -> ChatResponse:
-    """エージェントとの対話を行うエンドポイント"""
-    try:
-        # セッションIDの生成または使用
-        session_id = chat_request.session_id or str(uuid.uuid4())
-        
-        # request.app.stateからRunnerを取得
-        runner = getattr(request.app.state, 'adk_runner', None)
-        if not runner:
-            raise HTTPException(status_code=503, detail="ADK Runner is not available. Please ensure the server is started with ADK support.")
+@router.websocket("/ws/{session_id}")
+async def websocket_endpoint(websocket: WebSocket, session_id: str, user_id: str = "default_user"):
+    """
+    WebSocketを使用してエージェントとリアルタイムで双方向通信を行います。
+    接続が確立されると、クライアントはJSONメッセージを送信してエージェントと対話でき、
+    エージェントからのイベント（HTML、監査結果など）をリアルタイムで受信します。
+    """
+    await websocket.accept()
+    runner: Runner = getattr(websocket.app.state, 'adk_runner', None)
 
-        # ユーザーメッセージを作成
-        user_message = genai_types.Content(
-            role="user",
-            parts=[genai_types.Part(text=chat_request.message)]
-        )
-        
-        # エージェントを非同期実行
-        events_async = runner.run_async(
-            session_id=session_id,
-            user_id=chat_request.user_id,
-            new_message=user_message,
-        )
-        
-        # イベントを収集
-        response_text = ""
-        html_output = None
-        event_type = "message"
-        
-        async for event in events_async:
-            logger.info(f"Received event: {event}")
-            
-            # イベントの種類に応じて処理
-            if hasattr(event, 'content') and event.content:
-                # テキストコンテンツを抽出
-                if hasattr(event.content, 'parts'):
-                    for part in event.content.parts:
-                        if hasattr(part, 'text'):
-                            text = part.text
-                            response_text += text
-                            
-                            # HTMLコンテンツかチェック
-                            if text.strip().startswith('<!DOCTYPE html>'):
-                                html_output = text
-                                event_type = "complete"
-            
-            elif hasattr(event, 'error'):
-                event_type = "error"
-                response_text = str(event.error)
-        
-        return ChatResponse(
-            message=response_text,
-            session_id=session_id,
-            event_type=event_type,
-            html_output=html_output,
-            metadata={"timestamp": datetime.utcnow().isoformat()}
-        )
-        
+    if not runner:
+        await websocket.send_json({"type": "error", "message": "ADK Runner is not available."})
+        await websocket.close()
+        return
+
+    try:
+        while True:
+            # クライアントからのメッセージを待機
+            received_data = await websocket.receive_text()
+            data = json.loads(received_data)
+            message = data.get("message")
+
+            if not message:
+                await websocket.send_json({"type": "error", "message": "'message' field is required."})
+                continue
+
+            try:
+                # ADK Runnerの非同期実行を開始
+                events_async = runner.run_async(
+                    session_id=session_id,
+                    user_id=user_id,
+                    input=message,
+                )
+
+                # イベントストリームをループし、クライアントに送信
+                async for event in events_async:
+                    logger.debug(f"Event for session {session_id}: {event}")
+
+                    if hasattr(event, "type") and event.type == "emit":
+                        if hasattr(event, "data") and isinstance(event.data, dict):
+                            await websocket.send_json(event.data)
+
+            except Exception as e:
+                logger.error(f"Agent execution error in session {session_id}: {e}", exc_info=True)
+                await websocket.send_json({"type": "error", "message": str(e)})
+
+    except WebSocketDisconnect:
+        logger.info(f"WebSocket disconnected for session {session_id}")
     except Exception as e:
-        logger.error(f"Error in chat_with_agent: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Unexpected error in WebSocket endpoint for session {session_id}: {e}", exc_info=True)
+        try:
+            # クライアントにエラーを通知しようと試みる
+            await websocket.send_json({"type": "error", "message": "An unexpected server error occurred."})
+        except Exception:
+            pass # すでに接続が切れている場合は何もしない
+        finally:
+            await websocket.close()
 
 
 @router.post("/generate_newsletter", response_model=NewsletterGenerationResponse, summary="学級通信を生成")
@@ -190,175 +187,3 @@ async def delete_session(session_id: str):
     except Exception as e:
         logger.error(f"Error in delete_session: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.websocket("/ws/{session_id}")
-async def websocket_endpoint(websocket: WebSocket, session_id: str):
-    """WebSocketを使用したリアルタイムエージェント通信"""
-    await websocket.accept()
-    
-    try:
-        runner = getattr(websocket.app.state, 'adk_runner', None)
-        if not runner:
-            await websocket.send_json({"error": "ADK Runner is not available. Please ensure the server is started with ADK support."})
-            await websocket.close()
-            return
-        
-        while True:
-            # クライアントからメッセージを受信
-            data = await websocket.receive_json()
-            user_id = data.get('user_id')
-            message = data.get('message')
-            
-            if not user_id or not message:
-                await websocket.send_json({
-                    "error": "user_id and message are required"
-                })
-                continue
-            
-            # ユーザーメッセージを作成
-            user_message = genai_types.Content(
-                role="user",
-                parts=[genai_types.Part(text=message)]
-            )
-            
-            # エージェントを非同期実行
-            events_async = runner.run_async(
-                session_id=session_id,
-                user_id=user_id,
-                new_message=user_message
-            )
-            
-            # イベントをストリーミング
-            async for event in events_async:
-                event_data = {
-                    "event_id": str(uuid.uuid4()),
-                    "event_type": "message",
-                    "data": {},
-                    "timestamp": datetime.utcnow().isoformat()
-                }
-                
-                # イベントの内容を解析
-                if hasattr(event, 'content') and event.content:
-                    if hasattr(event.content, 'parts'):
-                        text_parts = []
-                        for part in event.content.parts:
-                            if hasattr(part, 'text'):
-                                text_parts.append(part.text)
-                        
-                        if text_parts:
-                            full_text = '\n'.join(text_parts)
-                            event_data['data']['content'] = full_text
-                            
-                            # HTMLかチェック
-                            if full_text.strip().startswith('<!DOCTYPE html>'):
-                                event_data['event_type'] = 'complete'
-                                event_data['data']['html'] = full_text
-                
-                elif hasattr(event, 'tool_calls'):
-                    event_data['event_type'] = 'tool_called'
-                    event_data['data']['tools'] = str(event.tool_calls)
-                
-                elif hasattr(event, 'error'):
-                    event_data['event_type'] = 'error'
-                    event_data['data']['error'] = str(event.error)
-                
-                # クライアントに送信
-                await websocket.send_json(event_data)
-                
-    except WebSocketDisconnect:
-        logger.info(f"WebSocket disconnected for session {session_id}")
-    except Exception as e:
-        logger.error(f"WebSocket error: {e}", exc_info=True)
-        await websocket.send_json({
-            "event_type": "error",
-            "data": {"error": str(e)},
-            "timestamp": datetime.utcnow().isoformat()
-        })
-        await websocket.close()
-
-
-@router.post("/chat/stream", summary="ストリーミングチャット")
-async def chat_with_agent_stream(request: Request, chat_request: ChatRequest):
-    """Server-Sent Eventsを使用したストリーミングチャット"""
-    session_id = chat_request.session_id or str(uuid.uuid4())
-    logger.info(f"[/chat/stream] New request. session_id: {session_id}, user_id: {chat_request.user_id}")
-    logger.info(f"Message: {chat_request.message}")
-    
-    async def generate() -> AsyncGenerator[str, None]:
-        try:
-            # ADK Runnerの取得を安全に行う
-            runner = getattr(request.app.state, 'adk_runner', None)
-            if not runner:
-                raise RuntimeError("ADK Runner is not initialized. Please ensure the server is started with ADK support.")
-
-            # ユーザーメッセージを作成
-            user_message = genai_types.Content(
-                role="user",
-                parts=[genai_types.Part(text=chat_request.message)]
-            )
-            
-            # セッションが存在しない場合は事前に作成
-            session_service = get_session_service()
-            existing_session = await session_service.get_session(
-                session_id=session_id,
-                app_name="gakkoudayori-ai",
-                user_id=chat_request.user_id
-            )
-            
-            if not existing_session:
-                logger.info(f"Creating new session: {session_id}")
-                await session_service.create_session(
-                    session_id=session_id,
-                    app_name="gakkoudayori-ai",
-                    user_id=chat_request.user_id,
-                    state={}
-                )
-            
-            # ADK Runnerはセッションサービスを通じてセッションを自動的に管理します。
-            events_async = runner.run_async(
-                session_id=session_id,
-                user_id=chat_request.user_id,
-                new_message=user_message,
-            )
-            
-            # イベントをストリーミング
-            html_buffer = ""
-            async for event in events_async:
-                logger.debug(f"ADK Event received: {event}")
-
-                # イベントの内容を解析
-                if event and event.content and event.content.parts:
-                    for part in event.content.parts:
-                        logger.debug(f"Processing part: {part}")
-                        
-                        # part.textが存在し、Noneでないことを確認
-                        if part.text:
-                            # HTMLコンテンツの処理
-                            if part.text.strip().startswith('<!DOCTYPE html>') or html_buffer:
-                                html_buffer += part.text
-                                if '</html>' in html_buffer:
-                                    logger.info("Detected complete HTML content.")
-                                    yield f"data: {json.dumps({'session_id': session_id, 'type': 'complete', 'data': html_buffer})}\n\n"
-                                    html_buffer = ""
-                            # 通常のテキストストリーム
-                            else:
-                                logger.debug(f"Streaming text part: {part.text}")
-                                yield f"data: {json.dumps({'session_id': session_id, 'type': 'text', 'data': part.text})}\n\n"
-                        # ツール呼び出しなど、テキスト以外のパートをログに出力
-                        else:
-                            logger.info(f"Received non-text part: {part}")
-
-        except Exception as e:
-            logger.error(f"Streaming error: {e}", exc_info=True)
-            error_data = {
-                "session_id": session_id,
-                "type": "error",
-                "data": str(e)
-            }
-            logger.error(f"Sending SSE error: {error_data}")
-            yield f"data: {json.dumps(error_data)}\n\n"
-    
-    # BodyとRequestを両方受け取るため、リクエストモデルを手動で注入
-    # StreamingResponseのコンストラクタ内で直接リクエストボディを扱うことはできない
-    return StreamingResponse(generate(), media_type="text/event-stream")

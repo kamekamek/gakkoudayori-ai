@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app/app.dart';
 import 'config/app_config.dart';
 
@@ -13,5 +14,9 @@ void main() {
         'Invalid configuration. Please check your environment variables.');
   }
 
-  runApp(const GakkouDayoriAiApp());
+  runApp(
+    const ProviderScope(
+      child: GakkouDayoriAiApp(),
+    ),
+  );
 }
