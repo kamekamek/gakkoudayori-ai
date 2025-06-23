@@ -6,6 +6,7 @@ import '../../../ai_assistant/presentation/widgets/adk_chat_widget.dart';
 import '../../../editor/providers/preview_provider.dart';
 import '../widgets/preview_interface.dart';
 import '../widgets/mobile_tab_layout.dart';
+import '../../../ai_assistant/providers/adk_chat_provider.dart';
 
 /// メインのホーム画面（チャットボット形式）
 class HomePage extends StatefulWidget {
@@ -44,6 +45,22 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    // AdkChatProviderを監視して、変更があったらUIを再ビルド
+    final adkChatProvider = context.watch<AdkChatProvider>();
+
+    // ビルド完了後にプロバイダー間のデータ連携を行う
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final newHtml = adkChatProvider.generatedHtml;
+      final previewProvider = context.read<PreviewProvider>();
+
+      // 無限ループを防ぐため、現在のプレビュー内容と異なる場合のみ更新
+      if (newHtml != null &&
+          newHtml.isNotEmpty &&
+          newHtml != previewProvider.htmlContent) {
+        previewProvider.updateHtmlContent(newHtml);
+      }
+    });
+
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
