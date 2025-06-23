@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 import '../../../ai_assistant/presentation/widgets/adk_chat_widget.dart';
-import '../../../editor/providers/image_provider.dart';
-import '../../../editor/providers/preview_provider.dart';
 import 'preview_interface.dart';
 
 /// モバイル用のタブレイアウト

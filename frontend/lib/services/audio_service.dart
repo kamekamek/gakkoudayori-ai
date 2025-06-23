@@ -1,6 +1,5 @@
 import 'dart:html' as html;
 import 'dart:js' as js;
-import 'dart:js_util' as js_util;
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -96,12 +95,14 @@ class AudioService {
 
       // JavaScript環境チェック
       if (js.context['startRecording'] == null) {
-        if (kDebugMode) debugPrint('❌ [AudioService] startRecording関数がJavaScriptで利用できません');
+        if (kDebugMode)
+          debugPrint('❌ [AudioService] startRecording関数がJavaScriptで利用できません');
         return false;
       }
 
       if (js.context['audioRecorder'] == null) {
-        if (kDebugMode) debugPrint('❌ [AudioService] audioRecorderインスタンスがJavaScriptで利用できません');
+        if (kDebugMode)
+          debugPrint('❌ [AudioService] audioRecorderインスタンスがJavaScriptで利用できません');
         return false;
       }
 
@@ -109,14 +110,15 @@ class AudioService {
       if (kDebugMode) debugPrint('🔗 [AudioService] JavaScript関数呼び出し開始');
       try {
         js.context.callMethod('startRecording');
-        if (kDebugMode) debugPrint('✅ [AudioService] JavaScript関数呼び出し成功（Promise処理をスキップ）');
+        if (kDebugMode)
+          debugPrint('✅ [AudioService] JavaScript関数呼び出し成功（Promise処理をスキップ）');
         // コールバックで実際の録音状態が管理されるため、ここでは成功と判定
         return true;
       } catch (jsError) {
-        if (kDebugMode) debugPrint('❌ [AudioService] JavaScript呼び出しエラー: $jsError');
+        if (kDebugMode)
+          debugPrint('❌ [AudioService] JavaScript呼び出しエラー: $jsError');
         return false;
       }
-
     } catch (e) {
       if (kDebugMode) debugPrint('❌ [AudioService] 録音開始エラー: $e');
       return false;
@@ -203,7 +205,8 @@ class AudioService {
 
       // Base64データをデコードしてバイナリデータに変換
       final audioBytes = base64Decode(base64AudioData);
-      if (kDebugMode) debugPrint('📄 [AudioService] 音声データサイズ: ${audioBytes.length} bytes');
+      if (kDebugMode)
+        debugPrint('📄 [AudioService] 音声データサイズ: ${audioBytes.length} bytes');
 
       // バックエンドAPIのエンドポイント（環境変数から取得）
       final apiUrl = '${AppConfig.apiBaseUrl}/transcribe';
@@ -221,7 +224,8 @@ class AudioService {
       request.fields['sample_rate'] = '48000'; // WebM Opus形式に合わせて48kHzに変更
       request.fields['user_dictionary'] = '学級通信,運動会,学習発表会,子どもたち,先生,授業';
 
-      if (kDebugMode) debugPrint('📤 [AudioService] Speech-to-Text API呼び出し中...');
+      if (kDebugMode)
+        debugPrint('📤 [AudioService] Speech-to-Text API呼び出し中...');
       final response = await request.send();
       final responseData = await response.stream.bytesToString();
 
@@ -233,16 +237,19 @@ class AudioService {
 
           if (kDebugMode) debugPrint('✅ [AudioService] 文字起こし成功');
           if (kDebugMode) debugPrint('📝 [AudioService] 結果: $transcript');
-          if (kDebugMode) debugPrint(
-              '🎯 [AudioService] 信頼度: ${(confidence * 100).toStringAsFixed(1)}%');
+          if (kDebugMode)
+            debugPrint(
+                '🎯 [AudioService] 信頼度: ${(confidence * 100).toStringAsFixed(1)}%');
 
           // 文字起こし完了をコールバックで通知
           _onTranscriptionCompleted?.call(transcript);
         } else {
-          if (kDebugMode) debugPrint('❌ [AudioService] 文字起こしAPIエラー: ${jsonData['error']}');
+          if (kDebugMode)
+            debugPrint('❌ [AudioService] 文字起こしAPIエラー: ${jsonData['error']}');
         }
       } else {
-        if (kDebugMode) debugPrint('❌ [AudioService] HTTPエラー: ${response.statusCode}');
+        if (kDebugMode)
+          debugPrint('❌ [AudioService] HTTPエラー: ${response.statusCode}');
         if (kDebugMode) debugPrint('📄 [AudioService] レスポンス: $responseData');
       }
     } catch (e) {

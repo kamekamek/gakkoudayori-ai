@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image/image.dart' as img;
@@ -6,9 +5,9 @@ import '../core/models/image_file.dart';
 import 'web_image_upload_service.dart';
 
 // Webでない場合のみインポート
-import 'dart:io' if (dart.library.html) 'dart:html' as html;
-import 'package:file_picker/file_picker.dart' if (dart.library.html) '';
-import 'package:image_picker/image_picker.dart' if (dart.library.html) '';
+// import 'dart:io' if (dart.library.html) 'dart:html' as html;
+// import 'package:file_picker/file_picker.dart' if (dart.library.html) '';
+// import 'package:image_picker/image_picker.dart' if (dart.library.html) '';
 
 /// 画像アップロード・処理サービス
 class ImageUploadService {
@@ -20,7 +19,11 @@ class ImageUploadService {
   ];
 
   static const List<String> supportedExtensions = [
-    'jpg', 'jpeg', 'png', 'gif', 'webp'
+    'jpg',
+    'jpeg',
+    'png',
+    'gif',
+    'webp'
   ];
 
   static const int maxFileSize = 10 * 1024 * 1024; // 10MB
@@ -89,11 +92,16 @@ class ImageUploadService {
     }
 
     try {
-      if (kDebugMode) debugPrint('🗜️ [ImageUpload] 圧縮開始（モバイル/デスクトップ）: ${originalImage.name}');
+      if (kDebugMode)
+        debugPrint(
+            '🗜️ [ImageUpload] 圧縮開始（モバイル/デスクトップ）: ${originalImage.name}');
 
       // 既に小さい場合はスキップ
-      if (originalImage.size <= 1024 * 1024) { // 1MB以下
-        if (kDebugMode) debugPrint('⏭️ [ImageUpload] 圧縮スキップ（サイズ小）: ${originalImage.sizeDisplay}');
+      if (originalImage.size <= 1024 * 1024) {
+        // 1MB以下
+        if (kDebugMode)
+          debugPrint(
+              '⏭️ [ImageUpload] 圧縮スキップ（サイズ小）: ${originalImage.sizeDisplay}');
         return originalImage;
       }
 
@@ -115,7 +123,8 @@ class ImageUploadService {
       );
 
       if (kDebugMode) {
-        debugPrint('✅ [ImageUpload] 圧縮完了: ${originalImage.sizeDisplay} → ${compressedImage.sizeDisplay}');
+        debugPrint(
+            '✅ [ImageUpload] 圧縮完了: ${originalImage.sizeDisplay} → ${compressedImage.sizeDisplay}');
         debugPrint('📊 [ImageUpload] ${compressedImage.compressionDisplay}');
       }
 
@@ -128,12 +137,14 @@ class ImageUploadService {
   }
 
   /// 画像のリサイズ（代替圧縮方法）
-  static Future<ImageFile> resizeImage(ImageFile originalImage, {
+  static Future<ImageFile> resizeImage(
+    ImageFile originalImage, {
     int maxWidth = 800,
     int maxHeight = 600,
   }) async {
     try {
-      if (kDebugMode) debugPrint('📏 [ImageUpload] リサイズ開始: ${originalImage.name}');
+      if (kDebugMode)
+        debugPrint('📏 [ImageUpload] リサイズ開始: ${originalImage.name}');
 
       final originalImageDecoded = img.decodeImage(originalImage.bytes);
       if (originalImageDecoded == null) {
@@ -149,7 +160,8 @@ class ImageUploadService {
       );
 
       // JPEG形式でエンコード
-      final resizedBytes = Uint8List.fromList(img.encodeJpg(resized, quality: 85));
+      final resizedBytes =
+          Uint8List.fromList(img.encodeJpg(resized, quality: 85));
 
       final resizedImage = originalImage.copyWith(
         bytes: resizedBytes,
@@ -160,7 +172,8 @@ class ImageUploadService {
       );
 
       if (kDebugMode) {
-        debugPrint('✅ [ImageUpload] リサイズ完了: ${originalImage.sizeDisplay} → ${resizedImage.sizeDisplay}');
+        debugPrint(
+            '✅ [ImageUpload] リサイズ完了: ${originalImage.sizeDisplay} → ${resizedImage.sizeDisplay}');
       }
 
       return resizedImage;
@@ -171,24 +184,30 @@ class ImageUploadService {
   }
 
   /// 画像の回転
-  static Future<ImageFile> rotateImage(ImageFile originalImage, int degrees) async {
+  static Future<ImageFile> rotateImage(
+      ImageFile originalImage, int degrees) async {
     try {
-      if (kDebugMode) debugPrint('🔄 [ImageUpload] 回転開始: ${originalImage.name} (${degrees}度)');
+      if (kDebugMode)
+        debugPrint(
+            '🔄 [ImageUpload] 回転開始: ${originalImage.name} (${degrees}度)');
 
       final originalImageDecoded = img.decodeImage(originalImage.bytes);
       if (originalImageDecoded == null) {
         throw Exception('画像のデコードに失敗しました');
       }
 
-      final rotated = img.copyRotate(originalImageDecoded, angle: degrees.toDouble());
-      final rotatedBytes = Uint8List.fromList(img.encodeJpg(rotated, quality: 90));
+      final rotated =
+          img.copyRotate(originalImageDecoded, angle: degrees.toDouble());
+      final rotatedBytes =
+          Uint8List.fromList(img.encodeJpg(rotated, quality: 90));
 
       final rotatedImage = originalImage.copyWith(
         bytes: rotatedBytes,
         size: rotatedBytes.length,
       );
 
-      if (kDebugMode) debugPrint('✅ [ImageUpload] 回転完了: ${rotatedImage.sizeDisplay}');
+      if (kDebugMode)
+        debugPrint('✅ [ImageUpload] 回転完了: ${rotatedImage.sizeDisplay}');
       return rotatedImage;
     } catch (e) {
       if (kDebugMode) debugPrint('❌ [ImageUpload] 回転エラー: $e');
@@ -224,7 +243,8 @@ class ImageUploadService {
   }
 
   /// 一括処理：選択→圧縮→準備完了
-  static Future<List<ImageFile>> processImages(List<ImageFile> originalImages) async {
+  static Future<List<ImageFile>> processImages(
+      List<ImageFile> originalImages) async {
     final processedImages = <ImageFile>[];
 
     for (final originalImage in originalImages) {
@@ -232,7 +252,7 @@ class ImageUploadService {
         // 圧縮処理
         final compressed = await compressImage(originalImage);
         processedImages.add(compressed);
-        
+
         if (kDebugMode) {
           debugPrint('✅ [ImageUpload] 処理完了: ${compressed.name}');
         }

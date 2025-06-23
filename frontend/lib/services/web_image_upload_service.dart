@@ -2,7 +2,6 @@ import 'dart:typed_data';
 import 'dart:html' as html;
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
 import '../core/models/image_file.dart';
 
 /// Web専用画像アップロードサービス
@@ -32,7 +31,7 @@ class WebImageUploadService {
 
       // ファイル選択を待機（タイムアウト付き）
       bool hasUserInteracted = false;
-      
+
       final changeCompleter = Completer<void>();
       late html.EventListener changeListener;
       changeListener = (html.Event event) {
@@ -41,16 +40,16 @@ class WebImageUploadService {
           changeCompleter.complete();
         }
       };
-      
+
       input.addEventListener('change', changeListener);
-      
+
       // タイムアウト（5秒）でキャンセル扱いにする
       final timeoutTimer = Timer(Duration(seconds: 5), () {
         if (!changeCompleter.isCompleted) {
           changeCompleter.complete();
         }
       });
-      
+
       try {
         await changeCompleter.future;
       } finally {
@@ -64,8 +63,9 @@ class WebImageUploadService {
         if (kDebugMode) debugPrint('📁 [WebImageUpload] $status');
         return [];
       }
-      
-      if (kDebugMode) debugPrint('📁 [WebImageUpload] ファイル選択完了: ${files.length}件');
+
+      if (kDebugMode)
+        debugPrint('📁 [WebImageUpload] ファイル選択完了: ${files.length}件');
 
       final imageFiles = <ImageFile>[];
 
@@ -73,13 +73,15 @@ class WebImageUploadService {
         try {
           // ファイルサイズチェック
           if (file.size > maxFileSize) {
-            if (kDebugMode) debugPrint('⚠️ [WebImageUpload] ファイルサイズ超過: ${file.name}');
+            if (kDebugMode)
+              debugPrint('⚠️ [WebImageUpload] ファイルサイズ超過: ${file.name}');
             continue;
           }
 
           // MIMEタイプチェック
           if (!supportedMimeTypes.contains(file.type)) {
-            if (kDebugMode) debugPrint('⚠️ [WebImageUpload] 非対応形式: ${file.name}');
+            if (kDebugMode)
+              debugPrint('⚠️ [WebImageUpload] 非対応形式: ${file.name}');
             continue;
           }
 
@@ -96,13 +98,17 @@ class WebImageUploadService {
           );
 
           imageFiles.add(imageFile);
-          if (kDebugMode) debugPrint('✅ [WebImageUpload] 追加: ${file.name} (${imageFile.sizeDisplay})');
+          if (kDebugMode)
+            debugPrint(
+                '✅ [WebImageUpload] 追加: ${file.name} (${imageFile.sizeDisplay})');
         } catch (e) {
-          if (kDebugMode) debugPrint('❌ [WebImageUpload] ファイル処理エラー: ${file.name} - $e');
+          if (kDebugMode)
+            debugPrint('❌ [WebImageUpload] ファイル処理エラー: ${file.name} - $e');
         }
       }
 
-      if (kDebugMode) debugPrint('📁 [WebImageUpload] 完了: ${imageFiles.length}件');
+      if (kDebugMode)
+        debugPrint('📁 [WebImageUpload] 完了: ${imageFiles.length}件');
       return imageFiles;
     } catch (e) {
       if (kDebugMode) debugPrint('❌ [WebImageUpload] ファイル選択エラー: $e');
@@ -121,7 +127,8 @@ class WebImageUploadService {
       }
 
       // MediaStream を取得
-      final mediaStream = await html.window.navigator.mediaDevices!.getUserMedia({
+      final mediaStream =
+          await html.window.navigator.mediaDevices!.getUserMedia({
         'video': {'width': 1280, 'height': 720},
         'audio': false,
       });
@@ -171,9 +178,9 @@ class WebImageUploadService {
       }
 
       final result = response.response;
-      final bytes = result is Uint8List 
-          ? result 
-          : result is ByteBuffer 
+      final bytes = result is Uint8List
+          ? result
+          : result is ByteBuffer
               ? Uint8List.view(result)
               : Uint8List.fromList(List<int>.from(result as dynamic));
 
@@ -188,14 +195,17 @@ class WebImageUploadService {
 
       final imageFile = ImageFile(
         id: '${DateTime.now().millisecondsSinceEpoch}_url',
-        name: fileName.isNotEmpty ? fileName : 'image_${DateTime.now().millisecondsSinceEpoch}.$extension',
+        name: fileName.isNotEmpty
+            ? fileName
+            : 'image_${DateTime.now().millisecondsSinceEpoch}.$extension',
         bytes: bytes,
         size: bytes.length,
         mimeType: mimeType,
         uploadedAt: DateTime.now(),
       );
 
-      if (kDebugMode) debugPrint('✅ [WebImageUpload] URL取得完了: ${imageFile.sizeDisplay}');
+      if (kDebugMode)
+        debugPrint('✅ [WebImageUpload] URL取得完了: ${imageFile.sizeDisplay}');
       return imageFile;
     } catch (e) {
       if (kDebugMode) debugPrint('❌ [WebImageUpload] URL取得エラー: $e');
@@ -204,9 +214,11 @@ class WebImageUploadService {
   }
 
   /// ドラッグ&ドロップ対応
-  static Future<List<ImageFile>> handleDroppedFiles(List<html.File> files) async {
+  static Future<List<ImageFile>> handleDroppedFiles(
+      List<html.File> files) async {
     try {
-      if (kDebugMode) debugPrint('📦 [WebImageUpload] ドロップファイル処理開始: ${files.length}件');
+      if (kDebugMode)
+        debugPrint('📦 [WebImageUpload] ドロップファイル処理開始: ${files.length}件');
 
       final imageFiles = <ImageFile>[];
 
@@ -214,13 +226,15 @@ class WebImageUploadService {
         try {
           // ファイルサイズチェック
           if (file.size > maxFileSize) {
-            if (kDebugMode) debugPrint('⚠️ [WebImageUpload] ファイルサイズ超過: ${file.name}');
+            if (kDebugMode)
+              debugPrint('⚠️ [WebImageUpload] ファイルサイズ超過: ${file.name}');
             continue;
           }
 
           // MIMEタイプチェック
           if (!supportedMimeTypes.contains(file.type)) {
-            if (kDebugMode) debugPrint('⚠️ [WebImageUpload] 非対応形式: ${file.name}');
+            if (kDebugMode)
+              debugPrint('⚠️ [WebImageUpload] 非対応形式: ${file.name}');
             continue;
           }
 
@@ -239,11 +253,13 @@ class WebImageUploadService {
           imageFiles.add(imageFile);
           if (kDebugMode) debugPrint('✅ [WebImageUpload] ドロップ追加: ${file.name}');
         } catch (e) {
-          if (kDebugMode) debugPrint('❌ [WebImageUpload] ドロップファイル処理エラー: ${file.name} - $e');
+          if (kDebugMode)
+            debugPrint('❌ [WebImageUpload] ドロップファイル処理エラー: ${file.name} - $e');
         }
       }
 
-      if (kDebugMode) debugPrint('📦 [WebImageUpload] ドロップ処理完了: ${imageFiles.length}件');
+      if (kDebugMode)
+        debugPrint('📦 [WebImageUpload] ドロップ処理完了: ${imageFiles.length}件');
       return imageFiles;
     } catch (e) {
       if (kDebugMode) debugPrint('❌ [WebImageUpload] ドロップ処理エラー: $e');
@@ -257,7 +273,7 @@ class WebImageUploadService {
     reader.readAsArrayBuffer(file);
 
     await reader.onLoad.first;
-    
+
     final result = reader.result;
     if (result is Uint8List) {
       return result;
@@ -279,7 +295,7 @@ class WebImageUploadService {
   static Future<ImageFile?> _showCameraDialog(html.MediaStream stream) async {
     // 簡易実装：実際のプロジェクトではより高度なカメラUIを実装
     // ここでは基本的なcanvas撮影のみ実装
-    
+
     final video = html.VideoElement()
       ..srcObject = stream
       ..autoplay = true;
@@ -288,9 +304,10 @@ class WebImageUploadService {
     await video.onLoadedMetadata.first;
 
     // Canvas で撮影
-    final canvas = html.CanvasElement(width: video.videoWidth, height: video.videoHeight);
+    final canvas =
+        html.CanvasElement(width: video.videoWidth, height: video.videoHeight);
     final context = canvas.context2D;
-    
+
     context.drawImage(video, 0, 0);
 
     // Canvas を Blob に変換
@@ -313,7 +330,7 @@ class WebImageUploadService {
     reader.readAsArrayBuffer(blob);
 
     await reader.onLoad.first;
-    
+
     final result = reader.result;
     if (result is Uint8List) {
       return result;
@@ -346,16 +363,21 @@ class WebImageUploadService {
   /// 画像圧縮（Web最適化）- Canvas使用
   static Future<ImageFile> compressImage(ImageFile originalImage) async {
     try {
-      if (kDebugMode) debugPrint('🗜️ [WebImageUpload] Web用圧縮開始: ${originalImage.name}');
+      if (kDebugMode)
+        debugPrint('🗜️ [WebImageUpload] Web用圧縮開始: ${originalImage.name}');
 
       // 既に小さい場合はスキップ
-      if (originalImage.size <= 1024 * 1024) { // 1MB以下
-        if (kDebugMode) debugPrint('⏭️ [WebImageUpload] 圧縮スキップ（サイズ小）: ${originalImage.sizeDisplay}');
+      if (originalImage.size <= 1024 * 1024) {
+        // 1MB以下
+        if (kDebugMode)
+          debugPrint(
+              '⏭️ [WebImageUpload] 圧縮スキップ（サイズ小）: ${originalImage.sizeDisplay}');
         return originalImage;
       }
 
       // Canvas を使用してWeb用に圧縮
-      final compressedBytes = await _compressWithCanvas(originalImage.bytes, quality: 0.8);
+      final compressedBytes =
+          await _compressWithCanvas(originalImage.bytes, quality: 0.8);
 
       final compressedImage = originalImage.copyWith(
         bytes: compressedBytes,
@@ -366,7 +388,8 @@ class WebImageUploadService {
       );
 
       if (kDebugMode) {
-        debugPrint('✅ [WebImageUpload] 圧縮完了: ${originalImage.sizeDisplay} → ${compressedImage.sizeDisplay}');
+        debugPrint(
+            '✅ [WebImageUpload] 圧縮完了: ${originalImage.sizeDisplay} → ${compressedImage.sizeDisplay}');
         debugPrint('📊 [WebImageUpload] ${compressedImage.compressionDisplay}');
       }
 
@@ -379,56 +402,57 @@ class WebImageUploadService {
   }
 
   /// Canvas を使用したWeb専用圧縮
-  static Future<Uint8List> _compressWithCanvas(Uint8List imageBytes, {double quality = 0.8}) async {
+  static Future<Uint8List> _compressWithCanvas(Uint8List imageBytes,
+      {double quality = 0.8}) async {
     // Blob を作成
     final blob = html.Blob([imageBytes]);
-    
+
     // Image Element を作成
     final img = html.ImageElement();
     final url = html.Url.createObjectUrl(blob);
-    
+
     // 画像読み込みを待機
     img.src = url;
     await img.onLoad.first;
-    
+
     // Canvas でリサイズ・圧縮
     final canvas = html.CanvasElement();
     final context = canvas.context2D;
-    
+
     // アスペクト比を保持してリサイズ
     final maxWidth = 800;
     final maxHeight = 600;
-    
-    double newWidth = img.naturalWidth!.toDouble();
-    double newHeight = img.naturalHeight!.toDouble();
-    
+
+    double newWidth = img.naturalWidth.toDouble();
+    double newHeight = img.naturalHeight.toDouble();
+
     if (newWidth > maxWidth) {
       newHeight = (newHeight * maxWidth) / newWidth;
       newWidth = maxWidth.toDouble();
     }
-    
+
     if (newHeight > maxHeight) {
       newWidth = (newWidth * maxHeight) / newHeight;
       newHeight = maxHeight.toDouble();
     }
-    
+
     canvas.width = newWidth.toInt();
     canvas.height = newHeight.toInt();
-    
+
     // 高品質設定
     context.imageSmoothingEnabled = true;
     context.imageSmoothingQuality = 'high';
-    
+
     // 描画
     context.drawImageScaled(img, 0, 0, newWidth, newHeight);
-    
+
     // JPEG として圧縮出力
     final compressedBlob = await canvas.toBlob('image/jpeg', quality);
     final compressedBytes = await _blobToBytes(compressedBlob);
-    
+
     // URL をクリーンアップ
     html.Url.revokeObjectUrl(url);
-    
+
     return compressedBytes;
   }
 }
