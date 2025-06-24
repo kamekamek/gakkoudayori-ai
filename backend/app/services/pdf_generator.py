@@ -263,7 +263,7 @@ def _build_complete_html_document(
     clean_html_content = html_content.strip()
     
     # 【重要】Markdownコードブロックのクリーンアップを追加
-    clean_html_content = _clean_markdown_codeblocks_pdf(clean_html_content)
+    clean_html_content = _clean_html_for_pdf(clean_html_content)
     
     # 既に完全なHTMLドキュメントかチェック
     html_lower = clean_html_content.lower()

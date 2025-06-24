@@ -15,7 +15,7 @@
 import uuid
 import logging
 import json
-from typing import Optional, AsyncGenerator
+from typing import Optional, AsyncGenerator, Any
 from datetime import datetime
 import asyncio
 
@@ -47,6 +47,12 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+
+async def consume_agent_events(events: AsyncGenerator[Any, None]):
+    """非同期ジェネレータを消費するためのヘルパー関数"""
+    async for _ in events:
+        # イベントを消費するだけで、ここでは何もしない
+        pass
 
 @router.websocket("/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str, user_id: str = "default_user"):
@@ -108,29 +114,42 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str, user_id: str
 
 
 @router.post("/generate_newsletter", response_model=NewsletterGenerationResponse, summary="学級通信を生成")
-async def generate_newsletter(request: NewsletterGenerationRequest) -> NewsletterGenerationResponse:
-    """学級通信を生成するエンドポイント"""
-    try:
-        # 関数を直接呼び出す
-        result = await asyncio.to_thread(
-            generate_newsletter_from_speech,
-            speech_text=request.speech_text,
-            template_type=request.template_type,
-            include_greeting=request.include_greeting,
-            target_audience=request.target_audience,
-            season=request.season
-        )
+async def generate_newsletter(request: NewsletterGenerationRequest, http_request: Request) -> NewsletterGenerationResponse:
+    """学級通信の生成プロセスを開始し、セッションIDを返すエンドポイント。"""
+    runner: Runner = getattr(http_request.app.state, 'adk_runner', None)
+    if not runner:
+        raise HTTPException(status_code=503, detail="ADK Runner is not available.")
 
-        if result.get('success'):
-            return NewsletterGenerationResponse(
-                success=True,
-                data=result.get('data')
+    session_id = request.session_id or str(uuid.uuid4())
+    user_id = request.user_id
+    session_service = get_session_service()
+
+    try:
+        # セッションが存在するか確認し、なければ作成する
+        session = await session_service.get_session(session_id=session_id, user_id=user_id, app_name=runner.app_name)
+        if not session:
+            await session_service.create_session(
+                session_id=session_id,
+                user_id=user_id,
+                app_name=runner.app_name
             )
-        else:
-            raise HTTPException(
-                status_code=500,
-                detail=f"ニュースレターの生成に失敗しました: {result.get('error')}"
-            )
+
+        # エージェントの実行をバックグラウンドで開始する
+        events_generator = runner.run_async(
+            session_id=session_id,
+            user_id=user_id,
+            new_message=genai_types.Content(parts=[genai_types.Part(text=request.initial_request)]),
+        )
+        asyncio.create_task(consume_agent_events(events_generator))
+
+        # すぐにセッションIDと処理中ステータスを返す
+        return NewsletterGenerationResponse(
+            session_id=session_id,
+            status="in_progress",
+            html_content=None,
+            json_structure=None,
+            messages=[ChatMessage(role="user", content=request.initial_request)]
+        )
 
     except Exception as e:
         logger.exception(f"ニュースレター生成中に予期せぬエラーが発生: {e}")

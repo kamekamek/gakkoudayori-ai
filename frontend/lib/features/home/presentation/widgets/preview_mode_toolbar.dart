@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:convert';
 import '../../../editor/providers/preview_provider.dart';
+import 'classroom_post_dialog.dart';
+import '../../../../services/pdf_api_service.dart';
 
 /// プレビューモード切り替えツールバー
 class PreviewModeToolbar extends StatelessWidget {
@@ -90,12 +93,12 @@ class PreviewModeToolbar extends StatelessWidget {
             
             const SizedBox(width: 8),
             
-            // Classroom投稿ボタン（将来実装）
+            // Classroom投稿ボタン
             _buildActionButton(
               context,
               icon: Icons.school,
               tooltip: 'Classroom投稿',
-              onPressed: () => _showComingSoonDialog(context, 'Classroom投稿'),
+              onPressed: () => _showClassroomDialog(context),
               color: Colors.green,
             ),
             
@@ -208,5 +211,60 @@ class PreviewModeToolbar extends StatelessWidget {
         duration: Duration(seconds: 2),
       ),
     );
+  }
+
+  void _showClassroomDialog(BuildContext context) async {
+    final previewProvider = context.read<PreviewProvider>();
+    
+    if (previewProvider.htmlContent.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('❌ 投稿するコンテンツがありません'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    try {
+      // PDF生成
+      final result = await PdfApiService.generatePdf(
+        htmlContent: previewProvider.htmlContent,
+        title: 'AI学級通信',
+      );
+
+      if (result['success'] == true) {
+        final pdfBase64 = result['data']['pdf_base64'];
+        final pdfBytes = base64Decode(pdfBase64);
+
+        // Classroomダイアログを表示
+        final posted = await showDialog<bool>(
+          context: context,
+          builder: (context) => ClassroomPostDialog(
+            pdfBytes: pdfBytes,
+            htmlContent: previewProvider.htmlContent,
+            title: 'AI学級通信',
+          ),
+        );
+
+        if (posted == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ Classroomに投稿しました'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        throw Exception(result['error'] ?? 'PDF生成に失敗しました');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Classroom投稿の準備に失敗しました: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }

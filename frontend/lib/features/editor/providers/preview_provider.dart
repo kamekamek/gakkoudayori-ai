@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../services/pdf_api_service.dart';
+import '../../../services/pdf_download_service.dart';
 
 /// プレビューモードの種類
 enum PreviewMode {
@@ -105,11 +107,39 @@ class PreviewProvider extends ChangeNotifier {
     setPdfGenerating(true);
     
     try {
-      // TODO: 実際のPDF生成処理を実装
-      await Future.delayed(const Duration(seconds: 2)); // 模擬処理
-      
-      // PDF生成成功
+      // HTMLコンテンツの妥当性チェック
+      final validation = PdfApiService.validateHtmlForPdf(_htmlContent);
+      if (!validation['isValid']) {
+        throw Exception('PDF生成エラー: ${validation['issues'].join(', ')}');
+      }
+
+      // バックエンドでPDF生成
+      final result = await PdfApiService.generatePdf(
+        htmlContent: _htmlContent,
+        title: 'AI学級通信',
+        pageSize: 'A4',
+        margin: '15mm',
+        includeHeader: false,
+        includeFooter: true,
+      );
+
+      // PDF生成成功時にダウンロード
+      if (result['success'] == true) {
+        final pdfBase64 = result['data']['pdf_base64'];
+        final fileSize = result['data']['file_size_mb'];
+        
+        // PDFをダウンロード
+        await PdfDownloadService.downloadPdf(
+          pdfBase64: pdfBase64,
+          title: 'AI学級通信',
+        );
+
+        debugPrint('PDF生成・ダウンロード成功: ${fileSize} MB');
+      } else {
+        throw Exception(result['error'] ?? 'PDF生成に失敗しました');
+      }
     } catch (e) {
+      debugPrint('PDF生成エラー: $e');
       throw Exception('PDF生成に失敗しました: $e');
     } finally {
       setPdfGenerating(false);
