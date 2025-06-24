@@ -17,11 +17,6 @@ help:
 	@echo "  make backend-setup - Python環境セットアップ"
 	@echo "  make backend-test  - Pythonテスト実行"
 	@echo ""
-	@echo "🐍 バックエンド:"
-	@echo "  make backend-dev   - バックエンド開発サーバー起動"
-	@echo "  make backend-setup - Python環境セットアップ"
-	@echo "  make backend-test  - Pythonテスト実行"
-	@echo ""
 	@echo "🧪 テスト・品質:"
 	@echo "  make test         - 全テスト実行"
 	@echo "  make lint         - 静的解析実行"
@@ -108,7 +103,7 @@ ci-test: ci-setup lint test
 # フロントエンドデプロイ
 deploy-frontend: build-prod
 	@echo "📤 フロントエンドをFirebase Hostingにデプロイ中..."
-	firebase deploy --only hosting
+	firebase deploy --only hosting --project gakkoudayori-ai
 
 # バックエンドデプロイ
 deploy-backend:
@@ -150,17 +145,17 @@ deploy-preview:
 		--dart-define=ENVIRONMENT=preview \
 		--dart-define=API_BASE_URL=https://yutori-backend-944053509139.asia-northeast1.run.app/api/v1 \
 		--release
-	firebase hosting:channel:deploy preview --expires 7d
+	firebase hosting:channel:deploy preview --expires 7d --project gakkoudayori-ai
 
 # ステージングデプロイ
 deploy-staging: 
-	@echo "🧪 ステージング環境用ビルド中..."
+	@echo "�� ステージング環境用ビルド中..."
 	cd frontend && flutter build web \
 		--dart-define=ENVIRONMENT=staging \
 		--dart-define=API_BASE_URL=https://staging-yutori-backend.asia-northeast1.run.app/api/v1 \
 		--release
 	@echo "📤 ステージング環境にデプロイ中..."
-	firebase hosting:channel:deploy staging --expires 30d
+	firebase hosting:channel:deploy staging --expires 30d --project gakkoudayori-ai
 	@echo "✅ ステージング環境デプロイ完了！"
 	@echo "🌐 ステージング: https://gakkoudayori-ai--staging.web.app"
 
@@ -171,11 +166,9 @@ reset-dev:
 	@echo "✅ 開発環境リセット完了"
 
 # バックエンド開発サーバー起動
-backend-dev:
+backend-dev: backend-setup
 	@echo "🐍 バックエンド開発サーバー起動中..."
-	@echo "📦 仮想環境アクティベート..."
 	cd backend/app && \
-		(test -d venv || python3.11 -m venv venv) && \
 		. venv/bin/activate && \
 		uvicorn main_local:app --host 0.0.0.0 --port 8081 --reload
 
@@ -183,13 +176,13 @@ backend-dev:
 backend-setup:
 	@echo "🐍 Python環境セットアップ中..."
 	cd backend/app && \
-		python3.11 -m venv venv && \
+		(test -d venv || python3.11 -m venv venv) && \
 		. venv/bin/activate && \
 		pip install -r requirements.txt
 	@echo "✅ Python環境セットアップ完了"
 
 # Pythonテスト実行
-backend-test:
+backend-test: backend-setup
 	@echo "🧪 Pythonテスト実行中..."
 	cd backend/app && \
 		. venv/bin/activate && \

@@ -8,23 +8,33 @@ import '../features/editor/providers/image_provider.dart';
 import '../features/editor/providers/preview_provider.dart';
 import '../features/home/providers/newsletter_provider.dart';
 import '../services/adk_agent_service.dart';
+import '../services/adk_agent_service_mock.dart';
 
 class GakkouDayoriAiApp extends StatelessWidget {
-  const GakkouDayoriAiApp({super.key});
+  final bool isDemo;
+  
+  const GakkouDayoriAiApp({
+    super.key,
+    this.isDemo = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // Services
-        Provider(create: (_) => AdkAgentService()),
+        // Services（デモモードに応じて切り替え）
+        Provider<AdkAgentService>(
+          create: (_) => isDemo ? AdkAgentServiceMock() : AdkAgentService(),
+        ),
 
-        // Providers
+        // Providers（デモモードに応じて設定）
         ChangeNotifierProvider(
-          create: (context) => AdkChatProvider(
-            adkService: context.read<AdkAgentService>(),
-            userId: 'user_12345',
-          ),
+          create: (context) => isDemo
+            ? AdkChatProvider.demo(userId: 'demo_user_12345')
+            : AdkChatProvider(
+                adkService: context.read<AdkAgentService>(),
+                userId: 'user_12345',
+              ),
         ),
         ChangeNotifierProvider(
           create: (context) => NewsletterProvider(
@@ -36,7 +46,7 @@ class GakkouDayoriAiApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => PreviewProvider()),
       ],
       child: MaterialApp.router(
-        title: '学校だよりAI', // Fallback title
+        title: '学校だよりAI',
         theme: AppTheme.lightTheme,
         routerConfig: AppRouter.router,
         debugShowCheckedModeBanner: false,

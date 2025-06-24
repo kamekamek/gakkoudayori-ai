@@ -9,6 +9,7 @@ class PreviewModeToolbar extends StatelessWidget {
   final VoidCallback onPdfGenerate;
   final VoidCallback onPrintPreview;
   final VoidCallback onRegenerate;
+  final VoidCallback? onClassroomPost;
   final bool canExecuteActions;
 
   const PreviewModeToolbar({
@@ -18,6 +19,7 @@ class PreviewModeToolbar extends StatelessWidget {
     required this.onPdfGenerate,
     required this.onPrintPreview,
     required this.onRegenerate,
+    this.onClassroomPost,
     this.canExecuteActions = true,
   });
 
@@ -90,12 +92,12 @@ class PreviewModeToolbar extends StatelessWidget {
             
             const SizedBox(width: 8),
             
-            // Classroom投稿ボタン（将来実装）
+            // Classroom投稿ボタン
             _buildActionButton(
               context,
               icon: Icons.school,
               tooltip: 'Classroom投稿',
-              onPressed: () => _showComingSoonDialog(context, 'Classroom投稿'),
+              onPressed: onClassroomPost ?? () => _showComingSoonDialog(context, 'Classroom投稿'),
               color: Colors.green,
             ),
             

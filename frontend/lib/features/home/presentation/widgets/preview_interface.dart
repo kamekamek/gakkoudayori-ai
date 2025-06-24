@@ -4,8 +4,11 @@ import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'dart:html' as html;
 import '../../../editor/providers/preview_provider.dart';
 import '../../providers/newsletter_provider.dart';
+import '../../../ai_assistant/providers/adk_chat_provider.dart';
 import 'preview_mode_toolbar.dart';
 import '../../../../widgets/quill_editor_widget.dart';
+import '../../../../widgets/inline_editable_text_widget.dart';
+import '../../../../mock/classroom_post_mock.dart';
 
 /// プレビューインターフェース（右側パネル）
 class PreviewInterface extends StatelessWidget {
@@ -13,8 +16,8 @@ class PreviewInterface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<PreviewProvider, NewsletterProvider>(
-      builder: (context, previewProvider, newsletterProvider, child) {
+    return Consumer3<PreviewProvider, NewsletterProvider, AdkChatProvider>(
+      builder: (context, previewProvider, newsletterProvider, chatProvider, child) {
         return Column(
           children: [
             // プレビューモード切り替えツールバー
@@ -24,6 +27,7 @@ class PreviewInterface extends StatelessWidget {
               onPdfGenerate: () => _generatePdf(context),
               onPrintPreview: () => _showPrintPreview(context),
               onRegenerate: () => _regenerateContent(context),
+              onClassroomPost: chatProvider.isDemo ? () => _postToClassroom(context) : null,
               canExecuteActions: previewProvider.htmlContent.isNotEmpty,
             ),
 
@@ -35,6 +39,7 @@ class PreviewInterface extends StatelessWidget {
                   context,
                   previewProvider,
                   newsletterProvider,
+                  chatProvider,
                 ),
               ),
             ),
@@ -48,6 +53,7 @@ class PreviewInterface extends StatelessWidget {
     BuildContext context,
     PreviewProvider previewProvider,
     NewsletterProvider newsletterProvider,
+    AdkChatProvider chatProvider,
   ) {
     // 生成中の場合
     if (previewProvider.isGeneratingPdf) {
@@ -65,7 +71,7 @@ class PreviewInterface extends StatelessWidget {
         return _buildPreviewMode(context, previewProvider.htmlContent);
 
       case PreviewMode.edit:
-        return _buildEditMode(context, previewProvider.htmlContent);
+        return _buildEditMode(context, previewProvider, chatProvider);
 
       case PreviewMode.printView:
         return _buildPrintViewMode(context, previewProvider.htmlContent);
@@ -144,7 +150,19 @@ class PreviewInterface extends StatelessWidget {
     );
   }
 
-  Widget _buildEditMode(BuildContext context, String htmlContent) {
+  Widget _buildEditMode(BuildContext context, PreviewProvider previewProvider, AdkChatProvider chatProvider) {
+    // デモモードの場合はインライン編集可能なプレビューを表示
+    if (chatProvider.isDemo && previewProvider.htmlContent.isNotEmpty) {
+      return InlineEditableHtmlPreview(
+        htmlContent: previewProvider.htmlContent,
+        onHtmlChanged: (newHtml) {
+          previewProvider.updateHtmlContent(newHtml);
+        },
+        isDemo: true,
+      );
+    }
+
+    // 通常モードまたはコンテンツが空の場合は従来の編集モード
     return Container(
       padding: const EdgeInsets.all(32),
       child: Center(
@@ -166,28 +184,31 @@ class PreviewInterface extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              '高速で安定したQuillエディタを\n別ウィンドウで開きます',
+              chatProvider.isDemo 
+                  ? 'デモモードではインライン編集が利用できます\n学級通信を生成してから編集モードをお試しください'
+                  : '高速で安定したQuillエディタを\n別ウィンドウで開きます',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
-            ElevatedButton.icon(
-              onPressed: () => _openQuillEditor(context),
-              icon: const Icon(Icons.open_in_new, size: 20),
-              label: const Text('Quillエディタを開く'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                textStyle: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+            if (!chatProvider.isDemo)
+              ElevatedButton.icon(
+                onPressed: () => _openQuillEditor(context),
+                icon: const Icon(Icons.open_in_new, size: 20),
+                label: const Text('Quillエディタを開く'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  textStyle: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-            ),
           ],
         ),
       ),
@@ -304,6 +325,72 @@ class PreviewInterface extends StatelessWidget {
         duration: Duration(seconds: 2),
       ),
     );
+  }
+
+  void _postToClassroom(BuildContext context) async {
+    final previewProvider = context.read<PreviewProvider>();
+    final htmlContent = previewProvider.htmlContent;
+    
+    if (htmlContent.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('投稿する学級通信が生成されていません'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // 投稿プレビューダイアログを表示
+    ClassroomPostMock.showPostPreviewDialog(
+      context,
+      htmlContent: htmlContent,
+      title: '学級通信「みんなでがんばろう」- ${DateTime.now().month}月${DateTime.now().day}日',
+      description: 'AI生成学級通信をお送りします。ご確認ください。',
+      onConfirm: () => _executeClassroomPost(context, htmlContent),
+    );
+  }
+
+  void _executeClassroomPost(BuildContext context, String htmlContent) async {
+    try {
+      // 投稿処理中の表示
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              SizedBox(width: 12),
+              Text('Google Classroomに投稿中...'),
+            ],
+          ),
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      // モック投稿実行
+      final result = await ClassroomPostMock.postNewsletter(
+        htmlContent: htmlContent,
+        title: '学級通信「みんなでがんばろう」- ${DateTime.now().month}月${DateTime.now().day}日',
+        description: 'AI生成学級通信をお送りします。ご確認ください。',
+      );
+
+      if (result.success) {
+        // 投稿成功ダイアログを表示
+        ClassroomPostMock.showPostSuccessDialog(context, result);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Classroom投稿に失敗しました: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   void _showEditDialog(BuildContext context) {

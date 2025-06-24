@@ -79,7 +79,9 @@ class _HomePageState extends State<HomePage> {
           ),
           IconButton(
             icon: const Icon(Icons.help_outline),
-            onPressed: () => _showHelpDialog(),
+            onPressed: () => adkChatProvider.isDemo 
+                ? _showDemoModeWelcomeDialog()
+                : _showHelpDialog(),
             tooltip: 'ヘルプ',
           ),
         ],
@@ -139,6 +141,89 @@ class _HomePageState extends State<HomePage> {
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('閉じる'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDemoModeWelcomeDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('学校だよりAIの使い方'),
+        content: const SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '1. チャットでAIと会話',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Text('左側のチャットエリアでAIと会話しながら、学級通信の内容を決めていきます。'),
+              SizedBox(height: 16),
+              Text(
+                '2. リアルタイムプレビュー',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Text('右側に学級通信のプレビューがリアルタイムで表示されます。'),
+              SizedBox(height: 16),
+              Text(
+                '3. 編集・出力',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Text('プレビューエリアの上部ボタンで編集・印刷・PDF出力・Classroom投稿ができます。'),
+              SizedBox(height: 16),
+              Text(
+                '4. 音声入力',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Text('マイクボタンを押して音声で入力することもできます。'),
+              SizedBox(height: 16),
+              Text(
+                '5. サンプル読み込み',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Text('右上のサンプル読み込みボタンで、すぐに学級通信のサンプルを確認できます。'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('閉じる'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeatureItem(String emoji, String title, String description) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 16)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

@@ -1,12 +1,15 @@
 import 'package:flutter/foundation.dart';
 import '../../../services/adk_agent_service.dart';
+import '../../../services/adk_agent_service_mock.dart';
 import '../../../services/audio_service.dart';
+import '../../../services/audio_service_mock.dart';
 
 /// ADKチャットの状態管理プロバイダー
 class AdkChatProvider extends ChangeNotifier {
   final AdkAgentService _adkService;
-  final AudioService _audioService = AudioService();
+  final dynamic _audioService; // AudioService or AudioServiceMock
   final String userId;
+  final bool _isDemo;
 
   // 状態
   final List<MutableChatMessage> _messages = [];
@@ -33,12 +36,26 @@ class AdkChatProvider extends ChangeNotifier {
   AdkChatProvider({
     required AdkAgentService adkService,
     required this.userId,
-  }) : _adkService = adkService {
+    bool isDemo = false,
+  }) : _adkService = adkService,
+       _isDemo = isDemo,
+       _audioService = isDemo ? AudioServiceMock() : AudioService() {
     _initializeAudioService();
   }
 
+  /// ファクトリコンストラクタ：デモモード用
+  factory AdkChatProvider.demo({
+    required String userId,
+  }) {
+    return AdkChatProvider(
+      adkService: AdkAgentServiceMock(),
+      userId: userId,
+      isDemo: true,
+    );
+  }
+
   void _initializeAudioService() {
-    debugPrint('[AdkChatProvider] Initializing audio service...');
+    debugPrint('[AdkChatProvider] Initializing audio service... (Demo mode: $_isDemo)');
     _audioService.initializeJavaScriptBridge();
 
     _audioService.setOnRecordingStateChanged((isRecording) {
@@ -173,8 +190,34 @@ class AdkChatProvider extends ChangeNotifier {
         lowerMessage.contains('newsletter');
   }
 
+  /// 便利メソッド：デモモードかどうかをチェック
+  bool get isDemo => _isDemo;
+
+  /// 便利メソッド：デモ用のサンプルメッセージを追加
+  void addDemoMessage(String role, String content) {
+    if (_isDemo) {
+      _messages.add(MutableChatMessage(
+        role: role,
+        content: content,
+        timestamp: DateTime.now(),
+      ));
+      notifyListeners();
+    }
+  }
+
+  /// 便利メソッド：デモ用のHTMLコンテンツを直接設定
+  void setDemoHtmlContent(String htmlContent) {
+    if (_isDemo) {
+      _generatedHtml = htmlContent;
+      notifyListeners();
+    }
+  }
+
   @override
   void dispose() {
+    if (_audioService != null) {
+      _audioService.dispose();
+    }
     _adkService.dispose();
     super.dispose();
   }

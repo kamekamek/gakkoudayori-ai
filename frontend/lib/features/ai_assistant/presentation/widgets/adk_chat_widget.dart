@@ -36,7 +36,9 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
   
   void _onProviderChanged() {
     final provider = context.read<AdkChatProvider>();
-    if (provider.transcriptionResult != null && 
+    // デモモードでは文字起こし結果の自動入力を無効化
+    if (!provider.isDemo && 
+        provider.transcriptionResult != null && 
         provider.transcriptionResult!.isNotEmpty) {
       setState(() {
         _textController.text = provider.transcriptionResult!;
