@@ -2,6 +2,58 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+
+## 🔍 Python動作確認・デバッグ方法
+
+### python -c を使った動作確認
+```bash
+# クラスの初期化方法を確認
+python -c "from google.adk.agents import SequentialAgent; help(SequentialAgent.__init__)"
+
+# メソッド一覧を確認
+python -c "from google.adk.agents import SequentialAgent; print(dir(SequentialAgent))"
+
+# モジュールが正しくインポートできるか確認
+python -c "import google.adk.agents; print('ADK agents imported successfully')"
+
+# 現在のPythonパスを確認
+python -c "import sys; print('\n'.join(sys.path))"
+
+# インストールされているパッケージのバージョン確認
+python -c "import google.adk; print(f'ADK version: {google.adk.__version__}')"
+```
+
+### python -m を使ったモジュール実行
+```bash
+# ADKサーバーをモジュールとして起動
+python -m google.adk.cli.main web
+
+# 特定のモジュールが存在するか確認
+python -m agents.orchestrator_agent.agent
+
+# pipでパッケージ管理
+python -m pip list | grep google
+python -m pip install --upgrade google-adk
+```
+
+### エラー診断用ワンライナー
+```bash
+# モジュールのインポートエラーを詳細表示
+python -c "
+try:
+    from agents.generator_agent.agent import create_generator_agent
+    print('Import successful')
+except ImportError as e:
+    print(f'Import error: {e}')
+    import sys
+    print(f'Python path: {sys.path}')
+"
+
+# 現在のワーキングディレクトリとPythonパスの確認
+python -c "import os, sys; print(f'CWD: {os.getcwd()}'); print(f'Python path: {sys.path}')"
+```
+
+
 ## 🏃‍♂️ Quick Start Commands
 
 For immediate productivity, use these essential commands:
