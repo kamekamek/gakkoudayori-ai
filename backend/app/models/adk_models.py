@@ -87,3 +87,34 @@ class NewsletterGenerationResponse(BaseModel):
     html_content: Optional[str] = Field(None, description="生成されたHTML")
     json_structure: Optional[Dict[str, Any]] = Field(None, description="中間のJSON構造")
     messages: List[ChatMessage] = Field(default_factory=list, description="会話履歴")
+
+
+class HTMLValidationRequest(BaseModel):
+    """HTML検証リクエスト"""
+    html_content: str = Field(..., description="検証対象のHTMLコンテンツ")
+    user_id: str = Field(..., description="ユーザーID")
+    session_id: Optional[str] = Field(None, description="既存のセッションID")
+    validation_type: Literal["basic", "detailed"] = Field("basic", description="検証レベル")
+
+
+class ValidationResult(BaseModel):
+    """個別検証結果"""
+    score: int = Field(..., description="スコア（0-100）")
+    issues: List[str] = Field(default_factory=list, description="発見された問題")
+    recommendations: List[str] = Field(default_factory=list, description="改善推奨事項")
+
+
+class HTMLValidationResponse(BaseModel):
+    """HTML検証レスポンス"""
+    session_id: str = Field(..., description="セッションID")
+    overall_score: int = Field(..., description="総合スコア")
+    grade: str = Field(..., description="評価グレード")
+    summary: str = Field(..., description="検証結果サマリー")
+    structure: ValidationResult = Field(..., description="構造検証結果")
+    accessibility: ValidationResult = Field(..., description="アクセシビリティ検証結果")
+    performance: ValidationResult = Field(..., description="パフォーマンス検証結果")
+    seo: ValidationResult = Field(..., description="SEO検証結果")
+    printing: ValidationResult = Field(..., description="印刷適性検証結果")
+    priority_actions: List[str] = Field(default_factory=list, description="優先対応事項")
+    compliance_status: Dict[str, bool] = Field(default_factory=dict, description="コンプライアンス状況")
+    detailed_report: Optional[str] = Field(None, description="詳細レポート（JSON形式）")

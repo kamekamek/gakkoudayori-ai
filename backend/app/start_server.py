@@ -11,6 +11,7 @@ import os
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, current_dir)
 
+import uvicorn
 from main import app
 
 if __name__ == '__main__':
@@ -20,11 +21,15 @@ if __name__ == '__main__':
     print('- GET /api/v1/ai/formats - サポート音声フォーマット')
     print('- POST /api/v1/ai/generate-newsletter - 学級通信自動生成')
     print('- GET /api/v1/ai/newsletter-templates - テンプレート一覧')
+    print('- POST /api/v1/adk/chat - ADK エージェントチャット')
+    print('- POST /api/v1/adk/chat/stream - ADK ストリーミングチャット')
+    print('- WebSocket /api/v1/adk/ws/{session_id} - ADK WebSocket')
     print()
-    print('Starting server on port 8081...')
+    print('Starting FastAPI server on port 8081...')
     
-    app.run(
+    uvicorn.run(
+        app,
         host='0.0.0.0',
         port=8081,
-        debug=True
+        reload=False  # In production, set to False
     ) 

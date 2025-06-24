@@ -131,6 +131,18 @@ deploy: deploy-backend deploy-frontend
 # 全体デプロイ（別名）
 deploy-all: deploy
 
+# バックエンドステージングデプロイ
+deploy-backend-staging:
+	@echo "📤 バックエンドをステージング環境にCloud Runにデプロイ中 (Dockerfile使用)..."
+	cd backend/app && gcloud run deploy yutori-backend-staging \
+		--source=. \
+		--region=asia-northeast1 \
+		--allow-unauthenticated \
+		--memory=2Gi \
+		--timeout=300 \
+		--set-env-vars="ENVIRONMENT=staging" \
+		--platform=managed
+
 # プレビューデプロイ（プルリクエスト用）
 deploy-preview:
 	@echo "👀 プレビューデプロイ中..."

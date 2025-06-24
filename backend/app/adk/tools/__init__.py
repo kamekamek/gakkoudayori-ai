@@ -1,1 +1,2 @@
 from .date_tool import get_current_date
+from .html_validation_tool import validate_html_structure, generate_validation_report
