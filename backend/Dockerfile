@@ -1,0 +1,33 @@
+# Python 3.11 slim image
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /usr/src/app
+
+# Install system dependencies
+# wkhtmltopdf for pdfkit and Japanese fonts
+RUN apt-get update && apt-get install -y \
+    wkhtmltopdf \
+    fonts-noto-cjk \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Poetry
+RUN pip install poetry
+
+# Copy dependency files
+COPY pyproject.toml poetry.lock* /usr/src/app/
+
+# Install dependencies using Poetry
+# Do not create a virtual environment in the container
+RUN poetry config virtualenvs.create false && \
+    poetry install --no-interaction --no-ansi --no-root
+
+# Copy the rest of the application code
+COPY . /usr/src/app
+
+# Expose port
+EXPOSE 8080
+
+# Command to run the application
+# The main app is located at app/main.py
+CMD ["poetry", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]

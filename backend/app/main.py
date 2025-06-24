@@ -1,176 +1,100 @@
-# Welcome to Cloud Functions for Firebase for Python!
-# To get started, simply uncomment the below code or create your own.
-# Deploy with `firebase deploy`
-
-from firebase_functions import https_fn
-from datetime import datetime
-from google.cloud import speech  # speechモジュールをインポート
-from firebase_admin import initialize_app
-import logging
+import sys
 import os
-import re
-from datetime import datetime
+from fastapi import FastAPI, Request, UploadFile, File
 from pydantic import BaseModel
+from sse_starlette.sse import EventSourceResponse
+import asyncio
+import json
+from typing import AsyncGenerator, Any
 
-# カスタムサービスをインポート
-from services.firebase_service import (
-    initialize_firebase,
-    health_check,
-    get_firebase_config,
-    get_firestore_client
-)
-from services.speech_recognition_service import (
-    transcribe_audio_file,
-    validate_audio_format,
-    get_supported_formats,
-    get_default_speech_contexts,
-)
-from services.user_dictionary_service import (
-    create_user_dictionary_service,
-)
-from services.audio_to_json_service import convert_speech_to_json
-from services.json_to_graphical_record_service import convert_json_to_graphical_record
-from services.pdf_generator import generate_pdf_from_html, get_pdf_info
+# --- Project Root Path Hack ---
+# This allows to import 'backend' as a package
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+# -----------------------------
 
-# FastAPIをインポート
-from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from asgiref.wsgi import WsgiToAsgi
-import uvicorn
-from contextlib import asynccontextmanager
+from backend.app import pdf as pdf_api
+from backend.app import classroom as classroom_api
+from backend.app import stt as stt_api
+from backend.app import phrase as phrase_api
+from backend.agents.orchestrator_agent.agent import create_orchestrator_agent
 
-# ADK Runner関連のインポート
-from google.adk.runners import Runner
-# 新しい依存関係ファイルからインポート
-from core.dependencies import get_orchestrator_agent, get_session_service
+# REMAKE.md の設計に基づき、ADK Runner の概念を実装します。
+# 本来はADKのセッション管理とイベントストリーミングをラップするクラスです。
+# ここではプレースホルダーとして基本的なキューイング機能を提供します。
+# TODO: agents/ を import できるように PYTHONPATH を調整する必要がある
+# from agents.orchestrator_agent.agent import create_orchestrator_agent
 
-# アプリケーションコンテキストでADK Runnerを管理
-app_context = {}
+class AdkRunner:
+    """ADKエージェントの実行とイベントストリーミングを管理するランナー"""
+    def __init__(self, agent):
+        self.agent = agent
+        # セッションごとのイベントキューを保持
+        self._event_queues: dict[str, asyncio.Queue] = {}
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # アプリケーション起動時に実行
-    logger.info("Initializing ADK Runner...")
-    app.state.adk_runner = Runner(
-        app_name="gakkoudayori-ai",
-        agent=get_orchestrator_agent(),
-        session_service=get_session_service()
-    )
-    logger.info("ADK Runner initialized successfully.")
-    yield
-    # アプリケーション終了時に実行
-    logger.info("Cleaning up resources...")
-    app_context.clear()
-    logger.info("Cleanup complete.")
+    async def enqueue(self, session_id: str, message: str):
+        """エージェントの実行をキューに追加し、非同期で処理を開始します。"""
+        if session_id not in self._event_queues:
+            self._event_queues[session_id] = asyncio.Queue()
+        
+        # ここで実際のADKエージェントの非同期実行をトリガーします。
+        # agent_task = asyncio.create_task(self.agent.run(session_id, message, self._event_queues[session_id]))
+        
+        # --- 以下はモック実装です ---
+        async def mock_agent_run():
+            await self._event_queues[session_id].put({"event": "message", "data": json.dumps({"type": "status", "content": "Planner Agent started..."})})
+            await asyncio.sleep(1.5)
+            await self._event_queues[session_id].put({"event": "message", "data": json.dumps({"type": "artifact", "name": "outline.json", "content": '{"title": "test"}'})})
+            await asyncio.sleep(1.5)
+            await self._event_queues[session_id].put({"event": "message", "data": json.dumps({"type": "status", "content": "Generator Agent started..."})})
+            await asyncio.sleep(2)
+            await self._event_queues[session_id].put({"event": "message", "data": json.dumps({"type": "html", "html": "<h1>Test HTML</h1>"})})
+            await self._event_queues[session_id].put({"event": "message", "data": json.dumps({"type": "complete"})})
 
-# Firebase Admin SDKを初期化
-# 環境変数で初期化済みかチェックすることで、複数回呼び出しを避ける
-if not os.getenv("FIREBASE_APP_INITIALIZED"):
-    initialize_app()
-    os.environ["FIREBASE_APP_INITIALIZED"] = "true"
+        asyncio.create_task(mock_agent_run())
 
-# appディレクトリからメインのAPIルーターをインポート
-# (この後のステップで、FastAPIインスタンスはこのファイルで作成されるようにリファクタリングします)
-from api.v1.router import router as api_v1_router
 
-# ログ設定
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+    async def emit_queue(self, session_id: str) -> AsyncGenerator[Any, None]:
+        """指定されたセッションIDのイベントキューからイベントをストリーミングします。"""
+        q = self._event_queues.get(session_id)
+        if not q:
+            return
 
-# Flaskアプリケーション作成
+        try:
+            while True:
+                event = await q.get()
+                yield event
+                if json.loads(event["data"]).get("type") == "complete":
+                    break
+        finally:
+            del self._event_queues[session_id]
+
+
 app = FastAPI(
-    title="Gakkoudayori AI Backend",
-    version="1.0.0",
-    description="学級通信AIエージェントと通常APIを統合したサーバー",
-    lifespan=lifespan
+    title="Gakkoudayori AI Backend v2",
+    description="REMAKE.mdに基づいた再設計バージョン"
 )
 
-# v1のAPIルーターをアプリにマウント
-app.include_router(api_v1_router, prefix="/api/v1")
+# Include routers from other files
+app.include_router(pdf_api.router)
+app.include_router(classroom_api.router)
+app.include_router(stt_api.router)
+app.include_router(phrase_api.router)
 
-# CORS設定 - 本番とローカル開発環境の両方を許可
-# プレビュー環境のURLパターン (例: https://gakkoudayori-ai--pr-123.web.app) にマッチする正規表現
-preview_origin_pattern = r"https://gakkoudayori-ai--pr-\d+\.web\.app"
-# ステージング環境のURLパターン (例: https://gakkoudayori-ai--staging-abc123.web.app) にマッチする正規表現
-staging_origin_pattern = r"https://gakkoudayori-ai--staging-[a-z0-9]+\.web\.app"
-# ローカル開発環境のURLパターン（http://localhost:<ポート番号>）
-local_origin_pattern = r"http://localhost:\d+"
+# 実際のエージェントを渡してRunnerを初期化
+runner = AdkRunner(agent=create_orchestrator_agent())
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "https://gakkoudayori-ai.web.app",
-        "https://gakkoudayori-ai--staging.web.app",
-    ],
-    allow_origin_regex=f"({preview_origin_pattern}|{staging_origin_pattern}|{local_origin_pattern})",
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+class ChatIn(BaseModel):
+    session: str
+    message: str
 
-# Firebase初期化
-def init_firebase():
-    """Firebase初期化"""
-    try:
-        # firebase_service.pyのinitialize_firebase()を使用（Secret Manager対応済み）
-        from services.firebase_service import initialize_firebase
-        return initialize_firebase()
-    except Exception as e:
-        logger.error(f"Firebase initialization failed: {e}")
-        return False
+@app.post("/chat")
+async def chat(req: ChatIn):
+    """チャットリクエストを受け付け、エージェントの処理を開始します。"""
+    await runner.enqueue(req.session, req.message)
+    return {"session": req.session}
 
-def get_firestore_client():
-    """Firestoreクライアント取得"""
-    try:
-        if firebase_initialized:
-            from firebase_admin import firestore
-            return firestore.client()
-        else:
-            logger.warning("Firebase not initialized, returning None firestore client")
-            return None
-    except Exception as e:
-        logger.error(f"Failed to get Firestore client: {e}")
-        logger.error(f"Exception type: {type(e).__name__}")
-        import traceback
-        logger.error(f"Full traceback: {traceback.format_exc()}")
-        return None
 
-# アプリケーション起動時にFirebase初期化
-firebase_initialized = init_firebase()
-
-@app.get("/", summary="基本ヘルスチェック")
-def read_root():
-    """サービスの稼働状況とタイムスタンプを返します。"""
-    return {
-        'status': 'ok',
-        'service': 'gakkoudayori-ai-backend',
-        'timestamp': datetime.utcnow().isoformat(),
-    }
-
-@app.get("/health", summary="詳細ヘルスチェック")
-def read_health():
-    """Firebaseの接続状況など、より詳細なヘルスチェックを行います。"""
-    try:
-        health_result = health_check()
-        status_code = 200 if health_result.get('status') == 'healthy' else 503
-        return JSONResponse(content=health_result, status_code=status_code)
-    except Exception as e:
-        logger.error(f"Health check error: {e}", exc_info=True)
-        return JSONResponse(
-            status_code=500,
-            content={'status': 'error', 'message': 'Health check failed unexpectedly.'}
-        )
-
-@app.get("/config", summary="Firebase設定情報の取得")
-def read_config():
-    """フロントエンドが必要とするFirebaseの設定情報を返します。"""
-    try:
-        config_info = get_firebase_config()
-        return config_info
-    except Exception as e:
-        logger.error(f"Config retrieval error: {e}", exc_info=True)
-        return JSONResponse(
-            status_code=500,
-            content={'status': 'error', 'message': 'Failed to retrieve Firebase config.'}
-        )
+@app.get("/stream/{sid}")
+async def stream(req: Request, sid: str):
+    """サーバーセントイベント(SSE)でエージェントの生成物やイベントをストリーミングします。"""
+    return EventSourceResponse(runner.emit_queue(sid))

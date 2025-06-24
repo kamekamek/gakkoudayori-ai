@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "backend"
+version = "0.1.0"
+description = "Gakkoudayori AI Backend"
+authors = ["AI Assistant <ai@assistant.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "*"
+uvicorn = {extras = ["standard"], version = "*"}
+sse-starlette = "*"
+google-cloud-firestore = "*"
+google-cloud-storage = "*"
+google-api-python-client = "*"
+google-cloud-speech = "*"
+pdfkit = "*"
+html5lib = "*"
+google-adk = "*"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
