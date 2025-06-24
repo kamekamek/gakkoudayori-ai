@@ -4,8 +4,8 @@ from google.adk.agents import Agent
 from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events.event import Event
 
-from backend.agents.generator_agent.agent import create_generator_agent
-from backend.agents.planner_agent.agent import create_planner_agent
+from ..generator_agent.agent import create_generator_agent
+from ..planner_agent.agent import create_planner_agent
 
 
 class NewsletterOrchestrator(Agent):

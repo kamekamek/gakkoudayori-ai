@@ -8,7 +8,7 @@ from google.adk.events.event import Event
 from google.adk.models.google_llm import Gemini
 from google.adk.tools import FunctionTool
 
-from backend.agents.tools.html_validator import validate_html
+from ..tools.html_validator import validate_html
 
 
 def _load_instruction() -> str:
