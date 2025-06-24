@@ -80,6 +80,8 @@ app.add_middleware(
     allow_origins=[
         "https://gakkoudayori-ai.web.app",
         "https://gakkoudayori-ai--staging.web.app",
+        "https://gakkoudayori-ai--staging-gwvqcn37.web.app",
+        "*",  # ローカル開発環境用の緩い設定
     ],
     allow_origin_regex=local_origin_pattern,
     allow_credentials=True,
