@@ -54,6 +54,9 @@ class PlannerAgent(LlmAgent):
 
         # ADK v1.0.0では履歴アクセス方法が変更されたため、
         # セッションイベントから最後のLLM応答を取得
+        if not hasattr(ctx, 'session') or not hasattr(ctx.session, 'events'):
+            return
+            
         session_events = ctx.session.events
         if not session_events:
             return
@@ -91,12 +94,20 @@ class PlannerAgent(LlmAgent):
             if json_start == -1 or json_end == 0:
                 raise ValueError("JSONの開始または終了が見つかりません。")
 
+            json_str = json_str[json_start:json_end]
+
             # JSONとして有効か検証
             json.loads(json_str)
 
-            # アーティファクトとして保存
-            await ctx.save_artifact("outline.json", json_str.encode("utf-8"))
-            await ctx.emit({"type": "info", "message": "構成案(outline.json)を作成しました。"})
+            # ファイルシステムベースのアーティファクト管理
+            artifacts_dir = Path("/tmp/adk_artifacts")
+            artifacts_dir.mkdir(exist_ok=True)
+            outline_file = artifacts_dir / "outline.json"
+            
+            with open(outline_file, "w", encoding="utf-8") as f:
+                f.write(json_str)
+                
+            await ctx.emit({"type": "info", "message": f"構成案を保存しました: {outline_file}"})
 
         except (ValueError, json.JSONDecodeError) as e:
             error_msg = f"LLMの応答からJSONを抽出できませんでした: {e}\n応答: {llm_response_text}"

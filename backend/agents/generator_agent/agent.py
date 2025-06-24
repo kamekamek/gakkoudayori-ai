@@ -1,4 +1,5 @@
 import os
+import json
 from pathlib import Path
 from typing import AsyncGenerator
 
@@ -41,13 +42,19 @@ class GeneratorAgent(LlmAgent):
         エージェントの実行ロジック。
         `outline.json`を読み込み、HTMLを生成、検証、保存します。
         """
-        if not await ctx.artifact_exists("outline.json"):
+        # ファイルシステムベースのアーティファクト管理
+        artifacts_dir = Path("/tmp/adk_artifacts")
+        artifacts_dir.mkdir(exist_ok=True)
+        outline_file = artifacts_dir / "outline.json"
+        
+        if not outline_file.exists():
             error_msg = "HTML生成に必要な構成案（outline.json）が見つかりません。"
-            await ctx.emit({"type": "error", "message": error_msg})
+            yield Event(content={"type": "error", "message": error_msg})
             return
 
-        artifact_data = await ctx.load_artifact("outline.json")
-        json_content = artifact_data.decode("utf-8")
+        # JSONファイルを読み込み
+        with open(outline_file, "r", encoding="utf-8") as f:
+            json_content = f.read()
 
         # ユーザーメッセージとしてJSONコンテンツを設定
         import google.genai.types as genai_types
@@ -59,6 +66,9 @@ class GeneratorAgent(LlmAgent):
             yield event
 
         # セッション履歴から最後のLLM応答を取得
+        if not hasattr(ctx, 'session') or not hasattr(ctx.session, 'events') or not ctx.session.events:
+            return
+            
         last_event = ctx.session.events[-1]
         if not hasattr(last_event, 'author') or last_event.author != self.name:
             return
@@ -80,14 +90,18 @@ class GeneratorAgent(LlmAgent):
         if html.endswith("```"):
             html = html[:-3]
         
-        await ctx.emit({"type": "html", "html": html})
+        yield Event(content={"type": "html", "html": html})
         
         # 生成されたHTMLを検証
         validation_result = await self.call_tool("validate_html", html=html)
         await ctx.emit({"type": "audit", "data": validation_result})
         
-        # 生成したHTMLをアーティファクトとして保存
-        await ctx.save_artifact("newsletter.html", html.encode("utf-8"))
+        # 生成したHTMLをファイルとして保存
+        newsletter_file = artifacts_dir / "newsletter.html"
+        with open(newsletter_file, "w", encoding="utf-8") as f:
+            f.write(html)
+        
+        await ctx.emit({"type": "info", "message": f"HTMLファイルを保存しました: {newsletter_file}"})
 
 def create_generator_agent() -> LlmAgent:
     """GeneratorAgentのインスタンスを生成するファクトリ関数。"""

@@ -1,6 +1,6 @@
 # 学校だよりAI - 環境管理Makefile
 
-.PHONY: help dev prod staging build-dev build-prod deploy deploy-frontend deploy-backend deploy-all deploy-staging deploy-preview ci-setup test lint format reset-dev backend-dev backend-test backend-setup check-backend
+.PHONY: help dev prod staging build-dev build-prod deploy deploy-frontend deploy-backend deploy-all deploy-staging deploy-preview ci-setup test lint format reset-dev backend-dev backend-test backend-setup check-backend test-adk
 
 # デフォルトターゲット
 help:
@@ -17,10 +17,8 @@ help:
 	@echo "  make backend-setup - Python環境セットアップ"
 	@echo "  make backend-test  - Pythonテスト実行"
 	@echo ""
-	@echo "🐍 バックエンド:"
-	@echo "  make backend-dev   - バックエンド開発サーバー起動"
-	@echo "  make backend-setup - Python環境セットアップ"
-	@echo "  make backend-test  - Pythonテスト実行"
+	@echo "🤖 エージェント/ADK:"
+	@echo "  make test-adk     - ADK v1.0.0互換性テスト"
 	@echo ""
 	@echo "🧪 テスト・品質:"
 	@echo "  make test         - 全テスト実行"
@@ -196,3 +194,8 @@ backend-test:
 	cd backend/app && \
 		. venv/bin/activate && \
 		python -m pytest tests/ -v 
+
+# ADK v1.0.0互換性テスト
+test-adk:
+	@echo "🤖 ADK v1.0.0 互換性テスト実行中..."
+	cd backend && poetry run python test_adk_compatibility.py 
