@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学校だよりAI システムアーキテクト図</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 40px;
+        }
+        .title {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .title h1 {
+            color: #2c3e50;
+            font-size: 2.5em;
+            margin: 0;
+            font-weight: 700;
+        }
+        .title .subtitle {
+            color: #7f8c8d;
+            font-size: 1.2em;
+            margin-top: 10px;
+        }
+        svg {
+            width: 100%;
+            height: auto;
+            max-width: 1200px;
+            margin: 0 auto;
+            display: block;
+        }
+        .legend {
+            margin-top: 30px;
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title">
+            <h1>🌸 学校だよりAI 🌸</h1>
+            <div class="subtitle">システムアーキテクト図</div>
+        </div>
+        
+        <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+            <!-- Background gradient -->
+            <defs>
+                <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:#f8f9fa;stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:#e9ecef;stop-opacity:1" />
+                </linearGradient>
+                <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+                    <dropShadow dx="2" dy="2" stdDeviation="3" flood-color="rgba(0,0,0,0.2)"/>
+                </filter>
+                <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                    <dropShadow dx="0" dy="0" stdDeviation="3" flood-color="#4285f4" flood-opacity="0.3"/>
+                </filter>
+            </defs>
+            
+            <!-- Background -->
+            <rect width="1200" height="800" fill="url(#bg)"/>
+            
+            <!-- User/Teacher section (left) -->
+            <g transform="translate(50, 100)">
+                <!-- Teacher icon -->
+                <circle cx="60" cy="60" r="40" fill="#ff6b9d" filter="url(#shadow)"/>
+                <text x="60" y="70" text-anchor="middle" fill="white" font-size="24" font-weight="bold">👩‍🏫</text>
+                <text x="60" y="120" text-anchor="middle" fill="#2c3e50" font-size="14" font-weight="bold">先生</text>
+                
+                <!-- Audio input -->
+                <rect x="20" y="150" width="80" height="40" rx="8" fill="#e74c3c" filter="url(#shadow)"/>
+                <text x="60" y="175" text-anchor="middle" fill="white" font-size="12" font-weight="bold">🎤 音声入力</text>
+            </g>
+            
+            <!-- Flutter Web Frontend (center-left) -->
+            <g transform="translate(250, 80)">
+                <rect x="0" y="0" width="200" height="320" rx="12" fill="#02569b" filter="url(#shadow)"/>
+                
+                <!-- Flutter logo area -->
+                <circle cx="100" cy="50" r="25" fill="white"/>
+                <text x="100" y="60" text-anchor="middle" fill="#02569b" font-size="20" font-weight="bold">F</text>
+                <text x="100" y="85" text-anchor="middle" fill="white" font-size="14" font-weight="bold">Flutter Web</text>
+                
+                <!-- App features -->
+                <rect x="20" y="110" width="160" height="30" rx="6" fill="rgba(255,255,255,0.2)"/>
+                <text x="100" y="130" text-anchor="middle" fill="white" font-size="11">AIアシスタント</text>
+                
+                <rect x="20" y="150" width="160" height="30" rx="6" fill="rgba(255,255,255,0.2)"/>
+                <text x="100" y="170" text-anchor="middle" fill="white" font-size="11">Quill エディタ</text>
+                
+                <rect x="20" y="190" width="160" height="30" rx="6" fill="rgba(255,255,255,0.2)"/>
+                <text x="100" y="210" text-anchor="middle" fill="white" font-size="11">A4プレビュー</text>
+                
+                <rect x="20" y="230" width="160" height="30" rx="6" fill="rgba(255,255,255,0.2)"/>
+                <text x="100" y="250" text-anchor="middle" fill="white" font-size="11">季節テーマ</text>
+                
+                <rect x="20" y="270" width="160" height="30" rx="6" fill="rgba(255,255,255,0.2)"/>
+                <text x="100" y="290" text-anchor="middle" fill="white" font-size="11">PDF出力</text>
+            </g>
+            
+            <!-- Cloud Run Backend (center) -->
+            <g transform="translate(520, 50)">
+                <rect x="0" y="0" width="180" height="400" rx="12" fill="#4285f4" filter="url(#shadow)"/>
+                
+                <!-- Cloud Run logo area -->
+                <rect x="60" y="20" width="60" height="40" rx="8" fill="white"/>
+                <text x="90" y="45" text-anchor="middle" fill="#4285f4" font-size="16" font-weight="bold">☁️</text>
+                <text x="90" y="75" text-anchor="middle" fill="white" font-size="14" font-weight="bold">Cloud Run</text>
+                
+                <!-- FastAPI + ADK -->
+                <rect x="20" y="100" width="140" height="35" rx="6" fill="rgba(255,255,255,0.2)"/>
+                <text x="90" y="122" text-anchor="middle" fill="white" font-size="12" font-weight="bold">FastAPI + ADK</text>
+                
+                <!-- ADK Agents -->
+                <text x="90" y="150" text-anchor="middle" fill="white" font-size="11" font-weight="bold">🤖 ADKエージェント</text>
+                
+                <rect x="20" y="160" width="140" height="25" rx="4" fill="rgba(255,255,255,0.15)"/>
+                <text x="90" y="177" text-anchor="middle" fill="white" font-size="10">OrchestratorAgent</text>
+                
+                <rect x="20" y="190" width="140" height="25" rx="4" fill="rgba(255,255,255,0.15)"/>
+                <text x="90" y="207" text-anchor="middle" fill="white" font-size="10">PlannerAgent</text>
+                
+                <rect x="20" y="220" width="140" height="25" rx="4" fill="rgba(255,255,255,0.15)"/>
+                <text x="90" y="237" text-anchor="middle" fill="white" font-size="10">GeneratorAgent</text>
+                
+                <!-- Services -->
+                <text x="90" y="270" text-anchor="middle" fill="white" font-size="11" font-weight="bold">🛠️ サービス</text>
+                
+                <rect x="20" y="280" width="140" height="20" rx="4" fill="rgba(255,255,255,0.15)"/>
+                <text x="90" y="294" text-anchor="middle" fill="white" font-size="9">音声認識サービス</text>
+                
+                <rect x="20" y="305" width="140" height="20" rx="4" fill="rgba(255,255,255,0.15)"/>
+                <text x="90" y="319" text-anchor="middle" fill="white" font-size="9">PDF生成サービス</text>
+                
+                <rect x="20" y="330" width="140" height="20" rx="4" fill="rgba(255,255,255,0.15)"/>
+                <text x="90" y="344" text-anchor="middle" fill="white" font-size="9">ニュースレター生成</text>
+                
+                <rect x="20" y="355" width="140" height="20" rx="4" fill="rgba(255,255,255,0.15)"/>
+                <text x="90" y="369" text-anchor="middle" fill="white" font-size="9">WeasyPrint</text>
+            </g>
+            
+            <!-- Google Cloud Services (right) -->
+            <g transform="translate(750, 50)">
+                <!-- Vertex AI / Gemini -->
+                <rect x="0" y="0" width="150" height="80" rx="8" fill="#34a853" filter="url(#shadow)"/>
+                <text x="75" y="25" text-anchor="middle" fill="white" font-size="12" font-weight="bold">🧠 Vertex AI</text>
+                <text x="75" y="45" text-anchor="middle" fill="white" font-size="16" font-weight="bold">Gemini</text>
+                <text x="75" y="65" text-anchor="middle" fill="white" font-size="10">2.0 Flash</text>
+                
+                <!-- Speech-to-Text -->
+                <rect x="0" y="100" width="150" height="60" rx="8" fill="#4285f4" filter="url(#shadow)"/>
+                <text x="75" y="125" text-anchor="middle" fill="white" font-size="12" font-weight="bold">🎤 Speech to Text</text>
+                <text x="75" y="145" text-anchor="middle" fill="white" font-size="10">V2 API</text>
+                
+                <!-- ADK Framework -->
+                <rect x="0" y="180" width="150" height="60" rx="8" fill="#ea4335" filter="url(#shadow)"/>
+                <text x="75" y="205" text-anchor="middle" fill="white" font-size="12" font-weight="bold">🔧 ADK</text>
+                <text x="75" y="225" text-anchor="middle" fill="white" font-size="10">Agent Framework</text>
+            </g>
+            
+            <!-- Firebase Services (bottom right) -->
+            <g transform="translate(750, 280)">
+                <!-- Firebase main -->
+                <rect x="0" y="0" width="150" height="50" rx="8" fill="#ffca28" filter="url(#shadow)"/>
+                <text x="75" y="30" text-anchor="middle" fill="#1a1a1a" font-size="14" font-weight="bold">🔥 Firebase</text>
+                
+                <!-- Auth -->
+                <rect x="0" y="60" width="70" height="40" rx="6" fill="#ff6f00"/>
+                <text x="35" y="78" text-anchor="middle" fill="white" font-size="10">認証</text>
+                <text x="35" y="90" text-anchor="middle" fill="white" font-size="8">Auth</text>
+                
+                <!-- Firestore -->
+                <rect x="80" y="60" width="70" height="40" rx="6" fill="#ff6f00"/>
+                <text x="115" y="78" text-anchor="middle" fill="white" font-size="10">DB</text>
+                <text x="115" y="90" text-anchor="middle" fill="white" font-size="8">Firestore</text>
+                
+                <!-- Storage -->
+                <rect x="40" y="110" width="70" height="40" rx="6" fill="#ff6f00"/>
+                <text x="75" y="128" text-anchor="middle" fill="white" font-size="10">Storage</text>
+                <text x="75" y="140" text-anchor="middle" fill="white" font-size="8">アクセス</text>
+            </g>
+            
+            <!-- Data flow arrows -->
+            <!-- Teacher to Flutter -->
+            <path d="M 150 170 Q 200 170 250 170" stroke="#2c3e50" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+            
+            <!-- Flutter to Cloud Run -->
+            <path d="M 450 240 Q 485 240 520 240" stroke="#2c3e50" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+            
+            <!-- Cloud Run to Google Cloud Services -->
+            <path d="M 700 180 Q 725 120 750 120" stroke="#2c3e50" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+            <path d="M 700 200 Q 725 160 750 160" stroke="#2c3e50" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+            <path d="M 700 220 Q 725 200 750 200" stroke="#2c3e50" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+            
+            <!-- Cloud Run to Firebase -->
+            <path d="M 700 280 Q 725 310 750 310" stroke="#2c3e50" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+            
+            <!-- Arrow marker definition -->
+            <defs>
+                <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="#2c3e50"/>
+                </marker>
+            </defs>
+            
+            <!-- Flow labels -->
+            <text x="200" y="160" text-anchor="middle" fill="#7f8c8d" font-size="10">音声入力</text>
+            <text x="485" y="230" text-anchor="middle" fill="#7f8c8d" font-size="10">API</text>
+            <text x="725" y="110" text-anchor="middle" fill="#7f8c8d" font-size="10">AI処理</text>
+            <text x="725" y="300" text-anchor="middle" fill="#7f8c8d" font-size="10">データ保存</text>
+            
+            <!-- Version/Status indicator -->
+            <g transform="translate(950, 20)">
+                <rect x="0" y="0" width="200" height="60" rx="8" fill="#2ecc71" filter="url(#shadow)"/>
+                <text x="100" y="25" text-anchor="middle" fill="white" font-size="12" font-weight="bold">✅ プロジェクト完了</text>
+                <text x="100" y="45" text-anchor="middle" fill="white" font-size="10">Google Cloud Japan</text>
+                <text x="100" y="55" text-anchor="middle" fill="white" font-size="10">AI Hackathon Vol.2</text>
+            </g>
+            
+            <!-- Processing time indicator -->
+            <g transform="translate(20, 680)">
+                <rect x="0" y="0" width="300" height="80" rx="8" fill="#9b59b6" filter="url(#shadow)"/>
+                <text x="150" y="25" text-anchor="middle" fill="white" font-size="14" font-weight="bold">⚡ 処理時間短縮</text>
+                <text x="150" y="45" text-anchor="middle" fill="white" font-size="12">従来: 2-3時間 → AI活用: 1分</text>
+                <text x="150" y="65" text-anchor="middle" fill="white" font-size="10">音声→AI→HTML→PDF の完全自動化</text>
+            </g>
+            
+            <!-- Technical stack indicator -->
+            <g transform="translate(880, 680)">
+                <rect x="0" y="0" width="300" height="80" rx="8" fill="#e67e22" filter="url(#shadow)"/>
+                <text x="150" y="25" text-anchor="middle" fill="white" font-size="14" font-weight="bold">🛠️ 技術スタック</text>
+                <text x="150" y="45" text-anchor="middle" fill="white" font-size="10">Flutter Web + FastAPI + Google ADK</text>
+                <text x="150" y="60" text-anchor="middle" fill="white" font-size="10">Vertex AI + Firebase + WeasyPrint</text>
+            </g>
+        </svg>
+        
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #02569b;"></div>
+                <span>フロントエンド (Flutter Web)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #4285f4;"></div>
+                <span>バックエンド (Cloud Run)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #34a853;"></div>
+                <span>AI サービス (Google Cloud)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #ffca28;"></div>
+                <span>データベース (Firebase)</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

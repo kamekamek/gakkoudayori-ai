@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学校だよりAI システムアーキテクト図</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #ffeef6 0%, #f0f8ff 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            padding: 50px;
+            position: relative;
+        }
+        .title-section {
+            text-align: center;
+            margin-bottom: 50px;
+            background: linear-gradient(135deg, #ff6b9d, #ff8a9b);
+            color: white;
+            padding: 30px;
+            border-radius: 20px;
+            margin: -30px -30px 50px -30px;
+        }
+        .title-section h1 {
+            font-size: 3em;
+            margin: 0;
+            font-weight: 700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .title-section .subtitle {
+            font-size: 1.4em;
+            margin-top: 10px;
+            opacity: 0.95;
+        }
+        .architecture-container {
+            position: relative;
+            width: 100%;
+            height: 900px;
+            background: linear-gradient(135deg, #f8fbff 0%, #fef7f7 100%);
+            border: 2px solid #e1e8ed;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+        
+        /* Component styling */
+        .component {
+            position: absolute;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        .component:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 35px rgba(0,0,0,0.2);
+        }
+        
+        /* User section */
+        .user-section {
+            top: 50px;
+            left: 50px;
+            width: 200px;
+            height: 150px;
+            background: linear-gradient(135deg, #ff6b9d, #ff8a9b);
+            color: white;
+        }
+        .user-icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+        .user-text {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        /* Voice input */
+        .voice-input {
+            top: 230px;
+            left: 70px;
+            width: 160px;
+            height: 80px;
+            background: linear-gradient(135deg, #e74c3c, #ec7063);
+            color: white;
+        }
+        
+        /* Flutter Web */
+        .flutter-web {
+            top: 80px;
+            left: 350px;
+            width: 250px;
+            height: 400px;
+            background: linear-gradient(135deg, #02569b, #0277bd);
+            color: white;
+            padding: 20px;
+        }
+        .flutter-logo {
+            font-size: 50px;
+            margin-bottom: 15px;
+        }
+        .flutter-feature {
+            background: rgba(255,255,255,0.2);
+            margin: 8px 0;
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+        
+        /* Cloud Run */
+        .cloud-run {
+            top: 120px;
+            left: 700px;
+            width: 220px;
+            height: 350px;
+            background: linear-gradient(135deg, #4285f4, #5a9cfd);
+            color: white;
+            padding: 20px;
+        }
+        .cloud-logo {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+        .service-item {
+            background: rgba(255,255,255,0.2);
+            margin: 6px 0;
+            padding: 6px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+        
+        /* Google Services */
+        .vertex-ai {
+            top: 50px;
+            left: 1050px;
+            width: 200px;
+            height: 100px;
+            background: linear-gradient(135deg, #34a853, #4caf50);
+            color: white;
+        }
+        .speech-to-text {
+            top: 180px;
+            left: 1050px;
+            width: 200px;
+            height: 80px;
+            background: linear-gradient(135deg, #4285f4, #5a9cfd);
+            color: white;
+        }
+        .adk-framework {
+            top: 290px;
+            left: 1050px;
+            width: 200px;
+            height: 80px;
+            background: linear-gradient(135deg, #ea4335, #f06292);
+            color: white;
+        }
+        
+        /* LangChain / Google AI Studio */
+        .langchain-studio {
+            top: 400px;
+            left: 1050px;
+            width: 200px;
+            height: 120px;
+            background: linear-gradient(135deg, #9c27b0, #ba68c8);
+            color: white;
+            font-size: 12px;
+        }
+        
+        /* Firebase Services */
+        .firebase-main {
+            top: 550px;
+            left: 1050px;
+            width: 200px;
+            height: 60px;
+            background: linear-gradient(135deg, #ffca28, #ffd54f);
+            color: #333;
+        }
+        .firebase-auth {
+            top: 630px;
+            left: 1000px;
+            width: 100px;
+            height: 70px;
+            background: linear-gradient(135deg, #ff9800, #ffb74d);
+            color: white;
+            font-size: 12px;
+        }
+        .firebase-firestore {
+            top: 630px;
+            left: 1120px;
+            width: 100px;
+            height: 70px;
+            background: linear-gradient(135deg, #ff9800, #ffb74d);
+            color: white;
+            font-size: 12px;
+        }
+        .firebase-storage {
+            top: 720px;
+            left: 1060px;
+            width: 100px;
+            height: 70px;
+            background: linear-gradient(135deg, #ff9800, #ffb74d);
+            color: white;
+            font-size: 12px;
+        }
+        .firebase-logo-main {
+            top: 800px;
+            left: 1200px;
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #ff9800, #ffb74d);
+            color: white;
+            border-radius: 50%;
+        }
+        
+        /* Arrows */
+        .arrow {
+            position: absolute;
+            z-index: 10;
+        }
+        .arrow-horizontal {
+            height: 4px;
+            background: linear-gradient(90deg, #2c3e50, #3498db);
+            border-radius: 2px;
+        }
+        .arrow-vertical {
+            width: 4px;
+            background: linear-gradient(180deg, #2c3e50, #3498db);
+            border-radius: 2px;
+        }
+        .arrow-head {
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-style: solid;
+        }
+        .arrow-head-right {
+            border-left: 12px solid #3498db;
+            border-top: 8px solid transparent;
+            border-bottom: 8px solid transparent;
+        }
+        .arrow-head-down {
+            border-top: 12px solid #3498db;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+        }
+        
+        /* Flow labels */
+        .flow-label {
+            position: absolute;
+            background: rgba(52, 73, 94, 0.9);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            z-index: 15;
+        }
+        
+        /* Performance indicators */
+        .performance-box {
+            position: absolute;
+            top: 550px;
+            left: 50px;
+            width: 280px;
+            height: 100px;
+            background: linear-gradient(135deg, #9b59b6, #af7ac5);
+            color: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        .tech-stack-box {
+            position: absolute;
+            top: 680px;
+            left: 50px;
+            width: 520px;
+            height: 80px;
+            background: linear-gradient(135deg, #e67e22, #f39c12);
+            color: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        
+        .performance-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .performance-text {
+            font-size: 12px;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title-section">
+            <h1>🌸 学校だよりAI 🌸</h1>
+            <div class="subtitle">システムアーキテクト図</div>
+        </div>
+        
+        <div class="architecture-container">
+            <!-- User/Teacher Section -->
+            <div class="component user-section">
+                <div class="user-icon">👩‍🏫</div>
+                <div class="user-text">先生</div>
+                <div style="font-size: 12px; margin-top: 5px;">教育現場で活用</div>
+            </div>
+            
+            <!-- Voice Input -->
+            <div class="component voice-input">
+                <div style="font-size: 24px; margin-bottom: 5px;">🎤</div>
+                <div style="font-size: 14px; font-weight: bold;">音声入力</div>
+                <div style="font-size: 10px;">ワンタップ録音</div>
+            </div>
+            
+            <!-- Flutter Web Frontend -->
+            <div class="component flutter-web">
+                <div class="flutter-logo">📱</div>
+                <div style="font-size: 18px; font-weight: bold; margin-bottom: 15px;">Flutter Web</div>
+                <div class="flutter-feature">🤖 AIアシスタント</div>
+                <div class="flutter-feature">📝 Quill エディタ</div>
+                <div class="flutter-feature">👁️ A4プレビュー</div>
+                <div class="flutter-feature">🌸 季節テーマ</div>
+                <div class="flutter-feature">📄 PDF出力</div>
+                <div class="flutter-feature">🔐 Firebase認証</div>
+                <div class="flutter-feature">📱 レスポンシブUI</div>
+                <div style="font-size: 10px; margin-top: 10px; opacity: 0.8;">PWA対応</div>
+            </div>
+            
+            <!-- Cloud Run Backend -->
+            <div class="component cloud-run">
+                <div class="cloud-logo">☁️</div>
+                <div style="font-size: 16px; font-weight: bold; margin-bottom: 15px;">Cloud Run</div>
+                <div style="font-size: 12px; font-weight: bold; margin-bottom: 10px;">FastAPI + ADK</div>
+                
+                <div style="font-size: 11px; font-weight: bold; margin: 10px 0 5px 0;">🤖 ADK エージェント</div>
+                <div class="service-item">OrchestratorAgent</div>
+                <div class="service-item">PlannerAgent</div>
+                <div class="service-item">GeneratorAgent</div>
+                
+                <div style="font-size: 11px; font-weight: bold; margin: 10px 0 5px 0;">🛠️ サービス層</div>
+                <div class="service-item">音声認識サービス</div>
+                <div class="service-item">PDF生成サービス</div>
+                <div class="service-item">ニュースレター生成</div>
+                <div class="service-item">WeasyPrint</div>
+            </div>
+            
+            <!-- Vertex AI / Gemini -->
+            <div class="component vertex-ai">
+                <div style="font-size: 30px; margin-bottom: 8px;">🧠</div>
+                <div style="font-size: 14px; font-weight: bold;">Vertex AI</div>
+                <div style="font-size: 18px; font-weight: bold;">Gemini</div>
+                <div style="font-size: 12px;">2.0 Flash</div>
+            </div>
+            
+            <!-- Speech to Text -->
+            <div class="component speech-to-text">
+                <div style="font-size: 24px; margin-bottom: 8px;">🎙️</div>
+                <div style="font-size: 14px; font-weight: bold;">Speech to Text</div>
+                <div style="font-size: 12px;">API V2</div>
+            </div>
+            
+            <!-- ADK Framework -->
+            <div class="component adk-framework">
+                <div style="font-size: 24px; margin-bottom: 8px;">🔧</div>
+                <div style="font-size: 14px; font-weight: bold;">ADK</div>
+                <div style="font-size: 12px;">Agent Framework</div>
+            </div>
+            
+            <!-- LangChain / Google AI Studio -->
+            <div class="component langchain-studio">
+                <div style="font-size: 20px; margin-bottom: 8px;">🔗</div>
+                <div style="font-size: 12px; font-weight: bold;">LangChain</div>
+                <div style="font-size: 12px; font-weight: bold;">Google AI Studio</div>
+                <div style="font-size: 10px; margin-top: 5px;">推論・最適化・詳細・<br>分析・フィードバック実施</div>
+            </div>
+            
+            <!-- Firebase Main -->
+            <div class="component firebase-main">
+                <div style="font-size: 24px; margin-bottom: 5px;">🔥</div>
+                <div style="font-size: 16px; font-weight: bold;">Firebase</div>
+            </div>
+            
+            <!-- Firebase Auth -->
+            <div class="component firebase-auth">
+                <div style="font-size: 16px; margin-bottom: 5px;">🔐</div>
+                <div style="font-size: 11px; font-weight: bold;">認証・認可</div>
+                <div style="font-size: 9px;">Firebase<br>Authentication</div>
+            </div>
+            
+            <!-- Firebase Firestore -->
+            <div class="component firebase-firestore">
+                <div style="font-size: 16px; margin-bottom: 5px;">🗄️</div>
+                <div style="font-size: 11px; font-weight: bold;">DB(NoSQL)アクセス</div>
+                <div style="font-size: 9px;">Firebase<br>Cloud Firestore</div>
+            </div>
+            
+            <!-- Firebase Storage -->
+            <div class="component firebase-storage">
+                <div style="font-size: 16px; margin-bottom: 5px;">💾</div>
+                <div style="font-size: 11px; font-weight: bold;">Storage アクセス</div>
+                <div style="font-size: 9px;">Firebase<br>Cloud Storage</div>
+            </div>
+            
+            <!-- Firebase Logo -->
+            <div class="component firebase-logo-main">
+                <div style="font-size: 30px;">🔥</div>
+                <div style="font-size: 10px; font-weight: bold;">Firebase</div>
+            </div>
+            
+            <!-- Flow Arrows -->
+            <!-- User to Voice Input -->
+            <div class="arrow arrow-vertical" style="top: 200px; left: 148px; height: 30px;"></div>
+            <div class="arrow-head arrow-head-down" style="top: 230px; left: 140px;"></div>
+            
+            <!-- Voice Input to Flutter -->
+            <div class="arrow arrow-horizontal" style="top: 268px; left: 230px; width: 120px;"></div>
+            <div class="arrow-head arrow-head-right" style="top: 260px; left: 350px;"></div>
+            <div class="flow-label" style="top: 245px; left: 270px;">音声入力</div>
+            
+            <!-- Flutter to Cloud Run -->
+            <div class="arrow arrow-horizontal" style="top: 278px; left: 600px; width: 100px;"></div>
+            <div class="arrow-head arrow-head-right" style="top: 270px; left: 700px;"></div>
+            <div class="flow-label" style="top: 255px; left: 630px;">API リクエスト</div>
+            
+            <!-- Cloud Run to Vertex AI -->
+            <div class="arrow arrow-horizontal" style="top: 148px; left: 920px; width: 130px;"></div>
+            <div class="arrow-head arrow-head-right" style="top: 140px; left: 1050px;"></div>
+            <div class="flow-label" style="top: 125px; left: 960px;">AI処理要求</div>
+            
+            <!-- Cloud Run to Speech-to-Text -->
+            <div class="arrow arrow-horizontal" style="top: 218px; left: 920px; width: 130px;"></div>
+            <div class="arrow-head arrow-head-right" style="top: 210px; left: 1050px;"></div>
+            <div class="flow-label" style="top: 195px; left: 960px;">音声認識</div>
+            
+            <!-- Cloud Run to ADK -->
+            <div class="arrow arrow-horizontal" style="top: 328px; left: 920px; width: 130px;"></div>
+            <div class="arrow-head arrow-head-right" style="top: 320px; left: 1050px;"></div>
+            <div class="flow-label" style="top: 305px; left: 960px;">ADK フレームワーク</div>
+            
+            <!-- ADK to LangChain -->
+            <div class="arrow arrow-vertical" style="top: 370px; left: 1148px; height: 30px;"></div>
+            <div class="arrow-head arrow-head-down" style="top: 400px; left: 1140px;"></div>
+            <div class="flow-label" style="top: 375px; left: 1095px;">推論・詳細・<br>分析・フィードバック実施</div>
+            
+            <!-- Cloud Run to Firebase -->
+            <div class="arrow arrow-horizontal" style="top: 458px; left: 920px; width: 130px;"></div>
+            <div class="arrow-head arrow-head-right" style="top: 450px; left: 1050px;"></div>
+            <div class="flow-label" style="top: 435px; left: 960px;">データ保存</div>
+            
+            <!-- Firebase connections -->
+            <div class="arrow arrow-vertical" style="top: 610px; left: 1048px; height: 20px;"></div>
+            <div class="arrow-head arrow-head-down" style="top: 630px; left: 1040px;"></div>
+            
+            <div class="arrow arrow-vertical" style="top: 610px; left: 1168px; height: 20px;"></div>
+            <div class="arrow-head arrow-head-down" style="top: 630px; left: 1160px;"></div>
+            
+            <div class="arrow arrow-vertical" style="top: 700px; left: 1108px; height: 20px;"></div>
+            <div class="arrow-head arrow-head-down" style="top: 720px; left: 1100px;"></div>
+            
+            <!-- Performance Box -->
+            <div class="performance-box">
+                <div class="performance-title">⚡ 処理時間の劇的短縮</div>
+                <div class="performance-text">
+                    従来: 2-3時間 → AI活用: 約1分<br>
+                    音声→AI→HTML→PDF の完全自動化<br>
+                    教師の負担を大幅に軽減
+                </div>
+            </div>
+            
+            <!-- Tech Stack Box -->
+            <div class="tech-stack-box">
+                <div class="performance-title">🛠️ 技術スタック</div>
+                <div class="performance-text">
+                    フロントエンド: Flutter Web (PWA) + Quill.js WYSIWYG エディタ<br>
+                    バックエンド: FastAPI + Google ADK + WeasyPrint<br>
+                    AI/ML: Vertex AI Gemini 2.0 Flash + Speech-to-Text V2 + LangChain<br>
+                    インフラ: Google Cloud Run + Firebase (Auth, Firestore, Storage)
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
