@@ -108,9 +108,10 @@ class GeneratorAgent(Agent):
 
         # HTMLを検証
         validation_result = await self.call_tool("html_validator", html=html)
+        audit_data = validation_result or {}
 
         # 検証結果をクライアントにストリーミング
-        await ctx.emit({"type": "audit", **validation_result})
+        await ctx.emit({"type": "audit", **audit_data})
 
         # 生成したHTMLをアーティファクトとして保存
         ctx.save_artifact("newsletter.html", html.encode("utf-8"))

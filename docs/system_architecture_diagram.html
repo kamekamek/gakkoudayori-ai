@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学校だよりAI システムアーキテクト図</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+        }
+
+        .title {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .main-title {
+            font-size: 32px;
+            font-weight: bold;
+            color: #ff6b9d;
+            margin: 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .subtitle {
+            font-size: 24px;
+            color: #333;
+            margin: 10px 0;
+            font-weight: normal;
+        }
+
+        .architecture {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            gap: 30px;
+            align-items: center;
+            margin-top: 30px;
+        }
+
+        .section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .component {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            text-align: center;
+            min-width: 180px;
+            border: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .component:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+        }
+
+        .flutter {
+            border-color: #42a5f5;
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+        }
+
+        .cloud-run {
+            border-color: #4285f4;
+            background: linear-gradient(135deg, #e8f0fe 0%, #d2e3fc 100%);
+        }
+
+        .adk {
+            border-color: #34a853;
+            background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%);
+        }
+
+        .gemini {
+            border-color: #fbbc04;
+            background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
+        }
+
+        .firebase {
+            border-color: #ff6f00;
+            background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+        }
+
+        .speech {
+            border-color: #9c27b0;
+            background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+        }
+
+        .logo {
+            width: 60px;
+            height: 60px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+        }
+
+        .component-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .component-desc {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        .arrow {
+            color: #4caf50;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .arrow-right {
+            transform: rotate(0deg);
+        }
+
+        .arrow-down {
+            transform: rotate(90deg);
+        }
+
+        .cloud-section {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 20px;
+            padding: 30px;
+            position: relative;
+            border: 2px dashed #4285f4;
+        }
+
+        .cloud-label {
+            position: absolute;
+            top: -15px;
+            left: 20px;
+            background: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #4285f4;
+            border: 2px solid #4285f4;
+        }
+
+        .adk-section {
+            background: linear-gradient(135deg, #f1f8e9 0%, #dcedc8 100%);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 10px 0;
+            border: 2px solid #8bc34a;
+        }
+
+        .adk-label {
+            font-size: 14px;
+            font-weight: bold;
+            color: #689f38;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .agents-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .agent {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            text-align: center;
+            border: 2px solid #8bc34a;
+        }
+
+        .tools-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .tool {
+            background: #e8f5e8;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 11px;
+            color: #2e7d32;
+            border: 1px solid #4caf50;
+        }
+
+        .workflow-arrow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #4caf50;
+        }
+
+        .user-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .device {
+            background: linear-gradient(135deg, #2e7d32 0%, #4caf50 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            min-width: 140px;
+        }
+
+        .device-icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+
+        .storage-section {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .storage-connection {
+            color: #ff9800;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .legend {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            border: 1px solid #dee2e6;
+        }
+
+        .legend-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .legend-items {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        @media (max-width: 1200px) {
+            .architecture {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .agents-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title">
+            <h1 class="main-title">🌸 学校だよりAI</h1>
+            <h2 class="subtitle">システムアーキテクト図</h2>
+        </div>
+
+        <div class="architecture">
+            <!-- Left: User Section -->
+            <div class="section">
+                <div class="device">
+                    <div class="device-icon">📱</div>
+                    <div class="component-name">Flutter Web</div>
+                    <div class="component-desc">PWA対応<br>教師用インターフェース</div>
+                </div>
+                
+                <div class="workflow-arrow">⬇</div>
+                
+                <div class="component speech">
+                    <div class="logo">🎤</div>
+                    <div class="component-name">音声入力</div>
+                    <div class="component-desc">MediaRecorder API<br>WebRTC音声録音</div>
+                </div>
+            </div>
+
+            <!-- Center: Cloud Run + ADK Section -->
+            <div class="section">
+                <div class="cloud-section">
+                    <div class="cloud-label">Google Cloud Platform</div>
+                    
+                    <div class="component cloud-run">
+                        <div class="logo">⚡</div>
+                        <div class="component-name">Cloud Run</div>
+                        <div class="component-desc">FastAPI + ADK Server<br>スケーラブル実行環境</div>
+                    </div>
+
+                    <div class="workflow-arrow">⬇</div>
+
+                    <div class="adk-section">
+                        <div class="adk-label">🤖 Google ADK マルチエージェント</div>
+                        
+                        <div class="agents-grid">
+                            <div class="agent">
+                                <div style="font-weight: bold; color: #2e7d32;">Orchestrator</div>
+                                <div style="font-size: 11px; color: #666;">ワークフロー制御</div>
+                            </div>
+                            
+                            <div class="agent">
+                                <div style="font-weight: bold; color: #2e7d32;">Planner</div>
+                                <div style="font-size: 11px; color: #666;">対話・計画立案</div>
+                            </div>
+                        </div>
+
+                        <div class="agent" style="margin: 0 auto; max-width: 200px;">
+                            <div style="font-weight: bold; color: #2e7d32;">Generator</div>
+                            <div style="font-size: 11px; color: #666;">HTML通信生成</div>
+                        </div>
+
+                        <div class="tools-section">
+                            <div class="tool">Speech-to-Text</div>
+                            <div class="tool">User Dict</div>
+                            <div class="tool">HTML Template</div>
+                            <div class="tool">PDF Export</div>
+                            <div class="tool">HTML Validator</div>
+                        </div>
+                    </div>
+
+                    <div class="workflow-arrow">⬇</div>
+
+                    <div class="component gemini">
+                        <div class="logo">✨</div>
+                        <div class="component-name">Vertex AI Gemini</div>
+                        <div class="component-desc">文章リライト・整形<br>グラフィックレコーディング風</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Storage & External Services -->
+            <div class="section">
+                <div class="storage-section">
+                    <div class="component firebase">
+                        <div class="logo">🔥</div>
+                        <div class="component-name">Firebase</div>
+                        <div class="component-desc">Authentication<br>ユーザー管理</div>
+                    </div>
+
+                    <div class="storage-connection">認証・認可</div>
+
+                    <div class="component firebase">
+                        <div class="logo">📄</div>
+                        <div class="component-name">Cloud Firestore</div>
+                        <div class="component-desc">通信データ保存<br>NoSQLデータベース</div>
+                    </div>
+
+                    <div class="storage-connection">ストレージアクセス</div>
+
+                    <div class="component firebase">
+                        <div class="logo">💾</div>
+                        <div class="component-name">Cloud Storage</div>
+                        <div class="component-desc">PDF・画像ファイル<br>オブジェクトストレージ</div>
+                    </div>
+                </div>
+
+                <div class="workflow-arrow">⬇</div>
+
+                <div class="component">
+                    <div class="logo">📚</div>
+                    <div class="component-name">Google Classroom</div>
+                    <div class="component-desc">通信配布<br>保護者・生徒への配信</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Flow Arrows -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin: 20px 0; color: #4caf50; font-weight: bold;">
+            <div>音声入力</div>
+            <div>→</div>
+            <div>AI処理</div>
+            <div>→</div>
+            <div>通信生成</div>
+            <div>→</div>
+            <div>配布・保存</div>
+        </div>
+
+        <!-- Legend -->
+        <div class="legend">
+            <div class="legend-title">📋 技術スタック詳細</div>
+            <div class="legend-items">
+                <div class="legend-item">
+                    <div class="legend-color flutter"></div>
+                    <span><strong>Frontend:</strong> Flutter Web (PWA), Provider, GoRouter</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color cloud-run"></div>
+                    <span><strong>Backend:</strong> FastAPI, Google ADK, Cloud Run</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color adk"></div>
+                    <span><strong>AI Engine:</strong> Multi-Agent System (ADK)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color gemini"></div>
+                    <span><strong>LLM:</strong> Vertex AI Gemini 2.5 Flash</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color firebase"></div>
+                    <span><strong>Infrastructure:</strong> Firebase Auth/Firestore/Storage</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color speech"></div>
+                    <span><strong>Voice:</strong> Google Speech-to-Text API</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Features -->
+        <div style="margin-top: 30px; text-align: center; padding: 20px; background: linear-gradient(135deg, #ff6b9d 0%, #ffa726 100%); border-radius: 15px; color: white;">
+            <h3 style="margin: 0 0 10px 0;">🎯 主要特徴</h3>
+            <div style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 20px; font-size: 14px;">
+                <div><strong>⚡ 高速処理:</strong> 2分以内で通信完成</div>
+                <div><strong>🤖 マルチエージェント:</strong> 専門化されたAI協調</div>
+                <div><strong>🎨 自動デザイン:</strong> グラレコ風レイアウト</div>
+                <div><strong>📱 PWA対応:</strong> オフライン編集可能</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

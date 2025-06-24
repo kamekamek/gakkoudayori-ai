@@ -206,3 +206,62 @@ async def delete_session(session_id: str):
     except Exception as e:
         logger.error(f"Error in delete_session: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/chat/stream", summary="ADKエージェントとストリーミングチャット")
+async def chat_stream(request: ChatRequest, http_request: Request):
+    """
+    Server-Sent Events (SSE) を使用して、ADKエージェントからの応答をストリーミングします。
+    """
+    runner: Runner = getattr(http_request.app.state, 'adk_runner', None)
+    if not runner:
+        logger.error("ADK Runner not found in app state.")
+        raise HTTPException(status_code=503, detail="ADK Runner is not available.")
+
+    session_id = request.session_id or str(uuid.uuid4())
+    user_id = request.user_id or "default_user"
+    logger.info(f"Received chat stream request for session: {session_id}, user: {user_id}")
+
+
+    async def event_generator():
+        """SSEイベントを生成するジェネレータ"""
+        logger.info(f"Starting event generator for session: {session_id}")
+        try:
+            # ADK Runnerの非同期実行を開始
+            message_content = genai_types.Content(parts=[genai_types.Part(text=request.message)])
+            events_async = runner.run_async(
+                session_id=session_id,
+                user_id=user_id,
+                new_message=message_content,
+            )
+            logger.info(f"ADK runner.run_async called for session: {session_id}")
+
+            # イベントストリームをループし、クライアントに送信
+            async for event in events_async:
+                logger.debug(f"SSE Event for session {session_id}: {event}")
+                if hasattr(event, "type") and event.type == "emit":
+                    if hasattr(event, "data") and isinstance(event.data, dict):
+                        # dataがJSONシリアライズ可能であることを確認
+                        try:
+                            json_data = json.dumps(event.data)
+                            yield {
+                                "event": "message",
+                                "data": json_data
+                            }
+                            logger.debug(f"Sent event to client for session {session_id}: {json_data}")
+                        except TypeError as e:
+                            logger.error(f"Failed to serialize event data for SSE: {e} - data: {event.data}")
+
+            logger.info(f"Event stream finished for session: {session_id}")
+
+        except Exception as e:
+            logger.error(f"Agent execution error in session {session_id}: {e}", exc_info=True)
+            error_data = json.dumps({"type": "error", "message": str(e)})
+            yield {
+                "event": "error",
+                "data": error_data
+            }
+        finally:
+            logger.info(f"Closing event generator for session: {session_id}")
+
+
+    return EventSourceResponse(event_generator())
