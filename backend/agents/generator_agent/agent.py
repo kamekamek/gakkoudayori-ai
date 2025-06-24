@@ -5,9 +5,10 @@ from typing import AsyncGenerator
 from google.adk.agents import Agent
 from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events.event import Event
-from google.adk.models.google_ai import Gemini
+from google.adk.models.google_llm import Gemini
+from google.adk.tools import FunctionTool
 
-from backend.agents.tools.html_validator import HtmlValidatorTool
+from backend.agents.tools.html_validator import validate_html
 
 def _load_instruction() -> str:
     """プロンプトファイルを読み込みます。"""
@@ -29,7 +30,7 @@ class GeneratorAgent(Agent):
             model=Gemini(model_name="gemini-1.5-pro-latest"),
             instruction=_load_instruction(),
             description="JSONデータを受け取り、HTML形式の学級通信を生成します。",
-            tools=[HtmlValidatorTool()],
+            tools=[FunctionTool(func=validate_html)],
         )
 
     async def _run_async_impl(
@@ -60,7 +61,7 @@ class GeneratorAgent(Agent):
         await ctx.emit({"type": "html", "html": html})
 
         # 生成されたHTMLを検証
-        validation_result = await self.call_tool("html_validator", html=html)
+        validation_result = await self.call_tool("validate_html", html=html)
         await ctx.emit({"type": "audit", "data": validation_result})
 
         # 生成したHTMLをアーティファクトとして保存

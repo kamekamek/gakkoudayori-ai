@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, File, UploadFile, Form
 from typing import Annotated, Optional
 
-from backend.agents.tools.stt_transcriber import SttTranscriberTool
+from backend.agents.tools.stt_transcriber import transcribe_audio as transcribe_audio_tool
 
 router = APIRouter(
     prefix="/stt",
@@ -29,11 +29,9 @@ async def transcribe_audio(
     if not audio_content:
         raise HTTPException(status_code=400, detail="音声ファイルが空です。")
 
-    tool = SttTranscriberTool()
-    
     # 音声ファイルの情報からエンコーディングやサンプルレートを決定するのが理想的ですが、
     # ここではツール側のデフォルト値に依存します。
-    result = tool._run(
+    result = await transcribe_audio_tool(
         audio_content=audio_content,
         phrase_set_resource=phrase_set_resource
     )

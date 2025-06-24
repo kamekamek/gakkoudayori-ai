@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from backend.agents.tools.classroom_sender import ClassroomSenderTool
+from backend.agents.tools.classroom_sender import post_classroom_announcement
 
 router = APIRouter(
     prefix="/classroom",
@@ -22,9 +22,8 @@ async def post_announcement(req: ClassroomRequest):
     """
     指定されたGoogle Classroomのコースにアナウンスを投稿します。
     """
-    tool = ClassroomSenderTool()
-    # ツールの実行メソッドを呼び出す
-    result = tool._run(
+    # ツール関数を直接呼び出す
+    result = await post_classroom_announcement(
         course_id=req.course_id,
         title=req.title,
         text=req.text

@@ -16,7 +16,7 @@ google-api-python-client = "*"
 google-cloud-speech = "*"
 pdfkit = "*"
 html5lib = "*"
-google-adk = "*"
+google-adk = "^1.4.2"
 
 
 [build-system]

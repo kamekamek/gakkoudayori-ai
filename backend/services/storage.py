@@ -1,35 +1,44 @@
 import os
 import datetime
+import asyncio
 from google.cloud import storage
 
-# 環境変数からバケット名を取得。設定がなければデフォルト値を使用。
-BUCKET_NAME = os.environ.get("GCS_BUCKET_NAME", "gakkoudayori-assets")
+# GCSのクライアントを正しく初期化
+storage_client = storage.Client()
+bucket_name = os.environ.get("GCS_BUCKET_NAME", "gakkoudayori-newsletters")
 
-storage_client = storage.AsyncClient()
-
-async def save_pdf_to_gcs(session_id: str, pdf_content: bytes) -> str:
+def _upload_and_get_url_sync(pdf_bytes: bytes, destination_blob_name: str) -> str:
     """
-    生成されたPDFをGoogle Cloud Storageにアップロードし、署名付きURLを返します。
-
-    Args:
-        session_id: 現在のセッションID。ファイルパスに使用。
-        pdf_content: PDFファイルのバイトデータ。
-
-    Returns:
-        ダウンロード用の署名付きURL。1日間有効。
+    【同期】GCSへアップロードし、署名付きURLを取得する内部関数。
+    ブロッキングI/Oを別スレッドで実行するために使用します。
     """
-    bucket = storage_client.bucket(BUCKET_NAME)
-    blob = bucket.blob(f"generated_pdfs/{session_id}/{datetime.datetime.utcnow().isoformat()}.pdf")
+    bucket = storage_client.bucket(bucket_name)
+    blob = bucket.blob(destination_blob_name)
 
-    await blob.upload_from_string(
-        pdf_content,
-        content_type="application/pdf"
-    )
+    # アップロード処理（ブロッキングI/O）
+    blob.upload_from_string(pdf_bytes, content_type="application/pdf")
 
+    # 署名付きURLの生成（CPU処理）
+    expiration = datetime.timedelta(days=1)
     signed_url = blob.generate_signed_url(
         version="v4",
-        expiration=datetime.timedelta(days=1),
-        method="GET",
+        expiration=expiration,
+        method="GET"
+    )
+    return signed_url
+
+
+async def save_pdf_to_gcs(pdf_bytes: bytes, destination_blob_name: str) -> str:
+    """
+    PDFのバイトデータをGCSに非同期でアップロードし、署名付きURLを返します。
+    """
+    loop = asyncio.get_running_loop()
+    # ブロッキングI/O処理を別スレッドで実行し、イベントループの停止を防ぐ
+    signed_url = await loop.run_in_executor(
+        None,  # デフォルトのThreadPoolExecutorを使用
+        _upload_and_get_url_sync,
+        pdf_bytes,
+        destination_blob_name
     )
     return signed_url
 

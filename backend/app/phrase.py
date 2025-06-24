@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Body
 from pydantic import BaseModel
 from typing import List
 
-from backend.agents.tools.user_dict_register import UserDictRegisterTool
+from backend.agents.tools.user_dict_register import register_user_dictionary
 
 router = APIRouter(
     prefix="/phrase",
@@ -24,8 +24,7 @@ async def register_phrases(req: PhraseRequest):
     """
     音声認識の精度向上のため、ユーザー辞書（フレーズセット）を作成または更新します。
     """
-    tool = UserDictRegisterTool()
-    result = tool._run(
+    result = await register_user_dictionary(
         project_id=req.project_id,
         phrase_set_id=req.phrase_set_id,
         phrases=req.phrases,

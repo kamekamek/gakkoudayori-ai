@@ -4,7 +4,7 @@ from typing import Annotated
 
 # サービスとツールを絶対パスでインポート
 from backend.services import storage, firestore_service
-from backend.agents.tools.pdf_converter import PdfConverterTool
+from backend.agents.tools.pdf_converter import convert_html_to_pdf
 
 # APIRouterインスタンスを作成
 router = APIRouter(
@@ -28,9 +28,7 @@ async def generate_and_save_pdf(req: PdfRequest):
     その後、対応するFirestoreドキュメントにPDFのURLを保存します。
     """
     # 1. HTMLをPDFに変換
-    pdf_tool = PdfConverterTool()
-    # _runメソッドを直接呼び出す
-    pdf_bytes = pdf_tool._run(html_content=req.html_content)
+    pdf_bytes = await convert_html_to_pdf(html_content=req.html_content)
 
     if not pdf_bytes or "PDF変換中にエラーが発生しました" in pdf_bytes.decode('utf-8', errors='ignore'):
         raise HTTPException(

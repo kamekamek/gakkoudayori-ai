@@ -7,7 +7,7 @@ from typing import AsyncGenerator
 from google.adk.agents import Agent
 from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events.event import Event
-from google.adk.models.google_ai import Gemini
+from google.adk.models.google_llm import Gemini
 from google.adk.tools import FunctionTool
 
 
