@@ -72,26 +72,12 @@ poetry run uvicorn app.main:app --reload
     ターミナルで以下のコマンドを実行し、セッションIDを取得します。
 
     ```bash
-    curl -X POST http://127.0.0.1:8000/chat \
-    -H "Content-Type: application/json" \
+    curl -X POST -N -H "Content-Type: application/json" \
     -d '{
-        "session_id": "test-session-123",
+        "session": "user123:session456",
         "message": "/create 5月号"
-    }'
-    ```
-
-    **期待される結果:**
-    ```json
-    {
-      "session_id": "test-session-123"
-    }
-    ```
-
-2.  **イベントストリームを受信**
-    別のターミナルを開き、前のステップで使ったセッションID (`test-session-123`) を使って以下のコマンドを実行します。
-
-    ```bash
-    curl -N http://127.0.0.1:8000/stream/test-session-123
+    }' \
+    http://127.0.0.1:8000/chat
     ```
 
     **期待される結果:**
@@ -99,10 +85,16 @@ poetry run uvicorn app.main:app --reload
 
     ```
     event: message
-    data: {"type": "status", "content": "Planner Agent started..."}
+    data: {"type": "agent_start", "agent_name": "OrchestratorAgent", ...}
 
     event: message
-    data: {"type": "artifact", "name": "outline.json", "content": "..."}
+    data: {"type": "agent_step", "agent_name": "PlannerAgent", ...}
+
+    event: message
+    data: {"type": "artifact_saved", "artifact_name": "outline.json", ...}
+
+    event: message
+    data: {"type": "agent_finish", "agent_name": "PlannerAgent", ...}
 
     ...
     ```
@@ -117,18 +109,18 @@ curl -X POST http://127.0.0.1:8000/pdf/ \
 -H "Content-Type: application/json" \
 -d '{
     "html_content": "<html><body><h1>こんにちは、世界！</h1><p>これはPDFのテストです。</p></body></html>",
-    "user_id": "test-user-001"
+    "session_id": "test-session-123",
+    "document_id": "some-document-id-from-firestore"
 }'
 ```
 
 **期待される結果:**
-生成されたPDFへの署名付きURLと、Firestoreに保存されたドキュメントIDを含むJSONが返されます。
+生成されたPDFへの署名付きURLを含むJSONが返されます。
 
 ```json
 {
   "status": "success",
-  "pdf_url": "https://storage.googleapis.com/...",
-  "firestore_doc_id": "..."
+  "pdf_url": "https://storage.googleapis.com/..."
 }
 ```
 
@@ -166,8 +158,8 @@ curl -X POST http://127.0.0.1:8000/classroom/ \
 
 ```bash
 curl -X POST http://127.0.0.1:8000/stt/ \
--F "file=@/path/to/your/test.wav" \
--F "phrase_set_id=custom_words_for_test"
+-F "audio_file=@/path/to/your/test.wav" \
+-F "phrase_set_resource=projects/YOUR_PROJECT_ID/locations/global/phraseSets/YOUR_PHRASE_SET_ID"
 ```
 
 **期待される結果:**
@@ -175,6 +167,7 @@ curl -X POST http://127.0.0.1:8000/stt/ \
 
 ```json
 {
+  "status": "success",
   "transcript": "こんにちは、これは音声認識のテストです。"
 }
 ```
@@ -188,6 +181,7 @@ curl -X POST http://127.0.0.1:8000/stt/ \
 curl -X POST http://127.0.0.1:8000/phrase/ \
 -H "Content-Type: application/json" \
 -d '{
+    "project_id": "your-gcp-project-id",
     "phrase_set_id": "my-custom-phrases",
     "phrases": ["令和小学校", "AIアシスタント", "学級通信"]
 }'

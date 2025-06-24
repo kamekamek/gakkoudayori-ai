@@ -1,11 +1,12 @@
 import sys
 import os
-from fastapi import FastAPI, Request, UploadFile, File
+from fastapi import FastAPI, Request, UploadFile, File, HTTPException
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 import asyncio
 import json
 from typing import AsyncGenerator, Any
+import google.genai.types as genai_types
 
 # REMAKE.md の設計に基づき、ADK Runner を FastAPI と連携させます。
 from google.adk.runners import Runner
@@ -15,7 +16,11 @@ from backend.app import pdf as pdf_api
 from backend.app import classroom as classroom_api
 from backend.app import stt as stt_api
 from backend.app import phrase as phrase_api
-from backend.agents.orchestrator_agent.agent import create_orchestrator_agent
+from agents.orchestrator_agent.agent import create_orchestrator_agent
+from agents.tools.pdf_converter import convert_html_to_pdf
+from agents.tools.classroom_sender import post_to_classroom
+from agents.tools.stt_transcriber import transcribe_audio
+from agents.tools.user_dict_register import register_user_dictionary
 
 
 app = FastAPI(
@@ -37,22 +42,36 @@ runner = Runner(
 )
 
 class ChatIn(BaseModel):
-    session: str
+    session: str  # "user_id:session_id"
     message: str
 
 @app.post("/chat")
 async def chat(req: ChatIn):
-    """チャットリクエストを受け付け、エージェントの処理を開始します。"""
-    await runner.enqueue(req.session, req.message)
-    return {"session": req.session}
+    try:
+        user_id, session_id = req.session.split(":", 1)
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid session format. Expected 'user_id:session_id'",
+        )
 
-
-@app.get("/stream/{sid}")
-async def stream(req: Request, sid: str):
-    """サーバーセントイベント(SSE)でエージェントの生成物やイベントをストリーミングします。"""
     async def gen():
-        async for ev in runner.emit_queue(sid):
-            # ADKからのイベントをSSE形式に変換
-            yield {"data": ev.json(), "event": "message"}
-            
+        try:
+            # ADKのrun_asyncを呼び出してイベントストリームを取得
+            async for event in runner.run_async(
+                user_id=user_id,
+                session_id=session_id,
+                new_message=genai_types.to_content(req.message),
+            ):
+                yield {"data": event.model_dump_json(), "event": "message"}
+        except Exception as e:
+            # エラーハンドリング
+            error_message = {"error": str(e), "type": "error"}
+            yield {"data": json.dumps(error_message), "event": "error"}
+            print(f"Error during streaming: {e}") # Log error to server console
+
     return EventSourceResponse(gen(), ping=15)
+
+
+class PdfIn(BaseModel):
+    html_content: str
