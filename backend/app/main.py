@@ -102,6 +102,8 @@ app.add_middleware(
     allow_origins=[
         "https://gakkoudayori-ai.web.app",
         "https://gakkoudayori-ai--staging.web.app",
+        "https://gakkoudayori-ai--staging-gwvqcn37.web.app",
+        "*",  # ステージング環境用の緩い設定
     ],
     allow_origin_regex=f"({preview_origin_pattern}|{staging_origin_pattern}|{local_origin_pattern})",
     allow_credentials=True,
