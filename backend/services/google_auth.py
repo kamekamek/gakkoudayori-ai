@@ -1,6 +1,7 @@
 import google.auth
 from fastapi import HTTPException
 
+
 def get_credentials():
     """
     Google Cloudのデフォルト認証情報を取得します。
@@ -21,4 +22,4 @@ def get_credentials():
         raise HTTPException(
             status_code=500,
             detail=f"Google認証情報の取得に失敗しました: {str(e)}"
-        ) 
+        ) from e

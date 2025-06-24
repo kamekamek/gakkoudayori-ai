@@ -1,5 +1,6 @@
-from google.cloud import firestore
 from datetime import datetime
+
+from google.cloud import firestore
 
 # Firestoreクライアントを初期化
 # このファイルがインポートされると、GCPの認証情報が環境変数から自動的に読み込まれます。

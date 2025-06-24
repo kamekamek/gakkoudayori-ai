@@ -1,10 +1,12 @@
 from typing import AsyncGenerator
-from google.adk.agents import Agent, SequentialAgent
+
+from google.adk.agents import Agent
 from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events.event import Event
-from google.adk.models.google_llm import Gemini
-from backend.agents.planner_agent.agent import create_planner_agent
+
 from backend.agents.generator_agent.agent import create_generator_agent
+from backend.agents.planner_agent.agent import create_planner_agent
+
 
 class NewsletterOrchestrator(Agent):
     """
@@ -16,33 +18,34 @@ class NewsletterOrchestrator(Agent):
             name="orchestrator_agent",
             description="学級通信の作成プロセス全体を管理し、サブエージェントにタスクを委任します。",
         )
-        self.planner_agent = create_planner_agent()
-        self.generator_agent = create_generator_agent()
+        # サブエージェントは _run_async_impl 内で必要に応じて作成します
 
     async def _run_async_impl(self, ctx: InvocationContext) -> AsyncGenerator[Event, None]:
         """
-        エージェントの実行ロジック。
-        ユーザーのメッセージに応じて、PlannerまたはGeneratorに処理を移譲します。
+        オーケストレーターのメイン処理。
+        ユーザーのメッセージに基づいて、適切なサブエージェントにタスクを委任します。
         """
-        # 親の _run_async_impl は呼び出さず、独自のディスパッチロジックを実装
-        # ユーザーの最新のメッセージを取得
-        user_message = ctx.get_history()[-1].content.parts[0].text.lower()
+        user_message = ctx.new_message.parts[0].text.lower()
 
-        # 今後、より複雑なルーティングロジックをここに追加できる
-        if ctx.artifact_exists("outline.json"):
-            await ctx.emit({"type": "info", "message": "構成案が見つかったため、HTML生成エージェントを呼び出します。"})
-            # ToDo: GeneratorAgentに処理を委譲するロジックを実装
-            # await ctx.transfer_to_agent(self.generator_agent.name, ctx)
-            pass
+        # ユーザーの意図に基づいてエージェントを選択
+        if any(keyword in user_message for keyword in ["計画", "構成", "プラン", "企画"]):
+            # 企画・計画段階 → PlannerAgent
+            planner_agent = create_planner_agent()
+            async for event in planner_agent._run_async_impl(ctx):
+                yield event
+        elif any(keyword in user_message for keyword in ["生成", "作成", "制作", "書いて"]):
+            # 生成段階 → GeneratorAgent
+            generator_agent = create_generator_agent()
+            async for event in generator_agent._run_async_impl(ctx):
+                yield event
         else:
-            # 構成案がなければPlannerAgentに委譲
-            await ctx.emit({"type": "info", "message": "構成案を作成するため、対話型プランナーを呼び出します。"})
-            # ToDo: PlannerAgentに処理を委譲するロジックを実装
-            # await ctx.transfer_to_agent(self.planner_agent.name, ctx)
-            async for event in self.planner_agent.run_async(ctx=ctx):
+            # デフォルトは計画段階から開始
+            planner_agent = create_planner_agent()
+            async for event in planner_agent._run_async_impl(ctx):
                 yield event
 
-
-def create_orchestrator_agent() -> Agent:
-    """OrchestratorAgentのインスタンスを生成するファクトリ関数。"""
+def create_orchestrator_agent() -> NewsletterOrchestrator:
+    """
+    NewsletterOrchestratorのインスタンスを作成して返します。
+    """
     return NewsletterOrchestrator()

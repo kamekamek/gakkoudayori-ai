@@ -1,6 +1,6 @@
 # 学校だよりAI - 環境管理Makefile
 
-.PHONY: help dev prod staging build-dev build-prod deploy deploy-frontend deploy-backend deploy-all deploy-staging deploy-preview ci-setup test lint format reset-dev backend-dev backend-test backend-setup
+.PHONY: help dev prod staging build-dev build-prod deploy deploy-frontend deploy-backend deploy-all deploy-staging deploy-preview ci-setup test lint format reset-dev backend-dev backend-test backend-setup check-backend
 
 # デフォルトターゲット
 help:
@@ -74,7 +74,7 @@ test:
 	@echo "📱 Flutterテスト..."
 	cd frontend && flutter test
 	@echo "🐍 Pythonテスト..."
-	cd backend/app && python -m pytest tests/ -v || echo "⚠️ テストファイルが見つかりません"
+	cd backend && poetry run pytest tests/ -v || echo "⚠️ テストファイルが見つかりません"
 
 # 静的解析
 lint:
@@ -82,7 +82,20 @@ lint:
 	@echo "📱 Flutter解析..."
 	cd frontend && flutter analyze
 	@echo "🐍 Python解析..."
-	cd backend/app && python -m flake8 . --max-line-length=120 || echo "⚠️ flake8がインストールされていません"
+	cd backend && poetry run ruff check . || echo "⚠️ ruffがインストールされていません"
+	cd backend && poetry run mypy . || echo "⚠️ mypyがインストールされていません"
+
+# 事前チェック（推奨）
+check-backend:
+	@echo "🔍 バックエンド事前チェック実行中..."
+	cd backend && poetry install --with dev --no-root
+	@echo "📝 Python構文チェック..."
+	cd backend && poetry run python -m py_compile app/main.py app/pdf.py app/classroom.py app/stt.py app/phrase.py
+	@echo "🔍 静的解析..."
+	cd backend && poetry run ruff check . || echo "⚠️ ruffチェック完了（警告があります）"
+	@echo "🧪 テスト実行..."
+	cd backend && poetry run pytest tests/ -v || echo "⚠️ テストファイルが見つかりません"
+	@echo "✅ バックエンド事前チェック完了"
 
 # コードフォーマット
 format:
@@ -90,7 +103,8 @@ format:
 	@echo "📱 Flutterフォーマット..."
 	cd frontend && dart format .
 	@echo "🐍 Pythonフォーマット..."
-	cd backend/app && python -m black . || echo "⚠️ blackがインストールされていません"
+	cd backend && poetry run black .
+	cd backend && poetry run isort .
 
 # CI/CD環境セットアップ
 ci-setup:

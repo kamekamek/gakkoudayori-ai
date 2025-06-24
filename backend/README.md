@@ -51,6 +51,61 @@ brew install wkhtmltopdf
    ```
    `--reload`フラグは、開発中にコードの変更を自動的にリロードします。
 
+## 🔍 事前チェック（重要）
+
+**コードを実行する前に必ず以下のチェックを実行してください：**
+
+### 1. 全体チェック（推奨）
+```bash
+# プロジェクトルートから実行
+make check-backend
+```
+
+### 2. 個別チェック
+```bash
+cd backend
+
+# 開発用依存関係のインストール
+poetry install --with dev
+
+# Import チェック（最も重要）
+poetry run python -c "from app.main import app; print('✅ Import成功')"
+
+# 静的解析
+poetry run ruff check .
+
+# 型チェック
+poetry run mypy .
+
+# テスト実行
+poetry run pytest tests/ -v
+```
+
+### 3. コードフォーマット
+```bash
+# 自動フォーマット
+poetry run black .
+poetry run isort .
+
+# フォーマットチェック
+poetry run black --check .
+poetry run isort --check-only .
+```
+
+## エラーの種類と対策
+
+### Import エラー
+- **原因**: モジュールパスの誤り、依存関係の不足
+- **対策**: `poetry run python -c "from app.main import app"` で事前確認
+
+### 型エラー
+- **原因**: 型注針の誤り、型の不整合
+- **対策**: `poetry run mypy .` で事前確認
+
+### スタイルエラー
+- **原因**: コーディング規約違反
+- **対策**: `poetry run ruff check .` で事前確認
+
 ## APIドキュメント
 
 サーバーを起動後、以下のURLにアクセスすると、Swagger UIでAPIドキュメントの確認とテストができます。

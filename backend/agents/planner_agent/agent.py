@@ -1,7 +1,7 @@
-import os
 import json
-from pathlib import Path
+import os
 from datetime import datetime
+from pathlib import Path
 from typing import AsyncGenerator
 
 from google.adk.agents import Agent
@@ -57,7 +57,7 @@ class PlannerAgent(Agent):
         if last_message.author != self.model.name:
             # 最後のメッセージがLLMのものでなければ何もしない
             return
-            
+
         llm_response_text = last_message.content.parts[0].text
 
         # LLMの応答からJSON部分を抽出
@@ -69,7 +69,7 @@ class PlannerAgent(Agent):
             elif '```' in json_str:
                 # 'json'指定子がない場合も考慮
                 json_str = json_str.split('```', 1)[1].rsplit('```', 1)[0]
-            
+
             # 応答に含まれる最初の'{'から最後の'}'までをJSONとみなす
             json_start = json_str.find('{')
             json_end = json_str.rfind('}') + 1

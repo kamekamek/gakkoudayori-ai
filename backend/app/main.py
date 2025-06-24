@@ -1,22 +1,19 @@
-import sys
-import os
-from fastapi import FastAPI, Request, UploadFile, File, HTTPException
-from pydantic import BaseModel
-from sse_starlette.sse import EventSourceResponse
-import asyncio
 import json
-from typing import AsyncGenerator, Any
+
 import google.genai.types as genai_types
+from fastapi import FastAPI, HTTPException
 
 # REMAKE.md の設計に基づき、ADK Runner を FastAPI と連携させます。
 from google.adk.runners import Runner
 from google.adk.sessions.in_memory_session_service import InMemorySessionService
+from pydantic import BaseModel
+from sse_starlette.sse import EventSourceResponse
 
-from app import pdf as pdf_api
-from app import classroom as classroom_api
-from app import stt as stt_api
-from app import phrase as phrase_api
 from agents.orchestrator_agent.agent import create_orchestrator_agent
+from app import classroom as classroom_api
+from app import pdf as pdf_api
+from app import phrase as phrase_api
+from app import stt as stt_api
 
 # 以下のツールは直接APIとして実装されたため、main.pyからは不要
 # from agents.tools.pdf_converter import convert_html_to_pdf

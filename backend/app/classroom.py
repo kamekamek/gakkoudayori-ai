@@ -1,11 +1,10 @@
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
-from typing import List
 
-from services.google_auth import get_credentials
-
+from fastapi import APIRouter, Depends, HTTPException
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from pydantic import BaseModel
+
+from services.google_auth import get_credentials
 
 router = APIRouter(
     prefix="/classroom",

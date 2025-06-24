@@ -1,6 +1,6 @@
-from fastapi import APIRouter, HTTPException, File, UploadFile, Form
 from typing import Annotated, Optional
 
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from google.cloud import speech
 
 router = APIRouter(

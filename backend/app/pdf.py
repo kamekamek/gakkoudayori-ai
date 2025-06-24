@@ -1,10 +1,10 @@
-from fastapi import APIRouter, HTTPException, Body, Depends
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Annotated
 
-# サービスとツールを絶対パスでインポート
-from backend.services import storage, firestore_service
-from backend.agents.tools.pdf_converter import convert_html_to_pdf
+from agents.tools.pdf_converter import convert_html_to_pdf
+
+# サービスとツールを相対パスでインポート
+from services import firestore_service, storage
 
 # APIRouterインスタンスを作成
 router = APIRouter(
@@ -18,7 +18,7 @@ class PdfRequest(BaseModel):
     document_id: str # Firestoreの更新対象ドキュメントID
 
 @router.post(
-    "/", 
+    "/",
     summary="HTMLからPDFを生成して保存",
     response_description="生成されたPDFへの署名付きURL"
 )
@@ -32,7 +32,7 @@ async def generate_and_save_pdf(req: PdfRequest):
 
     if pdf_bytes is None:
         raise HTTPException(
-            status_code=500, 
+            status_code=500,
             detail="HTMLからPDFへの変換に失敗しました。"
         )
 

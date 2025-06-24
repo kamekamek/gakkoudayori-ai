@@ -1,6 +1,8 @@
-import pdfkit
 import asyncio
 from typing import Optional
+
+import pdfkit
+
 
 async def convert_html_to_pdf(html_content: str) -> Optional[bytes]:
     """
@@ -28,4 +30,4 @@ async def convert_html_to_pdf(html_content: str) -> Optional[bytes]:
     except Exception as e:
         # エラーをログに出力
         print(f"PDF変換中にエラーが発生しました: {e}")
-        return None 
+        return None

@@ -10,6 +10,7 @@ from google.adk.tools import FunctionTool
 
 from backend.agents.tools.html_validator import validate_html
 
+
 def _load_instruction() -> str:
     """プロンプトファイルを読み込みます。"""
     current_dir = Path(os.path.dirname(__file__))
@@ -57,7 +58,7 @@ class GeneratorAgent(Agent):
             html = html[7:]
         if html.endswith("```"):
             html = html[:-3]
-        
+
         await ctx.emit({"type": "html", "html": html})
 
         # 生成されたHTMLを検証

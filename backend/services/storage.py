@@ -1,6 +1,7 @@
-import os
-import datetime
 import asyncio
+import datetime
+import os
+
 from google.cloud import storage
 
 # GCSのクライアントを正しく初期化
@@ -54,7 +55,7 @@ async def upload_image_to_gcs(session_id: str, image_content: bytes, filename: s
     Returns:
         画像の公開URL。
     """
-    bucket = storage_client.bucket(BUCKET_NAME)
+    bucket = storage_client.bucket(bucket_name)
     # ファイル名が重複しないように、セッションIDとタイムスタンプをパスに含める
     blob = bucket.blob(f"user_images/{session_id}/{datetime.datetime.utcnow().isoformat()}_{filename}")
 
@@ -63,6 +64,6 @@ async def upload_image_to_gcs(session_id: str, image_content: bytes, filename: s
         image_content,
         content_type="image/jpeg" # 仮
     )
-    
+
     # バケットが公開設定されていることを前提とします
     return blob.public_url
