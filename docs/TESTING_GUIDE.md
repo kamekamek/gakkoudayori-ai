@@ -1,6 +1,33 @@
 # バックエンド テスト手順書
 
-このドキュメントは、再構築されたバックエンドアプリケーションの動作確認とテストの手順を説明します。
+このドキュメントは、Google ADK v1.0を使用して再構築されたバックエンドアプリケーションの動作確認とテストの手順を説明します。
+
+## 0. 事前チェック（重要）
+
+**テストを実行する前に、必ず以下の事前チェックを実行してください：**
+
+```bash
+# プロジェクトルートから実行
+make check-backend
+```
+
+または個別に：
+
+```bash
+cd backend
+
+# 開発用依存関係のインストール
+poetry install --with dev --no-root
+
+# 構文チェック
+poetry run python -m py_compile app/main.py app/pdf.py app/classroom.py app/stt.py app/phrase.py
+
+# 静的解析
+poetry run ruff check .
+
+# 自動修正（必要に応じて）
+poetry run ruff check . --fix
+```
 
 ## 1. 事前準備
 
@@ -17,9 +44,11 @@ cd new-agent/backend
 poetry install --no-root
 ```
 
-### 1.2. `wkhtmltopdf` のインストール
+### 1.2. 依存ツールのインストール
 
-PDF変換機能（`/pdf`エンドポイント）は `wkhtmltopdf` に依存しています。お使いのOSに合わせてインストールしてください。
+#### `wkhtmltopdf` (PDF変換用)
+
+PDF変換機能（`/pdf`エンドポイント）は `wkhtmltopdf` に依存しています。
 
 **macOS (Homebrewを使用):**
 ```bash
@@ -31,20 +60,30 @@ brew install --cask wkhtmltopdf
 sudo apt-get install wkhtmltopdf
 ```
 
-### 1.3. 環境変数の設定
+### 1.3. Google Cloud認証の設定
+
+Google ADKとGoogle Cloudサービスを使用するため、認証情報を設定します。
+
+#### 方法1: アプリケーションデフォルト認証（推奨）
+```bash
+gcloud auth application-default login
+```
+
+#### 方法2: サービスアカウント認証
+```bash
+export GOOGLE_APPLICATION_CREDENTIALS="/path/to/your/service-account-file.json"
+```
+
+### 1.4. 環境変数の設定
 
 プロジェクトのルートディレクトリに `.env` ファイルを作成し、必要な環境変数を設定します。
 
 ```bash
 # new-agent/.env
 GOOGLE_API_KEY="your_google_api_key_here"
-GOOGLE_APPLICATION_CREDENTIALS="/path/to/your/service-account-file.json"
-CLASSROOM_SUBJECT="（テスト）学級通信"
+GOOGLE_CLOUD_PROJECT="your-gcp-project-id"
+GCS_BUCKET_NAME="your-gcs-bucket-name"
 ```
-
-- `GOOGLE_API_KEY`: Google CloudプロジェクトのAPIキー。
-- `GOOGLE_APPLICATION_CREDENTIALS`: Google Cloudサービスアカウントの認証情報（JSONファイル）への絶対パス。
-- `CLASSROOM_SUBJECT`: Google Classroomに投稿する際のデフォルトの件名。
 
 ## 2. サーバーの起動
 
@@ -52,109 +91,103 @@ CLASSROOM_SUBJECT="（テスト）学級通信"
 
 ```bash
 cd backend
-poetry run uvicorn app.main:app --reload
+poetry run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-サーバーが起動すると、コンソールに以下のようなログが表示されます。
-`Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)`
+サーバーが起動すると、コンソールに以下のようなログが表示されます：
+```
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [xxxxx] using WatchFiles
+```
 
-## 3. APIエンドポイントのテスト
+## 3. APIドキュメントの確認
 
-`curl` コマンドを使用して各APIエンドポイントの動作を確認します。
+サーバー起動後、以下のURLでSwagger UIを確認できます：
+- **Swagger UI:** http://127.0.0.1:8000/docs
+- **ReDoc:** http://127.0.0.1:8000/redoc
 
-### 3.1. `/chat` 及び `/stream` (AIチャット機能)
+## 4. APIエンドポイントのテスト
 
-このテストは、AIエージェントの（現在のモック）動作とSSEによるストリーミングを確認します。
+### 4.1. `/chat` (Google ADK Agent チャット機能)
 
-**手順:**
-
-1.  **チャットセッションを開始**
-    ターミナルで以下のコマンドを実行し、セッションIDを取得します。
-
-    ```bash
-    curl -X POST -N -H "Content-Type: application/json" \
-    -d '{
-        "session": "user123:session456",
-        "message": "/create 5月号"
-    }' \
-    http://127.0.0.1:8000/chat
-    ```
-
-    **期待される結果:**
-    AIエージェントの処理ステップに応じたSSEイベントが順次表示されます。最終的に `{"type": "complete"}` を含むイベントが流れてきたらストリームが閉じます。
-
-    ```
-    event: message
-    data: {"type": "agent_start", "agent_name": "OrchestratorAgent", ...}
-
-    event: message
-    data: {"type": "agent_step", "agent_name": "PlannerAgent", ...}
-
-    event: message
-    data: {"type": "artifact_saved", "artifact_name": "outline.json", ...}
-
-    event: message
-    data: {"type": "agent_finish", "agent_name": "PlannerAgent", ...}
-
-    ...
-    ```
-
-### 3.2. `/pdf` (HTMLからPDFへの変換)
+Google ADKの`Runner`を使用したマルチエージェントシステムのテストです。
 
 **手順:**
-HTMLコンテンツを送信してPDFを生成します。
 
+```bash
+curl -X POST -N -H "Content-Type: application/json" \
+-d '{
+    "session": "user123:session456",
+    "message": "学級通信を作成してください"
+}' \
+http://127.0.0.1:8000/chat
+```
+
+**期待される結果:**
+Google ADKのイベントストリームがSSE形式で返されます：
+
+```
+event: message
+data: {"type": "user_message", "content": "学級通信を作成してください"}
+
+event: message
+data: {"type": "agent_response", "agent": "orchestrator_agent", "content": "..."}
+
+event: message
+data: {"type": "agent_transfer", "from": "orchestrator", "to": "planner_agent"}
+
+...
+```
+
+### 4.2. `/pdf` (HTMLからPDFへの変換)
+
+**手順:**
 ```bash
 curl -X POST http://127.0.0.1:8000/pdf/ \
 -H "Content-Type: application/json" \
 -d '{
-    "html_content": "<html><body><h1>こんにちは、世界！</h1><p>これはPDFのテストです。</p></body></html>",
+    "html_content": "<html><head><meta charset=\"utf-8\"><title>テスト</title></head><body><h1>こんにちは、世界！</h1><p>これはPDFのテストです。</p></body></html>",
     "session_id": "test-session-123",
-    "document_id": "some-document-id-from-firestore"
+    "document_id": "test-document-001"
 }'
 ```
 
 **期待される結果:**
-生成されたPDFへの署名付きURLを含むJSONが返されます。
-
 ```json
 {
   "status": "success",
-  "pdf_url": "https://storage.googleapis.com/..."
+  "pdf_url": "https://storage.googleapis.com/your-bucket/pdfs/test-session-123/..."
 }
 ```
 
-### 3.3. `/classroom` (Google Classroomへの投稿)
+### 4.3. `/classroom` (Google Classroomへの投稿)
 
-**注意:** このAPIを叩くと実際に投稿が行われます。テスト用のコースIDを使用してください。
+**⚠️ 注意:** このAPIは実際にGoogle Classroomに投稿されます。テスト用のコースIDを使用してください。
 
 **手順:**
-コースID、タイトル、本文を指定してアナウンスを投稿します。
-
 ```bash
 curl -X POST http://127.0.0.1:8000/classroom/ \
 -H "Content-Type: application/json" \
 -d '{
     "course_id": "YOUR_TEST_COURSE_ID",
-    "title": "テストアナウンス",
-    "text": "これはAPIからのテスト投稿です。"
+    "title": "APIテスト投稿",
+    "text": "Google ADK バックエンドからのテスト投稿です。"
 }'
 ```
 
 **期待される結果:**
-成功メッセージと投稿IDを含むJSONが返されます。
-
 ```json
 {
   "status": "success",
-  "announcement_id": "..."
+  "announcement_id": "123456789",
+  "link": "https://classroom.google.com/c/YOUR_COURSE_ID/a/123456789/details"
 }
 ```
 
-### 3.4. `/stt` (音声文字起こし)
+### 4.4. `/stt` (音声文字起こし)
 
 **手順:**
-テスト用の音声ファイル（例: `test.wav`）を用意してください。
+テスト用音声ファイルを準備し、アップロードします。
 
 ```bash
 curl -X POST http://127.0.0.1:8000/stt/ \
@@ -163,39 +196,94 @@ curl -X POST http://127.0.0.1:8000/stt/ \
 ```
 
 **期待される結果:**
-文字起こしされたテキストを含むJSONが返されます。
-
 ```json
 {
   "status": "success",
-  "transcript": "こんにちは、これは音声認識のテストです。"
+  "transcript": "こんにちは、これは音声認識のテストです。令和小学校の学級通信作成システムです。",
+  "confidence": 0.95
 }
 ```
 
-### 3.5. `/phrase` (ユーザー辞書登録)
+### 4.5. `/phrase` (Speech-to-Text カスタム辞書登録)
 
 **手順:**
-音声認識精度を向上させるための単語リストを登録します。
+音声認識の精度向上のためのカスタム語彙を登録します。
 
 ```bash
 curl -X POST http://127.0.0.1:8000/phrase/ \
 -H "Content-Type: application/json" \
 -d '{
     "project_id": "your-gcp-project-id",
-    "phrase_set_id": "my-custom-phrases",
-    "phrases": ["令和小学校", "AIアシスタント", "学級通信"]
+    "phrase_set_id": "school-vocabulary",
+    "phrases": ["令和小学校", "学級通信", "運動会", "授業参観", "PTA"],
+    "boost_value": 15.0
 }'
 ```
 
 **期待される結果:**
-登録の成功を示すJSONが返されます。
-
 ```json
 {
   "status": "success",
-  "phrase_set_name": "projects/.../phraseSets/my-custom-phrases"
+  "phrase_set_name": "projects/your-gcp-project-id/locations/global/phraseSets/school-vocabulary",
+  "phrases_count": 5
 }
 ```
 
+## 5. トラブルシューティング
+
+### 5.1. よくあるエラーと対処法
+
+**Import エラー**
+```
+ModuleNotFoundError: No module named 'backend'
+```
+→ `poetry install --no-root` を実行し、相対パスでのインポートを確認
+
+**Google ADK v1.0.0 依存関係エラー**
+```
+ModuleNotFoundError: No module named 'deprecated'
+Error during streaming: module 'google.genai.types' has no attribute 'to_content'
+```
+→ 依存関係を追加: `poetry add deprecated`
+→ ADK v1.0.0のブレイキングチェンジに対応済み
+
+**認証エラー**
+```
+google.auth.exceptions.DefaultCredentialsError
+```
+→ `gcloud auth application-default login` を実行
+
+**PDF変換エラー**
+```
+wkhtmltopdf not found
+```
+→ wkhtmltopdfをインストール（セクション1.2参照）
+
+### 5.2. ログの確認
+
+サーバーログを確認して、詳細なエラー情報を取得します：
+```bash
+poetry run uvicorn app.main:app --reload --log-level debug
+```
+
+### 5.3. Google ADK固有のデバッグ
+
+Google ADKの詳細なトレースを有効にする場合：
+```python
+# 開発環境でのみ使用
+import os
+os.environ["ADK_DEBUG"] = "true"
+```
+
+## 6. 監視・観測可能性（オプション）
+
+本番環境では、Google ADKの観測可能性ツールの使用を推奨します：
+
+- **Phoenix**: オープンソースの自己ホスト型
+- **Arize AX**: プロダクション対応の監視プラットフォーム
+
+詳細は[Google ADK Observability Documentation](https://google.github.io/adk-docs/observability/)を参照してください。
+
 ---
-以上でテストは完了です。
+
+以上でテストは完了です。問題が発生した場合は、まず事前チェック（セクション0）を再実行し、エラーログを確認してください。

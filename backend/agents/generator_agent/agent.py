@@ -41,12 +41,13 @@ class GeneratorAgent(Agent):
         エージェントの実行ロジック。
         `outline.json`を読み込み、HTMLを生成、検証、保存します。
         """
-        if not ctx.artifact_exists("outline.json"):
+        if not await ctx.artifact_exists("outline.json"):
             error_msg = "HTML生成に必要な構成案（outline.json）が見つかりません。"
             await ctx.emit({"type": "error", "message": error_msg})
             return
 
-        json_content = ctx.load_artifact("outline.json").decode("utf-8")
+        artifact_data = await ctx.load_artifact("outline.json")
+        json_content = artifact_data.decode("utf-8")
 
         # LLMを直接呼び出してHTMLを生成
         llm_response = await self.model.generate(
@@ -66,10 +67,11 @@ class GeneratorAgent(Agent):
         await ctx.emit({"type": "audit", "data": validation_result})
 
         # 生成したHTMLをアーティファクトとして保存
-        ctx.save_artifact("newsletter.html", html.encode("utf-8"))
+        await ctx.save_artifact("newsletter.html", html.encode("utf-8"))
 
         # 最終的な結果を含むイベントを生成
-        yield Event(author=self.name, content=llm_response.content)
+        # ADK v1.0.0対応: llm_response.textを使用
+        yield Event(author=self.name, content=[{"text": html}])
 
 def create_generator_agent() -> Agent:
     """GeneratorAgentのインスタンスを生成するファクトリ関数。"""

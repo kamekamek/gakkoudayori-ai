@@ -106,6 +106,27 @@ poetry run isort --check-only .
 - **原因**: コーディング規約違反
 - **対策**: `poetry run ruff check .` で事前確認
 
+## 🌐 Google ADK Web UI（エージェント動作確認）
+
+**Google ADK公式Web UIを使用してエージェントの動作をブラウザで確認できます：**
+
+### 1. Web UIの起動
+```bash
+cd backend/agents
+adk api_server
+# または短縮形
+adk web
+```
+
+### 2. ブラウザでアクセス
+- **Google ADK Web UI**: http://localhost:8001
+- セッション作成、エージェントとの対話、リアルタイム確認が可能
+
+### 3. 使用可能なエージェント
+- `orchestrator_agent` - メインの調整エージェント
+- `planner_agent` - 計画立案エージェント  
+- `generator_agent` - コンテンツ生成エージェント
+
 ## APIドキュメント
 
 サーバーを起動後、以下のURLにアクセスすると、Swagger UIでAPIドキュメントの確認とテストができます。

@@ -80,7 +80,7 @@ class PlannerAgent(Agent):
             json.loads(json_str)
 
             # アーティファクトとして保存
-            ctx.save_artifact("outline.json", json_str.encode("utf-8"))
+            await ctx.save_artifact("outline.json", json_str.encode("utf-8"))
             await ctx.emit({"type": "info", "message": "構成案(outline.json)を作成しました。"})
 
         except (ValueError, json.JSONDecodeError) as e:
