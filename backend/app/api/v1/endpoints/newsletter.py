@@ -5,9 +5,9 @@ from typing import Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, Body
 from pydantic import BaseModel, Field
 
-from services.audio_to_json_service import convert_speech_to_json as speech_to_json_service
-from services.json_to_graphical_record_service import convert_json_to_graphical_record
-from services.pdf_generator import generate_pdf_from_html, get_pdf_info, _clean_html_for_pdf
+from ....services.audio_to_json_service import convert_speech_to_json as speech_to_json_service
+from ....services.json_to_graphical_record_service import convert_json_to_graphical_record
+from ....services.pdf_generator import generate_pdf_from_html, get_pdf_info, _clean_html_for_pdf
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

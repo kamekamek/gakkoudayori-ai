@@ -1,23 +1,13 @@
 import logging
 from google.cloud import firestore
 
-from adk.agents.orchestrator_agent import create_orchestrator_agent
-from services.adk_session_service import FirestoreSessionService
-from services.firebase_service import get_firestore_client
+from ..services.adk_session_service import FirestoreSessionService
+from ..services.firebase_service import get_firestore_client
 
 logger = logging.getLogger(__name__)
 
 # グローバル変数としてシングルトンインスタンスを保持
-_orchestrator_agent = None
 _session_service = None
-
-def get_orchestrator_agent():
-    """OrchestratorAgentのシングルトンインスタンスを返す"""
-    global _orchestrator_agent
-    if _orchestrator_agent is None:
-        logger.info("Creating OrchestratorAgent singleton instance...")
-        _orchestrator_agent = create_orchestrator_agent()
-    return _orchestrator_agent
 
 def get_session_service() -> FirestoreSessionService:
     """FirestoreSessionServiceのシングルトンインスタンスを返す"""

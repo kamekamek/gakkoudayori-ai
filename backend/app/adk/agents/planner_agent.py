@@ -16,9 +16,8 @@ import os
 from pathlib import Path
 from google.adk.agents import Agent
 from google.adk.models.lite_llm import LiteLlm
+from ...core.config import settings
 from ..tools import get_current_date
-
-MODEL_GEMINI = "gemini-2.5-flash"
 
 def _load_instruction() -> str:
     """プロンプトファイルを読み込みます。"""
@@ -33,7 +32,7 @@ def create_planner_agent() -> Agent:
     """Plannerエージェントを作成します。"""
     return Agent(
         name="planner_agent",
-        model=LiteLlm(MODEL_GEMINI),
+        model=LiteLlm(settings.GEMINI_MODEL),
         instruction=PLANNER_INSTRUCTION,
         description="ユーザーと対話して学級通信の構成を計画し、JSON形式で出力します。",
         tools=[get_current_date],

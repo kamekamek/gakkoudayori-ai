@@ -1,4 +1,4 @@
-from .agents import create_orchestrator_agent
+from .agents import create_generation_workflow_agent
 
 # ADKがアプリケーションのエントリーポイントとして認識する規約です。
-root_agent = create_orchestrator_agent()
+root_agent = create_generation_workflow_agent()

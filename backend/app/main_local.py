@@ -30,7 +30,7 @@ from firebase_admin import initialize_app
 
 # ADK Runner関連のインポート
 from google.adk.runners import Runner
-from core.dependencies import get_orchestrator_agent, get_session_service
+from .core.dependencies import get_session_service
 
 # ログ設定
 logging.basicConfig(level=logging.INFO)
@@ -39,13 +39,16 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # アプリケーション起動時に実行
-    logger.info("Initializing ADK Runner...")
+    logger.info("Initializing application components...")
+    # NOTE: orchestrator_agentは廃止されたため、Runnerの初期化からは削除されました。
+    # 必要に応じて、新しいデフォルトエージェントや空のエージェントを設定できます。
+    # ここでは、セッションサービスのみを持つRunnerとして初期化します。
     app.state.adk_runner = Runner(
         app_name="gakkoudayori-ai",
-        agent=get_orchestrator_agent(),
         session_service=get_session_service()
+        # agent=... # 新しいトップレベルエージェントが必要な場合はここに追加
     )
-    logger.info("ADK Runner initialized successfully.")
+    logger.info("Application components initialized.")
     yield
     # アプリケーション終了時に実行
     logger.info("Cleaning up resources...")
@@ -68,7 +71,7 @@ app = FastAPI(
 )
 
 # v1のAPIルーターをアプリにマウント
-from api.v1.router import router as api_v1_router
+from .api.v1.router import router as api_v1_router
 app.include_router(api_v1_router, prefix="/api/v1")
 
 # CORS設定
@@ -100,7 +103,7 @@ def read_root():
 def read_health():
     """Firebaseの接続状況など、より詳細なヘルスチェックを行います。"""
     try:
-        from services.firebase_service import health_check
+        from .services.firebase_service import health_check
         health_result = health_check()
         status_code = 200 if health_result.get('status') == 'healthy' else 503
         return JSONResponse(content=health_result, status_code=status_code)

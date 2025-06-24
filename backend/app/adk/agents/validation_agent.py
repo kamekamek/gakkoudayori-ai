@@ -16,9 +16,8 @@ import os
 from pathlib import Path
 from google.adk.agents import Agent
 from google.adk.models.lite_llm import LiteLlm
+from ...core.config import settings
 from ..tools import validate_html_structure, generate_validation_report
-
-MODEL_GEMINI = "gemini-2.5-flash"
 
 def _load_instruction() -> str:
     """プロンプトファイルを読み込みます。"""
@@ -33,7 +32,7 @@ def create_validation_agent() -> Agent:
     """Validationエージェントを作成します。"""
     return Agent(
         name="validation_agent",
-        model=LiteLlm(MODEL_GEMINI),
+        model=LiteLlm(settings.GEMINI_MODEL),
         instruction=VALIDATION_INSTRUCTION,
         description="HTMLコードの品質を多角的に検証し、教育現場に適した改善提案を提供します。",
         tools=[validate_html_structure, generate_validation_report],

@@ -5,14 +5,14 @@ from fastapi import APIRouter, HTTPException, status, File, UploadFile, Form
 from pydantic import BaseModel
 from google.cloud import speech
 
-from services.speech_recognition_service import (
+from ....services.speech_recognition_service import (
     transcribe_audio_file,
     validate_audio_format,
     get_supported_formats,
     get_default_speech_contexts,
 )
-from services.user_dictionary_service import create_user_dictionary_service
-from services.firebase_service import get_firestore_client
+from ....services.user_dictionary_service import create_user_dictionary_service
+from ....services.firebase_service import get_firestore_client
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
