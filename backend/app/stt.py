@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, File, UploadFile, Form
 from typing import Annotated, Optional
 
-from backend.agents.tools.stt_transcriber import transcribe_audio as transcribe_audio_tool
+from google.cloud import speech
 
 router = APIRouter(
     prefix="/stt",
@@ -18,28 +18,43 @@ async def transcribe_audio(
     phrase_set_resource: Annotated[Optional[str], Form(description="（オプション）使用するフレーズセットの完全リソース名。")] = None
 ):
     """
-    音声ファイルを受け取り、Speech-to-Textツールを使用してテキストに変換します。
-
+    音声ファイルを受け取り、Speech-to-Textを使用してテキストに変換します。
     オプションで、音声認識の精度を向上させるための`phrase_set_resource`を指定できます。
     """
     if not audio_file:
         raise HTTPException(status_code=400, detail="音声ファイルが提供されていません。")
 
-    audio_content = await audio_file.read()
-    if not audio_content:
-        raise HTTPException(status_code=400, detail="音声ファイルが空です。")
+    try:
+        client = speech.SpeechAsyncClient()
+        audio_content = await audio_file.read()
 
-    # 音声ファイルの情報からエンコーディングやサンプルレートを決定するのが理想的ですが、
-    # ここではツール側のデフォルト値に依存します。
-    result = await transcribe_audio_tool(
-        audio_content=audio_content,
-        phrase_set_resource=phrase_set_resource
-    )
+        if not audio_content:
+            raise HTTPException(status_code=400, detail="音声ファイルが空です。")
 
-    if result.get("status") == "error":
+        recognition_audio = speech.RecognitionAudio(content=audio_content)
+
+        config_dict = {
+            "language_code": "ja-JP",
+            "enable_automatic_punctuation": True,
+        }
+        if phrase_set_resource:
+            adaptation = speech.SpeechAdaptation(phrase_set_references=[phrase_set_resource])
+            config_dict["adaptation"] = adaptation
+
+        config = speech.RecognitionConfig(**config_dict)
+
+        response = await client.recognize(config=config, audio=recognition_audio)
+
+        transcripts = [result.alternatives[0].transcript for result in response.results]
+        full_transcript = " ".join(transcripts)
+
+        if not full_transcript:
+            return {"status": "success", "transcript": "", "message": "音声は認識されましたが、テキストは検出されませんでした。"}
+
+        return {"status": "success", "transcript": full_transcript}
+
+    except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"音声の文字起こしに失敗しました: {result.get('message')}"
+            detail=f"音声の文字起こし中に予期せぬエラーが発生しました: {str(e)}"
         )
-
-    return result

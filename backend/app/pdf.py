@@ -30,10 +30,10 @@ async def generate_and_save_pdf(req: PdfRequest):
     # 1. HTMLをPDFに変換
     pdf_bytes = await convert_html_to_pdf(html_content=req.html_content)
 
-    if not pdf_bytes or "PDF変換中にエラーが発生しました" in pdf_bytes.decode('utf-8', errors='ignore'):
+    if pdf_bytes is None:
         raise HTTPException(
             status_code=500, 
-            detail=f"HTMLからPDFへの変換に失敗しました: {pdf_bytes.decode('utf-8', errors='ignore')}"
+            detail="HTMLからPDFへの変換に失敗しました。"
         )
 
     try:

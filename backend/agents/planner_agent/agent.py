@@ -62,14 +62,20 @@ class PlannerAgent(Agent):
 
         # LLMの応答からJSON部分を抽出
         try:
+            json_str = llm_response_text
+            # 応答にMarkdownのコードブロックが含まれている場合、それを取り除く
+            if '```json' in json_str:
+                json_str = json_str.split('```json', 1)[1].rsplit('```', 1)[0]
+            elif '```' in json_str:
+                # 'json'指定子がない場合も考慮
+                json_str = json_str.split('```', 1)[1].rsplit('```', 1)[0]
+            
             # 応答に含まれる最初の'{'から最後の'}'までをJSONとみなす
-            json_start = llm_response_text.find('{')
-            json_end = llm_response_text.rfind('}') + 1
+            json_start = json_str.find('{')
+            json_end = json_str.rfind('}') + 1
             if json_start == -1 or json_end == 0:
                 raise ValueError("JSONの開始または終了が見つかりません。")
 
-            json_str = llm_response_text[json_start:json_end]
-            
             # JSONとして有効か検証
             json.loads(json_str)
 

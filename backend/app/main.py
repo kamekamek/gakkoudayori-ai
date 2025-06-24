@@ -12,15 +12,17 @@ import google.genai.types as genai_types
 from google.adk.runners import Runner
 from google.adk.sessions.in_memory_session_service import InMemorySessionService
 
-from backend.app import pdf as pdf_api
-from backend.app import classroom as classroom_api
-from backend.app import stt as stt_api
-from backend.app import phrase as phrase_api
+from app import pdf as pdf_api
+from app import classroom as classroom_api
+from app import stt as stt_api
+from app import phrase as phrase_api
 from agents.orchestrator_agent.agent import create_orchestrator_agent
-from agents.tools.pdf_converter import convert_html_to_pdf
-from agents.tools.classroom_sender import post_to_classroom
-from agents.tools.stt_transcriber import transcribe_audio
-from agents.tools.user_dict_register import register_user_dictionary
+
+# 以下のツールは直接APIとして実装されたため、main.pyからは不要
+# from agents.tools.pdf_converter import convert_html_to_pdf
+# from agents.tools.classroom_sender import post_to_classroom
+# from agents.tools.stt_transcriber import transcribe_audio
+# from agents.tools.user_dict_register import register_user_dictionary
 
 
 app = FastAPI(
