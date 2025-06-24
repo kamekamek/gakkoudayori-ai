@@ -94,14 +94,14 @@ class GeneratorAgent(LlmAgent):
         
         # 生成されたHTMLを検証
         validation_result = await self.call_tool("validate_html", html=html)
-        await ctx.emit({"type": "audit", "data": validation_result})
+        yield Event(content={"type": "audit", "data": validation_result})
         
         # 生成したHTMLをファイルとして保存
         newsletter_file = artifacts_dir / "newsletter.html"
         with open(newsletter_file, "w", encoding="utf-8") as f:
             f.write(html)
         
-        await ctx.emit({"type": "info", "message": f"HTMLファイルを保存しました: {newsletter_file}"})
+        yield Event(content={"type": "info", "message": f"HTMLファイルを保存しました: {newsletter_file}"})
 
 def create_generator_agent() -> LlmAgent:
     """GeneratorAgentのインスタンスを生成するファクトリ関数。"""

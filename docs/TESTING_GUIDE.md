@@ -287,3 +287,207 @@ os.environ["ADK_DEBUG"] = "true"
 ---
 
 以上でテストは完了です。問題が発生した場合は、まず事前チェック（セクション0）を再実行し、エラーログを確認してください。
+
+# テストガイド
+
+このドキュメントでは、学校だよりAIプロジェクトのテストの実行方法とトラブルシューティングについて説明します。
+
+## 📋 目次
+
+1. [ADK v1.0.0 互換性テスト](#adk-v100-互換性テスト)
+2. [基本テスト](#基本テスト)
+3. [フロントエンドテスト](#フロントエンドテスト)
+4. [バックエンドテスト](#バックエンドテスト)
+5. [トラブルシューティング](#トラブルシューティング)
+
+## 🤖 ADK v1.0.0 互換性テスト
+
+### 概要
+Google ADK（Agent Development Kit）v1.0.0の互換性をテストします。
+このテストは、エージェントが正しく初期化され、ADK Web UIで動作することを保証します。
+
+### 実行方法
+
+```bash
+# Makeコマンドで実行（推奨）
+make test-adk
+
+# 直接実行
+cd backend && poetry run python test_adk_compatibility.py
+```
+
+### テスト項目
+
+1. **✅ インポートテスト**
+   - 基本的なADKモジュールのインポート確認
+
+2. **✅ SequentialAgent署名テスト**
+   - `sub_agents`パラメータの存在確認
+   - 必須フィールドの検証
+
+3. **✅ InvocationContextメソッドテスト**
+   - 廃止されたメソッド（`artifact_exists`等）の不存在確認
+   - 利用可能なメソッドのリスト表示
+
+4. **✅ エージェント読み込みテスト**
+   - 各エージェントモジュールのインポート確認
+   - `root_agent`変数の存在確認
+
+5. **✅ OrchestratorAgent作成テスト**
+   - SequentialAgentの正しい初期化
+   - サブエージェントの正しい設定
+
+6. **✅ アーティファクトディレクトリテスト**
+   - ファイルシステムベースのアーティファクト管理
+
+### 期待される結果
+
+```
+🎯 総合結果: 6/6 テスト通過
+🎉 すべてのテストが通過しました！
+```
+
+### CI/CD統合
+
+- **GitHub Actions**: `.github/workflows/adk-compatibility-test.yml`
+- **Pre-commit Hook**: `.pre-commit-config.yaml`
+
+ADK関連のファイルを変更する際は、自動的にこのテストが実行されます。
+
+### よくあるエラーと解決方法
+
+#### `'SequentialAgent' object has no attribute 'agents'`
+**原因**: ADK v1.0.0では`agents`パラメータが`sub_agents`に変更されました。
+**解決**: `SequentialAgent(agents=[...])` → `SequentialAgent(sub_agents=[...])`
+
+#### `'InvocationContext' object has no attribute 'artifact_exists'`
+**原因**: ADK v1.0.0ではアーティファクト管理APIが変更されました。
+**解決**: ファイルシステムベースのアーティファクト管理に変更
+
+#### `No root_agent found for 'agent_name'`
+**原因**: ADK Web UIは各エージェントファイルで`root_agent`変数を期待します。
+**解決**: エージェントファイルに`root_agent = create_xxx_agent()`を追加
+
+## 🧪 基本テスト
+
+### 全テスト実行
+```bash
+make test
+```
+
+### テスト対象
+- フロントエンド（Flutter）テスト
+- バックエンド（Python）テスト
+- ADK互換性テスト
+
+## 📱 フロントエンドテスト
+
+### Flutter テスト実行
+```bash
+cd frontend && flutter test
+```
+
+### テスト対象
+- ウィジェットテスト
+- ユニットテスト
+- 統合テスト
+
+## 🐍 バックエンドテスト
+
+### Python テスト実行
+```bash
+cd backend && poetry run pytest tests/ -v
+```
+
+### テスト対象
+- APIエンドポイント
+- ビジネスロジック
+- サービス層
+
+## 🔍 静的解析
+
+### 実行コマンド
+```bash
+make lint
+```
+
+### 解析対象
+- Flutter: `flutter analyze`
+- Python: `ruff check`, `mypy`
+
+## 📊 コードフォーマット
+
+### 実行コマンド
+```bash
+make format
+```
+
+### フォーマット対象
+- Flutter: `dart format`
+- Python: `black`, `isort`
+
+## 🚨 トラブルシューティング
+
+### ADK v1.0.0 関連エラー
+
+#### Pydantic検証エラー
+```
+Extra inputs are not permitted [type=extra_forbidden]
+```
+**解決**: パラメータ名がADK v1.0.0の仕様に合っているか確認
+
+#### インポートエラー
+```
+No module named 'google.adk.core'
+```
+**解決**: 正しいモジュールパス（`google.adk.agents.invocation_context`）を使用
+
+#### 非同期メソッドエラー
+```
+'InvocationContext' object has no attribute 'artifact_exists'
+```
+**解決**: `await ctx.emit()` 等の非同期メソッドのみを使用
+
+### 一般的なエラー
+
+#### 依存関係エラー
+```bash
+# Pythonパッケージの再インストール
+cd backend && poetry install --with dev
+
+# Flutterパッケージの取得
+cd frontend && flutter pub get
+```
+
+#### 環境変数エラー
+```bash
+# .envファイルの確認
+ls -la backend/.env
+
+# 環境変数の設定確認
+cd backend && poetry run python -c "import os; print(os.getenv('GOOGLE_APPLICATION_CREDENTIALS'))"
+```
+
+### テスト実行ディレクトリ
+
+ADK互換性テストは、必ず`backend`ディレクトリから実行してください：
+
+```bash
+cd backend
+poetry run python test_adk_compatibility.py
+```
+
+### 継続的テスト
+
+pre-commitフックを設定することで、コミット前に自動テストが実行されます：
+
+```bash
+# pre-commitのインストール
+pip install pre-commit
+
+# フックの設定
+pre-commit install
+
+# 手動実行
+pre-commit run --all-files
+```

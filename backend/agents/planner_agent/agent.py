@@ -107,11 +107,11 @@ class PlannerAgent(LlmAgent):
             with open(outline_file, "w", encoding="utf-8") as f:
                 f.write(json_str)
                 
-            await ctx.emit({"type": "info", "message": f"構成案を保存しました: {outline_file}"})
+            yield Event(content={"type": "info", "message": f"構成案を保存しました: {outline_file}"})
 
         except (ValueError, json.JSONDecodeError) as e:
             error_msg = f"LLMの応答からJSONを抽出できませんでした: {e}\n応答: {llm_response_text}"
-            await ctx.emit({"type": "error", "message": error_msg})
+            yield Event(content={"type": "error", "message": error_msg})
 
 
 def create_planner_agent() -> LlmAgent:
