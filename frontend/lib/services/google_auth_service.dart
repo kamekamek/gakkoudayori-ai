@@ -56,10 +56,8 @@ class GoogleAuthService {
       // サイレントサインイン試行
       _currentUser = await googleSignIn.signInSilently();
       
-      if (_currentUser == null) {
-        // 明示的サインイン
-        _currentUser = await googleSignIn.signIn();
-      }
+      // 明示的サインインが必要な場合
+      _currentUser ??= await googleSignIn.signIn();
 
       if (_currentUser != null) {
         // 認証済みHTTPクライアントを作成

@@ -27,12 +27,13 @@ class PreviewModeToolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: const BoxDecoration(
+        color: Colors.white,
         border: Border(
           bottom: BorderSide(
-            color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+            color: Color(0xFFE0E0E0),
+            width: 1,
           ),
         ),
       ),
@@ -41,23 +42,13 @@ class PreviewModeToolbar extends StatelessWidget {
           // プレビューモード切り替えボタン
           _buildModeButton(
             context,
-            icon: Icons.preview,
-            label: 'プレビュー',
+            icon: Icons.visibility,
+            label: '編集',
             mode: PreviewMode.preview,
             isSelected: currentMode == PreviewMode.preview,
           ),
           
-          const SizedBox(width: 8),
-          
-          _buildModeButton(
-            context,
-            icon: Icons.edit,
-            label: '編集',
-            mode: PreviewMode.edit,
-            isSelected: currentMode == PreviewMode.edit,
-          ),
-          
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           
           _buildModeButton(
             context,
@@ -67,52 +58,49 @@ class PreviewModeToolbar extends StatelessWidget {
             isSelected: currentMode == PreviewMode.printView,
           ),
           
+          const SizedBox(width: 6),
+          
+          _buildModeButton(
+            context,
+            icon: Icons.picture_as_pdf,
+            label: 'PDF',
+            mode: PreviewMode.edit, // PDFボタンとして使用
+            isSelected: false,
+            onTap: onPdfGenerate,
+          ),
+          
+          const SizedBox(width: 6),
+          
+          _buildModeButton(
+            context,
+            icon: Icons.school,
+            label: '📚Classroom',
+            mode: PreviewMode.edit, // Classroomボタンとして使用
+            isSelected: false,
+            onTap: () => _showClassroomDialog(context),
+          ),
+          
+          const SizedBox(width: 6),
+          
+          _buildModeButton(
+            context,
+            icon: Icons.refresh,
+            label: '🔄',
+            mode: PreviewMode.edit, // 再生成ボタンとして使用
+            isSelected: false,
+            onTap: onRegenerate,
+          ),
+          
           const Spacer(),
           
-          // サンプル読み込みボタン（常に表示）
+          // サンプル読み込みボタン
           _buildActionButton(
             context,
             icon: Icons.article,
             tooltip: 'サンプル読み込み',
             onPressed: () => _loadSampleContent(context),
-            color: Colors.orange,
+            color: const Color(0xFFFF6B35),
           ),
-          
-          const SizedBox(width: 8),
-          
-          // アクションボタン群
-          if (canExecuteActions) ...[
-            // PDF生成ボタン
-            _buildActionButton(
-              context,
-              icon: Icons.picture_as_pdf,
-              tooltip: 'PDF出力',
-              onPressed: onPdfGenerate,
-              color: Colors.purple,
-            ),
-            
-            const SizedBox(width: 8),
-            
-            // Classroom投稿ボタン
-            _buildActionButton(
-              context,
-              icon: Icons.school,
-              tooltip: 'Classroom投稿',
-              onPressed: () => _showClassroomDialog(context),
-              color: Colors.green,
-            ),
-            
-            const SizedBox(width: 8),
-            
-            // 再生成ボタン
-            _buildActionButton(
-              context,
-              icon: Icons.refresh,
-              tooltip: '再生成',
-              onPressed: onRegenerate,
-              color: Theme.of(context).colorScheme.secondary,
-            ),
-          ],
         ],
       ),
     );
@@ -124,34 +112,36 @@ class PreviewModeToolbar extends StatelessWidget {
     required String label,
     required PreviewMode mode,
     required bool isSelected,
+    VoidCallback? onTap,
   }) {
     return Material(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(6),
       color: isSelected
-          ? Theme.of(context).colorScheme.primaryContainer
+          ? const Color(0xFF2c5aa0).withOpacity(0.1)
           : Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: () => onModeChanged(mode),
+        borderRadius: BorderRadius.circular(6),
+        onTap: onTap ?? () => onModeChanged(mode),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
                 icon,
-                size: 18,
+                size: 16,
                 color: isSelected
-                    ? Theme.of(context).colorScheme.onPrimaryContainer
-                    : Theme.of(context).colorScheme.onSurfaceVariant,
+                    ? const Color(0xFF2c5aa0)
+                    : const Color(0xFF616161),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 4),
               Text(
                 label,
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                style: TextStyle(
+                  fontSize: 12,
                   color: isSelected
-                      ? Theme.of(context).colorScheme.onPrimaryContainer
-                      : Theme.of(context).colorScheme.onSurfaceVariant,
+                      ? const Color(0xFF2c5aa0)
+                      : const Color(0xFF616161),
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                 ),
               ),

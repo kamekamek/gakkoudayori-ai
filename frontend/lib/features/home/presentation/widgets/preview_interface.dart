@@ -73,33 +73,55 @@ class PreviewInterface extends StatelessWidget {
   }
 
   Widget _buildEmptyState(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.preview,
-              size: 64,
-              color: Theme.of(context).colorScheme.outline,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '学級通信のプレビュー',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'AIとの会話後に「生成」ボタンを押すと、\nこちらに学級通信が表示されます',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-              textAlign: TextAlign.center,
-            ),
-          ],
+    return Container(
+      color: const Color(0xFFFAFAFA),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2c5aa0).withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.description,
+                  size: 48,
+                  color: Color(0xFF2c5aa0),
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                '📄 プレビュー',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF2c5aa0),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'リアルタイムプレビューがここに表示されます',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF616161),
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'AIとの対話を開始してください',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF9E9E9E),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

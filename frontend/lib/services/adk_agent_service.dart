@@ -166,7 +166,7 @@ class AdkAgentService {
       final body = {
         'message': message,
         'user_id': userId,
-        'session_id': sessionId,
+        'session_id': sessionId ?? '${userId}:default',
       };
 
       debugPrint(
@@ -190,7 +190,18 @@ class AdkAgentService {
                 final data = line.substring(6);
                 if (data.trim().isNotEmpty) {
                   try {
-                    return AdkStreamEvent.fromJson(jsonDecode(data));
+                    final decodedData = jsonDecode(data);
+                    // バックエンドから返される形式に対応
+                    if (decodedData is Map<String, dynamic>) {
+                      return AdkStreamEvent(
+                        sessionId: decodedData['session_id'] ?? sessionId ?? '',
+                        type: decodedData['type'] ?? 'message',
+                        data: decodedData['data'] ?? data,
+                      );
+                    } else {
+                      // フォールバック処理
+                      return AdkStreamEvent.fromJson(decodedData);
+                    }
                   } catch (e) {
                     return AdkStreamEvent(
                       sessionId: sessionId ?? '',

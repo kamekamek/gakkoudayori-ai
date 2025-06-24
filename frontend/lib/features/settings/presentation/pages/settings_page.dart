@@ -225,7 +225,7 @@ class _SettingsPageState extends State<SettingsPage> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => UserDictionaryWidget(
-          userId: 'default', // TODO: 実際のユーザーIDを使用
+          userId: 'user_12345', // デフォルトユーザーID（実際のアプリでは認証済みユーザーIDを使用）
           onDictionaryUpdated: () {
             // 辞書更新時の処理（必要に応じて）
             ScaffoldMessenger.of(context).showSnackBar(

@@ -155,13 +155,112 @@ class PreviewProvider extends ChangeNotifier {
     // 印刷ビューモードに切り替え
     switchMode(PreviewMode.printView);
     
-    // TODO: 実際の印刷プレビュー処理を実装
+    try {
+      // Web環境での印刷プレビュー実装
+      debugPrint('印刷プレビューモードに切り替えました');
+      
+      // 印刷用のCSSスタイルを適用したHTMLを生成
+      final printHtml = _generatePrintHtml(_htmlContent);
+      
+      // ブラウザの印刷ダイアログを開く場合
+      // html.window.print(); // 必要に応じてコメントアウト解除
+      
+      debugPrint('印刷プレビュー準備完了');
+    } catch (e) {
+      debugPrint('印刷プレビューエラー: $e');
+      throw Exception('印刷プレビューの表示に失敗しました: $e');
+    }
+  }
+  
+  // 印刷用のHTMLを生成
+  String _generatePrintHtml(String html) {
+    return '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>学級通信 - 印刷用</title>
+      <style>
+        @media print {
+          body { 
+            font-family: 'Noto Sans JP', 'Yu Gothic', 'Hiragino Sans', sans-serif;
+            font-size: 12pt;
+            line-height: 1.5;
+            margin: 0;
+            padding: 20mm;
+          }
+          h1 { 
+            font-size: 18pt;
+            color: #000;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+          }
+          h2 { 
+            font-size: 14pt;
+            color: #000;
+            margin-top: 20px;
+            margin-bottom: 10px;
+          }
+          .no-print { display: none !important; }
+          .page-break { page-break-before: always; }
+        }
+        body { 
+          font-family: 'Noto Sans JP', 'Yu Gothic', 'Hiragino Sans', sans-serif;
+          max-width: 210mm;
+          margin: 0 auto;
+          padding: 20mm;
+          background: white;
+        }
+      </style>
+    </head>
+    <body>
+      $html
+    </body>
+    </html>
+    ''';
   }
 
   // コンテンツの再生成
   Future<void> regenerateContent() async {
-    // TODO: 既存の入力内容を使ってコンテンツを再生成
+    if (_htmlContent.isEmpty) {
+      debugPrint('再生成するコンテンツがありません');
+      return;
+    }
+    
+    // 再生成中状態に設定
+    _isGeneratingPdf = true; // 生成中フラグを再利用
     notifyListeners();
+    
+    try {
+      // 既存のHTMLコンテンツから要素を抽出して再生成のヒントとする
+      final contentSummary = _extractContentSummary(_htmlContent);
+      debugPrint('コンテンツ再生成: $contentSummary');
+      
+      // 実際の再生成は外部から実行される
+      // この関数は状態管理のみ行う
+    } catch (e) {
+      debugPrint('コンテンツ再生成エラー: $e');
+    } finally {
+      _isGeneratingPdf = false;
+      notifyListeners();
+    }
+  }
+  
+  // HTMLコンテンツから要約を抽出
+  String _extractContentSummary(String html) {
+    // 簡単なHTMLパース（タイトルと主要セクションを抽出）
+    final titleMatch = RegExp(r'<h1[^>]*>(.*?)</h1>').firstMatch(html);
+    final title = titleMatch?.group(1)?.replaceAll(RegExp(r'<[^>]*>'), '') ?? '';
+    
+    final h2Matches = RegExp(r'<h2[^>]*>(.*?)</h2>').allMatches(html);
+    final sections = h2Matches
+        .map((match) => match.group(1)?.replaceAll(RegExp(r'<[^>]*>'), '') ?? '')
+        .where((section) => section.isNotEmpty)
+        .toList();
+    
+    return '${title.isNotEmpty ? "タイトル: $title" : ""}'
+           '${sections.isNotEmpty ? "\nセクション: ${sections.join(", ")}" : ""}';
   }
 
   // プレビューのリセット

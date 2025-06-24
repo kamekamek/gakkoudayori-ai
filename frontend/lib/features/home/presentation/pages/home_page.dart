@@ -86,7 +86,7 @@ class _HomePageState extends State<HomePage> {
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          // レスポンシブレイアウト
+          // レスポンシブレイアウト（デザインモックアップ準拠）
           if (constraints.maxWidth < 768) {
             // モバイル：タブ切り替え
             return const MobileTabLayout();
@@ -146,7 +146,7 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-/// デスクトップレイアウト（左右分割）
+/// デスクトップレイアウト（左右分割・デザインモックアップ準拠）
 class DesktopLayout extends StatelessWidget {
   const DesktopLayout({super.key});
 
@@ -158,11 +158,11 @@ class DesktopLayout extends StatelessWidget {
         Expanded(
           flex: 1,
           child: Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
+            decoration: const BoxDecoration(
+              color: Colors.white,
               border: Border(
                 right: BorderSide(
-                  color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                  color: Color(0xFFE0E0E0),
                   width: 1,
                 ),
               ),
@@ -175,7 +175,7 @@ class DesktopLayout extends StatelessWidget {
         Expanded(
           flex: 1,
           child: Container(
-            color: Theme.of(context).colorScheme.background,
+            color: const Color(0xFFFAFAFA),
             child: const PreviewInterface(),
           ),
         ),

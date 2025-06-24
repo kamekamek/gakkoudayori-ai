@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../../../services/adk_agent_service.dart';
 import '../../../services/audio_service.dart';
@@ -104,10 +105,29 @@ class AdkChatProvider extends ChangeNotifier {
             '[AdkChatProvider] Received stream event: type=${event.type}, data=${event.data}');
 
         switch (event.type) {
-          case 'text':
-            // メッセージを追加していく
-            assistantMessage.content += event.data;
-            notifyListeners();
+          case 'message':
+            // バックエンドからのメッセージイベントを処理
+            try {
+              final messageData = jsonDecode(event.data);
+              final content = messageData['content'] ?? '';
+              final eventType = messageData['type'] ?? 'message';
+              
+              if (eventType == 'complete') {
+                // HTML生成完了
+                if (content.contains('<html>') || content.contains('<!DOCTYPE html>')) {
+                  _generatedHtml = content;
+                }
+                assistantMessage.content = content;
+              } else {
+                // 通常のメッセージ
+                assistantMessage.content = content;
+              }
+              notifyListeners();
+            } catch (e) {
+              // JSON解析に失敗した場合は生のデータを使用
+              assistantMessage.content = event.data;
+              notifyListeners();
+            }
             break;
           case 'complete':
             // HTML生成完了
