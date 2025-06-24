@@ -3,12 +3,16 @@ import os
 from datetime import datetime
 from pathlib import Path
 from typing import AsyncGenerator
+import logging
 
 from google.adk.agents import LlmAgent
 from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events.event import Event
 from google.adk.models.google_llm import Gemini
 from google.adk.tools import FunctionTool
+
+# ロガーの設定
+logger = logging.getLogger(__name__)
 
 
 def get_current_date() -> str:
@@ -55,18 +59,22 @@ class PlannerAgent(LlmAgent):
         # ADK v1.0.0では履歴アクセス方法が変更されたため、
         # セッションイベントから最後のLLM応答を取得
         if not hasattr(ctx, 'session') or not hasattr(ctx.session, 'events'):
+            logger.warning("セッション履歴にアクセスできません")
             return
             
         session_events = ctx.session.events
         if not session_events:
+            logger.warning("セッションイベントが空です")
             return
             
         # 最後のイベントからLLM応答を取得
         last_event = session_events[-1]
         if not hasattr(last_event, 'author') or last_event.author != self.name:
+            logger.warning(f"最後のイベントの作成者が{self.name}ではありません")
             return
             
         if not hasattr(last_event, 'content') or not last_event.content:
+            logger.warning("最後のイベントにコンテンツがありません")
             return
             
         # イベントの内容からテキストを抽出
@@ -74,8 +82,10 @@ class PlannerAgent(LlmAgent):
             if isinstance(last_event.content[0], dict) and 'text' in last_event.content[0]:
                 llm_response_text = last_event.content[0]['text']
             else:
+                logger.warning("コンテンツからテキストを抽出できません")
                 return
         else:
+            logger.warning("コンテンツの形式が予期していないものです")
             return
 
         # LLMの応答からJSON部分を抽出
@@ -97,7 +107,8 @@ class PlannerAgent(LlmAgent):
             json_str = json_str[json_start:json_end]
 
             # JSONとして有効か検証
-            json.loads(json_str)
+            parsed_json = json.loads(json_str)
+            logger.info(f"JSONを正常に解析しました: {list(parsed_json.keys())}")
 
             # ファイルシステムベースのアーティファクト管理
             artifacts_dir = Path("/tmp/adk_artifacts")
@@ -107,11 +118,11 @@ class PlannerAgent(LlmAgent):
             with open(outline_file, "w", encoding="utf-8") as f:
                 f.write(json_str)
                 
-            yield Event(content={"type": "info", "message": f"構成案を保存しました: {outline_file}"})
+            logger.info(f"構成案を保存しました: {outline_file}")
 
         except (ValueError, json.JSONDecodeError) as e:
             error_msg = f"LLMの応答からJSONを抽出できませんでした: {e}\n応答: {llm_response_text}"
-            yield Event(content={"type": "error", "message": error_msg})
+            logger.error(error_msg)
 
 
 def create_planner_agent() -> LlmAgent:

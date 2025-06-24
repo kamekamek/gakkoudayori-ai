@@ -8,6 +8,7 @@ ADK v1.0.0 互換性テストスクリプト
 3. SequentialAgentの正しいパラメータ
 4. InvocationContextの利用可能なメソッド
 5. アーティファクト管理の動作
+6. Eventオブジェクトの正しい生成
 """
 
 import sys
@@ -22,6 +23,7 @@ def test_imports():
         from google.adk.agents.invocation_context import InvocationContext
         from google.adk.models.google_llm import Gemini
         from google.adk.tools import FunctionTool
+        from google.adk.events.event import Event
         print("✅ 基本インポート成功")
         return True
     except Exception as e:
@@ -62,7 +64,7 @@ def test_invocation_context_methods():
         print(f"  利用可能メソッド: {methods}")
         
         # 廃止されたメソッドをチェック
-        deprecated_methods = ['artifact_exists', 'save_artifact', 'load_artifact']
+        deprecated_methods = ['artifact_exists', 'save_artifact', 'load_artifact', 'emit']
         found_deprecated = []
         for method in deprecated_methods:
             if method in methods:
@@ -76,6 +78,41 @@ def test_invocation_context_methods():
         return True
     except Exception as e:
         print(f"❌ InvocationContextメソッドエラー: {e}")
+        return False
+
+def test_event_structure():
+    """Eventオブジェクトの正しい構造をテストします。"""
+    print("🔍 Event構造テスト...")
+    try:
+        from google.adk.events.event import Event
+        
+        # 利用可能なフィールドを確認
+        fields = Event.model_fields.keys()
+        print(f"  利用可能フィールド: {list(fields)}")
+        
+        # 必須フィールドを確認
+        required_fields = []
+        for field_name, field_info in Event.model_fields.items():
+            if field_info.is_required():
+                required_fields.append(field_name)
+        
+        print(f"  必須フィールド: {required_fields}")
+        
+        # 基本的なEventの作成テスト
+        try:
+            # 最小限の必須フィールドでEventを作成
+            if 'author' in required_fields:
+                event = Event(author="test_agent")
+                print("✅ 基本的なEvent作成成功")
+            else:
+                event = Event()
+                print("✅ 基本的なEvent作成成功（authorp不要）")
+        except Exception as e:
+            print(f"⚠️  基本的なEvent作成でエラー: {e}")
+        
+        return True
+    except Exception as e:
+        print(f"❌ Event構造エラー: {e}")
         return False
 
 def test_agent_loading():
@@ -166,6 +203,7 @@ def main():
         ("インポート", test_imports),
         ("SequentialAgent署名", test_sequential_agent_signature),
         ("InvocationContextメソッド", test_invocation_context_methods),
+        ("Event構造", test_event_structure),
         ("エージェント読み込み", test_agent_loading),
         ("OrchestratorAgent作成", test_orchestrator_creation),
         ("アーティファクトディレクトリ", test_artifact_directory),

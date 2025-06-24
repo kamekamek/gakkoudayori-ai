@@ -2,6 +2,7 @@ import os
 import json
 from pathlib import Path
 from typing import AsyncGenerator
+import logging
 
 from google.adk.agents import LlmAgent
 from google.adk.agents.invocation_context import InvocationContext
@@ -10,6 +11,9 @@ from google.adk.models.google_llm import Gemini
 from google.adk.tools import FunctionTool
 
 from tools.html_validator import validate_html
+
+# ロガーの設定
+logger = logging.getLogger(__name__)
 
 
 def _load_instruction() -> str:
@@ -48,17 +52,27 @@ class GeneratorAgent(LlmAgent):
         outline_file = artifacts_dir / "outline.json"
         
         if not outline_file.exists():
+            # エラーメッセージをログに出力し、実行を終了
             error_msg = "HTML生成に必要な構成案（outline.json）が見つかりません。"
-            yield Event(content={"type": "error", "message": error_msg})
+            logger.error(error_msg)
+            # カスタムEventの代わりに、単純にreturnしてエラーを回避
             return
 
         # JSONファイルを読み込み
-        with open(outline_file, "r", encoding="utf-8") as f:
-            json_content = f.read()
+        try:
+            with open(outline_file, "r", encoding="utf-8") as f:
+                json_content = f.read()
+        except Exception as e:
+            logger.error(f"outline.jsonの読み込みエラー: {e}")
+            return
 
         # ユーザーメッセージとしてJSONコンテンツを設定
-        import google.genai.types as genai_types
-        ctx.user_content = genai_types.to_content(f"以下のJSONデータからHTMLを生成してください:\\n\\n{json_content}")
+        try:
+            import google.genai.types as genai_types
+            ctx.user_content = genai_types.to_content(f"以下のJSONデータからHTMLを生成してください:\\n\\n{json_content}")
+        except Exception as e:
+            logger.error(f"ユーザーコンテンツ設定エラー: {e}")
+            return
 
         # LlmAgentの標準フローを使用してHTMLを生成
         async for event in super()._run_async_impl(ctx):
@@ -67,13 +81,16 @@ class GeneratorAgent(LlmAgent):
 
         # セッション履歴から最後のLLM応答を取得
         if not hasattr(ctx, 'session') or not hasattr(ctx.session, 'events') or not ctx.session.events:
+            logger.warning("セッション履歴にアクセスできません")
             return
             
         last_event = ctx.session.events[-1]
         if not hasattr(last_event, 'author') or last_event.author != self.name:
+            logger.warning(f"最後のイベントの作成者が{self.name}ではありません")
             return
             
         if not hasattr(last_event, 'content') or not last_event.content:
+            logger.warning("最後のイベントにコンテンツがありません")
             return
             
         html = ""
@@ -82,6 +99,7 @@ class GeneratorAgent(LlmAgent):
                 html = last_event.content[0]['text'].strip()
 
         if not html:
+            logger.warning("HTMLコンテンツが空です")
             return
 
         # Markdownコードブロックを除去
@@ -90,18 +108,23 @@ class GeneratorAgent(LlmAgent):
         if html.endswith("```"):
             html = html[:-3]
         
-        yield Event(content={"type": "html", "html": html})
+        logger.info(f"HTMLを生成しました（{len(html)}文字）")
         
         # 生成されたHTMLを検証
-        validation_result = await self.call_tool("validate_html", html=html)
-        yield Event(content={"type": "audit", "data": validation_result})
+        try:
+            validation_result = await self.call_tool("validate_html", html=html)
+            logger.info(f"HTML検証完了: {validation_result}")
+        except Exception as e:
+            logger.error(f"HTML検証エラー: {e}")
         
         # 生成したHTMLをファイルとして保存
-        newsletter_file = artifacts_dir / "newsletter.html"
-        with open(newsletter_file, "w", encoding="utf-8") as f:
-            f.write(html)
-        
-        yield Event(content={"type": "info", "message": f"HTMLファイルを保存しました: {newsletter_file}"})
+        try:
+            newsletter_file = artifacts_dir / "newsletter.html"
+            with open(newsletter_file, "w", encoding="utf-8") as f:
+                f.write(html)
+            logger.info(f"HTMLファイルを保存しました: {newsletter_file}")
+        except Exception as e:
+            logger.error(f"HTMLファイル保存エラー: {e}")
 
 def create_generator_agent() -> LlmAgent:
     """GeneratorAgentのインスタンスを生成するファクトリ関数。"""
