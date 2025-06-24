@@ -2,13 +2,13 @@ import os
 from pathlib import Path
 from typing import AsyncGenerator
 
-from google.adk.agents import Agent
+from google.adk.agents import LlmAgent
 from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events.event import Event
 from google.adk.models.google_llm import Gemini
 from google.adk.tools import FunctionTool
 
-from ..tools.html_validator import validate_html
+from tools.html_validator import validate_html
 
 
 def _load_instruction() -> str:
@@ -21,7 +21,7 @@ def _load_instruction() -> str:
     except FileNotFoundError:
         return "You are a helpful assistant that generates HTML from JSON."
 
-class GeneratorAgent(Agent):
+class GeneratorAgent(LlmAgent):
     """
     JSONデータを受け取り、HTML形式の学級通信を生成・検証するエージェント。
     """
@@ -49,30 +49,49 @@ class GeneratorAgent(Agent):
         artifact_data = await ctx.load_artifact("outline.json")
         json_content = artifact_data.decode("utf-8")
 
-        # LLMを直接呼び出してHTMLを生成
-        llm_response = await self.model.generate(
-            prompt=self.instruction, user_input=json_content
-        )
-        html = llm_response.text.strip()
-        # LLMがMarkdownのコードブロックを付与してしまう場合があるため、除去する
+        # ユーザーメッセージとしてJSONコンテンツを設定
+        import google.genai.types as genai_types
+        ctx.user_content = genai_types.to_content(f"以下のJSONデータからHTMLを生成してください:\\n\\n{json_content}")
+
+        # LlmAgentの標準フローを使用してHTMLを生成
+        async for event in super()._run_async_impl(ctx):
+            # イベントをそのままクライアントにストリーミング
+            yield event
+
+        # セッション履歴から最後のLLM応答を取得
+        last_event = ctx.session.events[-1]
+        if not hasattr(last_event, 'author') or last_event.author != self.name:
+            return
+            
+        if not hasattr(last_event, 'content') or not last_event.content:
+            return
+            
+        html = ""
+        if isinstance(last_event.content, list) and len(last_event.content) > 0:
+            if isinstance(last_event.content[0], dict) and 'text' in last_event.content[0]:
+                html = last_event.content[0]['text'].strip()
+
+        if not html:
+            return
+
+        # Markdownコードブロックを除去
         if html.startswith("```html"):
             html = html[7:]
         if html.endswith("```"):
             html = html[:-3]
-
+        
         await ctx.emit({"type": "html", "html": html})
-
+        
         # 生成されたHTMLを検証
         validation_result = await self.call_tool("validate_html", html=html)
         await ctx.emit({"type": "audit", "data": validation_result})
-
+        
         # 生成したHTMLをアーティファクトとして保存
         await ctx.save_artifact("newsletter.html", html.encode("utf-8"))
 
-        # 最終的な結果を含むイベントを生成
-        # ADK v1.0.0対応: llm_response.textを使用
-        yield Event(author=self.name, content=[{"text": html}])
-
-def create_generator_agent() -> Agent:
+def create_generator_agent() -> LlmAgent:
     """GeneratorAgentのインスタンスを生成するファクトリ関数。"""
     return GeneratorAgent()
+
+# ADK Web UI用のroot_agent変数
+root_agent = create_generator_agent()

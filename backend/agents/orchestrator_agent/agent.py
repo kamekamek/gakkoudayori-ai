@@ -1,51 +1,36 @@
-from typing import AsyncGenerator
-
-from google.adk.agents import Agent
-from google.adk.agents.invocation_context import InvocationContext
-from google.adk.events.event import Event
-
-from ..generator_agent.agent import create_generator_agent
-from ..planner_agent.agent import create_planner_agent
+from google.adk.agents import SequentialAgent
+from generator_agent.agent import create_generator_agent
+from planner_agent.agent import create_planner_agent
 
 
-class NewsletterOrchestrator(Agent):
+class NewsletterOrchestrator(SequentialAgent):
     """
-    学級通信の作成プロセス全体を管理するオーケストレーターエージェント。
-    ユーザーの指示に基づいて、PlannerAgentとGeneratorAgentを制御します。
+    学級通信作成のワークフロー（計画→生成）を実行するエージェント。
+    SequentialAgentを継承し、定義された順序でエージェントを実行します。
     """
+
     def __init__(self):
+        """
+        エージェントのシーケンスを定義します。
+        1. PlannerAgent: ユーザーと対話し、構成案（outline.json）を作成します。
+        2. GeneratorAgent: outline.jsonを読み込み、HTMLを生成します。
+        """
         super().__init__(
             name="orchestrator_agent",
-            description="学級通信の作成プロセス全体を管理し、サブエージェントにタスクを委任します。",
+            agents=[
+                create_planner_agent(),
+                create_generator_agent(),
+            ],
+            description="Handles the newsletter creation workflow from planning to generation.",
         )
-        # サブエージェントは _run_async_impl 内で必要に応じて作成します
 
-    async def _run_async_impl(self, ctx: InvocationContext) -> AsyncGenerator[Event, None]:
-        """
-        オーケストレーターのメイン処理。
-        ユーザーのメッセージに基づいて、適切なサブエージェントにタスクを委任します。
-        """
-        user_message = ctx.new_message.parts[0].text.lower()
 
-        # ユーザーの意図に基づいてエージェントを選択
-        if any(keyword in user_message for keyword in ["計画", "構成", "プラン", "企画"]):
-            # 企画・計画段階 → PlannerAgent
-            planner_agent = create_planner_agent()
-            async for event in planner_agent._run_async_impl(ctx):
-                yield event
-        elif any(keyword in user_message for keyword in ["生成", "作成", "制作", "書いて"]):
-            # 生成段階 → GeneratorAgent
-            generator_agent = create_generator_agent()
-            async for event in generator_agent._run_async_impl(ctx):
-                yield event
-        else:
-            # デフォルトは計画段階から開始
-            planner_agent = create_planner_agent()
-            async for event in planner_agent._run_async_impl(ctx):
-                yield event
-
-def create_orchestrator_agent() -> NewsletterOrchestrator:
+def create_orchestrator_agent() -> SequentialAgent:
     """
     NewsletterOrchestratorのインスタンスを作成して返します。
     """
     return NewsletterOrchestrator()
+
+
+# ADK Web UI用のroot_agent変数
+root_agent = create_orchestrator_agent()

@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import AsyncGenerator
 
-from google.adk.agents import Agent
+from google.adk.agents import LlmAgent
 from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events.event import Event
 from google.adk.models.google_llm import Gemini
@@ -27,7 +27,7 @@ def _load_instruction() -> str:
         return "あなたはユーザーの要求をJSON形式で要約するアシスタントです。"
 
 
-class PlannerAgent(Agent):
+class PlannerAgent(LlmAgent):
     """
     ユーザーと対話して学級通信の構成を計画し、JSON形式で出力するエージェント。
     """
@@ -52,13 +52,28 @@ class PlannerAgent(Agent):
             # イベントをそのままクライアントにストリーミング
             yield event
 
-        # 対話履歴から最後のLLMの応答を取得
-        last_message = ctx.get_history()[-1]
-        if last_message.author != self.model.name:
-            # 最後のメッセージがLLMのものでなければ何もしない
+        # ADK v1.0.0では履歴アクセス方法が変更されたため、
+        # セッションイベントから最後のLLM応答を取得
+        session_events = ctx.session.events
+        if not session_events:
             return
-
-        llm_response_text = last_message.content.parts[0].text
+            
+        # 最後のイベントからLLM応答を取得
+        last_event = session_events[-1]
+        if not hasattr(last_event, 'author') or last_event.author != self.name:
+            return
+            
+        if not hasattr(last_event, 'content') or not last_event.content:
+            return
+            
+        # イベントの内容からテキストを抽出
+        if isinstance(last_event.content, list) and len(last_event.content) > 0:
+            if isinstance(last_event.content[0], dict) and 'text' in last_event.content[0]:
+                llm_response_text = last_event.content[0]['text']
+            else:
+                return
+        else:
+            return
 
         # LLMの応答からJSON部分を抽出
         try:
@@ -88,6 +103,9 @@ class PlannerAgent(Agent):
             await ctx.emit({"type": "error", "message": error_msg})
 
 
-def create_planner_agent() -> Agent:
+def create_planner_agent() -> LlmAgent:
     """PlannerAgentのインスタンスを生成するファクトリ関数。"""
     return PlannerAgent()
+
+# ADK Web UI用のroot_agent変数
+root_agent = create_planner_agent()
