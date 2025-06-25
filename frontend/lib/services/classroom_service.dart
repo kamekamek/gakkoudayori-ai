@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'google_auth_service.dart';
 
 /// Google Classroom APIサービス
-/// 
+///
 /// Google Classroomでの投稿・ファイル管理機能を提供
 class ClassroomService {
   static classroom.ClassroomApi? _classroomApi;
@@ -31,33 +31,34 @@ class ClassroomService {
     if (!GoogleAuthService.isSignedIn) {
       throw Exception('Googleアカウントにログインしてください');
     }
-    
+
     if (!GoogleAuthService.hasClassroomPermissions()) {
       throw Exception('Classroom権限が不足しています');
     }
   }
 
   /// コース一覧を取得
-  /// 
+  ///
   /// [teacherOnly] 教師として参加しているコースのみ取得
   /// Returns: コース一覧
-  static Future<List<classroom.Course>> getCourses({bool teacherOnly = true}) async {
+  static Future<List<classroom.Course>> getCourses(
+      {bool teacherOnly = true}) async {
     _checkAuthentication();
-    
+
     try {
       await initialize();
-      
+
       if (kDebugMode) {
         print('コース一覧取得開始');
       }
 
       final response = await _classroomApi!.courses.list(
         teacherId: teacherOnly ? 'me' : null,
-        courseStates: ['ACTIVE'],  // アクティブなコースのみ
+        courseStates: ['ACTIVE'], // アクティブなコースのみ
       );
 
       final courses = response.courses ?? [];
-      
+
       if (kDebugMode) {
         print('取得したコース数: ${courses.length}');
         for (final course in courses) {
@@ -76,17 +77,17 @@ class ClassroomService {
   }
 
   /// 特定のコースの詳細を取得
-  /// 
+  ///
   /// [courseId] コースID
   /// Returns: コース詳細
   static Future<classroom.Course> getCourse(String courseId) async {
     _checkAuthentication();
-    
+
     try {
       await initialize();
-      
+
       final course = await _classroomApi!.courses.get(courseId);
-      
+
       if (kDebugMode) {
         print('コース詳細取得: ${course.name}');
       }
@@ -99,7 +100,7 @@ class ClassroomService {
   }
 
   /// ファイルをGoogle Driveにアップロード
-  /// 
+  ///
   /// [fileBytes] アップロードするファイルのバイトデータ
   /// [fileName] ファイル名
   /// [mimeType] MIMEタイプ
@@ -112,10 +113,10 @@ class ClassroomService {
     String? folderId,
   }) async {
     _checkAuthentication();
-    
+
     try {
       await initialize();
-      
+
       if (kDebugMode) {
         print('Google Driveへファイルアップロード開始: $fileName');
         print('ファイルサイズ: ${fileBytes.length} bytes');
@@ -155,7 +156,7 @@ class ClassroomService {
   }
 
   /// Classroomでアナウンスメントを投稿
-  /// 
+  ///
   /// [courseId] 投稿先コースID
   /// [title] 投稿タイトル
   /// [description] 投稿内容
@@ -170,10 +171,10 @@ class ClassroomService {
     DateTime? scheduledTime,
   }) async {
     _checkAuthentication();
-    
+
     try {
       await initialize();
-      
+
       if (kDebugMode) {
         print('アナウンスメント投稿開始');
         print('コースID: $courseId');
@@ -183,13 +184,13 @@ class ClassroomService {
 
       // 添付ファイルのマテリアルを作成
       final materials = <classroom.Material>[];
-      
+
       // DriveFileを正しい形式で添付
       for (final fileId in attachmentFileIds) {
         // ファイル情報を取得してタイトルを設定
         String fileName;
         try {
-          final driveFile = await _driveApi!.files.get(fileId);
+          final driveFile = await _driveApi!.files.get(fileId) as drive.File;
           fileName = driveFile.name ?? 'attachment_$fileId';
         } catch (e) {
           fileName = 'attachment_$fileId';
@@ -197,16 +198,16 @@ class ClassroomService {
             print('ファイル名取得エラー: $e');
           }
         }
-        
+
         final driveFileMaterial = classroom.Material()
           ..driveFile = (classroom.SharedDriveFile()
             ..driveFile = (classroom.DriveFile()
               ..id = fileId
               ..title = fileName)
             ..shareMode = 'STUDENT_VIEW'); // 学生は閲覧のみ可能
-        
+
         materials.add(driveFileMaterial);
-        
+
         if (kDebugMode) {
           print('添付ファイル追加: $fileName (ID: $fileId)');
         }
@@ -220,17 +221,18 @@ class ClassroomService {
       // 予約投稿の設定
       if (scheduledTime != null) {
         announcement.scheduledTime = scheduledTime.toUtc().toIso8601String();
-        announcement.state = 'DRAFT';  // 予約投稿の場合はドラフト状態
-        
+        announcement.state = 'DRAFT'; // 予約投稿の場合はドラフト状態
+
         if (kDebugMode) {
           print('予約投稿時刻: ${scheduledTime.toIso8601String()}');
         }
       } else {
-        announcement.state = 'PUBLISHED';  // 即座に公開
+        announcement.state = 'PUBLISHED'; // 即座に公開
       }
 
       // アナウンスメントを投稿
-      final createdAnnouncement = await _classroomApi!.courses.announcements.create(
+      final createdAnnouncement =
+          await _classroomApi!.courses.announcements.create(
         announcement,
         courseId,
       );
@@ -254,7 +256,7 @@ class ClassroomService {
   }
 
   /// 学級通信をClassroomに投稿（完全版）
-  /// 
+  ///
   /// PDFファイルと画像を添付してClassroomに投稿
   /// [courseId] 投稿先コースID
   /// [title] 投稿タイトル
@@ -273,9 +275,10 @@ class ClassroomService {
   }) async {
     try {
       final uploadedFileIds = <String>[];
-      
+
       // PDFファイルをアップロード
-      final pdfFileName = '${title}_${DateTime.now().millisecondsSinceEpoch}.pdf';
+      final pdfFileName =
+          '${title}_${DateTime.now().millisecondsSinceEpoch}.pdf';
       final pdfFileId = await uploadFileToDrive(
         fileBytes: pdfBytes,
         fileName: pdfFileName,
@@ -289,7 +292,7 @@ class ClassroomService {
         final imageBytes = imageFile['bytes'] as Uint8List;
         final originalName = imageFile['name'] as String? ?? 'image_$i.jpg';
         final mimeType = imageFile['mimeType'] as String? ?? 'image/jpeg';
-        
+
         final imageFileId = await uploadFileToDrive(
           fileBytes: imageBytes,
           fileName: originalName,
@@ -312,15 +315,13 @@ class ClassroomService {
         'announcementId': announcementId,
         'uploadedFileIds': uploadedFileIds,
         'pdfFileId': pdfFileId,
-        'message': scheduledTime != null 
-            ? '予約投稿が設定されました' 
-            : 'Classroomに投稿しました',
+        'message': scheduledTime != null ? '予約投稿が設定されました' : 'Classroomに投稿しました',
       };
     } catch (e) {
       if (kDebugMode) {
         print('学級通信投稿エラー: $e');
       }
-      
+
       return {
         'success': false,
         'error': e.toString(),
@@ -330,7 +331,7 @@ class ClassroomService {
   }
 
   /// アナウンスメント一覧を取得
-  /// 
+  ///
   /// [courseId] コースID
   /// [limit] 取得件数制限
   /// Returns: アナウンスメント一覧
@@ -339,10 +340,10 @@ class ClassroomService {
     int limit = 20,
   }) async {
     _checkAuthentication();
-    
+
     try {
       await initialize();
-      
+
       final response = await _classroomApi!.courses.announcements.list(
         courseId,
         pageSize: limit,
@@ -351,7 +352,7 @@ class ClassroomService {
       );
 
       final announcements = response.announcements ?? [];
-      
+
       if (kDebugMode) {
         print('取得したアナウンスメント数: ${announcements.length}');
       }
@@ -364,15 +365,15 @@ class ClassroomService {
   }
 
   /// Classroom機能の動作テスト
-  /// 
+  ///
   /// 各API機能が正常に動作するかテスト
   static Future<Map<String, bool>> testClassroomIntegration() async {
     final results = <String, bool>{};
-    
+
     try {
       // 認証チェック
       results['authentication'] = GoogleAuthService.isSignedIn;
-      
+
       if (!results['authentication']!) {
         return results;
       }

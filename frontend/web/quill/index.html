@@ -9,6 +9,9 @@
     <link href="../quill.css" rel="stylesheet">
     <script src="../quill.js"></script>
     
+    <!-- DOMPurify for HTML sanitization -->
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.5/dist/purify.min.js"></script>
+    
     <style>
         /* 学校向けシンプルスタイル */
         body {
@@ -436,15 +439,64 @@
             }
         });
         
-        // メッセージ受信ハンドラ
+        // セキュリティ: 信頼できるOriginのリスト
+        const TRUSTED_ORIGINS = [
+            'http://localhost:3000',
+            'https://localhost:3000',
+            window.location.origin
+        ];
+        
+        // セキュリティ: 許可されたコマンドのみ実行
+        const SAFE_COMMANDS = {
+            'setContent': function(content, format = 'html') {
+                const sanitizedContent = DOMPurify ? DOMPurify.sanitize(content) : content;
+                setContent(sanitizedContent, format);
+            },
+            'getHtml': function() {
+                return getHtmlContent();
+            },
+            'getDelta': function() {
+                return getDeltaContent();
+            },
+            'clear': function() {
+                clearContent();
+            },
+            'switchTheme': function(theme) {
+                if (['spring', 'summer', 'autumn', 'winter'].includes(theme)) {
+                    switchTheme(theme);
+                }
+            }
+        };
+        
+        // セキュアなメッセージ受信ハンドラ
         window.addEventListener('message', function(event) {
             try {
+                // Origin検証
+                if (!TRUSTED_ORIGINS.includes(event.origin)) {
+                    console.warn('🔒 [Security] Untrusted origin blocked:', event.origin);
+                    return;
+                }
+                
                 const message = event.data;
                 
-                // EXECコマンドの処理
+                // 安全なコマンド実行（eval削除）
                 if (typeof message === 'string' && message.startsWith('EXEC:')) {
-                    const script = message.substring(5);
-                    eval(script);
+                    const commandStr = message.substring(5);
+                    const [command, ...args] = commandStr.split('(')[0].split('.');
+                    const functionName = command.replace('window.', '');
+                    
+                    if (SAFE_COMMANDS[functionName]) {
+                        // 引数の抽出と検証
+                        const argsMatch = commandStr.match(/\((.*)\)/);
+                        const parsedArgs = argsMatch ? argsMatch[1].split(',').map(arg => 
+                            arg.trim().replace(/['"]/g, '')
+                        ) : [];
+                        
+                        console.log('🔒 [Security] Executing safe command:', functionName, parsedArgs);
+                        SAFE_COMMANDS[functionName](...parsedArgs);
+                    } else {
+                        console.warn('🔒 [Security] Command blocked:', functionName);
+                    }
                 }
             } catch (e) {
                 console.log('❌ [QuillBridge] メッセージ処理エラー:', e);

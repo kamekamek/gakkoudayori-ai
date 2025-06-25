@@ -177,7 +177,8 @@ backend-dev:
 	cd backend/app && \
 		(test -d venv || python3.11 -m venv venv) && \
 		. venv/bin/activate && \
-		uvicorn main_local:app --host 0.0.0.0 --port 8081 --reload
+		pip install fastapi uvicorn sse-starlette pydantic && \
+		uvicorn main_dev:app --host 0.0.0.0 --port 8081 --reload
 
 # Python環境セットアップ
 backend-setup:

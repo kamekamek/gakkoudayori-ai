@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../services/pdf_api_service.dart';
 import '../../../services/pdf_download_service.dart';
+import '../../../core/exceptions/app_exceptions.dart';
+import '../../../core/providers/error_provider.dart';
 
 /// プレビューモードの種類
 enum PreviewMode {
@@ -11,11 +13,16 @@ enum PreviewMode {
 
 /// プレビュー・編集機能の状態管理
 class PreviewProvider extends ChangeNotifier {
+  final ErrorProvider _errorProvider;
+  
   PreviewMode _currentMode = PreviewMode.preview;
   String _htmlContent = '';
   bool _isEditing = false;
   bool _isGeneratingPdf = false;
   String _selectedStyle = 'classic';
+
+  PreviewProvider({required ErrorProvider errorProvider})
+      : _errorProvider = errorProvider;
 
   // Getters
   PreviewMode get currentMode => _currentMode;
@@ -33,8 +40,40 @@ class PreviewProvider extends ChangeNotifier {
 
   // HTMLコンテンツの更新
   void updateHtmlContent(String html) {
-    _htmlContent = html;
-    notifyListeners();
+    try {
+      if (html.trim().isEmpty) {
+        throw ValidationException.required('HTML content');
+      }
+      
+      // 基本的なHTMLバリデーション
+      _validateHtmlContent(html);
+      
+      _htmlContent = html;
+      notifyListeners();
+    } catch (error, stackTrace) {
+      _errorProvider.reportError(
+        error,
+        stackTrace: stackTrace,
+        context: 'Updating HTML content',
+      );
+      rethrow;
+    }
+  }
+
+  /// HTMLコンテンツのバリデーション
+  void _validateHtmlContent(String html) {
+    // 基本的なHTMLタグの存在確認
+    if (!html.contains('<') || !html.contains('>')) {
+      throw ValidationException.invalidFormat('HTML', 'Missing HTML tags');
+    }
+    
+    // 潜在的に危険なタグの検出
+    final dangerousTags = ['<script', '<iframe', '<object', '<embed'];
+    for (final tag in dangerousTags) {
+      if (html.toLowerCase().contains(tag)) {
+        throw ValidationException.invalidFormat('HTML', 'Dangerous tag detected: $tag');
+      }
+    }
   }
 
   // テスト用サンプルHTMLの設定
@@ -100,8 +139,16 @@ class PreviewProvider extends ChangeNotifier {
 
   // PDF生成
   Future<void> generatePdf() async {
+    await _errorProvider.retryOperation(
+      () => _generatePdfWithRetry(),
+      context: 'PDF generation',
+    );
+  }
+
+  /// リトライ機能付きPDF生成の実装
+  Future<void> _generatePdfWithRetry() async {
     if (_htmlContent.isEmpty) {
-      throw Exception('生成するコンテンツがありません');
+      throw ContentException.generationFailed('No content to generate PDF');
     }
 
     setPdfGenerating(true);
@@ -110,7 +157,8 @@ class PreviewProvider extends ChangeNotifier {
       // HTMLコンテンツの妥当性チェック
       final validation = PdfApiService.validateHtmlForPdf(_htmlContent);
       if (!validation['isValid']) {
-        throw Exception('PDF生成エラー: ${validation['issues'].join(', ')}');
+        final issues = validation['issues'] as List<String>;
+        throw ContentException.invalidFormat();
       }
 
       // バックエンドでPDF生成
@@ -136,11 +184,24 @@ class PreviewProvider extends ChangeNotifier {
 
         debugPrint('PDF生成・ダウンロード成功: ${fileSize} MB');
       } else {
-        throw Exception(result['error'] ?? 'PDF生成に失敗しました');
+        final errorMessage = result['error'] ?? 'PDF生成に失敗しました';
+        throw ContentException.generationFailed(errorMessage);
       }
-    } catch (e) {
-      debugPrint('PDF生成エラー: $e');
-      throw Exception('PDF生成に失敗しました: $e');
+    } catch (error, stackTrace) {
+      debugPrint('PDF生成エラー: $error');
+      
+      // エラーを適切な例外に変換
+      final exception = error is AppException
+          ? error
+          : ContentException.generationFailed(error.toString());
+      
+      _errorProvider.reportError(
+        exception,
+        stackTrace: stackTrace,
+        context: 'PDF generation process',
+      );
+      
+      rethrow;
     } finally {
       setPdfGenerating(false);
     }
@@ -148,14 +209,14 @@ class PreviewProvider extends ChangeNotifier {
 
   // 印刷プレビューの表示
   Future<void> showPrintPreview() async {
-    if (_htmlContent.isEmpty) {
-      throw Exception('印刷するコンテンツがありません');
-    }
-
-    // 印刷ビューモードに切り替え
-    switchMode(PreviewMode.printView);
-    
     try {
+      if (_htmlContent.isEmpty) {
+        throw ContentException.generationFailed('No content to print');
+      }
+
+      // 印刷ビューモードに切り替え
+      switchMode(PreviewMode.printView);
+      
       // Web環境での印刷プレビュー実装
       debugPrint('印刷プレビューモードに切り替えました');
       
@@ -166,9 +227,20 @@ class PreviewProvider extends ChangeNotifier {
       // html.window.print(); // 必要に応じてコメントアウト解除
       
       debugPrint('印刷プレビュー準備完了');
-    } catch (e) {
-      debugPrint('印刷プレビューエラー: $e');
-      throw Exception('印刷プレビューの表示に失敗しました: $e');
+    } catch (error, stackTrace) {
+      debugPrint('印刷プレビューエラー: $error');
+      
+      final exception = error is AppException
+          ? error
+          : ContentException.generationFailed(error.toString());
+      
+      _errorProvider.reportError(
+        exception,
+        stackTrace: stackTrace,
+        context: 'Print preview display',
+      );
+      
+      rethrow;
     }
   }
   

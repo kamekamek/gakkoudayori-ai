@@ -8,12 +8,27 @@ from typing import AsyncGenerator
 from unittest.mock import Mock
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
 app = FastAPI(
     title="Gakkoudayori AI Backend v2 - Dev",
     description="Development version for frontend integration testing"
+)
+
+# CORS設定（開発環境用）
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8080",
+        "http://127.0.0.1:8080"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 class ChatIn(BaseModel):
@@ -208,6 +223,31 @@ async def generate_newsletter_html(req: dict):
     """
     
     return {"html_content": sample_html.strip()}
+
+@app.get("/health")
+async def health_check():
+    """ヘルスチェックエンドポイント"""
+    return {
+        "status": "healthy",
+        "version": "dev-v2.0.0",
+        "timestamp": datetime.datetime.now().isoformat(),
+        "features": [
+            "adk_chat_streaming",
+            "newsletter_generation", 
+            "session_management",
+            "cors_enabled"
+        ]
+    }
+
+@app.get("/")
+async def root():
+    """ルートエンドポイント"""
+    return {
+        "message": "学校だよりAI Backend - Development Server",
+        "version": "dev-v2.0.0",
+        "docs": "/docs",
+        "health": "/health"
+    }
 
 if __name__ == "__main__":
     import uvicorn
