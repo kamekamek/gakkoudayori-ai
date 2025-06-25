@@ -24,7 +24,9 @@ class PreviewInterface extends StatelessWidget {
             PreviewModeToolbar(
               currentMode: previewProvider.currentMode,
               onModeChanged: (mode) => previewProvider.switchMode(mode),
-              onPdfGenerate: () => _generatePdf(context),
+              onPdfGenerate: () {
+            context.read<PreviewProvider>().generatePdf(context);
+          },
               onPrintPreview: () => _showPrintPreview(context),
               onRegenerate: () => _regenerateContent(context),
               onClassroomPost: chatProvider.isDemo ? () => _postToClassroom(context) : null,

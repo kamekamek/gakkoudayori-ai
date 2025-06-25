@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import logging
-from fastapi import APIRouter, Depends, HTTPException, WebSocket
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, Request
 
 from models.adk_models import (
     NewsletterGenerationRequest,
@@ -28,6 +28,40 @@ from services.newsletter_service import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+from fastapi.responses import StreamingResponse, Response
+from models.adk_models import AdkChatRequest, NewsletterGenerationRequest
+from services.pdf_generator import generate_pdf_from_html_bytes
+
+@router.post("/generate/newsletter", summary="学級通信HTMLをPDFに変換")
+async def generate_newsletter_pdf(req: Request):
+    body = await req.json()
+    html_content = body.get("html_content")
+    if not html_content:
+        raise HTTPException(status_code=400, detail="html_content is required")
+    try:
+        pdf_bytes = generate_pdf_from_html_bytes(html_content)
+        return Response(content=pdf_bytes, media_type="application/pdf")
+    except Exception as e:
+        logger.exception(f"Error in generate_newsletter_pdf: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/chat/stream", summary="ADKチャットストリーミング")
+async def adk_chat_stream(request: Request, body: AdkChatRequest):
+    """ADK Runnerを使用してチャットストリームを処理します。"""
+    runner = request.app.state.adk_runner
+    try:
+        return StreamingResponse(
+            runner.chat_stream(
+                message=body.message,
+                session_id=body.session_id,
+            ),
+            media_type="text/event-stream",
+        )
+    except Exception as e:
+        logger.exception(f"Error in adk_chat_stream: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post(

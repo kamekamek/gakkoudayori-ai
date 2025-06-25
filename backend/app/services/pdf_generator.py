@@ -88,6 +88,22 @@ def _get_available_japanese_fonts() -> list:
     fonts.extend(["sans-serif", "serif"])
     return fonts
 
+def generate_pdf_from_html_bytes(html_content: str) -> bytes:
+    if not WEASYPRINT_AVAILABLE:
+        raise RuntimeError("WeasyPrint is not available.")
+    full_html = _build_complete_html_document(
+        html_content=html_content,
+        title="学級通信",
+        page_size=DEFAULT_PAGE_SIZE,
+        margin=DEFAULT_MARGIN,
+        include_header=False,
+        include_footer=False,
+        custom_css="",
+        font_family=", ".join([f'"{font}"' for font in _get_available_japanese_fonts()])
+    )
+    return HTML(string=full_html).write_pdf()
+
+
 def generate_pdf_from_html(
     html_content: str,
     title: str = "学級通信",

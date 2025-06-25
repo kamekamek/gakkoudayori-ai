@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../mock/sample_data.dart';
 import '../../../services/adk_agent_service.dart';
-import 'dart:convert';
+import '../../../services/graphical_record_service.dart';
 import 'dart:html' as html;
 
 /// プレビューモードの種類
@@ -91,65 +92,30 @@ class PreviewProvider extends ChangeNotifier {
   }
 
   // PDF生成
-  Future<void> generatePdf() async {
+  Future<void> generatePdf(BuildContext context) async {
     if (_htmlContent.isEmpty) {
-      throw Exception('生成するコンテンツがありません');
+      throw Exception('PDFを生成するコンテンツがありません。');
     }
-
     setPdfGenerating(true);
-    
     try {
-      // HTMLをPDFとしてダウンロード
-      final bytes = utf8.encode(_htmlContent);
-      final blob = html.Blob([bytes], 'text/html');
-      final url = html.Url.createObjectUrlFromBlob(blob);
-      
-      final anchor = html.AnchorElement(href: url)
-        ..setAttribute('download', '学級通信_${DateTime.now().millisecondsSinceEpoch}.html')
-        ..click();
-      
-      html.Url.revokeObjectUrl(url);
-      
-      // PDFプリント用のBLOBを作成して新しいウィンドウで開く
-      final printHtml = '''
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <title>学級通信</title>
-          <style>
-            @media print {
-              body { margin: 0; }
-              @page { size: A4; margin: 1cm; }
-            }
-          </style>
-        </head>
-        <body>
-          $_htmlContent
-          <script>
-            window.onload = function() {
-              window.print();
-            };
-          </script>
-        </body>
-        </html>
-      ''';
-      
-      final printBlob = html.Blob([printHtml], 'text/html');
-      final printUrl = html.Url.createObjectUrl(printBlob);
-      html.window.open(printUrl, '_blank');
-      
-      // URLを解放（メモリリーク防止）
-      Future.delayed(const Duration(seconds: 1), () {
-        html.Url.revokeObjectUrl(printUrl);
-      });
-      
+      final result = await context.read<GraphicalRecordService>().convertHtmlToPdf(_htmlContent);
+      if (result.success && result.pdfData != null) {
+        final blob = html.Blob([result.pdfData!], 'application/pdf');
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        final anchor = html.AnchorElement(href: url)
+          ..setAttribute('download', 'GakkyuTsuushin.pdf')
+          ..click();
+        html.Url.revokeObjectUrl(url);
+      } else {
+        throw Exception(result.error ?? 'PDF data is null.');
+      }
     } catch (e) {
       throw Exception('PDF生成に失敗しました: $e');
     } finally {
       setPdfGenerating(false);
     }
   }
+
 
   // 印刷プレビューの表示
   Future<void> showPrintPreview() async {

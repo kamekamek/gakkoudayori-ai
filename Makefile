@@ -38,7 +38,7 @@ dev:
 	@echo "🔧 開発環境で起動中..."
 	cd frontend && flutter run -d chrome \
 		--dart-define=ENVIRONMENT=development \
-		--dart-define=API_BASE_URL=http://localhost:8081/api/v1
+		--dart-define=API_BASE_URL=http://localhost:8001/api/v1
 
 # ステージング環境で起動
 staging:
@@ -52,7 +52,7 @@ build-dev:
 	@echo "🔧 開発環境用ビルド中..."
 	cd frontend && flutter build web \
 		--dart-define=ENVIRONMENT=development \
-		--dart-define=API_BASE_URL=http://localhost:8081/api/v1 \
+		--dart-define=API_BASE_URL=http://localhost:8001/api/v1 \
 		--debug
 
 # 本番環境用ビルド
@@ -170,7 +170,7 @@ backend-dev: backend-setup
 	@echo "🐍 バックエンド開発サーバー起動中..."
 	cd backend/app && \
 		. venv/bin/activate && \
-		uvicorn main_local:app --host 0.0.0.0 --port 8081 --reload
+		uvicorn main_local:app --host 0.0.0.0 --port 8001 --reload
 
 # Python環境セットアップ
 backend-setup:

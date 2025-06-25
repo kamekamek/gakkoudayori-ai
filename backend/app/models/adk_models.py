@@ -17,6 +17,17 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 
 
+class AdkChatRequest(BaseModel):
+    message: str
+    user_id: str
+    session_id: Optional[str] = None
+
+class NewsletterGenerationRequest(BaseModel):
+    initial_request: str
+    user_id: str
+    session_id: Optional[str] = None
+
+
 class ChatMessage(BaseModel):
     """チャットメッセージモデル"""
     role: Literal["user", "assistant", "system"] = Field(..., description="メッセージの送信者")

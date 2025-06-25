@@ -10,6 +10,8 @@ import '../features/home/providers/newsletter_provider.dart';
 import '../services/adk_agent_service.dart';
 import '../services/adk_agent_service_mock.dart';
 
+import '../services/graphical_record_service.dart';
+
 class GakkouDayoriAiApp extends StatelessWidget {
   final bool isDemo;
   
@@ -25,6 +27,9 @@ class GakkouDayoriAiApp extends StatelessWidget {
         // Services（デモモードに応じて切り替え）
         Provider<AdkAgentService>(
           create: (_) => isDemo ? AdkAgentServiceMock() : AdkAgentService(),
+        ),
+        Provider<GraphicalRecordService>(
+          create: (_) => GraphicalRecordService(),
         ),
 
         // Providers（デモモードに応じて設定）

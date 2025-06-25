@@ -123,7 +123,7 @@ class GraphicalRecordService {
   Future<PdfConversionResult> convertHtmlToPdf(String htmlContent) async {
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/generate-pdf'),
+        Uri.parse('$_baseUrl/adk/generate/newsletter'),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
