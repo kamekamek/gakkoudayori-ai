@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../services/pdf_api_service.dart';
 import '../../../services/pdf_download_service.dart';
-import '../../../core/exceptions/app_exceptions.dart';
 import '../../../core/providers/error_provider.dart';
 
 /// プレビューモードの種類
@@ -42,7 +41,7 @@ class PreviewProvider extends ChangeNotifier {
   void updateHtmlContent(String html) {
     try {
       if (html.trim().isEmpty) {
-        throw ValidationException.required('HTML content');
+        throw Exception('HTML content is required');
       }
       
       // 基本的なHTMLバリデーション
@@ -51,11 +50,8 @@ class PreviewProvider extends ChangeNotifier {
       _htmlContent = html;
       notifyListeners();
     } catch (error, stackTrace) {
-      _errorProvider.reportError(
-        error,
-        stackTrace: stackTrace,
-        context: 'Updating HTML content',
-      );
+      _errorProvider.setError('Failed to update HTML content: $error');
+      debugPrint('HTML content update error: $error');
       rethrow;
     }
   }
@@ -64,14 +60,14 @@ class PreviewProvider extends ChangeNotifier {
   void _validateHtmlContent(String html) {
     // 基本的なHTMLタグの存在確認
     if (!html.contains('<') || !html.contains('>')) {
-      throw ValidationException.invalidFormat('HTML', 'Missing HTML tags');
+      throw Exception('Invalid HTML format: Missing HTML tags');
     }
     
     // 潜在的に危険なタグの検出
     final dangerousTags = ['<script', '<iframe', '<object', '<embed'];
     for (final tag in dangerousTags) {
       if (html.toLowerCase().contains(tag)) {
-        throw ValidationException.invalidFormat('HTML', 'Dangerous tag detected: $tag');
+        throw Exception('Invalid HTML format: Dangerous tag detected: $tag');
       }
     }
   }
@@ -139,16 +135,18 @@ class PreviewProvider extends ChangeNotifier {
 
   // PDF生成
   Future<void> generatePdf() async {
-    await _errorProvider.retryOperation(
-      () => _generatePdfWithRetry(),
-      context: 'PDF generation',
-    );
+    try {
+      await _generatePdfWithRetry();
+    } catch (error) {
+      _errorProvider.setError('Failed to generate PDF: $error');
+      rethrow;
+    }
   }
 
   /// リトライ機能付きPDF生成の実装
   Future<void> _generatePdfWithRetry() async {
     if (_htmlContent.isEmpty) {
-      throw ContentException.generationFailed('No content to generate PDF');
+      throw Exception('No content to generate PDF');
     }
 
     setPdfGenerating(true);
@@ -158,7 +156,7 @@ class PreviewProvider extends ChangeNotifier {
       final validation = PdfApiService.validateHtmlForPdf(_htmlContent);
       if (!validation['isValid']) {
         final issues = validation['issues'] as List<String>;
-        throw ContentException.invalidFormat();
+        throw Exception('Invalid HTML format for PDF: ${issues.join(', ')}');
       }
 
       // バックエンドでPDF生成
@@ -185,21 +183,12 @@ class PreviewProvider extends ChangeNotifier {
         debugPrint('PDF生成・ダウンロード成功: ${fileSize} MB');
       } else {
         final errorMessage = result['error'] ?? 'PDF生成に失敗しました';
-        throw ContentException.generationFailed(errorMessage);
+        throw Exception('PDF generation failed: $errorMessage');
       }
     } catch (error, stackTrace) {
       debugPrint('PDF生成エラー: $error');
       
-      // エラーを適切な例外に変換
-      final exception = error is AppException
-          ? error
-          : ContentException.generationFailed(error.toString());
-      
-      _errorProvider.reportError(
-        exception,
-        stackTrace: stackTrace,
-        context: 'PDF generation process',
-      );
+      _errorProvider.setError('PDF generation process failed: $error');
       
       rethrow;
     } finally {
@@ -211,7 +200,7 @@ class PreviewProvider extends ChangeNotifier {
   Future<void> showPrintPreview() async {
     try {
       if (_htmlContent.isEmpty) {
-        throw ContentException.generationFailed('No content to print');
+        throw Exception('No content to print');
       }
 
       // 印刷ビューモードに切り替え
@@ -230,15 +219,7 @@ class PreviewProvider extends ChangeNotifier {
     } catch (error, stackTrace) {
       debugPrint('印刷プレビューエラー: $error');
       
-      final exception = error is AppException
-          ? error
-          : ContentException.generationFailed(error.toString());
-      
-      _errorProvider.reportError(
-        exception,
-        stackTrace: stackTrace,
-        context: 'Print preview display',
-      );
+      _errorProvider.setError('Print preview display failed: $error');
       
       rethrow;
     }

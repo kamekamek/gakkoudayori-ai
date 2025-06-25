@@ -5,6 +5,7 @@ import '../../../home/presentation/widgets/audio_waveform_widget.dart';
 import '../../../home/presentation/widgets/advanced_audio_waveform_widget.dart';
 import '../../../editor/presentation/widgets/image_upload_widget.dart';
 import '../../../editor/providers/image_provider.dart';
+import '../../../../core/models/chat_message.dart';
 
 /// ADKエージェントとのチャットウィジェット
 class AdkChatWidget extends StatefulWidget {

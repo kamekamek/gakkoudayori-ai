@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../../../services/adk_agent_service.dart';
 import '../../../services/audio_service.dart';
-import '../../../core/exceptions/app_exceptions.dart';
 import '../../../core/providers/error_provider.dart';
+import '../../../core/models/chat_message.dart';
 
 /// ADKチャットの状態管理プロバイダー
 class AdkChatProvider extends ChangeNotifier {
@@ -68,20 +68,19 @@ class AdkChatProvider extends ChangeNotifier {
 
       debugPrint('[AdkChatProvider] Audio service initialization complete');
     } catch (error, stackTrace) {
-      _errorProvider.reportError(
-        AudioException.notSupported(),
-        stackTrace: stackTrace,
-        context: 'Audio service initialization',
-      );
+      _errorProvider.setError('Audio service initialization failed: $error');
+      debugPrint('Audio service initialization error: $error');
     }
   }
 
   /// メッセージを送信（ストリーミング対応）
   Future<void> sendMessage(String message) async {
-    await _errorProvider.retryOperation(
-      () => _sendMessageWithRetry(message),
-      context: 'Sending chat message',
-    );
+    try {
+      await _sendMessageWithRetry(message);
+    } catch (error) {
+      _errorProvider.setError('Failed to send message: $error');
+      rethrow;
+    }
   }
 
   /// リトライ機能付きメッセージ送信の実装
@@ -90,11 +89,11 @@ class AdkChatProvider extends ChangeNotifier {
     
     if (_isProcessing) {
       debugPrint('[AdkChatProvider] Already processing, aborting.');
-      throw ApiException.badRequest('Already processing another message');
+      throw Exception('Already processing another message');
     }
 
     if (message.trim().isEmpty) {
-      throw ValidationException.required('message');
+      throw Exception('Message is required');
     }
 
     // ユーザーメッセージを追加
@@ -144,20 +143,10 @@ class AdkChatProvider extends ChangeNotifier {
         }
       }
       debugPrint('[AdkChatProvider] Stream finished.');
-    } catch (e, stackTrace) {
-      // エラーを適切な例外に変換
-      final exception = _convertToAppException(e);
-      _error = exception.userMessage;
-      
-      // エラープロバイダーに報告
-      _errorProvider.reportError(
-        exception,
-        stackTrace: stackTrace,
-        context: 'Chat message streaming',
-      );
-      
+    } catch (e) {
+      _error = e.toString();
+      _errorProvider.setError('Chat error: ${e.toString()}');
       debugPrint('[AdkChatProvider] Error in sendMessage: $e');
-      rethrow;
     } finally {
       _isProcessing = false;
       debugPrint('[AdkChatProvider] Set isProcessing to false.');
@@ -206,39 +195,12 @@ class AdkChatProvider extends ChangeNotifier {
     final errorMessage = event.data;
     _error = errorMessage;
     
-    // サーバーからのエラーを適切な例外に変換
-    final exception = ApiException.serverError(errorMessage);
-    _errorProvider.reportError(
-      exception,
-      context: 'Server error event',
-    );
+    // エラーを記録
+    _errorProvider.setError('Server error: $errorMessage');
     
     notifyListeners();
   }
 
-  /// エラーをAppExceptionに変換
-  AppException _convertToAppException(dynamic error) {
-    if (error is AppException) {
-      return error;
-    }
-    
-    final errorString = error.toString().toLowerCase();
-    
-    if (errorString.contains('timeout') || errorString.contains('connection')) {
-      return NetworkException.timeout();
-    }
-    
-    if (errorString.contains('permission')) {
-      return PermissionException.microphoneDenied();
-    }
-    
-    if (errorString.contains('session')) {
-      return SessionException.notFound();
-    }
-    
-    // デフォルトはAPIエラー
-    return ApiException.serverError(error.toString());
-  }
 
   /// セッションをクリア
   void clearSession() {
@@ -266,21 +228,13 @@ class AdkChatProvider extends ChangeNotifier {
       debugPrint('[AdkChatProvider] startVoiceRecording result: $result');
       
       if (!result) {
-        throw AudioException.recordingFailed('Failed to start recording');
+        throw Exception('Failed to start recording');
       }
       
       return result;
     } catch (error, stackTrace) {
-      final exception = error is AudioException 
-          ? error 
-          : AudioException.recordingFailed(error);
-      
-      _errorProvider.reportError(
-        exception,
-        stackTrace: stackTrace,
-        context: 'Starting voice recording',
-      );
-      
+      _errorProvider.setError('Failed to start voice recording: $error');
+      debugPrint('Voice recording start error: $error');
       return false;
     }
   }
@@ -294,21 +248,13 @@ class AdkChatProvider extends ChangeNotifier {
       debugPrint('[AdkChatProvider] stopVoiceRecording result: $result');
       
       if (!result) {
-        throw AudioException.recordingFailed('Failed to stop recording');
+        throw Exception('Failed to stop recording');
       }
       
       return result;
     } catch (error, stackTrace) {
-      final exception = error is AudioException 
-          ? error 
-          : AudioException.recordingFailed(error);
-      
-      _errorProvider.reportError(
-        exception,
-        stackTrace: stackTrace,
-        context: 'Stopping voice recording',
-      );
-      
+      _errorProvider.setError('Failed to stop voice recording: $error');
+      debugPrint('Voice recording stop error: $error');
       return false;
     }
   }
@@ -329,23 +275,3 @@ class AdkChatProvider extends ChangeNotifier {
   }
 }
 
-/// ミュータブルなチャットメッセージクラス
-class MutableChatMessage {
-  final String role;
-  String content;
-  final DateTime timestamp;
-
-  MutableChatMessage({
-    required this.role,
-    required this.content,
-    required this.timestamp,
-  });
-
-  factory MutableChatMessage.fromChatMessage(ChatMessage message) {
-    return MutableChatMessage(
-      role: message.role,
-      content: message.content,
-      timestamp: message.timestamp,
-    );
-  }
-}

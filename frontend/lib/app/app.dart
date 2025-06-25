@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../core/router/app_router.dart';
 import '../core/theme/app_theme.dart';
+import '../core/providers/error_provider.dart';
 import '../features/ai_assistant/providers/adk_chat_provider.dart';
 import '../features/editor/providers/image_provider.dart';
 import '../features/editor/providers/preview_provider.dart';
@@ -18,11 +19,15 @@ class GakkouDayoriAiApp extends StatelessWidget {
       providers: [
         // Services
         Provider(create: (_) => AdkAgentService()),
+        
+        // Error handling
+        ChangeNotifierProvider(create: (_) => ErrorProvider()),
 
         // Providers
         ChangeNotifierProvider(
           create: (context) => AdkChatProvider(
             adkService: context.read<AdkAgentService>(),
+            errorProvider: context.read<ErrorProvider>(),
             userId: 'user_12345',
           ),
         ),
@@ -33,7 +38,11 @@ class GakkouDayoriAiApp extends StatelessWidget {
           ),
         ),
         ChangeNotifierProvider(create: (_) => ImageManagementProvider()),
-        ChangeNotifierProvider(create: (_) => PreviewProvider()),
+        ChangeNotifierProvider(
+          create: (context) => PreviewProvider(
+            errorProvider: context.read<ErrorProvider>(),
+          ),
+        ),
       ],
       child: MaterialApp.router(
         title: '学校だよりAI', // Fallback title
