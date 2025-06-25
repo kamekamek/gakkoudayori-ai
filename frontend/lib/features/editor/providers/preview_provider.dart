@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../mock/sample_data.dart';
+import '../../../services/adk_agent_service.dart';
+import 'dart:convert';
+import 'dart:html' as html;
 
 /// プレビューモードの種類
 enum PreviewMode {
@@ -15,6 +18,8 @@ class PreviewProvider extends ChangeNotifier {
   bool _isEditing = false;
   bool _isGeneratingPdf = false;
   String _selectedStyle = 'classic';
+  String? _lastUsedPrompt; // 最後に使用されたプロンプトを保存
+  final AdkAgentService _adkService = AdkAgentService();
 
   // Getters
   PreviewMode get currentMode => _currentMode;
@@ -94,10 +99,40 @@ class PreviewProvider extends ChangeNotifier {
     setPdfGenerating(true);
     
     try {
-      // TODO: 実際のPDF生成処理を実装
-      await Future.delayed(const Duration(seconds: 2)); // 模擬処理
+      // HTMLをPDFとしてダウンロード
+      final bytes = utf8.encode(_htmlContent);
+      final blob = html.Blob([bytes], 'text/html');
+      final url = html.Url.createObjectUrlFromBlob(blob);
       
-      // PDF生成成功
+      final anchor = html.AnchorElement(href: url)
+        ..setAttribute('download', '学級通信_${DateTime.now().millisecondsSinceEpoch}.html')
+        ..click();
+      
+      html.Url.revokeObjectUrl(url);
+      
+      // PDFプリント用の新しいウィンドウを開く
+      final printWindow = html.window.open('', '_blank');
+      printWindow?.document.write('''
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>学級通信</title>
+          <style>
+            @media print {
+              body { margin: 0; }
+              @page { size: A4; margin: 1cm; }
+            }
+          </style>
+        </head>
+        <body>
+          $_htmlContent
+        </body>
+        </html>
+      ''');
+      printWindow?.document.close();
+      printWindow?.print();
+      
     } catch (e) {
       throw Exception('PDF生成に失敗しました: $e');
     } finally {
@@ -114,13 +149,36 @@ class PreviewProvider extends ChangeNotifier {
     // 印刷ビューモードに切り替え
     switchMode(PreviewMode.printView);
     
-    // TODO: 実際の印刷プレビュー処理を実装
+    // ブラウザの印刷プレビューを表示
+    html.window.print();
   }
 
   // コンテンツの再生成
   Future<void> regenerateContent() async {
-    // TODO: 既存の入力内容を使ってコンテンツを再生成
+    if (_lastUsedPrompt == null || _lastUsedPrompt!.isEmpty) {
+      // 最初の生成時はサンプルプロンプトを使用
+      _lastUsedPrompt = '今月の学級通信を作成してください。子どもたちの様子や最近の行事について盛り込んでください。';
+    }
+    
+    try {
+      final response = await _adkService.startNewsletterGeneration(
+        initialRequest: _lastUsedPrompt!,
+        userId: 'demo-user', // TODO: 実際のユーザーIDを使用
+      );
+      
+      if (response.htmlContent != null) {
+        updateHtmlContent(response.htmlContent!);
+      }
+    } catch (e) {
+      throw Exception('コンテンツの再生成に失敗しました: $e');
+    }
     notifyListeners();
+  }
+  
+  // プロンプトを設定してコンテンツを生成
+  Future<void> generateContentFromPrompt(String prompt) async {
+    _lastUsedPrompt = prompt;
+    await regenerateContent();
   }
 
   // プレビューのリセット

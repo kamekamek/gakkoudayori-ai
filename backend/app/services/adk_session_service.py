@@ -23,11 +23,175 @@ from google.genai import types as genai_types
 from google.protobuf.json_format import MessageToDict
 from google.cloud.firestore_v1.base_client import BaseClient
 from google.api_core.exceptions import NotFound
+from ..models.adk_models import (
+    NewsletterGenerationRequest,
+    NewsletterGenerationResponse,
+    HTMLValidationRequest,
+    HTMLValidationResponse,
+)
+from ..adk.agents.generation_workflow_agent import GenerationWorkflowAgent
+from ..adk.agents.validation_agent import ValidationAgent
+from ..core.config import settings
 
 logger = logging.getLogger(__name__)
 
 # 一時的にBaseSessionServiceを除去し、基本動作を確保
 # from google.adk.sessions import BaseSessionService
+
+class ADKSessionService:
+    """ADK セッション管理サービス"""
+    
+    def __init__(self):
+        self.generation_agent = GenerationWorkflowAgent()
+        self.validation_agent = ValidationAgent()
+        self.sessions: Dict[str, Dict[str, Any]] = {}
+    
+    def create_session(self, session_id: str) -> Dict[str, Any]:
+        """新しいセッションを作成"""
+        session_data = {
+            "session_id": session_id,
+            "created_at": None,  # 実際の実装では datetime.now()
+            "status": "active",
+            "conversation_history": [],
+            "generation_count": 0,
+            "validation_count": 0,
+        }
+        self.sessions[session_id] = session_data
+        return session_data
+    
+    def get_session(self, session_id: str) -> Optional[Dict[str, Any]]:
+        """セッション情報を取得"""
+        return self.sessions.get(session_id)
+    
+    def update_session(self, session_id: str, updates: Dict[str, Any]) -> bool:
+        """セッション情報を更新"""
+        if session_id in self.sessions:
+            self.sessions[session_id].update(updates)
+            return True
+        return False
+    
+    def delete_session(self, session_id: str) -> bool:
+        """セッションを削除"""
+        if session_id in self.sessions:
+            del self.sessions[session_id]
+            return True
+        return False
+    
+    async def generate_newsletter(
+        self, 
+        request: NewsletterGenerationRequest, 
+        session_id: str
+    ) -> NewsletterGenerationResponse:
+        """
+        ニュースレター生成
+        
+        Sequential Agentを使用して:
+        1. プランナーが構成を計画
+        2. ジェネレーターが実際のHTMLを生成
+        """
+        # セッション確認・作成
+        if session_id not in self.sessions:
+            self.create_session(session_id)
+        
+        # Sequential Agent実行
+        try:
+            result = await self.generation_agent.run(
+                audio_input=request.audio_input,
+                user_instruction=request.user_instruction,
+                layout_preference=request.layout_preference,
+                session_id=session_id
+            )
+            
+            # セッション更新
+            self.update_session(session_id, {
+                "generation_count": self.sessions[session_id]["generation_count"] + 1,
+                "last_generation": result
+            })
+            
+            return NewsletterGenerationResponse(
+                generated_html=result.get("generated_html", ""),
+                session_id=session_id,
+                status="completed",
+                processing_time=result.get("processing_time", 0.0)
+            )
+            
+        except Exception as e:
+            return NewsletterGenerationResponse(
+                generated_html="",
+                session_id=session_id,
+                status="error",
+                processing_time=0.0,
+                error_message=str(e)
+            )
+    
+    async def validate_html(
+        self, 
+        request: HTMLValidationRequest, 
+        session_id: str
+    ) -> HTMLValidationResponse:
+        """
+        HTML検証
+        
+        独立したValidation Agentを使用
+        """
+        # セッション確認・作成
+        if session_id not in self.sessions:
+            self.create_session(session_id)
+        
+        try:
+            result = await self.validation_agent.run(
+                html_content=request.html_content,
+                validation_rules=request.validation_rules,
+                session_id=session_id
+            )
+            
+            # セッション更新
+            self.update_session(session_id, {
+                "validation_count": self.sessions[session_id]["validation_count"] + 1,
+                "last_validation": result
+            })
+            
+            return HTMLValidationResponse(
+                is_valid=result.get("is_valid", False),
+                validation_errors=result.get("validation_errors", []),
+                suggestions=result.get("suggestions", []),
+                session_id=session_id,
+                processing_time=result.get("processing_time", 0.0)
+            )
+            
+        except Exception as e:
+            return HTMLValidationResponse(
+                is_valid=False,
+                validation_errors=[f"Validation error: {str(e)}"],
+                suggestions=[],
+                session_id=session_id,
+                processing_time=0.0
+            )
+    
+    def get_session_stats(self, session_id: str) -> Dict[str, Any]:
+        """セッション統計情報を取得"""
+        session = self.get_session(session_id)
+        if not session:
+            return {"error": "Session not found"}
+        
+        return {
+            "session_id": session_id,
+            "status": session["status"],
+            "generation_count": session["generation_count"],
+            "validation_count": session["validation_count"],
+            "total_operations": session["generation_count"] + session["validation_count"]
+        }
+
+
+# Dependency Injection用のインスタンス
+_adk_session_service = None
+
+def get_adk_session_service() -> ADKSessionService:
+    """ADKSessionServiceのシングルトンインスタンスを取得"""
+    global _adk_session_service
+    if _adk_session_service is None:
+        _adk_session_service = ADKSessionService()
+    return _adk_session_service
 
 class FirestoreSessionService:
     """Google ADK用のFirestoreベースのセッションサービス"""

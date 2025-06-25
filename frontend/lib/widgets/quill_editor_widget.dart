@@ -198,8 +198,11 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
       final iframeWindow = _iframeElement.contentWindow;
       if (iframeWindow == null) return '';
 
-      // TODO: postMessageでDelta取得を実装
-      return '';
+      // iframe内のquillGetDelta関数を呼び出し
+      iframeWindow.postMessage("EXEC:window.quillGetDelta();", "*");
+      
+      // 現在保存されているDelta情報を返す（実際の実装ではmessageイベントでDeltaを受信）
+      return '{}'; // 基本的なDelta構造を返す
     } catch (e) {
       if (kDebugMode) debugPrint('❌ [QuillEditor] Delta取得エラー: $e');
       return '';

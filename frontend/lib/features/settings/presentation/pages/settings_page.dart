@@ -225,7 +225,7 @@ class _SettingsPageState extends State<SettingsPage> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => UserDictionaryWidget(
-          userId: 'default', // TODO: 実際のユーザーIDを使用
+          userId: 'demo-user', // デモ用のユーザーID。実際の実装ではFirebase Authから取得
           onDictionaryUpdated: () {
             // 辞書更新時の処理（必要に応じて）
             ScaffoldMessenger.of(context).showSnackBar(

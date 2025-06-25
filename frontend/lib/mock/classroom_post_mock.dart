@@ -1,7 +1,5 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'sample_data.dart';
 
 /// Google Classroom投稿のモック機能
 class ClassroomPostMock {

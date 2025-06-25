@@ -50,7 +50,7 @@ class AdkAgentService {
     String? sessionId,
   }) async {
     try {
-      final url = Uri.parse('$_baseUrl/adk/newsletter/generate');
+      final url = Uri.parse('$_baseUrl/adk/generate');
       final response = await _httpClient.post(
         url,
         headers: {
@@ -59,7 +59,6 @@ class AdkAgentService {
         body: jsonEncode({
           'initial_request': initialRequest,
           'user_id': userId,
-          'session_id': sessionId,
         }),
       );
 
@@ -220,37 +219,32 @@ class AdkAgentService {
     }
   }
 
-  /// 学級通信を生成する
-  Future<String> generateNewsletter({
+  /// HTMLコンテンツを検証する
+  Future<HtmlValidationResponse> validateHtml({
+    required String htmlContent,
     required String userId,
-    required String sessionId,
   }) async {
-    final url = Uri.parse('$_baseUrl/adk/generate/newsletter');
-    final body = jsonEncode({
-      'user_id': userId,
-      'session_id': sessionId,
-    });
-    debugPrint('[AdkAgentService] Generating newsletter with body: $body');
-
     try {
+      final url = Uri.parse('$_baseUrl/adk/validate');
       final response = await _httpClient.post(
         url,
-        headers: {'Content-Type': 'application/json'},
-        body: body,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'html_content': htmlContent,
+          'user_id': userId,
+        }),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        debugPrint('[AdkAgentService] Newsletter generated successfully.');
-        return data['html_content'] as String;
+        return HtmlValidationResponse.fromJson(data);
       } else {
-        debugPrint(
-            '[AdkAgentService] Failed to generate newsletter. Status: ${response.statusCode}, Body: ${response.body}');
-        throw Exception('Failed to generate newsletter: ${response.body}');
+        throw Exception('Failed to validate HTML: ${response.body}');
       }
     } catch (e) {
-      debugPrint('[AdkAgentService] Error generating newsletter: $e');
-      throw Exception('Error generating newsletter: $e');
+      throw Exception('Error validating HTML: $e');
     }
   }
 
@@ -412,6 +406,51 @@ class AdkStreamEvent {
       sessionId: json['session_id'],
       type: json['type'],
       data: json['data'],
+    );
+  }
+}
+
+/// HTML検証レスポンスモデル
+class HtmlValidationResponse {
+  final String sessionId;
+  final int overallScore;
+  final String grade;
+  final String summary;
+  final Map<String, dynamic> structure;
+  final Map<String, dynamic> accessibility;
+  final Map<String, dynamic> performance;
+  final Map<String, dynamic> seo;
+  final Map<String, dynamic> printing;
+  final List<String> priorityActions;
+  final Map<String, dynamic> complianceStatus;
+
+  HtmlValidationResponse({
+    required this.sessionId,
+    required this.overallScore,
+    required this.grade,
+    required this.summary,
+    required this.structure,
+    required this.accessibility,
+    required this.performance,
+    required this.seo,
+    required this.printing,
+    required this.priorityActions,
+    required this.complianceStatus,
+  });
+
+  factory HtmlValidationResponse.fromJson(Map<String, dynamic> json) {
+    return HtmlValidationResponse(
+      sessionId: json['session_id'],
+      overallScore: json['overall_score'],
+      grade: json['grade'],
+      summary: json['summary'],
+      structure: json['structure'],
+      accessibility: json['accessibility'],
+      performance: json['performance'],
+      seo: json['seo'],
+      printing: json['printing'],
+      priorityActions: List<String>.from(json['priority_actions']),
+      complianceStatus: json['compliance_status'],
     );
   }
 }
