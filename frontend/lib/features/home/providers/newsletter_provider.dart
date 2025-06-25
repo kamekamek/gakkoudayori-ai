@@ -114,8 +114,10 @@ class NewsletterProvider extends ChangeNotifier {
 
     try {
       final htmlContent = await adkAgentService.generateNewsletter(
+        transcribedText: _content.isNotEmpty ? _content : '学級通信のサンプルコンテンツです',
+        style: 'classic', // デフォルトスタイル
+        customContext: '',
         userId: userId,
-        sessionId: sessionId,
       );
       return htmlContent;
     } catch (e) {

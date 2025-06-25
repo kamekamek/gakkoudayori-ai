@@ -110,9 +110,8 @@ class PreviewProvider extends ChangeNotifier {
       
       html.Url.revokeObjectUrl(url);
       
-      // PDFプリント用の新しいウィンドウを開く
-      final printWindow = html.window.open('', '_blank');
-      printWindow?.document.write('''
+      // PDFプリント用のBLOBを作成して新しいウィンドウで開く
+      final printHtml = '''
         <!DOCTYPE html>
         <html>
         <head>
@@ -127,11 +126,23 @@ class PreviewProvider extends ChangeNotifier {
         </head>
         <body>
           $_htmlContent
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          </script>
         </body>
         </html>
-      ''');
-      printWindow?.document.close();
-      printWindow?.print();
+      ''';
+      
+      final printBlob = html.Blob([printHtml], 'text/html');
+      final printUrl = html.Url.createObjectUrl(printBlob);
+      html.window.open(printUrl, '_blank');
+      
+      // URLを解放（メモリリーク防止）
+      Future.delayed(const Duration(seconds: 1), () {
+        html.Url.revokeObjectUrl(printUrl);
+      });
       
     } catch (e) {
       throw Exception('PDF生成に失敗しました: $e');

@@ -248,6 +248,39 @@ class AdkAgentService {
     }
   }
 
+  /// 学級通信生成メソッド
+  Future<String> generateNewsletter({
+    required String transcribedText,
+    required String style,
+    String? customContext,
+    String? userId,
+  }) async {
+    try {
+      final url = Uri.parse('$_baseUrl/adk/generate');
+      final response = await _httpClient.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'transcribed_text': transcribedText,
+          'style': style,
+          'custom_context': customContext ?? '',
+          'user_id': userId ?? 'default_user',
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['html_content'] ?? '';
+      } else {
+        throw Exception('Failed to generate newsletter: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error generating newsletter: $e');
+    }
+  }
+
   void dispose() {
     _httpClient.close();
   }

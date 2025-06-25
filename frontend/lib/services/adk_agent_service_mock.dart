@@ -145,8 +145,10 @@ class AdkAgentServiceMock extends AdkAgentService {
 
   @override
   Future<String> generateNewsletter({
-    required String userId,
-    required String sessionId,
+    required String transcribedText,
+    required String style,
+    String? customContext,
+    String? userId,
   }) async {
     await Future.delayed(const Duration(milliseconds: 600));
     
