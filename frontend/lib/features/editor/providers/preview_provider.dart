@@ -234,7 +234,7 @@ class PreviewProvider extends ChangeNotifier {
     
     try {
       // 既存のHTMLコンテンツから要素を抽出して再生成のヒントとする
-      final contentSummary = _extractContentSummary(_htmlContent);
+      final contentSummary = extractContentSummary(_htmlContent);
       debugPrint('コンテンツ再生成: $contentSummary');
       
       // 実際の再生成は外部から実行される
@@ -248,7 +248,7 @@ class PreviewProvider extends ChangeNotifier {
   }
   
   // HTMLコンテンツから要約を抽出
-  String _extractContentSummary(String html) {
+  String extractContentSummary(String html) {
     // 簡単なHTMLパース（タイトルと主要セクションを抽出）
     final titleMatch = RegExp(r'<h1[^>]*>(.*?)</h1>').firstMatch(html);
     final title = titleMatch?.group(1)?.replaceAll(RegExp(r'<[^>]*>'), '') ?? '';

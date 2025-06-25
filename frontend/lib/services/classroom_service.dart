@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:googleapis/classroom/v1.dart' as classroom;
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:flutter/foundation.dart';
@@ -180,10 +181,36 @@ class ClassroomService {
         print('添付ファイル数: ${attachmentFileIds.length}');
       }
 
-      // 添付ファイルのマテリアルを作成（一時的に無効化）
+      // 添付ファイルのマテリアルを作成
       final materials = <classroom.Material>[];
-      // TODO: Google Classroom API の正しいファイル添付方法を実装
-      // 現在はテキストのみの投稿として動作
+      
+      // DriveFileを正しい形式で添付
+      for (final fileId in attachmentFileIds) {
+        // ファイル情報を取得してタイトルを設定
+        String fileName;
+        try {
+          final driveFile = await _driveApi!.files.get(fileId);
+          fileName = driveFile.name ?? 'attachment_$fileId';
+        } catch (e) {
+          fileName = 'attachment_$fileId';
+          if (kDebugMode) {
+            print('ファイル名取得エラー: $e');
+          }
+        }
+        
+        final driveFileMaterial = classroom.Material()
+          ..driveFile = (classroom.SharedDriveFile()
+            ..driveFile = (classroom.DriveFile()
+              ..id = fileId
+              ..title = fileName)
+            ..shareMode = 'STUDENT_VIEW'); // 学生は閲覧のみ可能
+        
+        materials.add(driveFileMaterial);
+        
+        if (kDebugMode) {
+          print('添付ファイル追加: $fileName (ID: $fileId)');
+        }
+      }
 
       // アナウンスメントオブジェクトを作成
       final announcement = classroom.Announcement()

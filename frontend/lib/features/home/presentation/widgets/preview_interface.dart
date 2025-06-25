@@ -4,6 +4,7 @@ import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'dart:html' as html;
 import '../../../editor/providers/preview_provider.dart';
 import '../../providers/newsletter_provider.dart';
+import '../../../ai_assistant/providers/adk_chat_provider.dart';
 import 'preview_mode_toolbar.dart';
 import '../../../../widgets/quill_editor_widget.dart';
 
@@ -311,11 +312,54 @@ class PreviewInterface extends StatelessWidget {
     }
   }
 
-  void _regenerateContent(BuildContext context) {
-    context.read<NewsletterProvider>().generateNewsletter();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('コンテンツの再生成を実行します。')),
-    );
+  void _regenerateContent(BuildContext context) async {
+    final previewProvider = context.read<PreviewProvider>();
+    final adkChatProvider = context.read<AdkChatProvider>();
+    
+    if (previewProvider.htmlContent.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('再生成するコンテンツがありません')),
+      );
+      return;
+    }
+    
+    try {
+      // PreviewProviderの再生成処理を開始
+      await previewProvider.regenerateContent();
+      
+      // 既存コンテンツの要約を取得（PreviewProvider内で解析済み）
+      final contentSummary = previewProvider.extractContentSummary(previewProvider.htmlContent);
+      
+      // Open_SuperAgent風の再生成プロンプト作成
+      final regenerationPrompt = '''
+現在の学級通信を改善してください：
+
+【現在の内容】
+$contentSummary
+
+【要求】
+- 同じテーマと構造を維持しながら、内容をより魅力的に書き直してください
+- 読みやすさと親しみやすさを向上させてください
+- 重要な情報は残しつつ、表現を改善してください
+- HTMLフォーマットで生成してください
+
+学級通信の内容を再生成してください。
+''';
+      
+      // ADKChatProviderに再生成を依頼
+      adkChatProvider.sendMessage(regenerationPrompt);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('🔄 コンテンツの再生成を開始しました...')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ 再生成に失敗しました: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
   }
 
   void _openQuillEditor(BuildContext context) {
