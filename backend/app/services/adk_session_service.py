@@ -23,15 +23,15 @@ from google.genai import types as genai_types
 from google.protobuf.json_format import MessageToDict
 from google.cloud.firestore_v1.base_client import BaseClient
 from google.api_core.exceptions import NotFound
-from ..models.adk_models import (
+from models.adk_models import (
     NewsletterGenerationRequest,
     NewsletterGenerationResponse,
     HTMLValidationRequest,
     HTMLValidationResponse,
 )
-from ..adk.agents.generation_workflow_agent import GenerationWorkflowAgent
-from ..adk.agents.validation_agent import ValidationAgent
-from ..core.config import settings
+from adk.agents.generation_workflow_agent import create_generation_workflow_agent
+from adk.agents.validation_agent import create_validation_agent
+from core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -42,8 +42,8 @@ class ADKSessionService:
     """ADK セッション管理サービス"""
     
     def __init__(self):
-        self.generation_agent = GenerationWorkflowAgent()
-        self.validation_agent = ValidationAgent()
+        self.generation_agent = create_generation_workflow_agent()
+        self.validation_agent = create_validation_agent()
         self.sessions: Dict[str, Dict[str, Any]] = {}
     
     def create_session(self, session_id: str) -> Dict[str, Any]:

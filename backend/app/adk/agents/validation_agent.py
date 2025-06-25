@@ -16,8 +16,8 @@ import os
 from pathlib import Path
 from google.adk.agents import Agent
 from google.adk.models.lite_llm import LiteLlm
-from ...core.config import settings
-from ..tools import validate_html_structure, generate_validation_report
+from core.config import settings
+from adk.tools import validate_html_structure, generate_validation_report
 
 def _load_instruction() -> str:
     """プロンプトファイルを読み込みます。"""

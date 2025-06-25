@@ -4,8 +4,8 @@ from typing import List, Dict, Any
 from fastapi import APIRouter, HTTPException, status, Path, Body
 from pydantic import BaseModel, Field
 
-from ....services.user_dictionary_service import create_user_dictionary_service
-from ....services.firebase_service import get_firestore_client
+from services.user_dictionary_service import create_user_dictionary_service
+from services.firebase_service import get_firestore_client
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

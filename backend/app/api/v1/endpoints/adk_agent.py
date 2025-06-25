@@ -15,13 +15,13 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException, WebSocket
 
-from app.models.adk_models import (
+from models.adk_models import (
     NewsletterGenerationRequest,
     NewsletterGenerationResponse,
     HTMLValidationRequest,
     HTMLValidationResponse,
 )
-from app.services.newsletter_service import (
+from services.newsletter_service import (
     NewsletterService,
     get_newsletter_service,
 )

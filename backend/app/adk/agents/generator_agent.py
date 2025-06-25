@@ -15,7 +15,7 @@
 from google.adk.agents import Agent
 from google.adk.models.lite_llm import LiteLlm
 from pathlib import Path
-from ...core.config import settings
+from core.config import settings
 
 def create_generator_agent() -> Agent:
     """Generatorエージェントを作成します。"""

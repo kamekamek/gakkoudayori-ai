@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..adk.agents.generation_workflow_agent import create_generation_workflow_agent
-from ..adk.agents.validation_agent import create_validation_agent
-from ..models.adk_models import (
+from adk.agents.generation_workflow_agent import create_generation_workflow_agent
+from adk.agents.validation_agent import create_validation_agent
+from models.adk_models import (
     NewsletterGenerationRequest,
     NewsletterGenerationResponse,
     HTMLValidationRequest,
