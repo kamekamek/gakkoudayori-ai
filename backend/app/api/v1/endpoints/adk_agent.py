@@ -33,6 +33,7 @@ router = APIRouter()
 from fastapi.responses import StreamingResponse, Response
 from models.adk_models import AdkChatRequest, NewsletterGenerationRequest
 from services.pdf_generator import generate_pdf_from_html_bytes
+from google.genai import types
 
 @router.post("/generate/newsletter", summary="学級通信HTMLをPDFに変換")
 async def generate_newsletter_pdf(req: Request):
@@ -52,12 +53,35 @@ async def adk_chat_stream(request: Request, body: AdkChatRequest):
     """ADK Runnerを使用してチャットストリームを処理します。"""
     runner = request.app.state.adk_runner
     try:
+        # ADK Runnerの正しいAPIを使用
+        async def generate_response():
+            try:
+                # ADK Runnerの正しいパラメータでイベントストリームを取得
+                events = runner.run_async(
+                    user_id=body.user_id,
+                    session_id=body.session_id or f"session_{body.user_id}",
+                    new_message=types.Content(parts=[types.Part(text=body.message)])
+                )
+                
+                # イベントストリームを処理
+                async for event in events:
+                    if hasattr(event, 'agent_content') and event.agent_content:
+                        content = event.agent_content.parts[0].text if event.agent_content.parts else ""
+                        yield f"data: {{'type': 'message', 'content': '{content}', 'session_id': '{body.session_id}'}}\n\n"
+                    elif hasattr(event, 'finish_reason'):
+                        yield f"data: {{'type': 'done', 'session_id': '{body.session_id}'}}\n\n"
+                        break
+                        
+            except Exception as e:
+                yield f"data: {{'type': 'error', 'content': 'エラーが発生しました: {str(e)}', 'session_id': '{body.session_id}'}}\n\n"
+        
         return StreamingResponse(
-            runner.chat_stream(
-                message=body.message,
-                session_id=body.session_id,
-            ),
+            generate_response(),
             media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+            }
         )
     except Exception as e:
         logger.exception(f"Error in adk_chat_stream: {e}")

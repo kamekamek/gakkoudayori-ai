@@ -1,6 +1,6 @@
 # 学校だよりAI - 環境管理Makefile
 
-.PHONY: help dev prod staging build-dev build-prod deploy deploy-frontend deploy-backend deploy-all deploy-staging deploy-preview ci-setup test lint format reset-dev backend-dev backend-test backend-setup
+.PHONY: help dev prod staging test-local build-dev build-prod deploy deploy-frontend deploy-backend deploy-all deploy-staging deploy-preview ci-setup test lint format reset-dev backend-dev backend-test backend-setup
 
 # デフォルトターゲット
 help:
@@ -9,13 +9,14 @@ help:
 	@echo "📱 フロントエンド:"
 	@echo "  make dev          - 開発環境で起動"
 	@echo "  make staging      - ステージング環境で起動"
+	@echo "  make test-local   - テスト環境（ローカルバックエンド8082接続）"
 	@echo "  make build-dev    - 開発環境用ビルド"
 	@echo "  make build-prod   - 本番環境用ビルド"
 	@echo ""
 	@echo "🐍 バックエンド:"
-	@echo "  make backend-dev   - バックエンド開発サーバー起動"
+	@echo "  make backend-dev   - バックエンド開発サーバー起動（ポート8001）"
+	@echo "  make backend-test  - テスト用バックエンドサーバー起動（ポート8082）"
 	@echo "  make backend-setup - Python環境セットアップ"
-	@echo "  make backend-test  - Pythonテスト実行"
 	@echo ""
 	@echo "🧪 テスト・品質:"
 	@echo "  make test         - 全テスト実行"
@@ -46,6 +47,13 @@ staging:
 	cd frontend && flutter run -d chrome \
 		--dart-define=ENVIRONMENT=staging \
 		--dart-define=API_BASE_URL=https://staging-yutori-backend.asia-northeast1.run.app/api/v1
+
+# テスト環境で起動（ローカルバックエンド8082ポート接続）
+test-local:
+	@echo "🧪 テスト環境で起動中（ローカルバックエンド8082ポート接続）..."
+	cd frontend && flutter run -d chrome \
+		--dart-define=ENVIRONMENT=development \
+		--dart-define=API_BASE_URL=http://localhost:8082/api/v1
 
 # 開発環境用ビルド
 build-dev:
@@ -171,6 +179,13 @@ backend-dev: backend-setup
 	cd backend/app && \
 		. venv/bin/activate && \
 		uvicorn main_local:app --host 0.0.0.0 --port 8001 --reload
+
+# テスト用バックエンドサーバー起動（ポート8082）
+backend-dev2: backend-setup
+	@echo "🧪 テスト用バックエンドサーバー起動中（ポート8082）..."
+	cd backend/app && \
+		. venv/bin/activate && \
+		uvicorn main_local:app --host 0.0.0.0 --port 8082 --reload
 
 # Python環境セットアップ
 backend-setup:
