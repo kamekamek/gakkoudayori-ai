@@ -174,7 +174,7 @@ reset-dev:
 backend-dev:
 	@echo "🐍 バックエンド開発サーバー起動中 (ENVIRONMENT=development)..."
 	cd backend && poetry install --with dev --no-root && \
-	ENVIRONMENT=development poetry run uvicorn app.main:app --host 0.0.0.0 --port 8081 --reload
+	ENVIRONMENT=development GOOGLE_APPLICATION_CREDENTIALS=$$(pwd)/secrets/service-account-key.json poetry run uvicorn app.main:app --host 0.0.0.0 --port 8081 --reload
 
 # Python環境セットアップ
 backend-setup:
