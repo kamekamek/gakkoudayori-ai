@@ -99,13 +99,8 @@ class AdkChatProvider extends ChangeNotifier {
 
     try {
       debugPrint('[AdkChatProvider] Starting stream process...');
-      // アシスタントメッセージを準備
-      final assistantMessage = MutableChatMessage(
-        role: 'assistant',
-        content: '',
-        timestamp: DateTime.now(),
-      );
-      _messages.add(assistantMessage);
+      // アシスタントメッセージを準備（最初のテキストが来るまで追加しない）
+      MutableChatMessage? assistantMessage;
 
       // ストリーミング開始
       debugPrint('[AdkChatProvider] Calling _adkService.streamChatSSE...');
@@ -122,8 +117,18 @@ class AdkChatProvider extends ChangeNotifier {
 
         switch (event.type) {
           case 'text':
-            // メッセージを追加していく
-            assistantMessage.content += event.data;
+            // 最初のテキストが来た時にアシスタントメッセージを作成
+            if (assistantMessage == null) {
+              assistantMessage = MutableChatMessage(
+                role: 'assistant',
+                content: event.data,
+                timestamp: DateTime.now(),
+              );
+              _messages.add(assistantMessage);
+            } else {
+              // メッセージを追加していく
+              assistantMessage.content += event.data;
+            }
             notifyListeners();
             break;
           case 'complete':

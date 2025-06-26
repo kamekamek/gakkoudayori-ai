@@ -91,17 +91,40 @@ async def adk_chat_stream(request: Request, body: AdkChatRequest):
                 async for event in events:
                     event_count += 1
                     logger.info(f"Received event {event_count}: {type(event).__name__}")
+                    logger.info(f"Event attributes: {dir(event)}")
                     
-                    if hasattr(event, 'agent_content') and event.agent_content:
-                        content = event.agent_content.parts[0].text if event.agent_content.parts else ""
+                    # イベントの詳細をログに出力
+                    if hasattr(event, '__dict__'):
+                        logger.info(f"Event data: {event.__dict__}")
+                    
+                    # ADK 1.0.0のイベント構造に合わせて修正
+                    content = ""
+                    if hasattr(event, 'content') and event.content:
+                        if hasattr(event.content, 'parts') and event.content.parts:
+                            content = event.content.parts[0].text if hasattr(event.content.parts[0], 'text') else str(event.content.parts[0])
+                        else:
+                            content = str(event.content)
+                    elif hasattr(event, 'agent_content') and event.agent_content:
+                        if hasattr(event.agent_content, 'parts') and event.agent_content.parts:
+                            content = event.agent_content.parts[0].text if hasattr(event.agent_content.parts[0], 'text') else str(event.agent_content.parts[0])
+                        else:
+                            content = str(event.agent_content)
+                    elif hasattr(event, 'text'):
+                        content = event.text
+                    
+                    if content:
                         response_data = {
                             'type': 'message',
                             'content': content,
                             'session_id': session_id
                         }
-                        yield f"data: {json.dumps(response_data)}\n\n"
+                        logger.info(f"Sending SSE data: {json.dumps(response_data)}")
+                        yield f"data: {json.dumps(response_data, ensure_ascii=False)}\n\n"
                         
-                    elif hasattr(event, 'finish_reason'):
+                    # 終了条件の確認
+                    if (hasattr(event, 'finish_reason') or 
+                        hasattr(event, 'done') or 
+                        hasattr(event, 'stop_reason')):
                         response_data = {
                             'type': 'done',
                             'session_id': session_id

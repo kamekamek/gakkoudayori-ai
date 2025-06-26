@@ -190,10 +190,14 @@ class AdkAgentService {
             .map((line) {
               if (line.startsWith('data: ')) {
                 final data = line.substring(6);
-                if (data.trim().isNotEmpty) {
+                if (data.trim().isNotEmpty && data.trim() != 'null') {
                   try {
-                    return AdkStreamEvent.fromJson(jsonDecode(data));
+                    final jsonData = jsonDecode(data);
+                    if (jsonData != null && jsonData is Map<String, dynamic>) {
+                      return AdkStreamEvent.fromJson(jsonData);
+                    }
                   } catch (e) {
+                    debugPrint('[AdkAgentService] JSON parse error for data: "$data", error: $e');
                     return AdkStreamEvent(
                       sessionId: effectiveSessionId,
                       type: 'error',
