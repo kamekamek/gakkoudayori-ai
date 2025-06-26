@@ -689,7 +689,7 @@ def convert_speech_to_json(
     credentials_path: str,
     style: str = "classic",
     custom_context: str = "",
-    model_name: str = "gemini-2.5-flash-preview-05-20",
+    model_name: str = "gemini-2.5-pro-preview-05-20",
     temperature: float = 0.3,
     max_output_tokens: int = 8192,
     use_adk: bool = False,

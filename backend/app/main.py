@@ -43,7 +43,7 @@ from contextlib import asynccontextmanager
 # ADK Runner関連のインポート
 from google.adk.runners import Runner
 # 新しい依存関係ファイルからインポート
-from core.dependencies import get_orchestrator_agent, get_session_service
+from core.dependencies import get_orchestrator_agent, get_session_service, get_agent_registry
 
 # アプリケーションコンテキストでADK Runnerを管理
 app_context = {}
@@ -52,12 +52,17 @@ app_context = {}
 async def lifespan(app: FastAPI):
     # アプリケーション起動時に実行
     logger.info("Initializing ADK Runner...")
+    
+    # 全エージェントを登録
+    agent_registry = get_agent_registry()
+    
     app.state.adk_runner = Runner(
-        app_name="gakkoudayori-ai",
+        app_name="gakkoudayori-ai", 
         agent=get_orchestrator_agent(),
-        session_service=get_session_service()
+        session_service=get_session_service(),
+        agents=agent_registry  # 全エージェントを登録してtransfer_to_agentを有効化
     )
-    logger.info("ADK Runner initialized successfully.")
+    logger.info(f"ADK Runner initialized with agents: {list(agent_registry.keys())}")
     yield
     # アプリケーション終了時に実行
     logger.info("Cleaning up resources...")

@@ -236,7 +236,7 @@ def convert_json_to_graphical_record(
     credentials_path: str,
     template: str = "classic",
     custom_style: str = "",
-    model_name: str = "gemini-2.5-flash-preview-05-20",
+    model_name: str = "gemini-2.5-pro-preview-05-20",
     temperature: float = 0.2,
     max_output_tokens: int = 8192
 ) -> Dict[str, Any]:

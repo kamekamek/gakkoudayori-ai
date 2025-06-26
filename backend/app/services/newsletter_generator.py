@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 # Gemini設定
 PROJECT_ID = "gakkoudayori-ai"
 LOCATION = "us-central1"
-MODEL_NAME = "gemini-2.5-flash-preview-05-20"
+MODEL_NAME = "gemini-2.5-pro-preview-05-20"
 
 # プロンプトディレクトリを定数として定義
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -133,7 +133,7 @@ def generate_newsletter_from_speech(
         )
         
         # Gemini APIで生成
-        model = genai.GenerativeModel('gemini-2.5-flash-preview-05-20')
+        model = genai.GenerativeModel('gemini-2.5-pro-preview-05-20')
         
         # 生成設定
         generation_config = genai.types.GenerationConfig(

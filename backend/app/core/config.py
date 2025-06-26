@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     # LLM Model Settings
     # --------------------------------
     # 使用するモデル名を指定します
-    GEMINI_MODEL: str = "gemini-2.5-flash"
+    GEMINI_MODEL: str = "gemini-2.5-pro"
 
 
 settings = Settings() 
