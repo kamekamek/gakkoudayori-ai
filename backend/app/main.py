@@ -1,4 +1,6 @@
 import json
+import os
+from fastapi.middleware.cors import CORSMiddleware
 
 import google.genai.types as genai_types
 from fastapi import FastAPI, HTTPException
@@ -21,11 +23,47 @@ from app import stt as stt_api
 # from agents.tools.stt_transcriber import transcribe_audio
 # from agents.tools.user_dict_register import register_user_dictionary
 
+# 環境変数を取得 (デフォルトは 'production')
+ENVIRONMENT = os.getenv("ENVIRONMENT", "production")
 
 app = FastAPI(
     title="Gakkoudayori AI Backend v2",
-    description="REMAKE.mdに基づいた再設計バージョン"
+    description=f"REMAKE.mdに基づいた再設計バージョン (Environment: {ENVIRONMENT})"
 )
+
+# --- CORS設定 ---
+if ENVIRONMENT == "development":
+    # 開発環境: localhostからのアクセスを許可
+    origins = [
+        "http://localhost",
+        "http://localhost:8000", # Flutter Webのデフォルトポート
+        "http://localhost:8080", 
+        "http://localhost:8081",
+    ]
+    
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origin_regex="http://localhost:.*", # 正規表現で任意のポートを許可
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    print("✅ CORS: Development mode enabled (localhost allowed)")
+else:
+    # 本番環境: 指定したドメインのみを許可
+    origins = [
+        "https://gakkoudayori-ai.web.app",
+        "https://gakkoudayori-ai.firebaseapp.com",
+    ]
+    
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "DELETE"],
+        allow_headers=["Content-Type", "Authorization"],
+    )
+    print("✅ CORS: Production mode enabled")
 
 # Include routers from other files
 app.include_router(pdf_api.router)

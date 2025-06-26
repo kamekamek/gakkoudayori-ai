@@ -49,7 +49,7 @@ class PreviewProvider extends ChangeNotifier {
       
       _htmlContent = html;
       notifyListeners();
-    } catch (error, stackTrace) {
+    } catch (error) {
       _errorProvider.setError('Failed to update HTML content: $error');
       debugPrint('HTML content update error: $error');
       rethrow;
@@ -185,7 +185,7 @@ class PreviewProvider extends ChangeNotifier {
         final errorMessage = result['error'] ?? 'PDF生成に失敗しました';
         throw Exception('PDF generation failed: $errorMessage');
       }
-    } catch (error, stackTrace) {
+    } catch (error) {
       debugPrint('PDF生成エラー: $error');
       
       _errorProvider.setError('PDF generation process failed: $error');
@@ -216,7 +216,7 @@ class PreviewProvider extends ChangeNotifier {
       // html.window.print(); // 必要に応じてコメントアウト解除
       
       debugPrint('印刷プレビュー準備完了');
-    } catch (error, stackTrace) {
+    } catch (error) {
       debugPrint('印刷プレビューエラー: $error');
       
       _errorProvider.setError('Print preview display failed: $error');

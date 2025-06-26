@@ -49,9 +49,24 @@ async def transcribe_audio(
         full_transcript = " ".join(transcripts)
 
         if not full_transcript:
-            return {"status": "success", "transcript": "", "message": "音声は認識されましたが、テキストは検出されませんでした。"}
+            return {
+                "success": True,
+                "data": {
+                    "transcript": "",
+                    "confidence": 0.0
+                },
+                "message": "音声は認識されましたが、テキストは検出されませんでした。"
+            }
 
-        return {"status": "success", "transcript": full_transcript}
+        # フロントエンドの期待する形式に合わせる
+        confidence = 0.95 if transcripts else 0.0
+        return {
+            "success": True,
+            "data": {
+                "transcript": full_transcript,
+                "confidence": confidence
+            }
+        }
 
     except Exception as e:
         raise HTTPException(

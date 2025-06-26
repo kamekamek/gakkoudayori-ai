@@ -24,6 +24,9 @@ class AdkChatProvider extends ChangeNotifier {
   double _audioLevel = 0.0;
   String? _transcriptionResult;
 
+  // プロバイダーの生存状態を追跡
+  bool _disposed = false;
+
   // ゲッター
   List<MutableChatMessage> get messages => _messages;
   String? get sessionId => _sessionId;
@@ -38,36 +41,50 @@ class AdkChatProvider extends ChangeNotifier {
     required AdkAgentService adkService,
     required ErrorProvider errorProvider,
     required this.userId,
-  }) : _adkService = adkService,
-       _errorProvider = errorProvider {
+  })  : _adkService = adkService,
+        _errorProvider = errorProvider {
     _initializeAudioService();
+  }
+
+  /// 安全なnotifyListeners呼び出し
+  void _safeNotifyListeners() {
+    if (!_disposed && hasListeners) {
+      try {
+        notifyListeners();
+      } catch (e) {
+        debugPrint('[AdkChatProvider] Error in notifyListeners: $e');
+      }
+    }
   }
 
   void _initializeAudioService() {
     debugPrint('[AdkChatProvider] Initializing audio service...');
-    
+
     try {
       _audioService.initializeJavaScriptBridge();
 
       _audioService.setOnRecordingStateChanged((isRecording) {
+        if (_disposed) return;
         debugPrint('[AdkChatProvider] Recording state changed: $isRecording');
         _isVoiceRecording = isRecording;
-        notifyListeners();
+        _safeNotifyListeners();
       });
 
       _audioService.setOnTranscriptionCompleted((transcript) {
+        if (_disposed) return;
         debugPrint('[AdkChatProvider] Transcription completed: $transcript');
         _transcriptionResult = transcript;
-        notifyListeners();
+        _safeNotifyListeners();
       });
 
       _audioService.setOnAudioLevelChanged((level) {
+        if (_disposed) return;
         _audioLevel = level;
-        notifyListeners();
+        _safeNotifyListeners();
       });
 
       debugPrint('[AdkChatProvider] Audio service initialization complete');
-    } catch (error, stackTrace) {
+    } catch (error) {
       _errorProvider.setError('Audio service initialization failed: $error');
       debugPrint('Audio service initialization error: $error');
     }
@@ -86,7 +103,7 @@ class AdkChatProvider extends ChangeNotifier {
   /// リトライ機能付きメッセージ送信の実装
   Future<void> _sendMessageWithRetry(String message) async {
     debugPrint('[AdkChatProvider] sendMessage called with message: "$message"');
-    
+
     if (_isProcessing) {
       debugPrint('[AdkChatProvider] Already processing, aborting.');
       throw Exception('Already processing another message');
@@ -105,7 +122,7 @@ class AdkChatProvider extends ChangeNotifier {
 
     _isProcessing = true;
     _error = null;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
       debugPrint('[AdkChatProvider] Starting stream process...');
@@ -126,6 +143,8 @@ class AdkChatProvider extends ChangeNotifier {
       );
 
       await for (final event in stream) {
+        if (_disposed) break; // 破棄された場合は処理を停止
+
         _sessionId = event.sessionId;
         debugPrint(
             '[AdkChatProvider] Received stream event: type=${event.type}, data=${event.data}');
@@ -150,17 +169,20 @@ class AdkChatProvider extends ChangeNotifier {
     } finally {
       _isProcessing = false;
       debugPrint('[AdkChatProvider] Set isProcessing to false.');
-      notifyListeners();
+      _safeNotifyListeners();
     }
   }
 
   /// メッセージイベントを処理
-  void _handleMessageEvent(AdkStreamEvent event, MutableChatMessage assistantMessage) {
+  void _handleMessageEvent(
+      AdkStreamEvent event, MutableChatMessage assistantMessage) {
+    if (_disposed) return;
+
     try {
       final messageData = jsonDecode(event.data);
       final content = messageData['content'] ?? '';
       final eventType = messageData['type'] ?? 'message';
-      
+
       if (eventType == 'complete') {
         // HTML生成完了
         if (content.contains('<html>') || content.contains('<!DOCTYPE html>')) {
@@ -171,20 +193,22 @@ class AdkChatProvider extends ChangeNotifier {
         // 通常のメッセージ
         assistantMessage.content = content;
       }
-      notifyListeners();
+      _safeNotifyListeners();
     } catch (e) {
       // JSON解析に失敗した場合は生のデータを使用
       assistantMessage.content = event.data;
-      notifyListeners();
+      _safeNotifyListeners();
     }
   }
 
   /// 完了イベントを処理
   void _handleCompleteEvent(AdkStreamEvent event) {
+    if (_disposed) return;
+
     try {
       // HTML生成完了
       _generatedHtml = event.data;
-      notifyListeners();
+      _safeNotifyListeners();
     } catch (e) {
       debugPrint('[AdkChatProvider] Error handling complete event: $e');
     }
@@ -192,15 +216,16 @@ class AdkChatProvider extends ChangeNotifier {
 
   /// エラーイベントを処理
   void _handleErrorEvent(AdkStreamEvent event) {
+    if (_disposed) return;
+
     final errorMessage = event.data;
     _error = errorMessage;
-    
+
     // エラーを記録
     _errorProvider.setError('Server error: $errorMessage');
-    
-    notifyListeners();
-  }
 
+    _safeNotifyListeners();
+  }
 
   /// セッションをクリア
   void clearSession() {
@@ -210,29 +235,29 @@ class AdkChatProvider extends ChangeNotifier {
     _error = null;
     _transcriptionResult = null;
     _audioLevel = 0.0;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   /// エラーをクリア
   void clearError() {
     _error = null;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   /// 音声録音開始
   Future<bool> startVoiceRecording() async {
     debugPrint('[AdkChatProvider] startVoiceRecording called');
-    
+
     try {
       final result = await _audioService.startRecording();
       debugPrint('[AdkChatProvider] startVoiceRecording result: $result');
-      
+
       if (!result) {
         throw Exception('Failed to start recording');
       }
-      
+
       return result;
-    } catch (error, stackTrace) {
+    } catch (error) {
       _errorProvider.setError('Failed to start voice recording: $error');
       debugPrint('Voice recording start error: $error');
       return false;
@@ -242,17 +267,17 @@ class AdkChatProvider extends ChangeNotifier {
   /// 音声録音停止
   Future<bool> stopVoiceRecording() async {
     debugPrint('[AdkChatProvider] stopVoiceRecording called');
-    
+
     try {
       final result = await _audioService.stopRecording();
       debugPrint('[AdkChatProvider] stopVoiceRecording result: $result');
-      
+
       if (!result) {
         throw Exception('Failed to stop recording');
       }
-      
+
       return result;
-    } catch (error, stackTrace) {
+    } catch (error) {
       _errorProvider.setError('Failed to stop voice recording: $error');
       debugPrint('Voice recording stop error: $error');
       return false;
@@ -270,8 +295,8 @@ class AdkChatProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _adkService.dispose();
     super.dispose();
   }
 }
-

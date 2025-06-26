@@ -10,7 +10,7 @@ from google.adk.events.event import Event
 from google.adk.models.google_llm import Gemini
 from google.adk.tools import FunctionTool
 
-from tools.html_validator import validate_html
+from agents.tools.html_validator import validate_html
 
 # ロガーの設定
 logger = logging.getLogger(__name__)

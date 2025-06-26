@@ -63,7 +63,7 @@ build-prod:
 	@echo "🚀 本番環境用ビルド中..."
 	cd frontend && flutter build web \
 		--dart-define=ENVIRONMENT=production \
-		--dart-define=API_BASE_URL=https://yutori-backend-944053509139.asia-northeast1.run.app/api/v1 \
+		--dart-define=API_BASE_URL=https://yutori-backend-944053509139.asia-northeast1.run.app \
 		--release
 
 # テスト実行
@@ -106,12 +106,12 @@ format:
 
 # CI/CD環境セットアップ
 ci-setup:
-	@echo "⚙️ CI/CD環境セットアップ中..."
-	@echo "📦 Flutter依存関係取得..."
+	@echo "âï¸... CI/CD環境セットアップ中..."
+	@echo "ð¦ Flutter依存関係取得..."
 	cd frontend && flutter pub get
-	@echo "📦 Python依存関係インストール..."
-	cd backend/app && pip install -r requirements.txt
-	@echo "✅ CI/CD環境セットアップ完了"
+	@echo "ð¦ Python依存関係インストール..."
+	cd backend && poetry install --with dev --no-root
+	@echo "â... CI/CD環境セットアップ完了"
 
 # CI環境でのテスト実行
 ci-test: ci-setup lint test
@@ -148,7 +148,7 @@ deploy-preview:
 	@echo "👀 プレビューデプロイ中..."
 	cd frontend && flutter build web \
 		--dart-define=ENVIRONMENT=preview \
-		--dart-define=API_BASE_URL=https://yutori-backend-944053509139.asia-northeast1.run.app/api/v1 \
+		--dart-define=API_BASE_URL=https://yutori-backend-944053509139.asia-northeast1.run.app \
 		--release
 	firebase hosting:channel:deploy preview --expires 7d
 
@@ -172,22 +172,15 @@ reset-dev:
 
 # バックエンド開発サーバー起動
 backend-dev:
-	@echo "🐍 バックエンド開発サーバー起動中..."
-	@echo "📦 仮想環境アクティベート..."
-	cd backend/app && \
-		(test -d venv || python3.11 -m venv venv) && \
-		. venv/bin/activate && \
-		pip install fastapi uvicorn sse-starlette pydantic && \
-		uvicorn main_dev:app --host 0.0.0.0 --port 8081 --reload
+	@echo "🐍 バックエンド開発サーバー起動中 (ENVIRONMENT=development)..."
+	cd backend && poetry install --with dev --no-root && \
+	ENVIRONMENT=development poetry run uvicorn app.main:app --host 0.0.0.0 --port 8081 --reload
 
 # Python環境セットアップ
 backend-setup:
-	@echo "🐍 Python環境セットアップ中..."
-	cd backend/app && \
-		python3.11 -m venv venv && \
-		. venv/bin/activate && \
-		pip install -r requirements.txt
-	@echo "✅ Python環境セットアップ完了"
+	@echo "ð Python環境セットアップ中..."
+	cd backend && poetry install --with dev --no-root
+	@echo "â... Python環境セットアップ完了"
 
 # Pythonテスト実行
 backend-test:
