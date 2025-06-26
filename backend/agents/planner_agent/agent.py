@@ -78,10 +78,17 @@ class PlannerAgent(LlmAgent):
             return
             
         # イベントの内容からテキストを抽出
+        llm_response_text = ""
+        
         if isinstance(last_event.content, list) and len(last_event.content) > 0:
-            if isinstance(last_event.content[0], dict) and 'text' in last_event.content[0]:
-                llm_response_text = last_event.content[0]['text']
-            else:
+            # content内のすべてのpartsからtextを収集
+            for part in last_event.content:
+                if isinstance(part, dict):
+                    if 'text' in part and part['text']:
+                        llm_response_text += part['text']
+                    # function_responseは無視（ツール実行結果）
+                    
+            if not llm_response_text.strip():
                 logger.warning("コンテンツからテキストを抽出できません")
                 return
         else:
@@ -110,7 +117,7 @@ class PlannerAgent(LlmAgent):
             parsed_json = json.loads(json_str)
             logger.info(f"JSONを正常に解析しました: {list(parsed_json.keys())}")
 
-            # ファイルシステムベースのアーティファクト管理
+            # ファイルシステムベースのアーティファクト管理（v1.0.0対応）
             artifacts_dir = Path("/tmp/adk_artifacts")
             artifacts_dir.mkdir(exist_ok=True)
             outline_file = artifacts_dir / "outline.json"

@@ -46,16 +46,14 @@ class GeneratorAgent(LlmAgent):
         エージェントの実行ロジック。
         `outline.json`を読み込み、HTMLを生成、検証、保存します。
         """
-        # ファイルシステムベースのアーティファクト管理
+        # ファイルシステムベースのアーティファクト管理（v1.0.0対応）
         artifacts_dir = Path("/tmp/adk_artifacts")
-        artifacts_dir.mkdir(exist_ok=True)
         outline_file = artifacts_dir / "outline.json"
         
         if not outline_file.exists():
             # エラーメッセージをログに出力し、実行を終了
             error_msg = "HTML生成に必要な構成案（outline.json）が見つかりません。"
             logger.error(error_msg)
-            # カスタムEventの代わりに、単純にreturnしてエラーを回避
             return
 
         # JSONファイルを読み込み
@@ -98,9 +96,14 @@ class GeneratorAgent(LlmAgent):
             
         html = ""
         if isinstance(last_event.content, list) and len(last_event.content) > 0:
-            if isinstance(last_event.content[0], dict) and 'text' in last_event.content[0]:
-                html = last_event.content[0]['text'].strip()
-
+            # content内のすべてのpartsからtextを収集
+            for part in last_event.content:
+                if isinstance(part, dict):
+                    if 'text' in part and part['text']:
+                        html += part['text']
+                    # function_responseは無視（ツール実行結果）
+        
+        html = html.strip()
         if not html:
             logger.warning("HTMLコンテンツが空です")
             return
