@@ -75,9 +75,10 @@ app.include_router(user_dictionary_api.router)  # ユーザー辞書API
 session_service = InMemorySessionService()
 
 # 実際のエージェントとセッションサービスを渡してRunnerを初期化
+from agents.orchestrator_agent.agent import create_enhanced_orchestrator_agent
 runner = Runner(
     app_name="gakkoudayori-agent",
-    agent=create_orchestrator_agent(),
+    agent=create_enhanced_orchestrator_agent(),
     session_service=session_service
 )
 

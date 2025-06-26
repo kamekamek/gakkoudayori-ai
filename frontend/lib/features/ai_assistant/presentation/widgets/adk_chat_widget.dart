@@ -42,7 +42,21 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
     if (provider.transcriptionResult != null && 
         provider.transcriptionResult!.isNotEmpty) {
       setState(() {
-        _textController.text = provider.transcriptionResult!;
+        // 既存のテキストに音声認識結果を追記
+        final currentText = _textController.text;
+        final transcription = provider.transcriptionResult!;
+        
+        // 既存テキストがある場合はスペースを追加してから追記
+        if (currentText.isNotEmpty) {
+          _textController.text = '$currentText $transcription';
+        } else {
+          _textController.text = transcription;
+        }
+        
+        // カーソルを末尾に移動
+        _textController.selection = TextSelection.fromPosition(
+          TextPosition(offset: _textController.text.length),
+        );
       });
     }
   }

@@ -159,6 +159,9 @@ class AdkChatProvider extends ChangeNotifier {
           case 'error':
             _handleErrorEvent(event);
             break;
+          case 'html_generated':
+            _handleHtmlGeneratedEvent(event);
+            break;
         }
       }
       debugPrint('[AdkChatProvider] Stream finished.');
@@ -180,23 +183,44 @@ class AdkChatProvider extends ChangeNotifier {
 
     try {
       final messageData = jsonDecode(event.data);
-      final content = messageData['content'] ?? '';
+      final contentData = messageData['content'];
+
+      // contentからテキストを抽出
+      String extractedText = '';
+
+      if (contentData is Map<String, dynamic>) {
+        final parts = contentData['parts'];
+        if (parts is List) {
+          for (final part in parts) {
+            if (part is Map<String, dynamic> && part['text'] != null) {
+              extractedText += part['text'] as String;
+            }
+          }
+        }
+      } else if (contentData is String) {
+        extractedText = contentData;
+      }
+
       final eventType = messageData['type'] ?? 'message';
 
       if (eventType == 'complete') {
         // HTML生成完了
-        if (content.contains('<html>') || content.contains('<!DOCTYPE html>')) {
-          _generatedHtml = content;
+        if (extractedText.contains('<html>') ||
+            extractedText.contains('<!DOCTYPE html>')) {
+          _generatedHtml = extractedText;
         }
-        assistantMessage.content = content;
+        assistantMessage.content = extractedText;
       } else {
-        // 通常のメッセージ
-        assistantMessage.content = content;
+        // 通常のメッセージ - 累積的にテキストを追加
+        if (extractedText.isNotEmpty) {
+          assistantMessage.content += extractedText;
+        }
       }
       _safeNotifyListeners();
     } catch (e) {
-      // JSON解析に失敗した場合は生のデータを使用
-      assistantMessage.content = event.data;
+      debugPrint('[AdkChatProvider] Error parsing message event: $e');
+      // JSON解析に失敗した場合は生のデータを使用（デバッグ用）
+      assistantMessage.content = 'Error: ${e.toString()}';
       _safeNotifyListeners();
     }
   }
@@ -225,6 +249,26 @@ class AdkChatProvider extends ChangeNotifier {
     _errorProvider.setError('Server error: $errorMessage');
 
     _safeNotifyListeners();
+  }
+
+  /// HTML生成完了イベントを処理
+  void _handleHtmlGeneratedEvent(AdkStreamEvent event) {
+    if (_disposed) return;
+
+    try {
+      final messageData = jsonDecode(event.data);
+      final htmlContent = messageData['html_content'];
+
+      if (htmlContent != null && htmlContent is String) {
+        _generatedHtml = htmlContent;
+        debugPrint(
+            '[AdkChatProvider] HTML generated successfully: ${htmlContent.length} characters');
+      }
+
+      _safeNotifyListeners();
+    } catch (e) {
+      debugPrint('[AdkChatProvider] Error handling HTML generated event: $e');
+    }
   }
 
   /// セッションをクリア
