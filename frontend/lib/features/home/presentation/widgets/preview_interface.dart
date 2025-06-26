@@ -280,7 +280,7 @@ class PreviewInterface extends StatelessWidget {
 
   void _generatePdf(BuildContext context) async {
     try {
-      await context.read<PreviewProvider>().generatePdf();
+      await context.read<PreviewProvider>().generatePdf(context);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('✅ PDFを生成しました'),

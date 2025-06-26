@@ -34,6 +34,7 @@ from fastapi.responses import StreamingResponse, Response
 from models.adk_models import AdkChatRequest, NewsletterGenerationRequest
 from services.pdf_generator import generate_pdf_from_html_bytes
 from google.genai import types
+import json
 
 @router.post("/generate/newsletter", summary="学級通信HTMLをPDFに変換")
 async def generate_newsletter_pdf(req: Request):
@@ -55,25 +56,63 @@ async def adk_chat_stream(request: Request, body: AdkChatRequest):
     try:
         # ADK Runnerの正しいAPIを使用
         async def generate_response():
+            session_id = body.session_id or f"session_{body.user_id}"
             try:
+                logger.info(f"Starting ADK chat stream for user {body.user_id}, session {session_id}")
+                
                 # ADK Runnerの正しいパラメータでイベントストリームを取得
                 events = runner.run_async(
                     user_id=body.user_id,
-                    session_id=body.session_id or f"session_{body.user_id}",
+                    session_id=session_id,
                     new_message=types.Content(parts=[types.Part(text=body.message)])
                 )
                 
                 # イベントストリームを処理
+                event_count = 0
                 async for event in events:
+                    event_count += 1
+                    logger.info(f"Received event {event_count}: {type(event).__name__}")
+                    
                     if hasattr(event, 'agent_content') and event.agent_content:
                         content = event.agent_content.parts[0].text if event.agent_content.parts else ""
-                        yield f"data: {{'type': 'message', 'content': '{content}', 'session_id': '{body.session_id}'}}\n\n"
+                        response_data = {
+                            'type': 'message',
+                            'content': content,
+                            'session_id': session_id
+                        }
+                        yield f"data: {json.dumps(response_data)}\n\n"
+                        
                     elif hasattr(event, 'finish_reason'):
-                        yield f"data: {{'type': 'done', 'session_id': '{body.session_id}'}}\n\n"
+                        response_data = {
+                            'type': 'done',
+                            'session_id': session_id
+                        }
+                        yield f"data: {json.dumps(response_data)}\n\n"
                         break
                         
+                # イベントがない場合のフォールバック
+                if event_count == 0:
+                    response_data = {
+                        'type': 'message',
+                        'content': 'こんにちは！何かお手伝いできることはありますか？',
+                        'session_id': session_id
+                    }
+                    yield f"data: {json.dumps(response_data)}\n\n"
+                    
+                    response_data = {
+                        'type': 'done',
+                        'session_id': session_id
+                    }
+                    yield f"data: {json.dumps(response_data)}\n\n"
+                        
             except Exception as e:
-                yield f"data: {{'type': 'error', 'content': 'エラーが発生しました: {str(e)}', 'session_id': '{body.session_id}'}}\n\n"
+                logger.exception(f"Error in ADK stream: {e}")
+                error_data = {
+                    'type': 'error',
+                    'content': f'エラーが発生しました: {str(e)}',
+                    'session_id': session_id
+                }
+                yield f"data: {json.dumps(error_data)}\n\n"
         
         return StreamingResponse(
             generate_response(),
