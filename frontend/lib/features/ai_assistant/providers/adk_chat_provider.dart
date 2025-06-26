@@ -37,9 +37,9 @@ class AdkChatProvider extends ChangeNotifier {
     required AdkAgentService adkService,
     required this.userId,
     bool isDemo = false,
-  }) : _adkService = adkService,
-       _isDemo = isDemo,
-       _audioService = isDemo ? AudioServiceMock() : AudioService() {
+  })  : _adkService = adkService,
+        _isDemo = isDemo,
+        _audioService = isDemo ? AudioServiceMock() : AudioService() {
     _initializeAudioService();
   }
 
@@ -55,7 +55,8 @@ class AdkChatProvider extends ChangeNotifier {
   }
 
   void _initializeAudioService() {
-    debugPrint('[AdkChatProvider] Initializing audio service... (Demo mode: $_isDemo)');
+    debugPrint(
+        '[AdkChatProvider] Initializing audio service... (Demo mode: $_isDemo)');
     _audioService.initializeJavaScriptBridge();
 
     _audioService.setOnRecordingStateChanged((isRecording) {
@@ -78,6 +79,17 @@ class AdkChatProvider extends ChangeNotifier {
     debugPrint('[AdkChatProvider] Audio service initialization complete');
   }
 
+  /// ユーザーメッセージを即座にUIに追加
+  void addUserMessage(String message) {
+    _messages.add(MutableChatMessage(
+      role: 'user',
+      content: message,
+      timestamp: DateTime.now(),
+    ));
+    _transcriptionResult = null; // 入力欄をクリアするために文字起こし結果をリセット
+    notifyListeners();
+  }
+
   /// メッセージを送信（ストリーミング対応）
   Future<void> sendMessage(String message) async {
     debugPrint('[AdkChatProvider] sendMessage called with message: "$message"');
@@ -85,13 +97,6 @@ class AdkChatProvider extends ChangeNotifier {
       debugPrint('[AdkChatProvider] Already processing, aborting.');
       return;
     }
-
-    // ユーザーメッセージを追加
-    _messages.add(MutableChatMessage(
-      role: 'user',
-      content: message,
-      timestamp: DateTime.now(),
-    ));
 
     _isProcessing = true;
     _error = null;
@@ -116,7 +121,7 @@ class AdkChatProvider extends ChangeNotifier {
             '[AdkChatProvider] Received stream event: type=${event.type}, data=${event.data}');
 
         switch (event.type) {
-          case 'text':
+          case 'message':
             // 最初のテキストが来た時にアシスタントメッセージを作成
             if (assistantMessage == null) {
               assistantMessage = MutableChatMessage(

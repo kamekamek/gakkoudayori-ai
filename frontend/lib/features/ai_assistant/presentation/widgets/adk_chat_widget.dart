@@ -23,7 +23,7 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
   final TextEditingController _textController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
-  
+
   @override
   void initState() {
     super.initState();
@@ -33,12 +33,12 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
       provider.addListener(_onProviderChanged);
     });
   }
-  
+
   void _onProviderChanged() {
     final provider = context.read<AdkChatProvider>();
     // デモモードでは文字起こし結果の自動入力を無効化
-    if (!provider.isDemo && 
-        provider.transcriptionResult != null && 
+    if (!provider.isDemo &&
+        provider.transcriptionResult != null &&
         provider.transcriptionResult!.isNotEmpty) {
       setState(() {
         _textController.text = provider.transcriptionResult!;
@@ -70,273 +70,288 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
   Widget build(BuildContext context) {
     return Consumer<AdkChatProvider>(
       builder: (context, provider, _) {
-          // HTMLが生成されたらコールバックを呼び出す
-          if (provider.generatedHtml != null &&
-              widget.onHtmlGenerated != null) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              widget.onHtmlGenerated!(provider.generatedHtml!);
-            });
-          }
+        // HTMLが生成されたらコールバックを呼び出す
+        if (provider.generatedHtml != null && widget.onHtmlGenerated != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            widget.onHtmlGenerated!(provider.generatedHtml!);
+          });
+        }
 
-          return Column(
-            children: [
-              // ヘッダー
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).primaryColor.withOpacity(0.1),
-                  border: Border(
-                    bottom: BorderSide(
-                      color: Theme.of(context).dividerColor,
+        return Column(
+          children: [
+            // ヘッダー
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).primaryColor.withOpacity(0.1),
+                border: Border(
+                  bottom: BorderSide(
+                    color: Theme.of(context).dividerColor,
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.school,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    '学級通信AIアシスタント',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
+                  const Spacer(),
+                  if (provider.sessionId != null)
+                    TextButton.icon(
+                      onPressed: () => provider.clearSession(),
+                      icon: const Icon(Icons.refresh, size: 16),
+                      label: const Text('新しい会話'),
+                    ),
+                ],
+              ),
+            ),
+
+            // メッセージ表示エリア
+            Expanded(
+              child: ListView.builder(
+                controller: _scrollController,
+                padding: const EdgeInsets.all(16),
+                itemCount:
+                    provider.messages.length + (provider.isProcessing ? 1 : 0),
+                itemBuilder: (context, index) {
+                  if (index == provider.messages.length &&
+                      provider.isProcessing) {
+                    return _buildProcessingIndicator();
+                  }
+
+                  final message = provider.messages[index];
+                  return _buildMessageBubble(message);
+                },
+              ),
+            ),
+
+            // エラー表示
+            if (provider.error != null)
+              Container(
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   children: [
-                    Icon(
-                      Icons.school,
-                      color: Theme.of(context).primaryColor,
-                    ),
+                    const Icon(Icons.error_outline, color: Colors.red),
                     const SizedBox(width: 8),
-                    const Text(
-                      '学級通信AIアシスタント',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Spacer(),
-                    if (provider.sessionId != null)
-                      TextButton.icon(
-                        onPressed: () => provider.clearSession(),
-                        icon: const Icon(Icons.refresh, size: 16),
-                        label: const Text('新しい会話'),
-                      ),
-                  ],
-                ),
-              ),
-
-              // メッセージ表示エリア
-              Expanded(
-                child: ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(16),
-                  itemCount: provider.messages.length +
-                      (provider.isProcessing ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    if (index == provider.messages.length &&
-                        provider.isProcessing) {
-                      return _buildProcessingIndicator();
-                    }
-
-                    final message = provider.messages[index];
-                    return _buildMessageBubble(message);
-                  },
-                ),
-              ),
-
-              // エラー表示
-              if (provider.error != null)
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.error_outline, color: Colors.red),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          provider.error!,
-                          style: const TextStyle(color: Colors.red),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close, size: 16),
-                        onPressed: () => provider.clearError(),
-                      ),
-                    ],
-                  ),
-                ),
-
-              // 音声録音中の表示（スタイリッシュ版）
-              if (provider.isVoiceRecording)
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Theme.of(context).colorScheme.errorContainer.withOpacity(0.9),
-                        Theme.of(context).colorScheme.errorContainer.withOpacity(0.7),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Theme.of(context).colorScheme.error.withOpacity(0.3),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.error.withOpacity(0.2),
-                      width: 1,
-                    ),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(24),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      child: Row(
-                        children: [
-                          // アニメーション付きマイクアイコン
-                          Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Theme.of(context).colorScheme.error.withOpacity(0.2),
-                            ),
-                            child: AnimatedMicIcon(
-                              isRecording: provider.isVoiceRecording,
-                              color: Theme.of(context).colorScheme.error,
-                              size: 16,
-                            ),
-                          ),
-                          
-                          const SizedBox(width: 12),
-                          
-                          // メイン波形表示
-                          Expanded(
-                            flex: 3,
-                            child: AdvancedAudioWaveformWidget(
-                              audioLevel: provider.audioLevel,
-                              isRecording: provider.isVoiceRecording,
-                              color: Colors.white,
-                              barCount: 20,
-                              height: 32,
-                              style: WaveformStyle.ripple, // 波紋エフェクト
-                            ),
-                          ),
-                          
-                          const SizedBox(width: 12),
-                          
-                          // ステータステキストとドットアニメーション
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                '録音中',
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Theme.of(context).colorScheme.onErrorContainer,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              RecordingDotsIndicator(
-                                color: Theme.of(context).colorScheme.error,
-                                size: 4,
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-
-              // 入力エリア
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
-                  border: Border(
-                    top: BorderSide(
-                      color: Theme.of(context).dividerColor,
-                    ),
-                  ),
-                ),
-                child: Row(
-                  children: [
                     Expanded(
-                      child: TextField(
-                        controller: _textController,
-                        focusNode: _focusNode,
-                        maxLines: null,
-                        decoration: InputDecoration(
-                          hintText: 'メッセージを入力...',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(24),
-                            borderSide: BorderSide.none,
-                          ),
-                          filled: true,
-                          fillColor: Theme.of(context).colorScheme.surfaceVariant,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 12,
-                          ),
-                        ),
-                        onSubmitted: (_) {
-                          debugPrint('[AdkChatWidget] onSubmitted triggered!');
-                          _sendMessage(provider);
-                        },
+                      child: Text(
+                        provider.error!,
+                        style: const TextStyle(color: Colors.red),
                       ),
                     ),
-                    
-                    const SizedBox(width: 8),
-                    
-                    // 音声入力ボタン（アニメーション付き）
-                    Container(
-                      decoration: BoxDecoration(
-                        color: provider.isVoiceRecording
-                            ? Theme.of(context).colorScheme.error
-                            : Theme.of(context).colorScheme.primary,
-                        shape: BoxShape.circle,
-                      ),
-                      child: IconButton(
-                        onPressed: () => _handleVoiceRecordingToggle(provider),
-                        icon: AnimatedMicIcon(
-                          isRecording: provider.isVoiceRecording,
-                          color: provider.isVoiceRecording
-                              ? Theme.of(context).colorScheme.onError
-                              : Theme.of(context).colorScheme.onPrimary,
-                        ),
-                        tooltip: provider.isVoiceRecording ? '録音停止' : '音声入力',
-                      ),
-                    ),
-                    
-                    const SizedBox(width: 8),
-                    
-                    // 送信ボタン
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.secondary,
-                        shape: BoxShape.circle,
-                      ),
-                      child: IconButton(
-                        icon: Icon(
-                          Icons.send,
-                          color: Theme.of(context).colorScheme.onSecondary,
-                        ),
-                        onPressed: () {
-                          debugPrint('[AdkChatWidget] Send button PRESSED!');
-                          _sendMessage(provider);
-                        },
-                        tooltip: '送信',
-                      ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 16),
+                      onPressed: () => provider.clearError(),
                     ),
                   ],
                 ),
               ),
-            ],
-          );
-        },
-      );
+
+            // 音声録音中の表示（スタイリッシュ版）
+            if (provider.isVoiceRecording)
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Theme.of(context)
+                          .colorScheme
+                          .errorContainer
+                          .withOpacity(0.9),
+                      Theme.of(context)
+                          .colorScheme
+                          .errorContainer
+                          .withOpacity(0.7),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color:
+                          Theme.of(context).colorScheme.error.withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.error.withOpacity(0.2),
+                    width: 1,
+                  ),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    child: Row(
+                      children: [
+                        // アニメーション付きマイクアイコン
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .error
+                                .withOpacity(0.2),
+                          ),
+                          child: AnimatedMicIcon(
+                            isRecording: provider.isVoiceRecording,
+                            color: Theme.of(context).colorScheme.error,
+                            size: 16,
+                          ),
+                        ),
+
+                        const SizedBox(width: 12),
+
+                        // メイン波形表示
+                        Expanded(
+                          flex: 3,
+                          child: AdvancedAudioWaveformWidget(
+                            audioLevel: provider.audioLevel,
+                            isRecording: provider.isVoiceRecording,
+                            color: Colors.white,
+                            barCount: 20,
+                            height: 32,
+                            style: WaveformStyle.ripple, // 波紋エフェクト
+                          ),
+                        ),
+
+                        const SizedBox(width: 12),
+
+                        // ステータステキストとドットアニメーション
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '録音中',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onErrorContainer,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                  ),
+                            ),
+                            const SizedBox(width: 4),
+                            RecordingDotsIndicator(
+                              color: Theme.of(context).colorScheme.error,
+                              size: 4,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+            // 入力エリア
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                border: Border(
+                  top: BorderSide(
+                    color: Theme.of(context).dividerColor,
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _textController,
+                      focusNode: _focusNode,
+                      maxLines: null,
+                      decoration: InputDecoration(
+                        hintText: 'メッセージを入力...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: BorderSide.none,
+                        ),
+                        filled: true,
+                        fillColor: Theme.of(context).colorScheme.surfaceVariant,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                      ),
+                      onSubmitted: (_) {
+                        debugPrint('[AdkChatWidget] onSubmitted triggered!');
+                        _sendMessage(provider);
+                      },
+                    ),
+                  ),
+
+                  const SizedBox(width: 8),
+
+                  // 音声入力ボタン（アニメーション付き）
+                  Container(
+                    decoration: BoxDecoration(
+                      color: provider.isVoiceRecording
+                          ? Theme.of(context).colorScheme.error
+                          : Theme.of(context).colorScheme.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      onPressed: () => _handleVoiceRecordingToggle(provider),
+                      icon: AnimatedMicIcon(
+                        isRecording: provider.isVoiceRecording,
+                        color: provider.isVoiceRecording
+                            ? Theme.of(context).colorScheme.onError
+                            : Theme.of(context).colorScheme.onPrimary,
+                      ),
+                      tooltip: provider.isVoiceRecording ? '録音停止' : '音声入力',
+                    ),
+                  ),
+
+                  const SizedBox(width: 8),
+
+                  // 送信ボタン
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.secondary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: Icon(
+                        Icons.send,
+                        color: Theme.of(context).colorScheme.onSecondary,
+                      ),
+                      onPressed: () {
+                        debugPrint('[AdkChatWidget] Send button PRESSED!');
+                        _sendMessage(provider);
+                      },
+                      tooltip: '送信',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Widget _buildMessageBubble(MutableChatMessage message) {
@@ -434,9 +449,10 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
       return;
     }
 
-    provider.sendMessage(text);
-    debugPrint('[AdkChatWidget] provider.sendMessage called.');
+    // UIに即時反映
+    provider.addUserMessage(text);
 
+    // テキストフィールドをクリア
     _textController.clear();
     _focusNode.requestFocus();
 
@@ -444,11 +460,16 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToBottom();
     });
+
+    // バックグラウンドでメッセージを送信
+    provider.sendMessage(text);
+    debugPrint('[AdkChatWidget] provider.sendMessage called.');
   }
 
   Future<void> _handleVoiceRecordingToggle(AdkChatProvider provider) async {
-    debugPrint('🎤 [AdkChatWidget] Voice recording toggle pressed. Current state: ${provider.isVoiceRecording}');
-    
+    debugPrint(
+        '🎤 [AdkChatWidget] Voice recording toggle pressed. Current state: ${provider.isVoiceRecording}');
+
     if (provider.isVoiceRecording) {
       // 録音停止
       debugPrint('⏹️ [AdkChatWidget] Stopping voice recording...');
@@ -458,7 +479,7 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
       debugPrint('🎙️ [AdkChatWidget] Starting voice recording...');
       final success = await provider.startVoiceRecording();
       debugPrint('📊 [AdkChatWidget] Voice recording start result: $success');
-      
+
       if (!success) {
         debugPrint('❌ [AdkChatWidget] Voice recording failed to start');
         if (mounted) {

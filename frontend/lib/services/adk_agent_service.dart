@@ -162,8 +162,9 @@ class AdkAgentService {
   }) async* {
     try {
       // session_idがnullの場合、一意のIDを生成
-      final effectiveSessionId = sessionId ?? 'session_${userId}_${DateTime.now().millisecondsSinceEpoch}';
-      
+      final effectiveSessionId = sessionId ??
+          'session_${userId}_${DateTime.now().millisecondsSinceEpoch}';
+
       final url = Uri.parse('$_baseUrl/adk/chat/stream');
       final body = {
         'message': message,
@@ -197,7 +198,8 @@ class AdkAgentService {
                       return AdkStreamEvent.fromJson(jsonData);
                     }
                   } catch (e) {
-                    debugPrint('[AdkAgentService] JSON parse error for data: "$data", error: $e');
+                    debugPrint(
+                        '[AdkAgentService] JSON parse error for data: "$data", error: $e');
                     return AdkStreamEvent(
                       sessionId: effectiveSessionId,
                       type: 'error',
@@ -218,7 +220,8 @@ class AdkAgentService {
       }
     } catch (e) {
       debugPrint('[AdkAgentService] Exception caught: $e');
-      final effectiveSessionId = sessionId ?? 'session_${userId}_${DateTime.now().millisecondsSinceEpoch}';
+      final effectiveSessionId = sessionId ??
+          'session_${userId}_${DateTime.now().millisecondsSinceEpoch}';
       yield AdkStreamEvent(
         sessionId: effectiveSessionId,
         type: 'error',
@@ -282,7 +285,8 @@ class AdkAgentService {
         final data = jsonDecode(response.body);
         return data['html_content'] ?? '';
       } else {
-        throw Exception('Failed to generate newsletter: ${response.statusCode}');
+        throw Exception(
+            'Failed to generate newsletter: ${response.statusCode}');
       }
     } catch (e) {
       throw Exception('Error generating newsletter: $e');
@@ -444,9 +448,9 @@ class AdkStreamEvent {
 
   factory AdkStreamEvent.fromJson(Map<String, dynamic> json) {
     return AdkStreamEvent(
-      sessionId: json['session_id'],
-      type: json['type'],
-      data: json['data'],
+      sessionId: json['session_id'] ?? '',
+      type: json['type'] ?? 'message',
+      data: json['content'] ?? json['data'] ?? '',
     );
   }
 }
