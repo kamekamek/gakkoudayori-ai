@@ -58,6 +58,9 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
           TextPosition(offset: _textController.text.length),
         );
       });
+      
+      // 使用後は音声認識結果をクリア（再適用を防ぐため）
+      provider.clearTranscriptionResult();
     }
   }
 
@@ -591,7 +594,12 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
     provider.sendMessage(text);
     debugPrint('[AdkChatWidget] provider.sendMessage called.');
 
+    // テキストコントローラーをクリア
     _textController.clear();
+    
+    // 音声認識結果もクリア（再適用を防ぐため）
+    provider.clearTranscriptionResult();
+    
     _focusNode.requestFocus();
 
     // スクロールを最下部へ

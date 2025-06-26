@@ -3,22 +3,22 @@ from typing import AsyncGenerator
 from google.adk.agents import SequentialAgent, LlmAgent
 from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events.event import Event
-from agents.generator_agent.agent import create_generator_agent
-from agents.planner_agent.agent import create_planner_agent
+from agents.generator_agent.agent import create_generator_agent, GeneratorAgent
+from agents.planner_agent.agent import create_planner_agent, PlannerAgent
 from agents.core.error_handler import error_handler, AgentErrorType, ErrorSeverity, handle_agent_errors
 
 
 class EnhancedOrchestratorAgent(LlmAgent):
     """エラーハンドリング強化版オーケストレーターエージェント"""
+    logger: logging.Logger
+    planner_agent: PlannerAgent
+    generator_agent: GeneratorAgent
+
+    class Config:
+        arbitrary_types_allowed = True
     
-    def __init__(self):
-        super().__init__(
-            name="orchestrator_agent",
-            description="Handles the newsletter creation workflow with error recovery.",
-        )
-        self.logger = logging.getLogger(__name__)
-        self.planner_agent = create_planner_agent()
-        self.generator_agent = create_generator_agent()
+    def __init__(self, **data):
+        super().__init__(**data)
         
     async def _run_async_impl(self, ctx: InvocationContext) -> AsyncGenerator[Event, None]:
         """
@@ -190,7 +190,13 @@ def create_orchestrator_agent() -> SequentialAgent:
 
 def create_enhanced_orchestrator_agent() -> EnhancedOrchestratorAgent:
     """エラーハンドリング強化版のオーケストレーターエージェントを作成"""
-    return EnhancedOrchestratorAgent()
+    return EnhancedOrchestratorAgent(
+        name="orchestrator_agent",
+        description="Handles the newsletter creation workflow with error recovery.",
+        logger=logging.getLogger("orchestrator_agent"),
+        planner_agent=create_planner_agent(),
+        generator_agent=create_generator_agent(),
+    )
 
 # ADK Web UI用のroot_agent変数
 root_agent = create_orchestrator_agent()

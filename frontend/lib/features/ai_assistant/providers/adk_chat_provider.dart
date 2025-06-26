@@ -288,6 +288,12 @@ class AdkChatProvider extends ChangeNotifier {
     _safeNotifyListeners();
   }
 
+  /// 音声認識結果をクリア
+  void clearTranscriptionResult() {
+    _transcriptionResult = null;
+    _safeNotifyListeners();
+  }
+
   /// 音声録音開始
   Future<bool> startVoiceRecording() async {
     debugPrint('[AdkChatProvider] startVoiceRecording called');
