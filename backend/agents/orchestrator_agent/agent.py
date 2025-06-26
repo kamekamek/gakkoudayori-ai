@@ -1,12 +1,28 @@
 import logging
 import json
+import os
+from pathlib import Path
 from typing import AsyncGenerator
 from google.adk.agents import SequentialAgent, LlmAgent
 from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events.event import Event
+from google.adk.models.google_llm import Gemini
+import google.genai.types as genai_types
 from agents.generator_agent.agent import create_generator_agent, GeneratorAgent
 from agents.planner_agent.agent import create_planner_agent, PlannerAgent
 from agents.core.error_handler import error_handler, AgentErrorType, ErrorSeverity, handle_agent_errors
+
+
+def _load_instruction() -> str:
+    """プロンプトファイルを読み込みます。"""
+    current_dir = Path(os.path.dirname(__file__))
+    prompt_file = current_dir / "prompts" / "orchestrator_instruction.md"
+    try:
+        with open(prompt_file, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        # フォールバック用の基本的なプロンプト
+        return "あなたは学級通信作成のワークフローを管理するオーケストレーターエージェントです。プランニングフェーズと生成フェーズを調整します。"
 
 
 class EnhancedOrchestratorAgent(LlmAgent):
@@ -19,6 +35,12 @@ class EnhancedOrchestratorAgent(LlmAgent):
         arbitrary_types_allowed = True
     
     def __init__(self, **data):
+        # Ensure model is set if not provided
+        if 'model' not in data:
+            data['model'] = Gemini(model_name="gemini-1.5-pro-latest")
+        # Ensure instruction is set if not provided
+        if 'instruction' not in data:
+            data['instruction'] = _load_instruction()
         super().__init__(**data)
         
     async def _run_async_impl(self, ctx: InvocationContext) -> AsyncGenerator[Event, None]:
@@ -30,13 +52,13 @@ class EnhancedOrchestratorAgent(LlmAgent):
             # セッション開始を通知
             yield Event(
                 author=self.name,
-                content=[{
-                    "text": json.dumps({
+                content=genai_types.Content(
+                    parts=[genai_types.Part(text=json.dumps({
                         "type": "workflow_start",
                         "message": "学級通信作成を開始します...",
                         "timestamp": self._get_timestamp()
-                    }, ensure_ascii=False)
-                }]
+                    }, ensure_ascii=False))]
+                )
             )
             
             # Phase 1: Planning
@@ -50,26 +72,26 @@ class EnhancedOrchestratorAgent(LlmAgent):
             # 完了通知
             yield Event(
                 author=self.name,
-                content=[{
-                    "text": json.dumps({
+                content=genai_types.Content(
+                    parts=[genai_types.Part(text=json.dumps({
                         "type": "workflow_complete",
                         "message": "学級通信の作成が完了しました！",
                         "timestamp": self._get_timestamp()
-                    }, ensure_ascii=False)
-                }]
+                    }, ensure_ascii=False))]
+                )
             )
             
         except Exception as e:
             self.logger.error(f"Orchestrator workflow failed: {e}")
             yield Event(
                 author=self.name,
-                content=[{
-                    "text": json.dumps({
+                content=genai_types.Content(
+                    parts=[genai_types.Part(text=json.dumps({
                         "type": "workflow_failed",
                         "message": f"学級通信の作成に失敗しました: {str(e)}",
                         "timestamp": self._get_timestamp()
-                    }, ensure_ascii=False)
-                }]
+                    }, ensure_ascii=False))]
+                )
             )
             raise
     
@@ -80,14 +102,14 @@ class EnhancedOrchestratorAgent(LlmAgent):
         try:
             yield Event(
                 author=self.name,
-                content=[{
-                    "text": json.dumps({
+                content=genai_types.Content(
+                    parts=[genai_types.Part(text=json.dumps({
                         "type": "phase_start",
                         "phase": "planning",
                         "message": "構成を計画しています...",
                         "timestamp": self._get_timestamp()
-                    }, ensure_ascii=False)
-                }]
+                    }, ensure_ascii=False))]
+                )
             )
             
             # ファイルシステムベースでoutline.jsonの存在確認
@@ -97,14 +119,14 @@ class EnhancedOrchestratorAgent(LlmAgent):
             if outline_file.exists():
                 yield Event(
                     author=self.name,
-                    content=[{
-                        "text": json.dumps({
+                    content=genai_types.Content(
+                        parts=[genai_types.Part(text=json.dumps({
                             "type": "phase_skip",
                             "phase": "planning",
                             "message": "既存の構成を使用します",
                             "timestamp": self._get_timestamp()
-                        }, ensure_ascii=False)
-                    }]
+                        }, ensure_ascii=False))]
+                    )
                 )
                 return
             
@@ -119,14 +141,14 @@ class EnhancedOrchestratorAgent(LlmAgent):
             
             yield Event(
                 author=self.name,
-                content=[{
-                    "text": json.dumps({
+                content=genai_types.Content(
+                    parts=[genai_types.Part(text=json.dumps({
                         "type": "phase_complete",
                         "phase": "planning",
                         "message": "構成の計画が完了しました",
                         "timestamp": self._get_timestamp()
-                    }, ensure_ascii=False)
-                }]
+                    }, ensure_ascii=False))]
+                )
             )
             
         except Exception as e:
@@ -140,14 +162,14 @@ class EnhancedOrchestratorAgent(LlmAgent):
         try:
             yield Event(
                 author=self.name,
-                content=[{
-                    "text": json.dumps({
+                content=genai_types.Content(
+                    parts=[genai_types.Part(text=json.dumps({
                         "type": "phase_start",
                         "phase": "generation",
                         "message": "学級通信を生成しています...",
                         "timestamp": self._get_timestamp()
-                    }, ensure_ascii=False)
-                }]
+                    }, ensure_ascii=False))]
+                )
             )
             
             # ファイルシステムベースでファイル存在確認
@@ -163,14 +185,14 @@ class EnhancedOrchestratorAgent(LlmAgent):
             if newsletter_file.exists():
                 yield Event(
                     author=self.name,
-                    content=[{
-                        "text": json.dumps({
+                    content=genai_types.Content(
+                        parts=[genai_types.Part(text=json.dumps({
                             "type": "phase_update",
                             "phase": "generation",
                             "message": "既存のHTMLを更新しています...",
                             "timestamp": self._get_timestamp()
-                        }, ensure_ascii=False)
-                    }]
+                        }, ensure_ascii=False))]
+                    )
                 )
             
             # ジェネレーターエージェントを直接実行
@@ -189,28 +211,28 @@ class EnhancedOrchestratorAgent(LlmAgent):
                 
                 yield Event(
                     author=self.name,
-                    content=[{
-                        "text": json.dumps({
+                    content=genai_types.Content(
+                        parts=[genai_types.Part(text=json.dumps({
                             "type": "html_generated",
                             "html_content": html_content,
                             "message": "学級通信の生成が完了しました",
                             "timestamp": self._get_timestamp()
-                        }, ensure_ascii=False)
-                    }]
+                        }, ensure_ascii=False))]
+                    )
                 )
             except Exception as e:
                 self.logger.error(f"HTMLファイル読み込みエラー: {e}")
             
             yield Event(
                 author=self.name,
-                content=[{
-                    "text": json.dumps({
+                content=genai_types.Content(
+                    parts=[genai_types.Part(text=json.dumps({
                         "type": "phase_complete",
                         "phase": "generation",
                         "message": "学級通信の生成が完了しました",
                         "timestamp": self._get_timestamp()
-                    }, ensure_ascii=False)
-                }]
+                    }, ensure_ascii=False))]
+                )
             )
             
         except Exception as e:

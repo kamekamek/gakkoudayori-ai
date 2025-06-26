@@ -85,10 +85,18 @@ class GeneratorAgent(LlmAgent):
             logger.warning("セッション履歴にアクセスできません")
             return
             
-        last_event = ctx.session.events[-1]
-        if not hasattr(last_event, 'author') or last_event.author != self.name:
-            logger.warning(f"最後のイベントの作成者が{self.name}ではありません")
+        # ジェネレーターエージェントが作成した最後のイベントを探す
+        generator_event = None
+        for event in reversed(ctx.session.events):
+            if hasattr(event, 'author') and event.author == self.name:
+                generator_event = event
+                break
+        
+        if generator_event is None:
+            logger.warning(f"{self.name}による最後のイベントが見つかりません")
             return
+        
+        last_event = generator_event
             
         if not hasattr(last_event, 'content') or not last_event.content:
             logger.warning("最後のイベントにコンテンツがありません")
