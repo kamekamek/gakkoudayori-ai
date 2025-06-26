@@ -1,8 +1,8 @@
 import logging
 from google.cloud import firestore
 
-from services.adk_session_service import FirestoreSessionService
-from services.firebase_service import get_firestore_client
+# ADK v1.0.0の公式セッションサービスを使用
+from google.adk.sessions import InMemorySessionService
 from adk.agents.orchestrator_agent import create_orchestrator_agent
 
 logger = logging.getLogger(__name__)
@@ -11,13 +11,12 @@ logger = logging.getLogger(__name__)
 _session_service = None
 _orchestrator_agent = None
 
-def get_session_service() -> FirestoreSessionService:
-    """FirestoreSessionServiceのシングルトンインスタンスを返す"""
+def get_session_service() -> InMemorySessionService:
+    """InMemorySessionServiceのシングルトンインスタンスを返す（ADK v1.0.0準拠）"""
     global _session_service
     if _session_service is None:
-        logger.info("Creating FirestoreSessionService singleton instance...")
-        firestore_client = get_firestore_client()
-        _session_service = FirestoreSessionService(firestore_client)
+        logger.info("Creating InMemorySessionService singleton instance for ADK v1.0.0...")
+        _session_service = InMemorySessionService()
     return _session_service
 
 def get_orchestrator_agent():

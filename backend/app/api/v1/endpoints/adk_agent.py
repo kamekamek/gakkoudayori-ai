@@ -60,6 +60,25 @@ async def adk_chat_stream(request: Request, body: AdkChatRequest):
             try:
                 logger.info(f"Starting ADK chat stream for user {body.user_id}, session {session_id}")
                 
+                # セッションの存在確認と自動作成
+                session_service = runner.session_service
+                try:
+                    session = await session_service.get_session(
+                        session_id=session_id,
+                        app_name="gakkoudayori-ai",
+                        user_id=body.user_id
+                    )
+                    if not session:
+                        logger.info(f"Session {session_id} not found, creating new session...")
+                        session = await session_service.create_session(
+                            session_id=session_id,
+                            app_name="gakkoudayori-ai",
+                            user_id=body.user_id
+                        )
+                        logger.info(f"Created new session: {session_id}")
+                except Exception as session_error:
+                    logger.warning(f"Session handling error: {session_error}, proceeding with Runner...")
+                
                 # ADK Runnerの正しいパラメータでイベントストリームを取得
                 events = runner.run_async(
                     user_id=body.user_id,

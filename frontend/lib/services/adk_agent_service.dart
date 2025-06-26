@@ -161,11 +161,14 @@ class AdkAgentService {
     String? sessionId,
   }) async* {
     try {
+      // session_idがnullの場合、一意のIDを生成
+      final effectiveSessionId = sessionId ?? 'session_${userId}_${DateTime.now().millisecondsSinceEpoch}';
+      
       final url = Uri.parse('$_baseUrl/adk/chat/stream');
       final body = {
         'message': message,
         'user_id': userId,
-        'session_id': sessionId,
+        'session_id': effectiveSessionId,
       };
 
       debugPrint(
@@ -192,7 +195,7 @@ class AdkAgentService {
                     return AdkStreamEvent.fromJson(jsonDecode(data));
                   } catch (e) {
                     return AdkStreamEvent(
-                      sessionId: sessionId ?? '',
+                      sessionId: effectiveSessionId,
                       type: 'error',
                       data: 'Error parsing SSE data: $e',
                     );
@@ -211,8 +214,9 @@ class AdkAgentService {
       }
     } catch (e) {
       debugPrint('[AdkAgentService] Exception caught: $e');
+      final effectiveSessionId = sessionId ?? 'session_${userId}_${DateTime.now().millisecondsSinceEpoch}';
       yield AdkStreamEvent(
-        sessionId: sessionId ?? '',
+        sessionId: effectiveSessionId,
         type: 'error',
         data: 'Error streaming chat: $e',
       );
