@@ -1,4 +1,5 @@
 import logging
+import json
 from typing import AsyncGenerator
 from google.adk.agents import SequentialAgent, LlmAgent
 from google.adk.agents.invocation_context import InvocationContext
@@ -27,11 +28,16 @@ class EnhancedOrchestratorAgent(LlmAgent):
         """
         try:
             # セッション開始を通知
-            await ctx.emit({
-                "type": "workflow_start",
-                "message": "学級通信作成を開始します...",
-                "timestamp": self._get_timestamp()
-            })
+            yield Event(
+                author=self.name,
+                content=[{
+                    "text": json.dumps({
+                        "type": "workflow_start",
+                        "message": "学級通信作成を開始します...",
+                        "timestamp": self._get_timestamp()
+                    }, ensure_ascii=False)
+                }]
+            )
             
             # Phase 1: Planning
             async for event in self._execute_planning_phase(ctx):
@@ -42,19 +48,29 @@ class EnhancedOrchestratorAgent(LlmAgent):
                 yield event
             
             # 完了通知
-            await ctx.emit({
-                "type": "workflow_complete",
-                "message": "学級通信の作成が完了しました！",
-                "timestamp": self._get_timestamp()
-            })
+            yield Event(
+                author=self.name,
+                content=[{
+                    "text": json.dumps({
+                        "type": "workflow_complete",
+                        "message": "学級通信の作成が完了しました！",
+                        "timestamp": self._get_timestamp()
+                    }, ensure_ascii=False)
+                }]
+            )
             
         except Exception as e:
             self.logger.error(f"Orchestrator workflow failed: {e}")
-            await ctx.emit({
-                "type": "workflow_failed",
-                "message": f"学級通信の作成に失敗しました: {str(e)}",
-                "timestamp": self._get_timestamp()
-            })
+            yield Event(
+                author=self.name,
+                content=[{
+                    "text": json.dumps({
+                        "type": "workflow_failed",
+                        "message": f"学級通信の作成に失敗しました: {str(e)}",
+                        "timestamp": self._get_timestamp()
+                    }, ensure_ascii=False)
+                }]
+            )
             raise
     
     async def _execute_planning_phase(self, ctx: InvocationContext) -> AsyncGenerator[Event, None]:
@@ -62,24 +78,34 @@ class EnhancedOrchestratorAgent(LlmAgent):
         from pathlib import Path
         
         try:
-            await ctx.emit({
-                "type": "phase_start",
-                "phase": "planning",
-                "message": "構成を計画しています...",
-                "timestamp": self._get_timestamp()
-            })
+            yield Event(
+                author=self.name,
+                content=[{
+                    "text": json.dumps({
+                        "type": "phase_start",
+                        "phase": "planning",
+                        "message": "構成を計画しています...",
+                        "timestamp": self._get_timestamp()
+                    }, ensure_ascii=False)
+                }]
+            )
             
             # ファイルシステムベースでoutline.jsonの存在確認
             artifacts_dir = Path("/tmp/adk_artifacts")
             outline_file = artifacts_dir / "outline.json"
             
             if outline_file.exists():
-                await ctx.emit({
-                    "type": "phase_skip",
-                    "phase": "planning",
-                    "message": "既存の構成を使用します",
-                    "timestamp": self._get_timestamp()
-                })
+                yield Event(
+                    author=self.name,
+                    content=[{
+                        "text": json.dumps({
+                            "type": "phase_skip",
+                            "phase": "planning",
+                            "message": "既存の構成を使用します",
+                            "timestamp": self._get_timestamp()
+                        }, ensure_ascii=False)
+                    }]
+                )
                 return
             
             # プランナーエージェントを直接実行
@@ -91,12 +117,17 @@ class EnhancedOrchestratorAgent(LlmAgent):
             if not outline_file.exists():
                 raise Exception("Planning phase failed: outline.json not created")
             
-            await ctx.emit({
-                "type": "phase_complete",
-                "phase": "planning",
-                "message": "構成の計画が完了しました",
-                "timestamp": self._get_timestamp()
-            })
+            yield Event(
+                author=self.name,
+                content=[{
+                    "text": json.dumps({
+                        "type": "phase_complete",
+                        "phase": "planning",
+                        "message": "構成の計画が完了しました",
+                        "timestamp": self._get_timestamp()
+                    }, ensure_ascii=False)
+                }]
+            )
             
         except Exception as e:
             self.logger.error(f"Planning phase failed: {e}")
@@ -107,12 +138,17 @@ class EnhancedOrchestratorAgent(LlmAgent):
         from pathlib import Path
         
         try:
-            await ctx.emit({
-                "type": "phase_start",
-                "phase": "generation",
-                "message": "学級通信を生成しています...",
-                "timestamp": self._get_timestamp()
-            })
+            yield Event(
+                author=self.name,
+                content=[{
+                    "text": json.dumps({
+                        "type": "phase_start",
+                        "phase": "generation",
+                        "message": "学級通信を生成しています...",
+                        "timestamp": self._get_timestamp()
+                    }, ensure_ascii=False)
+                }]
+            )
             
             # ファイルシステムベースでファイル存在確認
             artifacts_dir = Path("/tmp/adk_artifacts")
@@ -125,12 +161,17 @@ class EnhancedOrchestratorAgent(LlmAgent):
             
             # 既にHTMLが存在する場合の処理
             if newsletter_file.exists():
-                await ctx.emit({
-                    "type": "phase_update",
-                    "phase": "generation",
-                    "message": "既存のHTMLを更新しています...",
-                    "timestamp": self._get_timestamp()
-                })
+                yield Event(
+                    author=self.name,
+                    content=[{
+                        "text": json.dumps({
+                            "type": "phase_update",
+                            "phase": "generation",
+                            "message": "既存のHTMLを更新しています...",
+                            "timestamp": self._get_timestamp()
+                        }, ensure_ascii=False)
+                    }]
+                )
             
             # ジェネレーターエージェントを直接実行
             self.logger.info("ジェネレーターエージェントを実行中...")
@@ -146,30 +187,40 @@ class EnhancedOrchestratorAgent(LlmAgent):
                 with open(newsletter_file, "r", encoding="utf-8") as f:
                     html_content = f.read()
                 
-                await ctx.emit({
-                    "type": "html_generated",
-                    "html_content": html_content,
-                    "message": "学級通信の生成が完了しました",
-                    "timestamp": self._get_timestamp()
-                })
+                yield Event(
+                    author=self.name,
+                    content=[{
+                        "text": json.dumps({
+                            "type": "html_generated",
+                            "html_content": html_content,
+                            "message": "学級通信の生成が完了しました",
+                            "timestamp": self._get_timestamp()
+                        }, ensure_ascii=False)
+                    }]
+                )
             except Exception as e:
                 self.logger.error(f"HTMLファイル読み込みエラー: {e}")
             
-            await ctx.emit({
-                "type": "phase_complete",
-                "phase": "generation",
-                "message": "学級通信の生成が完了しました",
-                "timestamp": self._get_timestamp()
-            })
+            yield Event(
+                author=self.name,
+                content=[{
+                    "text": json.dumps({
+                        "type": "phase_complete",
+                        "phase": "generation",
+                        "message": "学級通信の生成が完了しました",
+                        "timestamp": self._get_timestamp()
+                    }, ensure_ascii=False)
+                }]
+            )
             
         except Exception as e:
             self.logger.error(f"Generation phase failed: {e}")
             raise
     
-    def _get_timestamp(self) -> str:
+    def _get_timestamp(self) -> float:
         """現在のタイムスタンプを取得"""
-        from datetime import datetime
-        return datetime.utcnow().isoformat()
+        from datetime import datetime, timezone
+        return datetime.now(timezone.utc).timestamp()
 
 
 def create_orchestrator_agent() -> SequentialAgent:
@@ -199,4 +250,5 @@ def create_enhanced_orchestrator_agent() -> EnhancedOrchestratorAgent:
     )
 
 # ADK Web UI用のroot_agent変数
-root_agent = create_orchestrator_agent()
+# root_agent = create_orchestrator_agent()
+root_agent = create_enhanced_orchestrator_agent()
