@@ -69,7 +69,10 @@ class GeneratorAgent(LlmAgent):
         # ユーザーメッセージとしてJSONコンテンツを設定
         try:
             import google.genai.types as genai_types
-            ctx.user_content = genai_types.to_content(f"以下のJSONデータからHTMLを生成してください:\\n\\n{json_content}")
+            ctx.user_content = genai_types.Content(
+                role='user', 
+                parts=[genai_types.Part(text=f"以下のJSONデータからHTMLを生成してください:\\n\\n{json_content}")]
+            )
         except Exception as e:
             logger.error(f"ユーザーコンテンツ設定エラー: {e}")
             return

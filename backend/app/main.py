@@ -14,8 +14,8 @@ from sse_starlette.sse import EventSourceResponse
 from agents.orchestrator_agent.agent import create_orchestrator_agent
 from app import classroom as classroom_api
 from app import pdf as pdf_api
-from app import phrase as phrase_api
 from app import stt as stt_api
+from app import user_dictionary as user_dictionary_api
 
 # 以下のツールは直接APIとして実装されたため、main.pyからは不要
 # from agents.tools.pdf_converter import convert_html_to_pdf
@@ -69,13 +69,16 @@ else:
 app.include_router(pdf_api.router)
 app.include_router(classroom_api.router)
 app.include_router(stt_api.router)
-app.include_router(phrase_api.router)
+app.include_router(user_dictionary_api.router)  # ユーザー辞書API
+
+# セッションサービスを初期化
+session_service = InMemorySessionService()
 
 # 実際のエージェントとセッションサービスを渡してRunnerを初期化
 runner = Runner(
     app_name="gakkoudayori-agent",
     agent=create_orchestrator_agent(),
-    session_service=InMemorySessionService()
+    session_service=session_service
 )
 
 class ChatIn(BaseModel):
@@ -99,33 +102,41 @@ async def chat(req: ChatIn):
 
     async def gen():
         try:
+            print(f"🔧 Processing chat request for user: {user_id}, session: {session_id}")
+            
             # ADKのrun_asyncを呼び出してイベントストリームを取得
             async for event in runner.run_async(
                 user_id=user_id,
                 session_id=session_id,
-                new_message=genai_types.to_content(req.message),
+                new_message=genai_types.Content(role='user', parts=[genai_types.Part(text=req.message)]),
             ):
                 yield {"data": event.model_dump_json(), "event": "message"}
         except Exception as e:
             # エラーハンドリング
             error_message = {"error": str(e), "type": "error"}
             yield {"data": json.dumps(error_message), "event": "error"}
-            print(f"Error during streaming: {e}") # Log error to server console
+            print(f"❌ Error during streaming: {e}") # Log error to server console
 
     return EventSourceResponse(gen(), ping=15)
 
 @app.post("/adk/chat/stream")
 async def adk_chat_stream(req: AdkChatRequest):
     """フロントエンド互換のADKチャットストリーミングエンドポイント"""
-    session_id = req.session_id or f"{req.user_id}:default"
+    # フロントエンドが user_id:session_id 形式で送信する場合を処理
+    if req.session_id and ":" in req.session_id:
+        session_id = req.session_id.split(":", 1)[1]
+    else:
+        session_id = req.session_id or "default"
     
     async def gen():
         try:
+            print(f"🔧 Processing ADK chat stream for user: {req.user_id}, session: {session_id}")
+            
             # ADKのrun_asyncを呼び出してイベントストリームを取得
             async for event in runner.run_async(
                 user_id=req.user_id,
                 session_id=session_id,
-                new_message=genai_types.to_content(req.message),
+                new_message=genai_types.Content(role='user', parts=[genai_types.Part(text=req.message)]),
             ):
                 # フロントエンドが期待する形式に変換
                 event_data = {
