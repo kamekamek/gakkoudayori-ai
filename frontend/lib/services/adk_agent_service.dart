@@ -19,17 +19,15 @@ class AdkAgentService {
     Map<String, dynamic>? metadata,
   }) async {
     try {
-      final url = Uri.parse('$_baseUrl/adk/chat');
+      final url = Uri.parse('$_baseUrl/chat');
       final response = await _httpClient.post(
         url,
         headers: {
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
+          'session': sessionId,
           'message': message,
-          'user_id': userId,
-          'session_id': sessionId,
-          'metadata': metadata,
         }),
       ).timeout(const Duration(seconds: 30));
 
@@ -239,7 +237,7 @@ class AdkAgentService {
     required String userId,
     required String sessionId,
   }) async {
-    final url = Uri.parse('$_baseUrl/adk/generate/newsletter');
+    final url = Uri.parse('$_baseUrl/adk/newsletter/generate');
     final body = jsonEncode({
       'user_id': userId,
       'session_id': sessionId,
