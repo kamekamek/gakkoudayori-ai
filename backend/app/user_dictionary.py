@@ -1,14 +1,27 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from datetime import datetime
+import logging
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+
+# Firestoreサービスをインポート
+try:
+    from google.cloud import firestore
+    # 直接Firestoreクライアントを初期化
+    db = firestore.AsyncClient()
+    firestore_available = True
+except Exception as e:
+    firestore_available = False
+    logging.warning(f"Firestore not available: {e}")
 
 # ユーザー辞書専用のルーター
 router = APIRouter(
     prefix="/dictionary",
     tags=["User Dictionary"],
 )
+
+logger = logging.getLogger(__name__)
 
 class UserDictionaryResponse(BaseModel):
     success: bool
@@ -93,17 +106,171 @@ DEFAULT_SCHOOL_TERMS = {
     "素晴らしい": ["すばらしい", "素晴らしい"],
 }
 
+# Firestoreヘルパー関数
+async def get_user_custom_dictionary(user_id: str) -> Dict[str, Any]:
+    """Firestoreからユーザーのカスタム辞書を取得"""
+    if not firestore_available:
+        return {}
+    
+    try:
+        doc_ref = db.collection('user_dictionaries').document(user_id)
+        doc = await doc_ref.get()
+        
+        if doc.exists:
+            data = doc.to_dict()
+            return data.get('custom_terms', {})
+        return {}
+    except Exception as e:
+        # ログを控えめに
+        return {}
+
+async def save_user_custom_term(user_id: str, term: str, variations: List[str]) -> bool:
+    """Firestoreにユーザーのカスタム用語を保存"""
+    if not firestore_available:
+        return False
+    
+    try:
+        doc_ref = db.collection('user_dictionaries').document(user_id)
+        
+        # 既存データ取得
+        doc = await doc_ref.get()
+        data = doc.to_dict() if doc.exists else {}
+        
+        if 'custom_terms' not in data:
+            data['custom_terms'] = {}
+        
+        # 新しい用語追加
+        data['custom_terms'][term] = {
+            'variations': variations,
+            'created_at': datetime.now().isoformat(),
+            'usage_count': 0
+        }
+        data['updated_at'] = datetime.now().isoformat()
+        
+        # Firestoreへ保存（mergeでなくsetを使用）
+        await doc_ref.set(data)
+        return True
+        
+    except Exception as e:
+        # エラーログは最小限に
+        return False
+
+async def update_user_custom_term(user_id: str, term: str, variations: List[str]) -> bool:
+    """Firestoreのユーザーカスタム用語を更新"""
+    if not firestore_available:
+        return False
+    
+    try:
+        doc_ref = db.collection('user_dictionaries').document(user_id)
+        doc = await doc_ref.get()
+        
+        if not doc.exists:
+            return False
+        
+        data = doc.to_dict()
+        if 'custom_terms' not in data or term not in data['custom_terms']:
+            return False
+        
+        # 用語更新（created_at は保持）
+        data['custom_terms'][term]['variations'] = variations
+        data['custom_terms'][term]['updated_at'] = datetime.now().isoformat()
+        data['updated_at'] = datetime.now().isoformat()
+        
+        await doc_ref.set(data)
+        return True
+        
+    except Exception as e:
+        return False
+
+async def delete_user_custom_term(user_id: str, term: str) -> bool:
+    """Firestoreからユーザーカスタム用語を削除"""
+    if not firestore_available:
+        return False
+    
+    try:
+        doc_ref = db.collection('user_dictionaries').document(user_id)
+        doc = await doc_ref.get()
+        
+        if not doc.exists:
+            return False
+        
+        data = doc.to_dict()
+        if 'custom_terms' not in data or term not in data['custom_terms']:
+            return False
+        
+        # 用語削除
+        del data['custom_terms'][term]
+        data['updated_at'] = datetime.now().isoformat()
+        
+        await doc_ref.set(data)
+        return True
+        
+    except Exception as e:
+        return False
+
+async def record_correction_learning(user_id: str, original: str, corrected: str, context: str = "") -> bool:
+    """ユーザーの修正を学習用に記録"""
+    if not firestore_available:
+        return False
+    
+    try:
+        doc_ref = db.collection('user_dictionaries').document(user_id)
+        
+        # 既存データ取得
+        doc = await doc_ref.get()
+        data = doc.to_dict() if doc.exists else {}
+        
+        if 'correction_history' not in data:
+            data['correction_history'] = []
+        
+        # 修正履歴追加
+        correction_entry = {
+            'original': original,
+            'corrected': corrected,
+            'context': context,
+            'timestamp': datetime.now().isoformat(),
+            'confidence': 0.9  # 手動修正なので高い信頼度
+        }
+        
+        data['correction_history'].append(correction_entry)
+        
+        # 履歴が長すぎる場合は古いものを削除（最新1000件保持）
+        if len(data['correction_history']) > 1000:
+            data['correction_history'] = data['correction_history'][-1000:]
+        
+        data['updated_at'] = datetime.now().isoformat()
+        await doc_ref.set(data)
+        return True
+        
+    except Exception as e:
+        return False
+
 @router.get("/{user_id}")
 async def get_user_dictionary(user_id: str):
-    """ユーザー辞書を取得"""
+    """ユーザー辞書を取得（デフォルト辞書 + Firestoreのカスタム辞書）"""
     try:
-        # 現時点ではデフォルト辞書を返す
-        # 将来的にはFirestoreからユーザー固有の辞書を取得
+        # デフォルト辞書を基本とする
+        combined_dictionary = DEFAULT_SCHOOL_TERMS.copy()
+        
+        # Firestoreからカスタム辞書を取得して結合
+        custom_terms = await get_user_custom_dictionary(user_id)
+        custom_count = 0
+        
+        for term, term_data in custom_terms.items():
+            if isinstance(term_data, dict) and 'variations' in term_data:
+                combined_dictionary[term] = term_data['variations']
+                custom_count += 1
+            elif isinstance(term_data, list):
+                # 古い形式への互換性
+                combined_dictionary[term] = term_data
+                custom_count += 1
         
         response_data = {
             "user_id": user_id,
-            "dictionary": DEFAULT_SCHOOL_TERMS,
-            "total_terms": len(DEFAULT_SCHOOL_TERMS),
+            "dictionary": combined_dictionary,
+            "total_terms": len(combined_dictionary),
+            "default_terms": len(DEFAULT_SCHOOL_TERMS),
+            "custom_terms": custom_count,
             "last_updated": datetime.now().isoformat()
         }
         
@@ -120,16 +287,17 @@ async def get_user_dictionary(user_id: str):
 
 @router.post("/{user_id}/terms")
 async def add_dictionary_term(user_id: str, request: DictionaryTermRequest):
-    """辞書に新しい用語を追加"""
+    """辞書に新しい用語を追加（Firestoreに保存）"""
     try:
-        # 将来的にはFirestoreに保存
-        # 現時点では成功レスポンスのみ返す
+        # Firestoreに保存
+        success = await save_user_custom_term(user_id, request.term, request.variations)
         
         response_data = {
             "user_id": user_id,
             "term": request.term,
             "variations": request.variations,
-            "added_at": datetime.now().isoformat()
+            "added_at": datetime.now().isoformat(),
+            "saved_to_firestore": success
         }
         
         return UserDictionaryResponse(
@@ -145,13 +313,23 @@ async def add_dictionary_term(user_id: str, request: DictionaryTermRequest):
 
 @router.put("/{user_id}/terms/{term}")
 async def update_dictionary_term(user_id: str, term: str, request: DictionaryTermRequest):
-    """辞書の用語を更新"""
+    """辞書の用語を更新（Firestoreで更新）"""
     try:
+        # Firestoreで更新
+        success = await update_user_custom_term(user_id, term, request.variations)
+        
+        if not success:
+            return UserDictionaryResponse(
+                success=False,
+                error=f"Term '{term}' not found or update failed"
+            )
+        
         response_data = {
             "user_id": user_id,
             "term": term,
             "new_variations": request.variations,
-            "updated_at": datetime.now().isoformat()
+            "updated_at": datetime.now().isoformat(),
+            "updated_in_firestore": success
         }
         
         return UserDictionaryResponse(
@@ -167,12 +345,22 @@ async def update_dictionary_term(user_id: str, term: str, request: DictionaryTer
 
 @router.delete("/{user_id}/terms/{term}")
 async def delete_dictionary_term(user_id: str, term: str):
-    """辞書から用語を削除"""
+    """辞書から用語を削除（Firestoreから削除）"""
     try:
+        # Firestoreから削除
+        success = await delete_user_custom_term(user_id, term)
+        
+        if not success:
+            return UserDictionaryResponse(
+                success=False,
+                error=f"Term '{term}' not found or deletion failed"
+            )
+        
         response_data = {
             "user_id": user_id,
             "deleted_term": term,
-            "deleted_at": datetime.now().isoformat()
+            "deleted_at": datetime.now().isoformat(),
+            "deleted_from_firestore": success
         }
         
         return UserDictionaryResponse(
@@ -188,21 +376,32 @@ async def delete_dictionary_term(user_id: str, term: str):
 
 @router.post("/{user_id}/correct")
 async def correct_transcript(user_id: str, request: CorrectionRequest):
-    """音声認識結果を辞書で補正"""
+    """音声認識結果を辞書で補正（デフォルト + カスタム辞書使用）"""
     try:
-        # 簡単な補正ロジック（実際にはより高度な処理）
+        # デフォルト + カスタム辞書を取得
+        custom_terms = await get_user_custom_dictionary(user_id)
+        combined_dictionary = DEFAULT_SCHOOL_TERMS.copy()
+        
+        # カスタム辞書を統合
+        for term, term_data in custom_terms.items():
+            if isinstance(term_data, dict) and 'variations' in term_data:
+                combined_dictionary[term] = term_data['variations']
+            elif isinstance(term_data, list):
+                combined_dictionary[term] = term_data
+        
+        # 補正処理
         corrected_text = request.transcript
         corrections_made = []
         
-        # デフォルト辞書で補正
-        for correct_term, variations in DEFAULT_SCHOOL_TERMS.items():
+        for correct_term, variations in combined_dictionary.items():
             for variation in variations:
                 if variation in corrected_text:
                     corrected_text = corrected_text.replace(variation, correct_term)
                     corrections_made.append({
                         "original": variation,
                         "corrected": correct_term,
-                        "confidence": 1.0
+                        "confidence": 1.0,
+                        "source": "custom" if correct_term in custom_terms else "default"
                     })
         
         response_data = {
@@ -210,7 +409,8 @@ async def correct_transcript(user_id: str, request: CorrectionRequest):
             "original_transcript": request.transcript,
             "corrected_transcript": corrected_text,
             "corrections": corrections_made,
-            "processed_at": datetime.now().isoformat()
+            "processed_at": datetime.now().isoformat(),
+            "dictionary_size": len(combined_dictionary)
         }
         
         return UserDictionaryResponse(
@@ -226,15 +426,23 @@ async def correct_transcript(user_id: str, request: CorrectionRequest):
 
 @router.post("/{user_id}/learn")
 async def record_manual_correction(user_id: str, request: ManualCorrectionRequest):
-    """手動修正を記録して学習"""
+    """手動修正を記録して学習（Firestoreに保存）"""
     try:
-        # 将来的には学習エンジンで処理
+        # Firestoreに学習データを記録
+        success = await record_correction_learning(
+            user_id, 
+            request.original, 
+            request.corrected, 
+            request.context
+        )
+        
         response_data = {
             "user_id": user_id,
             "original": request.original,
             "corrected": request.corrected,
             "context": request.context,
-            "recorded_at": datetime.now().isoformat()
+            "recorded_at": datetime.now().isoformat(),
+            "saved_to_firestore": success
         }
         
         return UserDictionaryResponse(
@@ -250,22 +458,42 @@ async def record_manual_correction(user_id: str, request: ManualCorrectionReques
 
 @router.get("/{user_id}/contexts")
 async def get_speech_contexts(user_id: str):
-    """Speech-to-Text用コンテキスト取得"""
+    """Speech-to-Text用コンテキスト取得（デフォルト + カスタム辞書）"""
     try:
+        # デフォルト + カスタム辞書を統合
+        custom_terms = await get_user_custom_dictionary(user_id)
+        combined_dictionary = DEFAULT_SCHOOL_TERMS.copy()
+        
+        for term, term_data in custom_terms.items():
+            if isinstance(term_data, dict) and 'variations' in term_data:
+                combined_dictionary[term] = term_data['variations']
+            elif isinstance(term_data, list):
+                combined_dictionary[term] = term_data
+        
         # 全ての辞書用語をコンテキストとして提供
         contexts = []
-        for term, variations in DEFAULT_SCHOOL_TERMS.items():
+        for term, variations in combined_dictionary.items():
             contexts.append(term)
             contexts.extend(variations)
         
-        # 重複削除
+        # 重複削除・ソート
         unique_contexts = list(set(contexts))
         unique_contexts.sort()
+        
+        default_context_count = sum(len([term] + variations) for term, variations in DEFAULT_SCHOOL_TERMS.items())
+        custom_context_count = 0
+        for term, term_data in custom_terms.items():
+            if isinstance(term_data, dict) and 'variations' in term_data:
+                custom_context_count += len([term] + term_data['variations'])
+            elif isinstance(term_data, list):
+                custom_context_count += len([term] + term_data)
         
         response_data = {
             "user_id": user_id,
             "contexts": unique_contexts,
             "total_contexts": len(unique_contexts),
+            "default_contexts": default_context_count,
+            "custom_contexts": custom_context_count,
             "generated_at": datetime.now().isoformat()
         }
         

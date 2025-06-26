@@ -104,6 +104,21 @@ async def chat(req: ChatIn):
         try:
             print(f"🔧 Processing chat request for user: {user_id}, session: {session_id}")
             
+            # セッションが存在しない場合は作成
+            existing_session = await session_service.get_session(
+                app_name="gakkoudayori-agent",
+                user_id=user_id,
+                session_id=session_id
+            )
+            
+            if not existing_session:
+                print(f"📝 Creating new session for user: {user_id}, session: {session_id}")
+                await session_service.create_session(
+                    app_name="gakkoudayori-agent",
+                    user_id=user_id,
+                    session_id=session_id
+                )
+            
             # ADKのrun_asyncを呼び出してイベントストリームを取得
             async for event in runner.run_async(
                 user_id=user_id,
@@ -132,6 +147,21 @@ async def adk_chat_stream(req: AdkChatRequest):
         try:
             print(f"🔧 Processing ADK chat stream for user: {req.user_id}, session: {session_id}")
             
+            # セッションが存在しない場合は作成
+            existing_session = await session_service.get_session(
+                app_name="gakkoudayori-agent",
+                user_id=req.user_id,
+                session_id=session_id
+            )
+            
+            if not existing_session:
+                print(f"📝 Creating new session for user: {req.user_id}, session: {session_id}")
+                await session_service.create_session(
+                    app_name="gakkoudayori-agent",
+                    user_id=req.user_id,
+                    session_id=session_id
+                )
+            
             # ADKのrun_asyncを呼び出してイベントストリームを取得
             async for event in runner.run_async(
                 user_id=req.user_id,
@@ -153,7 +183,7 @@ async def adk_chat_stream(req: AdkChatRequest):
                 "data": f"Error during streaming: {str(e)}"
             }
             yield {"data": json.dumps(error_event), "event": "error"}
-            print(f"Error during streaming: {e}")
+            print(f"❌ Error during streaming: {e}")
 
     return EventSourceResponse(gen(), ping=15)
 
