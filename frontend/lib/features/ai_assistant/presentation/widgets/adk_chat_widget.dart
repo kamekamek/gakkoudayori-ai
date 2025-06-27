@@ -96,8 +96,9 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
             });
           }
 
-          return Column(
-            children: [
+          return Flexible(
+            child: Column(
+              children: [
               // ヘッダー（デザインモックアップ準拠）
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -170,26 +171,30 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
               if (provider.error != null)
                 Container(
                   padding: const EdgeInsets.all(12),
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.red.shade50,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.error_outline, color: Colors.red),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          provider.error!,
-                          style: const TextStyle(color: Colors.red),
+                  child: IntrinsicHeight(
+                    child: Row(
+                      children: [
+                        const Icon(Icons.error_outline, color: Colors.red),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            provider.error!,
+                            style: const TextStyle(color: Colors.red),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close, size: 16),
-                        onPressed: () => provider.clearError(),
-                      ),
-                    ],
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 16),
+                          onPressed: () => provider.clearError(),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
 
@@ -435,6 +440,7 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
                 ),
               ),
             ],
+            ),
           );
         },
       );

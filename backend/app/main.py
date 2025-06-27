@@ -65,10 +65,10 @@ runner = Runner(
 print("✅ ADK Runner initialized manually for v1.0.0")
 
 # --- APIルーターの組み込み ---
-app.include_router(pdf_api.router)
-app.include_router(classroom_api.router)
-app.include_router(stt_api.router)
-app.include_router(user_dictionary_api.router)
+app.include_router(pdf_api.router, prefix="/api/v1")
+app.include_router(classroom_api.router, prefix="/api/v1")
+app.include_router(stt_api.router, prefix="/api/v1")
+app.include_router(user_dictionary_api.router, prefix="/api/v1")
 
 # --- モデル定義 ---
 class AdkChatRequest(BaseModel):

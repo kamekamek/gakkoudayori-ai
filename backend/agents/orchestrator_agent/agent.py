@@ -99,14 +99,18 @@ class SimpleOrchestratorAgent(LlmAgent):
 def create_orchestrator_agent() -> SequentialAgent:
     """
     学級通信作成のワークフロー（計画→生成）を実行するシーケンシャルエージェントを作成します。
-    1. PlannerAgent: ユーザーと対話し、構成案（outline.json）を作成します。
-    2. GeneratorAgent: outline.jsonを読み込み、HTMLを生成します。
+    1. ConversationAgent: ユーザーと対話し、構成案（outline.json）を作成します。
+    2. LayoutAgent: outline.jsonを読み込み、HTMLを生成します。
     """
+    # 循環importを避けるため、関数内でimport
+    from agents.conversation_agent.agent import create_conversation_agent
+    from agents.layout_agent.agent import create_layout_agent
+    
     return SequentialAgent(
         name="orchestrator_agent",
         sub_agents=[
-            create_planner_agent(),
-            create_generator_agent(),
+            create_conversation_agent(),
+            create_layout_agent(),
         ],
         description="Handles the newsletter creation workflow from planning to generation.",
     )
@@ -127,4 +131,9 @@ def create_simple_orchestrator_agent() -> SimpleOrchestratorAgent:
     )
 
 # ADK Web UI用のroot_agent変数
-root_agent = create_simple_orchestrator_agent()
+# SimpleOrchestratorAgentでエラーが出る場合はSequentialAgentを使用
+try:
+    root_agent = create_simple_orchestrator_agent()
+except Exception as e:
+    print(f"SimpleOrchestratorAgent作成エラー、SequentialAgentにフォールバック: {e}")
+    root_agent = create_orchestrator_agent()

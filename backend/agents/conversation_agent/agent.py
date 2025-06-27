@@ -149,6 +149,8 @@ class ConversationAgent(LlmAgent):
             
             if conversation_event is None:
                 logger.warning(f"{self.name}による最後のイベントが見つかりません")
+                # デバッグ情報を出力
+                logger.info(f"利用可能なイベント作成者: {[getattr(e, 'author', 'NO_AUTHOR') for e in session_events[-5:]]}")
                 await self._save_fallback_json()
                 return
             
