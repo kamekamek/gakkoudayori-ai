@@ -44,6 +44,71 @@ class PlannerAgent(LlmAgent):
             tools=[FunctionTool(get_current_date)],
         )
 
+    def _generate_sample_json(self) -> str:
+        """サンプルのJSONを生成します。"""
+        current_date = get_current_date()
+        sample_json = {
+            "schema_version": "2.4",
+            "school_name": "○○小学校",
+            "grade": "1年1組", 
+            "issue": "12月号",
+            "issue_date": current_date,
+            "author": { 
+                "name": "担任", 
+                "title": "担任" 
+            },
+            "main_title": "1年1組だより12月号",
+            "sub_title": None,
+            "season": "冬",
+            "theme": "学級の様子",
+            "color_scheme": { 
+                "primary": "#4A90E2", 
+                "secondary": "#7ED321", 
+                "accent": "#F5A623", 
+                "background": "#ffffff" 
+            },
+            "color_scheme_source": "冬の季節に合わせた爽やかな色合い",
+            "sections": [
+                {
+                    "type": "main_content",
+                    "title": "最近の学級の様子",
+                    "content": "みなさん、いつも元気に過ごしていますね。最近の学習や生活の様子をお伝えします。",
+                    "estimated_length": "medium",
+                    "section_visual_hint": "children_activities"
+                }
+            ],
+            "photo_placeholders": {
+                "count": 1,
+                "suggested_positions": [
+                    {
+                        "section_type": "main_content",
+                        "position": "top-right",
+                        "caption_suggestion": "学習の様子"
+                    }
+                ]
+            },
+            "enhancement_suggestions": [
+                "季節の行事について追加",
+                "お知らせやお願い事項の追加"
+            ],
+            "has_editor_note": False,
+            "editor_note": None,
+            "layout_suggestion": {
+                "page_count": 1,
+                "columns": 2,
+                "column_ratio": "1:1",
+                "blocks": [
+                    "header",
+                    "main_content",
+                    "photos",
+                    "footer"
+                ]
+            },
+            "force_single_page": True,
+            "max_pages": 1
+        }
+        return json.dumps(sample_json, ensure_ascii=False, indent=2)
+
     async def _run_async_impl(
         self, ctx: InvocationContext
     ) -> AsyncGenerator[Event, None]:
@@ -125,12 +190,23 @@ class PlannerAgent(LlmAgent):
             if not llm_response_text.strip():
                 return
 
-        # LLMの応答からJSON部分を抽出
+        # LLMの応答からJSON部分を抽出または自動生成
         try:
             logger.info(f"LLM応答テキスト長: {len(llm_response_text)}")
             logger.info(f"LLM応答の最初の200文字: {llm_response_text[:200]}")
             
-            json_str = llm_response_text
+            # 簡単な挨拶の場合のフォールバック検知
+            simple_greetings = ["こんにちは", "お疲れ", "はじめまして", "よろしく", "hello", "hi"]
+            is_simple_greeting = any(greeting in llm_response_text.lower() for greeting in simple_greetings)
+            
+            # JSONが含まれていない場合はフォールバック
+            has_json = '{' in llm_response_text and '}' in llm_response_text
+            
+            if not has_json or is_simple_greeting:
+                logger.info("JSONが検出されないか簡単な挨拶のため、サンプルJSONを生成します")
+                json_str = self._generate_sample_json()
+            else:
+                json_str = llm_response_text
             # 応答にMarkdownのコードブロックが含まれている場合、それを取り除く
             if '```json' in json_str:
                 logger.info("Markdownコードブロック(```json)を検出、除去中...")

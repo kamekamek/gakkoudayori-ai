@@ -176,7 +176,7 @@ class AdkChatProvider extends ChangeNotifier {
     }
   }
 
-  /// メッセージイベントを処理
+  /// メッセージイベントを処理（簡素化版）
   void _handleMessageEvent(
       AdkStreamEvent event, MutableChatMessage assistantMessage) {
     if (_disposed) return;
@@ -201,26 +201,23 @@ class AdkChatProvider extends ChangeNotifier {
         extractedText = contentData;
       }
 
-      final eventType = messageData['type'] ?? 'message';
-
-      if (eventType == 'complete') {
-        // HTML生成完了
-        if (extractedText.contains('<html>') ||
-            extractedText.contains('<!DOCTYPE html>')) {
-          _generatedHtml = extractedText;
-        }
-        assistantMessage.content = extractedText;
+      // HTML生成完了のチェック
+      if (extractedText.contains('<html>') ||
+          extractedText.contains('<!DOCTYPE html>')) {
+        _generatedHtml = extractedText;
+        assistantMessage.content = '🎉 学級通信が完成しました！編集タブでご確認ください。';
       } else {
-        // 通常のメッセージ - 累積的にテキストを追加
+        // 通常のメッセージとして表示
         if (extractedText.isNotEmpty) {
           assistantMessage.content += extractedText;
         }
       }
+      
       _safeNotifyListeners();
     } catch (e) {
       debugPrint('[AdkChatProvider] Error parsing message event: $e');
-      // JSON解析に失敗した場合は生のデータを使用（デバッグ用）
-      assistantMessage.content = 'Error: ${e.toString()}';
+      // エラーの場合は簡潔なメッセージを表示
+      assistantMessage.content = 'メッセージの処理中にエラーが発生しました。';
       _safeNotifyListeners();
     }
   }
