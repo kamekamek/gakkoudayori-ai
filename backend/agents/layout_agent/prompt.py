@@ -51,7 +51,7 @@ INSTRUCTION = """
 
 ## ■ HTMLテンプレート基本構造
 
-```html
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -208,7 +208,7 @@ INSTRUCTION = """
     </div>
 </body>
 </html>
-```
+
 
 この基本構造を参考に、受け取ったJSONデータを適切に反映して完全なHTMLを生成してください。
 """
