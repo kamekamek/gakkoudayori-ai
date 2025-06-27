@@ -28,34 +28,44 @@ class PdfRequest(BaseModel):
 )
 async def generate_and_save_pdf(req: PdfRequest):
     """
-    HTMLコンテンツを受け取り、PDFに変換後、GCSにアップロードします。
-    その後、対応するFirestoreドキュメントにPDFのURLを保存します。
+    HTMLコンテンツを受け取り、PDFに変換します。
+    フロントエンド互換のシンプルなPDF生成エンドポイント。
     """
-    # 1. HTMLをPDFに変換
-    pdf_bytes = await convert_html_to_pdf(html_content=req.html_content)
-
-    if pdf_bytes is None:
-        raise HTTPException(
-            status_code=500,
-            detail="HTMLからPDFへの変換に失敗しました。"
-        )
-
     try:
-        # 2. PDFをGoogle Cloud Storageに保存
-        pdf_url = await storage.save_pdf_to_gcs(
-            session_id=req.session_id,
-            pdf_content=pdf_bytes
+        # HTMLをPDFに変換
+        pdf_bytes = await convert_html_to_pdf(
+            html_content=req.html_content,
+            title=req.title,
+            page_size=req.page_size,
+            margin=req.margin,
+            include_header=req.include_header,
+            include_footer=req.include_footer,
+            custom_css=req.custom_css
         )
 
-        # 3. FirestoreドキュメントをPDFのURLで更新
-        await firestore_service.update_newsletter_pdf_url(
-            document_id=req.document_id,
-            pdf_url=pdf_url
-        )
+        if pdf_bytes is None:
+            raise HTTPException(
+                status_code=500,
+                detail="HTMLからPDFへの変換に失敗しました。"
+            )
 
-        return {"status": "success", "pdf_url": pdf_url}
+        # Base64エンコードしてフロントエンドに返す
+        import base64
+        pdf_base64 = base64.b64encode(pdf_bytes).decode('utf-8')
+        
+        return {
+            "success": True,
+            "data": {
+                "pdf_base64": pdf_base64,
+                "file_size_mb": round(len(pdf_bytes) / (1024 * 1024), 2),
+                "page_count": 1,  # 実際のページ数は簡単には取得できないため固定値
+                "title": req.title
+            }
+        }
 
     except Exception as e:
-        # エラーロギング
-        print(f"PDFの処理またはアップロード中にエラーが発生しました: {e}")
-        raise HTTPException(status_code=500, detail=f"予期せぬエラーが発生しました: {str(e)}")
+        print(f"PDF生成エラー: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"PDF生成に失敗しました: {str(e)}"
+        )

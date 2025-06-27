@@ -10,7 +10,8 @@ from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events.event import Event
 from google.adk.models.google_llm import Gemini
 from google.adk.tools import FunctionTool
-
+from google.genai.types import Content, Part
+from .prompt import INSTRUCTION
 # ロガーの設定
 logger = logging.getLogger(__name__)
 
@@ -19,16 +20,7 @@ def get_current_date() -> str:
     """現在の日付を'YYYY-MM-DD'形式で返します。"""
     return datetime.now().strftime("%Y-%m-%d")
 
-def _load_instruction() -> str:
-    """プロンプトファイルを読み込みます。"""
-    current_dir = Path(os.path.dirname(__file__))
-    prompt_file = current_dir / "prompts" / "conversation_instruction.md"
-    try:
-        with open(prompt_file, "r", encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError:
-        # フォールバック用の基本的なプロンプト
-        return "あなたはユーザーと対話して学級通信の構成をヒアリングし、JSON形式で出力するアシスタントです。"
+
 
 
 class ConversationAgent(LlmAgent):
@@ -36,13 +28,14 @@ class ConversationAgent(LlmAgent):
     ユーザーと対話して学級通信の構成を計画し、JSON形式で出力するエージェント。
     bot_prompt.mdの内容をベースにした自然な対話を行います。
     """
-    def __init__(self):
+    def __init__(self, output_key: str = "outline"):
         super().__init__(
             name="conversation_agent",
             model=Gemini(model_name="gemini-2.5-pro"),
-            instruction=_load_instruction(),
+            instruction=INSTRUCTION,
             description="ユーザーと自然な対話を行い、学級通信の構成をJSON形式で出力します。",
             tools=[FunctionTool(get_current_date)],
+            output_key=output_key,
         )
 
     def _generate_sample_json(self) -> str:
@@ -126,18 +119,18 @@ class ConversationAgent(LlmAgent):
         await self._save_json_from_conversation(ctx)
 
     async def _save_json_from_conversation(self, ctx: InvocationContext):
-        """対話から生成されたJSONを抽出して保存"""
+        """対話から生成されたJSONを抽出してセッション状態に保存"""
         try:
             # セッションイベントから最後のエージェント応答を取得
             if not hasattr(ctx, 'session') or not hasattr(ctx.session, 'events'):
                 logger.warning("セッション履歴にアクセスできません")
-                await self._save_fallback_json()
+                await self._save_fallback_json(ctx)
                 return
                 
             session_events = ctx.session.events
             if not session_events:
                 logger.warning("セッションイベントが空です")
-                await self._save_fallback_json()
+                await self._save_fallback_json(ctx)
                 return
             
             # 対話エージェントが作成した最後のイベントを探す
@@ -151,7 +144,7 @@ class ConversationAgent(LlmAgent):
                 logger.warning(f"{self.name}による最後のイベントが見つかりません")
                 # デバッグ情報を出力
                 logger.info(f"利用可能なイベント作成者: {[getattr(e, 'author', 'NO_AUTHOR') for e in session_events[-5:]]}")
-                await self._save_fallback_json()
+                await self._save_fallback_json(ctx)
                 return
             
             # イベントの内容からテキストを抽出
@@ -159,13 +152,18 @@ class ConversationAgent(LlmAgent):
             
             if not llm_response_text.strip():
                 logger.warning("コンテンツからテキストを抽出できません")
-                await self._save_fallback_json()
+                await self._save_fallback_json(ctx)
                 return
 
             # JSONの抽出とフォールバック処理
             json_str = await self._extract_or_generate_json(llm_response_text)
             
-            # ファイルシステムベースのアーティファクト管理
+            # セッション状態に保存（ADK標準）
+            if hasattr(ctx, 'session') and hasattr(ctx.session, 'state'):
+                ctx.session.state['outline'] = json_str
+                logger.info("構成案をセッション状態に保存しました")
+            
+            # ファイルシステムにもバックアップ保存
             artifacts_dir = Path("/tmp/adk_artifacts")
             artifacts_dir.mkdir(exist_ok=True)
             outline_file = artifacts_dir / "outline.json"
@@ -173,11 +171,11 @@ class ConversationAgent(LlmAgent):
             with open(outline_file, "w", encoding="utf-8") as f:
                 f.write(json_str)
                 
-            logger.info(f"構成案を保存しました: {outline_file}")
+            logger.info(f"構成案をファイルにも保存しました: {outline_file}")
 
         except Exception as e:
             logger.error(f"JSON保存エラー: {e}")
-            await self._save_fallback_json()
+            await self._save_fallback_json(ctx)
 
     def _extract_text_from_event(self, event) -> str:
         """イベントからテキストを抽出"""
@@ -245,11 +243,17 @@ class ConversationAgent(LlmAgent):
             logger.error(f"LLMの応答からJSONを抽出できませんでした: {e}")
             return self._generate_sample_json()
 
-    async def _save_fallback_json(self):
+    async def _save_fallback_json(self, ctx: InvocationContext):
         """フォールバック用のサンプルJSONを保存"""
         logger.info("フォールバック用サンプルJSONを保存します")
         json_str = self._generate_sample_json()
         
+        # セッション状態に保存（ADK標準）
+        if hasattr(ctx, 'session') and hasattr(ctx.session, 'state'):
+            ctx.session.state['outline'] = json_str
+            logger.info("フォールバック構成案をセッション状態に保存しました")
+        
+        # ファイルシステムにもバックアップ保存
         artifacts_dir = Path("/tmp/adk_artifacts")
         artifacts_dir.mkdir(exist_ok=True)
         outline_file = artifacts_dir / "outline.json"
@@ -257,12 +261,12 @@ class ConversationAgent(LlmAgent):
         with open(outline_file, "w", encoding="utf-8") as f:
             f.write(json_str)
             
-        logger.info(f"フォールバック構成案を保存しました: {outline_file}")
+        logger.info(f"フォールバック構成案をファイルにも保存しました: {outline_file}")
 
 
 def create_conversation_agent() -> ConversationAgent:
     """ConversationAgentのインスタンスを生成するファクトリ関数。"""
-    return ConversationAgent()
+    return ConversationAgent(output_key="outline")
 
 # ADK Web UI用のroot_agent変数
 root_agent = create_conversation_agent()

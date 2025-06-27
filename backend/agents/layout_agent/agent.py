@@ -8,21 +8,10 @@ from google.adk.agents import LlmAgent
 from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events.event import Event
 from google.adk.models.google_llm import Gemini
-
+from google.genai.types import Content, Part
+from .prompt import INSTRUCTION
 # ロガーの設定
 logger = logging.getLogger(__name__)
-
-
-def _load_instruction() -> str:
-    """プロンプトファイルを読み込みます。"""
-    current_dir = Path(os.path.dirname(__file__))
-    prompt_file = current_dir / "prompts" / "layout_instruction.md"
-    try:
-        with open(prompt_file, "r", encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError:
-        # フォールバック用の基本的なプロンプト
-        return "あなたはJSONデータを受け取り、美しいHTMLレイアウトを生成するエージェントです。"
 
 
 class LayoutAgent(LlmAgent):
@@ -30,13 +19,14 @@ class LayoutAgent(LlmAgent):
     JSONデータからHTMLレイアウトを生成するエージェント。
     layout.mdの内容をベースにした美しいHTMLを生成します。
     """
-    def __init__(self):
+    def __init__(self, output_key: str = "html"):
         super().__init__(
             name="layout_agent",
             model=Gemini(model_name="gemini-2.5-pro"),
-            instruction=_load_instruction(),
+            instruction=INSTRUCTION,
             description="JSONデータから美しいHTMLレイアウトを生成します。",
             tools=[],
+            output_key=output_key,
         )
 
     async def _run_async_impl(
@@ -44,27 +34,33 @@ class LayoutAgent(LlmAgent):
     ) -> AsyncGenerator[Event, None]:
         """
         エージェントの実行ロジックをオーバーライドし、
-        JSONファイルを読み込んでHTMLを生成します。
+        セッション状態からJSONデータを読み込んでHTMLを生成します。
         """
         try:
-            # JSONファイルの読み込み
-            artifacts_dir = Path("/tmp/adk_artifacts")
-            outline_file = artifacts_dir / "outline.json"
+            # セッション状態からJSONデータを取得
+            json_data = None
+            if hasattr(ctx, 'session') and hasattr(ctx.session, 'state'):
+                json_data = ctx.session.state.get('outline')
             
-            if not outline_file.exists():
-                error_msg = "outline.jsonが見つかりません。先に対話エージェントを実行してください。"
-                logger.error(error_msg)
-                yield Event(
-                    author=self.name,
-                    content=error_msg
-                )
-                return
-            
-            # JSONデータを読み込み
-            with open(outline_file, "r", encoding="utf-8") as f:
-                json_data = f.read()
+            # セッション状態にない場合はファイルシステムからフォールバック
+            if not json_data:
+                logger.warning("セッション状態にoutlineが見つかりません。ファイルシステムからフォールバック...")
+                artifacts_dir = Path("/tmp/adk_artifacts")
+                outline_file = artifacts_dir / "outline.json"
                 
-            logger.info(f"JSON データを読み込みました: {len(json_data)} 文字")
+                if outline_file.exists():
+                    with open(outline_file, "r", encoding="utf-8") as f:
+                        json_data = f.read()
+                else:
+                    error_msg = "outline データが見つかりません。先に対話エージェントを実行してください。"
+                    logger.error(error_msg)
+                    yield Event(
+                        author=self.name,
+                        content=Content(parts=[Part(text=error_msg)])
+                    )
+                    return
+                
+            logger.info(f"JSON データを読み込みました: {len(str(json_data))} 文字")
             
             # JSONデータを含むプロンプトを作成
             enhanced_prompt = f"""
@@ -102,7 +98,7 @@ class LayoutAgent(LlmAgent):
             )
 
     async def _save_html_from_response(self, ctx: InvocationContext):
-        """LLM応答からHTMLを抽出して保存"""
+        """LLM応答からHTMLを抽出してセッション状態に保存"""
         try:
             # セッションイベントから最後のエージェント応答を取得
             if not hasattr(ctx, 'session') or not hasattr(ctx.session, 'events'):
@@ -135,14 +131,19 @@ class LayoutAgent(LlmAgent):
             # HTMLの抽出
             html_content = self._extract_html_from_response(llm_response_text)
             
-            # HTMLファイルとして保存
+            # セッション状態に保存（ADK標準）
+            if hasattr(ctx, 'session') and hasattr(ctx.session, 'state'):
+                ctx.session.state['html'] = html_content
+                logger.info("HTMLをセッション状態に保存しました")
+            
+            # ファイルシステムにもバックアップ保存
             artifacts_dir = Path("/tmp/adk_artifacts")
             newsletter_file = artifacts_dir / "newsletter.html"
             
             with open(newsletter_file, "w", encoding="utf-8") as f:
                 f.write(html_content)
                 
-            logger.info(f"HTMLを保存しました: {newsletter_file}")
+            logger.info(f"HTMLをファイルにも保存しました: {newsletter_file}")
 
         except Exception as e:
             logger.error(f"HTML保存エラー: {e}")
@@ -201,7 +202,7 @@ class LayoutAgent(LlmAgent):
 
 def create_layout_agent() -> LayoutAgent:
     """LayoutAgentのインスタンスを生成するファクトリ関数。"""
-    return LayoutAgent()
+    return LayoutAgent(output_key="html")
 
 # ADK Web UI用のroot_agent変数
 root_agent = create_layout_agent()
