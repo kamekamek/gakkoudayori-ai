@@ -190,7 +190,7 @@ PROJECT_ID=your-project-id
 LOCATION=asia-northeast1
 
 # Vertex AI設定
-VERTEX_AI_MODEL=gemini-1.5-pro-preview-0409
+VERTEX_AI_MODEL=gemini-2.5-pro-preview-0409
 
 # Firebase設定
 FIREBASE_STORAGE_BUCKET=your-bucket-name

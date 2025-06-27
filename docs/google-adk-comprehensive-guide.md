@@ -49,7 +49,7 @@ from adk import Agent, LlmAgent
 @Agent
 class MyAgent:
     def __init__(self):
-        self.llm = LlmAgent(model="gemini-1.5-pro")
+        self.llm = LlmAgent(model="gemini-2.5-pro")
     
     async def process(self, input_data):
         return await self.llm.generate(input_data)
@@ -112,7 +112,7 @@ async def calculate(expression: str) -> float:
     return eval(expression)  # 実際は安全な評価を使用
 
 agent = LlmAgent(
-    model="gemini-1.5-pro",
+    model="gemini-2.5-pro",
     tools=[calculate],
     instructions="数学的な計算を行います"
 )
@@ -237,7 +237,7 @@ from adk.models import Gemini
 
 # 基本的なエージェント
 agent = LlmAgent(
-    model=Gemini(model="gemini-1.5-pro"),
+    model=Gemini(model="gemini-2.5-pro"),
     instructions="""
     あなたは学級通信作成の専門家です。
     教師からの情報を元に、魅力的な学級通信を作成してください。
@@ -260,7 +260,7 @@ class NewsletterAgent(Agent):
     def __init__(self):
         super().__init__()
         self.llm = LlmAgent(
-            model="gemini-1.5-pro",
+            model="gemini-2.5-pro",
             instructions=self._get_instructions()
         )
     
@@ -404,7 +404,7 @@ from adk import LlmAgent
 
 # ツールを含むエージェント
 agent = LlmAgent(
-    model="gemini-1.5-pro",
+    model="gemini-2.5-pro",
     tools=[
         get_current_date,
         format_html,
@@ -459,7 +459,7 @@ class PlannerAgent(Agent):
     def __init__(self):
         super().__init__()
         self.llm = LlmAgent(
-            model="gemini-1.5-pro",
+            model="gemini-2.5-pro",
             instructions="""
             学級通信作成のための詳細な計画を立案してください。
             以下の要素を含めてください：
@@ -486,7 +486,7 @@ class GeneratorAgent(Agent):
     def __init__(self):
         super().__init__()
         self.llm = LlmAgent(
-            model="gemini-1.5-pro",
+            model="gemini-2.5-pro",
             tools=[format_html, get_current_date],
             instructions="""
             計画に基づいて魅力的な学級通信を生成してください。
@@ -541,7 +541,7 @@ class InteractiveAgent(Agent):
     def __init__(self):
         super().__init__()
         self.llm = LlmAgent(
-            model="gemini-1.5-pro",
+            model="gemini-2.5-pro",
             instructions="""
             教師との対話を通じて学級通信の要件を詳しく聞き出してください。
             不明な点があれば質問してください。
@@ -588,7 +588,7 @@ sequential_flow = Sequential([
     },
     {
         "agent": "content_generator", 
-        "config": {"model": "gemini-1.5-pro"}
+        "config": {"model": "gemini-2.5-pro"}
     },
     {
         "agent": "html_formatter",
@@ -951,7 +951,7 @@ from pydantic import BaseSettings
 
 class Settings(BaseSettings):
     # LLM設定
-    llm_model: str = "gemini-1.5-pro"
+    llm_model: str = "gemini-2.5-pro"
     llm_temperature: float = 0.7
     llm_max_tokens: int = 2048
     
@@ -1285,13 +1285,13 @@ class ComprehensiveNewsletterAgent:
     
     def __init__(self):
         self.speech_agent = LlmAgent(
-            model="gemini-1.5-pro",
+            model="gemini-2.5-pro",
             tools=[speech_to_text],
             instructions="音声データを正確にテキストに変換してください。"
         )
         
         self.content_agent = LlmAgent(
-            model="gemini-1.5-pro",
+            model="gemini-2.5-pro",
             instructions="""
             学級通信のコンテンツを作成してください。
             以下の要素を含めてください：
@@ -1306,13 +1306,13 @@ class ComprehensiveNewsletterAgent:
         )
         
         self.design_agent = LlmAgent(
-            model="gemini-1.5-pro",
+            model="gemini-2.5-pro",
             tools=[generate_html_template],
             instructions="魅力的なHTMLレイアウトを作成してください。"
         )
         
         self.validator_agent = LlmAgent(
-            model="gemini-1.5-pro",
+            model="gemini-2.5-pro",
             tools=[validate_content],
             instructions="コンテンツの品質を検証し、改善提案を行ってください。"
         )

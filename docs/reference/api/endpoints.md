@@ -234,7 +234,7 @@ Authorization: Bearer {token}
     ],
     "metadata": {
       "processingTime": 2.3,
-      "modelUsed": "gemini-1.5-pro",
+      "modelUsed": "gemini-2.5-pro",
       "tokenCount": 156
     }
   }

@@ -39,7 +39,7 @@ class ConversationAgent(LlmAgent):
     def __init__(self):
         super().__init__(
             name="conversation_agent",
-            model=Gemini(model_name="gemini-1.5-pro-latest"),
+            model=Gemini(model_name="gemini-2.5-pro"),
             instruction=_load_instruction(),
             description="ユーザーと自然な対話を行い、学級通信の構成をJSON形式で出力します。",
             tools=[FunctionTool(get_current_date)],

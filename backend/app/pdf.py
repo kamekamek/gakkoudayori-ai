@@ -14,11 +14,15 @@ router = APIRouter(
 
 class PdfRequest(BaseModel):
     html_content: str
-    session_id: str
-    document_id: str # Firestoreの更新対象ドキュメントID
+    title: str = '学級通信'
+    page_size: str = 'A4'
+    margin: str = '15mm'
+    include_header: bool = False
+    include_footer: bool = False
+    custom_css: str = ''
 
 @router.post(
-    "/",
+    "/generate",
     summary="HTMLからPDFを生成して保存",
     response_description="生成されたPDFへの署名付きURL"
 )

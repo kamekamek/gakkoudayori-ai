@@ -33,7 +33,7 @@ class LayoutAgent(LlmAgent):
     def __init__(self):
         super().__init__(
             name="layout_agent",
-            model=Gemini(model_name="gemini-1.5-pro-latest"),
+            model=Gemini(model_name="gemini-2.5-pro"),
             instruction=_load_instruction(),
             description="JSONデータから美しいHTMLレイアウトを生成します。",
             tools=[],

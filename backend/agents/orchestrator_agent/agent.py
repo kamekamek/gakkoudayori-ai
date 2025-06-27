@@ -35,7 +35,7 @@ class SimpleOrchestratorAgent(LlmAgent):
     def __init__(self, **data):
         # Ensure model is set if not provided
         if 'model' not in data:
-            data['model'] = Gemini(model_name="gemini-1.5-pro-latest")
+            data['model'] = Gemini(model_name="gemini-2.5-pro")
         # Ensure instruction is set if not provided
         if 'instruction' not in data:
             data['instruction'] = _load_instruction()

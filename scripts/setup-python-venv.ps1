@@ -131,7 +131,7 @@ GOOGLE_APPLICATION_CREDENTIALS=./secrets/service-account-key.json
 
 # Vertex AI設定
 VERTEX_AI_LOCATION=asia-northeast1
-GEMINI_MODEL=gemini-1.5-pro
+GEMINI_MODEL=gemini-2.5-pro
 
 # 環境設定
 ENVIRONMENT=development
