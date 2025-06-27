@@ -28,22 +28,18 @@ jobs:
       with:
         python-version: '3.11'
         
-    - name: 📦 Poetry をインストール
-      uses: snok/install-poetry@v1
-      with:
-        version: latest
-        virtualenvs-create: true
-        virtualenvs-in-project: true
+    - name: 📦 uv をインストール
+      run: pip install uv
         
-    - name: 🔧 Poetry依存関係をインストール
+    - name: 🔧 uv依存関係をインストール
       working-directory: ./backend
       run: |
-        poetry install --with dev --no-root
+        uv sync --extra dev
         
     - name: 🤖 ADK互換性テストを実行
       working-directory: ./backend
       run: |
-        poetry run python test_adk_compatibility.py
+        uv run python test_uv_migration.py
         
     - name: 📋 テスト結果をアップロード
       if: always()

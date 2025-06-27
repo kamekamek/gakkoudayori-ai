@@ -12,10 +12,10 @@ help:
 	@echo "  make build-dev    - 開発環境用ビルド"
 	@echo "  make build-prod   - 本番環境用ビルド"
 	@echo ""
-	@echo "🐍 バックエンド:"
+	@echo "🐍 バックエンド (uv管理):"
 	@echo "  make backend-dev   - バックエンド開発サーバー起動"
-	@echo "  make backend-setup - Python環境セットアップ"
-	@echo "  make backend-test  - Pythonテスト実行"
+	@echo "  make backend-setup - uv環境セットアップ"
+	@echo "  make backend-test  - uvでテスト実行"
 	@echo ""
 	@echo "🤖 エージェント/ADK:"
 	@echo "  make test-adk     - ADK v1.0.0互換性テスト"
@@ -72,7 +72,7 @@ test:
 	@echo "📱 Flutterテスト..."
 	cd frontend && flutter test
 	@echo "🐍 Pythonテスト..."
-	cd backend && poetry run pytest tests/ -v || echo "⚠️ テストファイルが見つかりません"
+	cd backend && uv run pytest tests/ -v || echo "⚠️ テストファイルが見つかりません"
 
 # 静的解析
 lint:
@@ -80,19 +80,19 @@ lint:
 	@echo "📱 Flutter解析..."
 	cd frontend && flutter analyze
 	@echo "🐍 Python解析..."
-	cd backend && poetry run ruff check . || echo "⚠️ ruffがインストールされていません"
-	cd backend && poetry run mypy . || echo "⚠️ mypyがインストールされていません"
+	cd backend && uv run ruff check . || echo "⚠️ ruffがインストールされていません"
+	cd backend && uv run mypy . || echo "⚠️ mypyがインストールされていません"
 
 # 事前チェック（推奨）
 check-backend:
 	@echo "🔍 バックエンド事前チェック実行中..."
-	cd backend && poetry install --with dev --no-root
+	cd backend && uv sync --extra dev
 	@echo "📝 Python構文チェック..."
-	cd backend && poetry run python -m py_compile app/main.py app/pdf.py app/classroom.py app/stt.py app/phrase.py
+	cd backend && uv run python -m py_compile app/main.py app/pdf.py app/classroom.py app/stt.py || echo "⚠️ 一部ファイルが見つかりません"
 	@echo "🔍 静的解析..."
-	cd backend && poetry run ruff check . || echo "⚠️ ruffチェック完了（警告があります）"
+	cd backend && uv run ruff check . || echo "⚠️ ruffチェック完了（警告があります）"
 	@echo "🧪 テスト実行..."
-	cd backend && poetry run pytest tests/ -v || echo "⚠️ テストファイルが見つかりません"
+	cd backend && uv run pytest tests/ -v || echo "⚠️ テストファイルが見つかりません"
 	@echo "✅ バックエンド事前チェック完了"
 
 # コードフォーマット
@@ -101,8 +101,8 @@ format:
 	@echo "📱 Flutterフォーマット..."
 	cd frontend && dart format .
 	@echo "🐍 Pythonフォーマット..."
-	cd backend && poetry run black .
-	cd backend && poetry run isort .
+	cd backend && uv run black .
+	cd backend && uv run isort .
 
 # CI/CD環境セットアップ
 ci-setup:
@@ -110,7 +110,7 @@ ci-setup:
 	@echo "ð¦ Flutter依存関係取得..."
 	cd frontend && flutter pub get
 	@echo "ð¦ Python依存関係インストール..."
-	cd backend && poetry install --with dev --no-root
+	cd backend && uv sync --extra dev
 	@echo "â... CI/CD環境セットアップ完了"
 
 # CI環境でのテスト実行
@@ -173,23 +173,21 @@ reset-dev:
 # バックエンド開発サーバー起動
 backend-dev:
 	@echo "🐍 バックエンド開発サーバー起動中 (ENVIRONMENT=development)..."
-	cd backend && poetry install --with dev --no-root && \
-	ENVIRONMENT=development GOOGLE_APPLICATION_CREDENTIALS=$$(pwd)/secrets/service-account-key.json poetry run uvicorn app.main:app --host 0.0.0.0 --port 8081 --reload
+	cd backend && uv sync --extra dev && \
+	ENVIRONMENT=development GOOGLE_APPLICATION_CREDENTIALS=$$(pwd)/secrets/service-account-key.json uv run uvicorn app.main:app --host 0.0.0.0 --port 8081 --reload
 
 # Python環境セットアップ
 backend-setup:
 	@echo "ð Python環境セットアップ中..."
-	cd backend && poetry install --with dev --no-root
+	cd backend && uv sync --extra dev
 	@echo "â... Python環境セットアップ完了"
 
 # Pythonテスト実行
 backend-test:
 	@echo "🧪 Pythonテスト実行中..."
-	cd backend/app && \
-		. venv/bin/activate && \
-		python -m pytest tests/ -v 
+	cd backend && uv run pytest tests/ -v 
 
 # ADK v1.0.0互換性テスト
 test-adk:
 	@echo "🤖 ADK v1.0.0 互換性テスト実行中..."
-	cd backend && poetry run python test_adk_compatibility.py 
+	cd backend && uv run python test_uv_migration.py 

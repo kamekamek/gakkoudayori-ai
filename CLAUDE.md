@@ -4,6 +4,39 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
  
 
+## 📦 パッケージ管理 (uv)
+
+このプロジェクトは **uv** で依存関係を管理しています。uvはRustで作られた高速なPythonパッケージマネージャーです。
+
+### uv基本コマンド
+```bash
+# 依存関係をインストール
+uv sync
+
+# 開発依存関係も含めてインストール
+uv sync --extra dev
+
+# 新しいパッケージを追加
+uv add package-name
+
+# 開発依存関係を追加
+uv add --dev package-name
+
+# Python実行
+uv run python script.py
+
+# 仮想環境をアクティベート
+source .venv/bin/activate
+```
+
+### Poetryからの移行済み
+- ✅ `poetry.lock` → `uv.lock`
+- ✅ Poetry設定 → uv設定 (`pyproject.toml`)
+- ✅ 仮想環境も `.venv` で統一
+- ✅ すべてのADKエージェントがuv環境で動作確認済み
+
+---
+
 ## 🔍 Python動作確認・デバッグ方法
 
 ### python -c を使った動作確認
@@ -74,14 +107,17 @@ make deploy                       # Deploy both frontend and backend
 make reset-dev                    # Clean rebuild of dev environment
 ```
 
-### ADK Agent Development (NEW)
+### ADK Agent Development (NEW - uv管理)
 ```bash
-# Start ADK development server
-cd backend/app
-python -m adk.server --agent-path ./adk/agents --port 8080
+# Start ADK development server with uv
+cd backend
+uv run python -m google.adk.cli.main web --agent-path ./agents --port 8080
 
-# Test ADK agents
-pytest tests/test_adk_agent.py -v
+# Test ADK agents with uv
+uv run pytest tests/test_adk_agent.py -v
+
+# Test individual agents
+uv run python test_uv_migration.py
 
 # Access ADK debug UI
 # http://localhost:8080/adk/ui
@@ -96,13 +132,14 @@ flutter test                     # Run tests
 flutter analyze                  # Static analysis
 ```
 
-### Backend Python Development
+### Backend Python Development (uv管理)
 ```bash
-cd backend/app                    # Note: Changed from backend/functions
-source venv/bin/activate         # Activate virtual environment
-uvicorn app.main:app --reload    # Start FastAPI server
-pytest                          # Run tests
-black . && isort .              # Format code
+cd backend                       # uvで管理されたbackendディレクトリ
+uv run uvicorn app.main:app --reload  # Start FastAPI server with uv
+uv run pytest                   # Run tests with uv
+uv run black . && uv run isort . # Format code with uv
+uv add package-name             # Add new dependency
+uv sync                         # Sync dependencies
 ```
 
 ## 🎯 Project Overview

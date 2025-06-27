@@ -56,23 +56,26 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: 🐍 pipキャッシュ設定
+      - name: 📦 uvインストール
+        run: pip install uv
+
+      - name: 📦 uv依存関係キャッシュ設定
         uses: actions/cache@v4
         with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('backend/uv.lock') }}
           restore-keys: |
-            ${{ runner.os }}-pip-
+            ${{ runner.os }}-uv-
 
-      - name: 📦 Python依存関係インストール
+      - name: 📦 Python依存関係インストール (uv)
         run: |
-          cd backend/app
-          pip install -r requirements.txt
+          cd backend
+          uv sync --extra dev
 
-      - name: 🧪 Pythonテスト実行
+      - name: 🧪 Pythonテスト実行 (uv)
         run: |
-          cd backend/app
-          python -m pytest tests/ -v || echo "⚠️ テストファイルが見つかりません"
+          cd backend
+          uv run pytest tests/ -v || echo "⚠️ テストファイルが見つかりません"
 
   # ステージング環境デプロイ（developブランチ）
   deploy-staging:
@@ -113,7 +116,7 @@ jobs:
       - name: 🚀 バックエンドイメージビルド（ステージング）
         id: build_staging
         run: |
-          cd backend/app # Dockerfileがあるディレクトリに移動
+          cd backend # Dockerfileがあるディレクトリに移動
           BUILD_ID=$(gcloud builds submit --tag gcr.io/gakkoudayori-ai/yutori-backend-staging:latest . --async --format="value(id)")
           echo "BUILD_ID=$BUILD_ID" >> $GITHUB_OUTPUT
           echo "Build submitted with ID: $BUILD_ID"
@@ -194,7 +197,7 @@ jobs:
       - name: 🚀 バックエンドイメージビルド（本番）
         id: build_production
         run: |
-          cd backend/app # Dockerfileがあるディレクトリに移動
+          cd backend # Dockerfileがあるディレクトリに移動
           BUILD_ID=$(gcloud builds submit --tag gcr.io/gakkoudayori-ai/yutori-backend:latest . --async --format="value(id)")
           echo "BUILD_ID=$BUILD_ID" >> $GITHUB_OUTPUT
           echo "Build submitted with ID: $BUILD_ID"
