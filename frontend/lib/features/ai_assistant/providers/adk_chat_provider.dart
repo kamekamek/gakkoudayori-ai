@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../../../services/adk_agent_service.dart';
 import '../../../services/audio_service.dart';
+import '../../../services/artifact_websocket_service.dart';
 import '../../../core/providers/error_provider.dart';
 import '../../../core/models/chat_message.dart';
 import '../../editor/providers/preview_provider.dart';
@@ -10,6 +11,7 @@ import '../../editor/providers/preview_provider.dart';
 class AdkChatProvider extends ChangeNotifier {
   final AdkAgentService _adkService;
   final AudioService _audioService = AudioService();
+  final ArtifactWebSocketService _artifactWebSocketService = ArtifactWebSocketService();
   final ErrorProvider _errorProvider;
   final String userId;
   PreviewProvider? _previewProvider;
@@ -46,6 +48,7 @@ class AdkChatProvider extends ChangeNotifier {
   })  : _adkService = adkService,
         _errorProvider = errorProvider {
     _initializeAudioService();
+    _initializeWebSocketService();
   }
 
   /// PreviewProviderを設定
@@ -94,6 +97,60 @@ class AdkChatProvider extends ChangeNotifier {
     } catch (error) {
       _errorProvider.setError('Audio service initialization failed: $error');
       debugPrint('Audio service initialization error: $error');
+    }
+  }
+
+  void _initializeWebSocketService() {
+    debugPrint('[AdkChatProvider] Initializing WebSocket service...');
+
+    try {
+      // HTML Artifactを受信したときの処理
+      _artifactWebSocketService.artifactStream.listen((artifact) {
+        if (_disposed) return;
+        
+        debugPrint('[AdkChatProvider] Received HTML artifact: ${artifact.content.length} chars');
+        
+        // 受信したHTMLをPreviewProviderに渡す
+        _generatedHtml = artifact.content;
+        _notifyPreviewProvider(artifact.content);
+        
+        // チャットに成功メッセージを追加
+        final successMessage = MutableChatMessage(
+          role: 'assistant',
+          content: '🎉 学級通信が完成しました！プレビューをご確認ください。',
+          timestamp: DateTime.now(),
+        );
+        _messages.add(successMessage);
+        
+        _safeNotifyListeners();
+      });
+
+      // WebSocket接続状態の監視
+      _artifactWebSocketService.connectionStateStream.listen((state) {
+        if (_disposed) return;
+        
+        debugPrint('[AdkChatProvider] WebSocket state: $state');
+        
+        switch (state) {
+          case WebSocketConnectionState.connected:
+            debugPrint('[AdkChatProvider] WebSocket connected successfully');
+            break;
+          case WebSocketConnectionState.error:
+            debugPrint('[AdkChatProvider] WebSocket connection error');
+            break;
+          case WebSocketConnectionState.disconnected:
+            debugPrint('[AdkChatProvider] WebSocket disconnected');
+            break;
+          case WebSocketConnectionState.connecting:
+            debugPrint('[AdkChatProvider] WebSocket connecting...');
+            break;
+        }
+      });
+
+      debugPrint('[AdkChatProvider] WebSocket service initialization complete');
+    } catch (error) {
+      _errorProvider.setError('WebSocket service initialization failed: $error');
+      debugPrint('WebSocket service initialization error: $error');
     }
   }
 
@@ -152,7 +209,12 @@ class AdkChatProvider extends ChangeNotifier {
       await for (final event in stream) {
         if (_disposed) break; // 破棄された場合は処理を停止
 
-        _sessionId = event.sessionId;
+        // セッションIDが更新された場合、WebSocket接続を確立
+        if (event.sessionId != null && _sessionId != event.sessionId) {
+          _sessionId = event.sessionId;
+          _connectWebSocketIfNeeded();
+        }
+        
         debugPrint(
             '[AdkChatProvider] Received stream event: type=${event.type}, data=${event.data}');
 
@@ -429,6 +491,14 @@ class AdkChatProvider extends ChangeNotifier {
         lowerMessage.contains('newsletter');
   }
 
+  /// WebSocket接続を確立（必要に応じて）
+  void _connectWebSocketIfNeeded() {
+    if (_sessionId != null && !_artifactWebSocketService.isConnected) {
+      debugPrint('[AdkChatProvider] Establishing WebSocket connection for session: $_sessionId');
+      _artifactWebSocketService.connect(_sessionId!);
+    }
+  }
+
   /// PreviewProviderにHTMLを通知
   void _notifyPreviewProvider(String htmlContent) {
     if (_previewProvider != null) {
@@ -447,6 +517,7 @@ class AdkChatProvider extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _adkService.dispose();
+    _artifactWebSocketService.dispose();
     super.dispose();
   }
 }

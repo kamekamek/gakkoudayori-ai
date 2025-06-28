@@ -2,7 +2,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional
 
 from google.adk.agents import LlmAgent
 from google.adk.agents.invocation_context import InvocationContext
@@ -11,6 +11,7 @@ from google.adk.models.google_llm import Gemini
 from google.genai.types import Content, Part
 
 from .prompt import INSTRUCTION
+from .deliver_html_tool import html_delivery_tool
 
 # ロガーの設定
 logger = logging.getLogger(__name__)
@@ -31,8 +32,8 @@ class LayoutAgent(LlmAgent):
             name="layout_agent",
             model=model,
             instruction=INSTRUCTION,
-            description="JSONデータから美しいHTMLレイアウトを生成します。",
-            tools=[],
+            description="JSONデータから美しいHTMLレイアウトを生成し、フロントエンドに配信します。",
+            tools=[html_delivery_tool.create_adk_function_tool()],
             output_key=output_key,
         )
 
@@ -45,6 +46,14 @@ class LayoutAgent(LlmAgent):
         AgentTool経由での呼び出しに対応します。
         """
         try:
+            # セッションIDを取得してHTML配信ツールに設定
+            session_id = self._extract_session_id(ctx)
+            if session_id:
+                html_delivery_tool.set_session_id(session_id)
+                logger.info(f"LayoutAgent: セッションID設定完了 - {session_id}")
+            else:
+                logger.warning("LayoutAgent: セッションIDの取得に失敗しました")
+            
             # ユーザーフレンドリーな開始メッセージ
             yield Event(
                 author=self.name,
@@ -171,25 +180,38 @@ HTMLのみを出力し、説明文は一切不要です。
             # プロンプトを元に戻す
             self.instruction = original_instruction
 
-            # HTMLは既に上記で保存済み
-            
-            # HTML完了の専用イベントを生成（フロントエンド用）
+            # HTMLが正常に生成された場合、配信ツールを自動実行
             if hasattr(ctx, "session") and hasattr(ctx.session, "state") and ctx.session.state.get("html"):
                 html_content = ctx.session.state["html"]
+                logger.info(f"HTML生成完了: {len(html_content)}文字")
                 
-                # 専用イベントタイプでHTML完了を通知
+                # HTML配信ツールを自動実行
+                try:
+                    delivery_result = await html_delivery_tool.deliver_html_to_frontend(
+                        html_content=html_content,
+                        artifact_type="newsletter",
+                        metadata={"auto_generated": True, "agent": "layout_agent"}
+                    )
+                    
+                    # 配信結果をユーザーに通知
+                    yield Event(
+                        author=self.name,
+                        content=Content(parts=[Part(text=delivery_result)])
+                    )
+                    
+                except Exception as tool_error:
+                    error_msg = f"❌ HTML配信中にエラーが発生しました: {str(tool_error)}"
+                    logger.error(f"HTML配信ツールエラー: {tool_error}")
+                    yield Event(
+                        author=self.name,
+                        content=Content(parts=[Part(text=error_msg)])
+                    )
+            else:
+                # HTMLが生成されなかった場合
                 yield Event(
                     author=self.name,
-                    content=Content(parts=[Part(text=f"<html_ready>{html_content}</html_ready>")]),
-                    metadata={"event_type": "html_complete", "html_length": len(html_content)}
+                    content=Content(parts=[Part(text="❌ HTMLの生成に失敗しました。もう一度お試しください。")])
                 )
-                logger.info(f"HTML完了イベントを送信: {len(html_content)}文字")
-            
-            # ユーザーフレンドリーな完了メッセージ
-            yield Event(
-                author=self.name,
-                content=Content(parts=[Part(text="学級通信が完成しました！プレビューをご確認ください。")])
-            )
 
         except Exception as e:
             # 技術的エラーをユーザーフレンドリーなメッセージに変換
@@ -448,6 +470,30 @@ HTMLのみを出力し、説明文は一切不要です。
                 
         except Exception as e:
             logger.error(f"ファイルシステムからのJSON読み込みエラー: {e}")
+            return None
+
+    def _extract_session_id(self, ctx: InvocationContext) -> Optional[str]:
+        """InvocationContextからセッションIDを抽出"""
+        try:
+            # ADKセッションからセッションIDを取得
+            if hasattr(ctx, "session") and hasattr(ctx.session, "session_id"):
+                session_id = ctx.session.session_id
+                logger.info(f"セッションID抽出成功: {session_id}")
+                return session_id
+            
+            # 代替手段: セッション情報から推測
+            if hasattr(ctx, "session") and hasattr(ctx.session, "user_id"):
+                # user_id から session_id を推測（フォールバック）
+                user_id = ctx.session.user_id
+                session_id = f"{user_id}:default"
+                logger.warning(f"セッションIDをuser_idから推測: {session_id}")
+                return session_id
+                
+            logger.error("セッションIDの抽出に失敗: sessionオブジェクトが見つかりません")
+            return None
+            
+        except Exception as e:
+            logger.error(f"セッションID抽出エラー: {e}")
             return None
 
     async def _save_html_from_response(self, ctx: InvocationContext):

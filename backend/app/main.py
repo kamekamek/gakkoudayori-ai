@@ -2,12 +2,15 @@ import json
 import os
 
 import google.genai.types as genai_types
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from google.adk.runners import Runner
 from google.adk.sessions.in_memory_session_service import InMemorySessionService
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
+
+# HTML Artifact 管理
+from app.core.artifact_manager import artifact_manager
 
 # 実行対象のエージェントを直接インポート
 from agents.main_conversation_agent.agent import root_agent
@@ -75,6 +78,13 @@ class AdkChatRequest(BaseModel):
     message: str
     user_id: str
     session_id: str
+
+
+class HtmlArtifactRequest(BaseModel):
+    session_id: str
+    html_content: str
+    artifact_type: str = "newsletter"
+    metadata: dict = None
 
 
 # --- ADKチャットエンドポイント ---
@@ -151,3 +161,73 @@ def warmup():
         }
     except Exception as e:
         return {"status": "error", "error": str(e)}
+
+
+# --- HTML Artifact エンドポイント ---
+@app.post("/api/v1/artifacts/html")
+async def receive_html_artifact(request: HtmlArtifactRequest):
+    """LayoutAgentからのHTML Artifactを受信し、WebSocket経由でフロントエンドに配信"""
+    try:
+        artifact = await artifact_manager.store_html_artifact(
+            session_id=request.session_id,
+            html_content=request.html_content,
+            artifact_type=request.artifact_type,
+            metadata=request.metadata or {}
+        )
+        
+        return {
+            "status": "success",
+            "artifact_id": request.session_id,
+            "created_at": artifact.created_at,
+            "content_length": len(request.html_content)
+        }
+    except Exception as e:
+        print(f"❌ HTML Artifact受信エラー: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to store HTML artifact: {str(e)}")
+
+
+@app.get("/api/v1/artifacts/html/{session_id}")
+async def get_html_artifact(session_id: str):
+    """指定セッションの最新HTML Artifactを取得（ポーリング用）"""
+    try:
+        artifact = artifact_manager.get_artifact(session_id)
+        if artifact:
+            return {
+                "status": "found",
+                "artifact": artifact.to_dict()
+            }
+        else:
+            return {
+                "status": "not_found",
+                "message": f"No artifact found for session: {session_id}"
+            }
+    except Exception as e:
+        print(f"❌ HTML Artifact取得エラー: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve HTML artifact: {str(e)}")
+
+
+@app.websocket("/ws/artifacts/{session_id}")
+async def artifact_websocket(websocket: WebSocket, session_id: str):
+    """HTML Artifact配信用WebSocketエンドポイント"""
+    try:
+        await artifact_manager.websocket_manager.connect(session_id, websocket)
+        print(f"🔌 WebSocket connected for session: {session_id}")
+        
+        # 既存のArtifactがあれば即座に送信
+        existing_artifact = artifact_manager.get_artifact(session_id)
+        if existing_artifact:
+            await artifact_manager.websocket_manager.send_artifact(session_id, existing_artifact)
+            print(f"📤 Existing artifact sent to session: {session_id}")
+        
+        # 接続を維持（クライアントからの切断またはエラーまで）
+        try:
+            while True:
+                # Ping-Pong でコネクション維持
+                await websocket.receive_text()
+        except WebSocketDisconnect:
+            print(f"🔌 WebSocket disconnected for session: {session_id}")
+        
+    except Exception as e:
+        print(f"❌ WebSocket error for session {session_id}: {e}")
+    finally:
+        await artifact_manager.websocket_manager.disconnect(session_id)
