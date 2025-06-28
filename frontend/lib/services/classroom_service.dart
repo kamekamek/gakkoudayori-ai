@@ -204,7 +204,7 @@ class ClassroomService {
             ..driveFile = (classroom.DriveFile()
               ..id = fileId
               ..title = fileName)
-            ..shareMode = 'STUDENT_VIEW'); // 学生は閲覧のみ可能
+            ..shareMode = 'VIEW'); // 学生は閲覧のみ可能
 
         materials.add(driveFileMaterial);
 

@@ -153,7 +153,7 @@ class GoogleAuthService {
       
       if (accessToken != null) {
         final credentials = auth.AccessCredentials(
-          auth.AccessToken('Bearer', accessToken, DateTime.now().add(const Duration(hours: 1))),
+          auth.AccessToken('Bearer', accessToken, DateTime.now().toUtc().add(const Duration(hours: 1))),
           null, // リフレッシュトークンは不要
           _scopes,
         );
