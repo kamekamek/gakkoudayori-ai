@@ -41,90 +41,84 @@ class PreviewModeToolbar extends StatelessWidget {
           ),
         ),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  // プレビューモード切り替えボタン
-                  _buildModeButton(
-                    context,
-                    icon: Icons.visibility,
-                    label: 'プレビュー',
-                    mode: PreviewMode.preview,
-                    isSelected: currentMode == PreviewMode.preview,
-                  ),
-
-                  const SizedBox(width: 6),
-
-                  _buildModeButton(
-                    context,
-                    icon: Icons.edit,
-                    label: '編集',
-                    mode: PreviewMode.edit,
-                    isSelected: currentMode == PreviewMode.edit,
-                  ),
-
-                  const SizedBox(width: 6),
-
-                  _buildModeButton(
-                    context,
-                    icon: Icons.print,
-                    label: '印刷',
-                    mode: PreviewMode.printView,
-                    isSelected: currentMode == PreviewMode.printView,
-                  ),
-
-                  const SizedBox(width: 6),
-
-                  _buildModeButton(
-                    context,
-                    icon: Icons.picture_as_pdf,
-                    label: 'PDF',
-                    mode: PreviewMode.edit, // PDFボタン���して使用
-                    isSelected: false,
-                    onTap: onPdfGenerate,
-                  ),
-
-                  const SizedBox(width: 6),
-
-                  _buildModeButton(
-                    context,
-                    icon: Icons.school,
-                    label: '📚Classroom',
-                    mode: PreviewMode.edit, // Classroomボタンとして使用
-                    isSelected: false,
-                    onTap: () => _showClassroomDialog(context),
-                  ),
-
-                  const SizedBox(width: 6),
-
-                  _buildModeButton(
-                    context,
-                    icon: Icons.refresh,
-                    label: '🔄',
-                    mode: PreviewMode.edit, // 再生成ボタンとして使用
-                    isSelected: false,
-                    onTap: onRegenerate,
-                  ),
-                ],
-              ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            // プレビューモード切り替えボタン
+            _buildModeButton(
+              context,
+              icon: Icons.visibility,
+              label: 'プレビュー',
+              mode: PreviewMode.preview,
+              isSelected: currentMode == PreviewMode.preview,
             ),
-          ),
 
-          const SizedBox(width: 16),
+            const SizedBox(width: 6),
 
-          // サンプル読み込みボタン
-          _buildActionButton(
-            context,
-            icon: Icons.article,
-            tooltip: 'サンプル読み込み',
-            onPressed: () => _loadSampleContent(context),
-            color: const Color(0xFFFF6B35),
-          ),
-        ],
+            _buildModeButton(
+              context,
+              icon: Icons.edit,
+              label: '編集',
+              mode: PreviewMode.edit,
+              isSelected: currentMode == PreviewMode.edit,
+            ),
+
+            const SizedBox(width: 6),
+
+            _buildModeButton(
+              context,
+              icon: Icons.print,
+              label: '印刷',
+              mode: PreviewMode.printView,
+              isSelected: currentMode == PreviewMode.printView,
+            ),
+
+            const SizedBox(width: 6),
+
+            _buildModeButton(
+              context,
+              icon: Icons.picture_as_pdf,
+              label: 'PDF',
+              mode: PreviewMode.edit, // PDFボタンと��て使用
+              isSelected: false,
+              onTap: onPdfGenerate,
+            ),
+
+            const SizedBox(width: 6),
+
+            _buildModeButton(
+              context,
+              icon: Icons.school,
+              label: '📚Classroom',
+              mode: PreviewMode.edit, // Classroomボタンとして使用
+              isSelected: false,
+              onTap: () => _showClassroomDialog(context),
+            ),
+
+            const SizedBox(width: 6),
+
+            _buildModeButton(
+              context,
+              icon: Icons.refresh,
+              label: '🔄',
+              mode: PreviewMode.edit, // 再生成ボタンとして使用
+              isSelected: false,
+              onTap: onRegenerate,
+            ),
+
+            const Spacer(),
+
+            // サンプル読み込みボタン
+            _buildActionButton(
+              context,
+              icon: Icons.article,
+              tooltip: 'サンプル読み込み',
+              onPressed: () => _loadSampleContent(context),
+              color: const Color(0xFFFF6B35),
+            ),
+          ],
+        ),
       ),
     );
   }
