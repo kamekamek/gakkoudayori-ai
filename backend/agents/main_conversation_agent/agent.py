@@ -112,13 +112,18 @@ class MainConversationAgent(LlmAgent):
     async def _check_and_save_json_from_conversation(self, ctx: InvocationContext):
         """対話からJSON構成案を検出して保存（完全サイレント処理）"""
         try:
+            logger.info("=== JSON構成案検出開始 ===")
             # セッションイベントから最後のエージェント応答を取得
             if not hasattr(ctx, "session") or not hasattr(ctx.session, "events"):
+                logger.warning("セッションまたはイベントが利用できません")
                 return
 
             session_events = ctx.session.events
             if not session_events:
+                logger.warning("セッションイベントが空です")
                 return
+            
+            logger.info(f"セッションイベント数: {len(session_events)}")
 
             # メインエージェントが作成した最後のイベントを探す
             conversation_event = None
@@ -132,23 +137,33 @@ class MainConversationAgent(LlmAgent):
 
             # イベントの内容からテキストを抽出
             llm_response_text = self._extract_text_from_event(conversation_event)
+            logger.info(f"LLM応答テキスト長: {len(llm_response_text)}")
+            logger.info(f"LLM応答テキスト(最初の200文字): {llm_response_text[:200]}...")
 
             if not llm_response_text.strip():
+                logger.warning("LLM応答テキストが空です")
                 return
 
             # JSONブロックをユーザー表示から除去し、内部処理のみ実行
             json_str = None
             cleaned_response = llm_response_text
             
+            logger.info(f"JSON検索開始: ```json の存在確認")
             if "```json" in llm_response_text and "```" in llm_response_text:
                 json_str = self._extract_json_from_response(llm_response_text)
+                logger.info(f"JSON抽出結果: {bool(json_str)}")
                 if json_str:
+                    logger.info(f"抽出されたJSON長: {len(json_str)} 文字")
+                    logger.info(f"抽出されたJSON(最初の300文字): {json_str[:300]}...")
+                    
                     # JSONブロックをユーザー表示から完全に除去
                     cleaned_response = self._remove_json_blocks_from_response(llm_response_text)
                     
                     # 内部保存処理（サイレント）
                     await self._save_json_data(ctx, json_str)
                     logger.info("JSON構成案をサイレントで保存しました（ユーザーには非表示）")
+                else:
+                    logger.warning("JSON抽出に失敗しました")
                     
                     # イベント内容を更新（JSONブロックを除去したクリーンなテキストに置き換え）
                     await self._update_event_content_silently(ctx, conversation_event, cleaned_response)
@@ -247,10 +262,19 @@ class MainConversationAgent(LlmAgent):
     async def _save_json_data(self, ctx: InvocationContext, json_str: str):
         """JSONデータをセッション状態とファイルシステムに保存"""
         try:
+            logger.info(f"=== JSON保存開始 ===")
+            logger.info(f"保存対象JSON長: {len(json_str)} 文字")
+            
             # セッション状態に保存（ADK標準）
             if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
                 ctx.session.state["outline"] = json_str
                 logger.info("JSON構成案をセッション状態に保存しました")
+                
+                # 保存確認
+                saved_data = ctx.session.state.get("outline", "NOT_FOUND")
+                logger.info(f"保存確認: {len(saved_data) if saved_data != 'NOT_FOUND' else 'NOT_FOUND'} 文字")
+            else:
+                logger.error("セッション状態へのアクセスに失敗しました")
 
             # 🚨 本番環境対応: ファイルシステム保存を無効化
             # Cloud Runでは/tmpが一時的なため、セッション状態のみに依存

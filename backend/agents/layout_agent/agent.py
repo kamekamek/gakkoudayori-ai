@@ -62,9 +62,22 @@ class LayoutAgent(LlmAgent):
             
             # セッション状態からJSONデータを取得（第一優先）
             json_data = None
+            logger.info("=== LayoutAgent JSON取得開始 ===")
             if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
                 json_data = ctx.session.state.get("outline")
                 logger.info(f"セッション状態から取得: {bool(json_data)}")
+                
+                if json_data:
+                    logger.info(f"取得したJSON長: {len(json_data)} 文字")
+                    logger.info(f"取得したJSON(最初の200文字): {json_data[:200]}...")
+                else:
+                    logger.warning("セッション状態に'outline'キーが存在しないか、値が空です")
+                    
+                    # セッション状態の全キーを確認
+                    all_keys = list(ctx.session.state.keys()) if ctx.session.state else []
+                    logger.info(f"セッション状態の全キー: {all_keys}")
+            else:
+                logger.error("セッションまたはセッション状態にアクセスできません")
                 
                 # セッション状態のデータ検証
                 if json_data:
@@ -85,8 +98,12 @@ class LayoutAgent(LlmAgent):
 
             # フォールバック: MainConversationAgentから直接取得を試行
             if not json_data:
-                logger.info("セッション状態からの直接取得を試行中...")
+                logger.info("=== MainConversationAgentからの直接取得を試行 ===")
                 json_data = await self._retrieve_json_from_main_agent(ctx)
+                if json_data:
+                    logger.info(f"MainConversationAgentから取得成功: {len(json_data)} 文字")
+                else:
+                    logger.warning("MainConversationAgentからの取得に失敗")
 
             # 🚨 本番環境対応: ファイルシステムフォールバック無効化
             if not json_data:
