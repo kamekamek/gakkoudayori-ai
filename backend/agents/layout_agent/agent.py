@@ -63,21 +63,56 @@ class LayoutAgent(LlmAgent):
             # セッション状態からJSONデータを取得（第一優先）
             json_data = None
             logger.info("=== LayoutAgent JSON取得開始 ===")
+            
+            # InvocationContext詳細情報
+            logger.info(f"LayoutAgent InvocationContext詳細:")
+            logger.info(f"  - hasattr(ctx, 'session'): {hasattr(ctx, 'session')}")
+            if hasattr(ctx, "session"):
+                logger.info(f"  - session type: {type(ctx.session)}")
+                logger.info(f"  - hasattr(session, 'state'): {hasattr(ctx.session, 'state')}")
+                logger.info(f"  - hasattr(session, 'session_id'): {hasattr(ctx.session, 'session_id')}")
+                if hasattr(ctx.session, "session_id"):
+                    logger.info(f"  - session_id: {ctx.session.session_id}")
+                if hasattr(ctx.session, "state"):
+                    logger.info(f"  - state type: {type(ctx.session.state)}")
+                    logger.info(f"  - state keys: {list(ctx.session.state.keys()) if ctx.session.state else 'None'}")
+                    logger.info(f"  - state content: {dict(ctx.session.state) if ctx.session.state else 'None'}")
+            
             if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
+                logger.info("セッション状態からoutline取得を試行...")
                 json_data = ctx.session.state.get("outline")
                 logger.info(f"セッション状態から取得: {bool(json_data)}")
                 
                 if json_data:
                     logger.info(f"取得したJSON長: {len(json_data)} 文字")
                     logger.info(f"取得したJSON(最初の200文字): {json_data[:200]}...")
+                    
+                    # JSON内容の詳細確認
+                    try:
+                        import json as json_module
+                        parsed = json_module.loads(json_data)
+                        school_name = parsed.get('school_name', 'NOT_FOUND')
+                        grade = parsed.get('grade', 'NOT_FOUND')
+                        main_title = parsed.get('main_title', 'NOT_FOUND')
+                        logger.info(f"LayoutAgent JSON解析成功: school_name={school_name}, grade={grade}, main_title={main_title}")
+                    except Exception as parse_error:
+                        logger.error(f"LayoutAgent JSON解析エラー: {parse_error}")
+                        
                 else:
                     logger.warning("セッション状態に'outline'キーが存在しないか、値が空です")
                     
                     # セッション状態の全キーを確認
                     all_keys = list(ctx.session.state.keys()) if ctx.session.state else []
                     logger.info(f"セッション状態の全キー: {all_keys}")
+                    
+                    # 各キーの値も確認
+                    if ctx.session.state:
+                        for key, value in ctx.session.state.items():
+                            value_preview = str(value)[:100] + "..." if len(str(value)) > 100 else str(value)
+                            logger.info(f"  - {key}: {value_preview}")
             else:
                 logger.error("セッションまたはセッション状態にアクセスできません")
+                logger.error(f"LayoutAgent ctx attributes: {dir(ctx) if ctx else 'ctx is None'}")
                 
                 # セッション状態のデータ検証
                 if json_data:

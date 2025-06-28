@@ -56,7 +56,7 @@ class MainConversationAgent(LlmAgent):
                 FunctionTool(get_current_date)
             ],
             sub_agents=[layout_agent],
-            output_key="conversation_state",
+            output_key="outline",
         )
 
     async def _run_async_impl(
@@ -67,10 +67,17 @@ class MainConversationAgent(LlmAgent):
         HTML生成は明示的なユーザー要求があった場合のみ委譲します。
         """
         try:
+            logger.info("=== MainConversationAgent実行開始 ===")
+            event_count = 0
+            
             # 親クラスの通常のLLM対話を実行
             async for event in super()._run_async_impl(ctx):
+                event_count += 1
+                logger.info(f"LLMイベント #{event_count}: author={getattr(event, 'author', 'unknown')}")
                 yield event
 
+            logger.info(f"=== LLM実行完了: {event_count}個のイベント ===")
+            
             # 最後に対話状態をセッションに保存
             await self._save_conversation_state(ctx)
             
@@ -113,6 +120,21 @@ class MainConversationAgent(LlmAgent):
         """対話からJSON構成案を検出して保存（完全サイレント処理）"""
         try:
             logger.info("=== JSON構成案検出開始 ===")
+            
+            # セッション詳細情報をログ出力
+            if hasattr(ctx, "session"):
+                logger.info(f"セッション存在: True")
+                logger.info(f"セッション属性: {dir(ctx.session)}")
+                
+                if hasattr(ctx.session, "session_id"):
+                    logger.info(f"セッションID: {ctx.session.session_id}")
+                if hasattr(ctx.session, "user_id"):
+                    logger.info(f"ユーザーID: {ctx.session.user_id}")
+                if hasattr(ctx.session, "state"):
+                    logger.info(f"セッション状態キー: {list(ctx.session.state.keys()) if ctx.session.state else 'None'}")
+            else:
+                logger.warning("セッションオブジェクトが存在しません")
+            
             # セッションイベントから最後のエージェント応答を取得
             if not hasattr(ctx, "session") or not hasattr(ctx.session, "events"):
                 logger.warning("セッションまたはイベントが利用できません")
@@ -124,6 +146,10 @@ class MainConversationAgent(LlmAgent):
                 return
             
             logger.info(f"セッションイベント数: {len(session_events)}")
+            
+            # イベントの詳細情報をログ出力
+            for i, event in enumerate(session_events[-3:]):  # 最新の3つだけ
+                logger.info(f"イベント #{i}: author={getattr(event, 'author', 'unknown')}, type={type(event)}")
 
             # メインエージェントが作成した最後のイベントを探す
             conversation_event = None
@@ -148,25 +174,44 @@ class MainConversationAgent(LlmAgent):
             json_str = None
             cleaned_response = llm_response_text
             
-            logger.info(f"JSON検索開始: ```json の存在確認")
+            logger.info(f"JSON検索開始: 複数パターンでの検索")
+            
+            # パターン1: Markdownコードブロック
             if "```json" in llm_response_text and "```" in llm_response_text:
+                logger.info("パターン1: ```json コードブロック検出")
                 json_str = self._extract_json_from_response(llm_response_text)
-                logger.info(f"JSON抽出結果: {bool(json_str)}")
                 if json_str:
                     logger.info(f"抽出されたJSON長: {len(json_str)} 文字")
                     logger.info(f"抽出されたJSON(最初の300文字): {json_str[:300]}...")
-                    
-                    # JSONブロックをユーザー表示から完全に除去
                     cleaned_response = self._remove_json_blocks_from_response(llm_response_text)
-                    
-                    # 内部保存処理（サイレント）
-                    await self._save_json_data(ctx, json_str)
-                    logger.info("JSON構成案をサイレントで保存しました（ユーザーには非表示）")
-                else:
-                    logger.warning("JSON抽出に失敗しました")
-                    
-                    # イベント内容を更新（JSONブロックを除去したクリーンなテキストに置き換え）
-                    await self._update_event_content_silently(ctx, conversation_event, cleaned_response)
+            
+            # パターン2: 直接JSONオブジェクト検出
+            elif "{" in llm_response_text and "school_name" in llm_response_text:
+                logger.info("パターン2: 直接JSONオブジェクト検出")
+                json_str = self._extract_direct_json_from_response(llm_response_text)
+                if json_str:
+                    logger.info(f"直接抽出JSON長: {len(json_str)} 文字")
+            
+            # パターン3: function_call引数からJSON抽出
+            elif not json_str:
+                logger.info("パターン3: セッションイベントからfunction_call JSON検索")
+                json_str = await self._extract_json_from_function_calls(ctx)
+                if json_str:
+                    logger.info(f"function_call JSON長: {len(json_str)} 文字")
+            
+            # JSON保存処理
+            if json_str:
+                logger.info(f"JSON抽出成功: {len(json_str)} 文字")
+                logger.info(f"抽出されたJSON(最初の300文字): {json_str[:300]}...")
+                
+                # 内部保存処理（サイレント）
+                await self._save_json_data(ctx, json_str)
+                logger.info("JSON構成案をサイレントで保存しました（ユーザーには非表示）")
+                
+                # イベント内容を更新（JSONブロックを除去したクリーンなテキストに置き換え）
+                await self._update_event_content_silently(ctx, conversation_event, cleaned_response)
+            else:
+                logger.warning("全パターンでJSON抽出に失敗しました")
             
             # ユーザー承認確認を判定
             if self._is_user_approval(cleaned_response):
@@ -176,21 +221,69 @@ class MainConversationAgent(LlmAgent):
             logger.error(f"JSON検出・保存エラー: {e}")
 
     def _extract_text_from_event(self, event) -> str:
-        """イベントからテキストを抽出"""
+        """イベントからテキストを抽出（function_call対応強化版）"""
         llm_response_text = ""
+        logger.info(f"=== テキスト抽出開始 ===")
+        logger.info(f"イベントタイプ: {type(event)}")
+        logger.info(f"イベント属性: {dir(event)}")
 
         if hasattr(event, "content") and event.content:
+            logger.info(f"コンテンツタイプ: {type(event.content)}")
+            logger.info(f"コンテンツ属性: {dir(event.content)}")
+            
             if hasattr(event.content, "parts"):
+                logger.info(f"Parts数: {len(event.content.parts) if event.content.parts else 0}")
                 # Google Generative AI形式
-                for part in event.content.parts:
+                for i, part in enumerate(event.content.parts):
+                    logger.info(f"Part #{i}: type={type(part)}, attributes={dir(part)}")
+                    
+                    # テキストpart処理
                     if hasattr(part, "text") and part.text:
+                        logger.info(f"Part #{i} テキスト長: {len(part.text)}")
                         llm_response_text += part.text
+                    
+                    # function_call part処理（JSONが含まれている可能性）
+                    elif hasattr(part, "function_call") and part.function_call:
+                        logger.info(f"Part #{i}: function_call検出")
+                        logger.info(f"function_call詳細: {part.function_call}")
+                        # function_callの結果にテキストが含まれている場合は抽出
+                        if hasattr(part.function_call, "args") and part.function_call.args:
+                            args_str = str(part.function_call.args)
+                            logger.info(f"function_call args: {args_str[:200]}...")
+                            # JSONらしき文字列があれば追加
+                            if "school_name" in args_str or "grade" in args_str:
+                                llm_response_text += args_str
+                    
+                    # function_response part処理
+                    elif hasattr(part, "function_response") and part.function_response:
+                        logger.info(f"Part #{i}: function_response検出")
+                        response_content = str(part.function_response.response) if part.function_response.response else ""
+                        logger.info(f"function_response content: {response_content[:200]}...")
+                        if response_content:
+                            llm_response_text += response_content
+                    
+                    else:
+                        logger.warning(f"Part #{i}: テキストなし - 属性: {[attr for attr in dir(part) if not attr.startswith('_')]}")
+                        
+                        # その他のpart属性を詳細確認
+                        for attr in ['inline_data', 'file_data', 'executable_code', 'code_execution_result']:
+                            if hasattr(part, attr):
+                                attr_value = getattr(part, attr)
+                                if attr_value:
+                                    logger.info(f"Part #{i} {attr}: {str(attr_value)[:100]}...")
+                                    
             elif isinstance(event.content, list):
+                logger.info(f"リスト形式: {len(event.content)}項目")
                 # リスト形式
                 for item in event.content:
                     if isinstance(item, dict) and "text" in item:
                         llm_response_text += item["text"]
+            else:
+                logger.warning(f"予期しないコンテンツ形式: {type(event.content)}")
+        else:
+            logger.warning("イベントにコンテンツが存在しません")
 
+        logger.info(f"抽出結果: {len(llm_response_text)} 文字")
         return llm_response_text
 
     def _extract_json_from_response(self, response_text: str) -> Optional[str]:
@@ -209,6 +302,79 @@ class MainConversationAgent(LlmAgent):
             logger.warning(f"JSON抽出・検証エラー: {e}")
         
         return None
+
+    def _extract_direct_json_from_response(self, response_text: str) -> Optional[str]:
+        """応答テキストから直接JSONオブジェクトを抽出"""
+        try:
+            # { で始まり } で終わるJSONオブジェクトを検索
+            start_idx = response_text.find("{")
+            if start_idx == -1:
+                return None
+                
+            brace_count = 0
+            end_idx = start_idx
+            
+            for i, char in enumerate(response_text[start_idx:], start_idx):
+                if char == "{":
+                    brace_count += 1
+                elif char == "}":
+                    brace_count -= 1
+                    if brace_count == 0:
+                        end_idx = i + 1
+                        break
+            
+            if brace_count == 0:
+                json_candidate = response_text[start_idx:end_idx]
+                # JSONとして有効か検証
+                json.loads(json_candidate)
+                return json_candidate
+                
+        except (ValueError, json.JSONDecodeError) as e:
+            logger.warning(f"直接JSON抽出・検証エラー: {e}")
+        
+        return None
+
+    async def _extract_json_from_function_calls(self, ctx: InvocationContext) -> Optional[str]:
+        """セッションイベントからfunction_call引数のJSONを抽出"""
+        try:
+            if not hasattr(ctx, "session") or not hasattr(ctx.session, "events"):
+                return None
+                
+            session_events = ctx.session.events
+            
+            # 最新のイベントから逆順でfunction_callを検索
+            for event in reversed(session_events):
+                if hasattr(event, "author") and event.author == self.name:
+                    if hasattr(event, "content") and event.content and hasattr(event.content, "parts"):
+                        for part in event.content.parts:
+                            if hasattr(part, "function_call") and part.function_call:
+                                if hasattr(part.function_call, "args") and part.function_call.args:
+                                    args = part.function_call.args
+                                    
+                                    # argsがdict形式の場合
+                                    if isinstance(args, dict):
+                                        # JSON保存用の引数があるかチェック
+                                        if "json_data" in args:
+                                            return args["json_data"]
+                                        # 引数全体がJSONデータの場合
+                                        elif "school_name" in str(args):
+                                            return json.dumps(args, ensure_ascii=False)
+                                    
+                                    # argsが文字列の場合
+                                    elif isinstance(args, str):
+                                        try:
+                                            parsed_args = json.loads(args)
+                                            if "school_name" in parsed_args:
+                                                return args
+                                        except:
+                                            pass
+                                            
+            logger.info("function_callからのJSON抽出に失敗")
+            return None
+            
+        except Exception as e:
+            logger.error(f"function_call JSON抽出エラー: {e}")
+            return None
 
     def _remove_json_blocks_from_response(self, response_text: str) -> str:
         """LLM応答からJSONブロックを完全に除去してクリーンなテキストを返す"""
@@ -265,16 +431,51 @@ class MainConversationAgent(LlmAgent):
             logger.info(f"=== JSON保存開始 ===")
             logger.info(f"保存対象JSON長: {len(json_str)} 文字")
             
+            # セッション詳細情報を強化ログで出力
+            logger.info(f"InvocationContext詳細:")
+            logger.info(f"  - hasattr(ctx, 'session'): {hasattr(ctx, 'session')}")
+            if hasattr(ctx, "session"):
+                logger.info(f"  - session type: {type(ctx.session)}")
+                logger.info(f"  - hasattr(session, 'state'): {hasattr(ctx.session, 'state')}")
+                logger.info(f"  - hasattr(session, 'session_id'): {hasattr(ctx.session, 'session_id')}")
+                if hasattr(ctx.session, "session_id"):
+                    logger.info(f"  - session_id: {ctx.session.session_id}")
+                if hasattr(ctx.session, "state"):
+                    logger.info(f"  - state type: {type(ctx.session.state)}")
+                    logger.info(f"  - state keys before save: {list(ctx.session.state.keys()) if ctx.session.state else 'None'}")
+            
             # セッション状態に保存（ADK標準）
             if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
+                logger.info("セッション状態への保存実行中...")
                 ctx.session.state["outline"] = json_str
-                logger.info("JSON構成案をセッション状態に保存しました")
+                logger.info("JSON構成案をセッション状態に保存完了")
                 
-                # 保存確認
+                # 保存確認（強化版）
                 saved_data = ctx.session.state.get("outline", "NOT_FOUND")
                 logger.info(f"保存確認: {len(saved_data) if saved_data != 'NOT_FOUND' else 'NOT_FOUND'} 文字")
+                
+                # セッション状態の全キーを確認
+                all_keys_after = list(ctx.session.state.keys()) if ctx.session.state else []
+                logger.info(f"保存後のセッション状態全キー: {all_keys_after}")
+                
+                # JSON内容の詳細確認（最初の100文字）
+                if saved_data != "NOT_FOUND":
+                    preview = saved_data[:100] + "..." if len(saved_data) > 100 else saved_data
+                    logger.info(f"保存されたJSON内容(先頭100文字): {preview}")
+                    
+                    # JSONの有効性確認
+                    try:
+                        import json as json_module
+                        parsed = json_module.loads(saved_data)
+                        school_name = parsed.get('school_name', 'NOT_FOUND')
+                        grade = parsed.get('grade', 'NOT_FOUND') 
+                        logger.info(f"JSON解析成功: school_name={school_name}, grade={grade}")
+                    except Exception as parse_error:
+                        logger.error(f"保存されたJSONの解析エラー: {parse_error}")
+                        
             else:
                 logger.error("セッション状態へのアクセスに失敗しました")
+                logger.error(f"ctx attributes: {dir(ctx) if ctx else 'ctx is None'}")
 
             # 🚨 本番環境対応: ファイルシステム保存を無効化
             # Cloud Runでは/tmpが一時的なため、セッション状態のみに依存
@@ -282,6 +483,8 @@ class MainConversationAgent(LlmAgent):
 
         except Exception as e:
             logger.error(f"JSON保存エラー: {e}")
+            import traceback
+            logger.error(f"JSON保存エラー詳細: {traceback.format_exc()}")
 
     def _is_user_approval(self, response_text: str) -> bool:
         """ユーザーの承認を示すキーワードを検出"""

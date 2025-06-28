@@ -54,6 +54,7 @@ class AdkChatProvider extends ChangeNotifier {
   /// PreviewProviderを設定
   void setPreviewProvider(PreviewProvider previewProvider) {
     _previewProvider = previewProvider;
+    debugPrint('[AdkChatProvider] PreviewProvider設定完了: ${previewProvider.runtimeType}');
   }
 
   /// 安全なnotifyListeners呼び出し
@@ -518,15 +519,19 @@ class AdkChatProvider extends ChangeNotifier {
 
   /// PreviewProviderにHTMLを通知
   void _notifyPreviewProvider(String htmlContent) {
+    debugPrint('[AdkChatProvider] _notifyPreviewProvider called with ${htmlContent.length} characters');
+    debugPrint('[AdkChatProvider] _previewProvider is null: ${_previewProvider == null}');
+    
     if (_previewProvider != null) {
       try {
         _previewProvider!.updateHtmlContent(htmlContent);
-        debugPrint('[AdkChatProvider] HTML passed to PreviewProvider: ${htmlContent.length} characters');
+        debugPrint('[AdkChatProvider] ✅ HTML passed to PreviewProvider successfully: ${htmlContent.length} characters');
       } catch (e) {
-        debugPrint('[AdkChatProvider] Error notifying PreviewProvider: $e');
+        debugPrint('[AdkChatProvider] ❌ Error notifying PreviewProvider: $e');
       }
     } else {
-      debugPrint('[AdkChatProvider] PreviewProvider is not set, cannot update HTML');
+      debugPrint('[AdkChatProvider] ❌ PreviewProvider is not set, cannot update HTML');
+      debugPrint('[AdkChatProvider] 解決方法: home_page.dart で adkChatProvider.setPreviewProvider(previewProvider) を呼び出してください');
     }
   }
 

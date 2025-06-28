@@ -38,6 +38,13 @@ class _HomePageState extends ConsumerState<HomePage> {
       className: '1年1組',
       teacherName: '担任の先生',
     );
+
+    // ADKチャットプロバイダーにプレビュープロバイダーを設定
+    final adkChatProvider = context.read<AdkChatProvider>();
+    final previewProvider = context.read<PreviewProvider>();
+    
+    adkChatProvider.setPreviewProvider(previewProvider);
+    print('[HomePage] AdkChatProvider に PreviewProvider を設定しました');
   }
 
   @override
