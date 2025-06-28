@@ -186,6 +186,13 @@ class AdkChatProvider extends ChangeNotifier {
 
     _isProcessing = true;
     _error = null;
+    
+    // セッションIDが未設定の場合は初期化
+    if (_sessionId == null) {
+      _sessionId = '${userId}:default';
+      debugPrint('[AdkChatProvider] Initializing session ID: $_sessionId');
+    }
+    
     _safeNotifyListeners();
 
     try {
@@ -198,6 +205,9 @@ class AdkChatProvider extends ChangeNotifier {
       );
       _messages.add(assistantMessage);
 
+      // WebSocket接続を事前確立
+      _connectWebSocketIfNeeded();
+      
       // ストリーミング開始
       debugPrint('[AdkChatProvider] Calling _adkService.streamChatSSE...');
       final stream = _adkService.streamChatSSE(
@@ -212,6 +222,11 @@ class AdkChatProvider extends ChangeNotifier {
         // セッションIDが更新された場合、WebSocket接続を確立
         if (event.sessionId != null && _sessionId != event.sessionId) {
           _sessionId = event.sessionId;
+          _connectWebSocketIfNeeded();
+        } else if (_sessionId == null) {
+          // セッションIDが設定されていない場合は強制設定
+          _sessionId = '${userId}:default';
+          debugPrint('[AdkChatProvider] Force setting session ID: $_sessionId');
           _connectWebSocketIfNeeded();
         }
         

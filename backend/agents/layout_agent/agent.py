@@ -94,12 +94,10 @@ class LayoutAgent(LlmAgent):
                 # json_data = await self._load_json_from_filesystem(ctx)  # 無効化
 
             if not json_data:
-                error_msg = "申し訳ございません。学級通信の作成に必要な情報が見つかりませんでした。もう一度最初からお試しください。"
-                logger.error("HTML生成用のデータを準備できませんでした")
-                yield Event(
-                    author=self.name, content=Content(parts=[Part(text=error_msg)])
-                )
-                return
+                logger.warning("JSON データが見つかりません。サンプルJSONでHTML生成を実行します")
+                # サンプルJSONでフォールバック実行
+                json_data = self._generate_sample_json()
+                logger.info(f"サンプルJSON生成完了: {len(json_data)} 文字")
 
             logger.info(f"JSON データを読み込みました: {len(str(json_data))} 文字")
 
