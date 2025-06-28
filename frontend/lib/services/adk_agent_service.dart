@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../config/app_config.dart';
 import 'package:flutter/foundation.dart';
+import '../core/exceptions/app_exceptions.dart';
 
 /// ADKエージェントとの通信を管理するサービス
 class AdkAgentService {
@@ -18,28 +19,28 @@ class AdkAgentService {
     Map<String, dynamic>? metadata,
   }) async {
     try {
-      final url = Uri.parse('$_baseUrl/adk/chat');
+      final url = Uri.parse('$_baseUrl/chat');
       final response = await _httpClient.post(
         url,
         headers: {
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
+          'session': sessionId,
           'message': message,
-          'user_id': userId,
-          'session_id': sessionId,
-          'metadata': metadata,
         }),
-      );
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return AdkChatResponse.fromJson(data);
       } else {
-        throw Exception('Failed to send chat message: ${response.body}');
+        throw _createApiException(response);
       }
+    } on TimeoutException {
+      throw NetworkException.timeout();
     } catch (e) {
-      throw Exception('Error sending chat message: $e');
+      throw _convertToAppException(e, 'sending chat message');
     }
   }
 
@@ -166,7 +167,7 @@ class AdkAgentService {
       final body = {
         'message': message,
         'user_id': userId,
-        'session_id': sessionId,
+        'session_id': sessionId ?? '${userId}:default',
       };
 
       debugPrint(
@@ -190,7 +191,18 @@ class AdkAgentService {
                 final data = line.substring(6);
                 if (data.trim().isNotEmpty) {
                   try {
-                    return AdkStreamEvent.fromJson(jsonDecode(data));
+                    final decodedData = jsonDecode(data);
+                    // バックエンドから返される形式に対応
+                    if (decodedData is Map<String, dynamic>) {
+                      return AdkStreamEvent(
+                        sessionId: decodedData['session_id'] ?? sessionId ?? '',
+                        type: decodedData['type'] ?? 'message',
+                        data: decodedData['data'] ?? data,
+                      );
+                    } else {
+                      // フォールバック処理
+                      return AdkStreamEvent.fromJson(decodedData);
+                    }
                   } catch (e) {
                     return AdkStreamEvent(
                       sessionId: sessionId ?? '',
@@ -225,7 +237,7 @@ class AdkAgentService {
     required String userId,
     required String sessionId,
   }) async {
-    final url = Uri.parse('$_baseUrl/adk/generate/newsletter');
+    final url = Uri.parse('$_baseUrl/adk/newsletter/generate');
     final body = jsonEncode({
       'user_id': userId,
       'session_id': sessionId,
@@ -252,6 +264,72 @@ class AdkAgentService {
       debugPrint('[AdkAgentService] Error generating newsletter: $e');
       throw Exception('Error generating newsletter: $e');
     }
+  }
+
+  /// HTTPレスポンスからAPIExceptionを作成
+  ApiException _createApiException(http.Response response) {
+    Map<String, dynamic>? responseData;
+    try {
+      responseData = jsonDecode(response.body);
+    } catch (_) {
+      // JSON解析に失敗した場合は無視
+    }
+
+    switch (response.statusCode) {
+      case 400:
+        return ApiException.badRequest(
+          responseData?['message'] ?? 'Bad request',
+          responseData,
+        );
+      case 401:
+        return ApiException.unauthorized();
+      case 403:
+        return ApiException.forbidden();
+      case 404:
+        return ApiException.notFound();
+      case 500:
+      case 502:
+      case 503:
+      case 504:
+        return ApiException.serverError(
+          responseData?['message'] ?? 'Server error',
+        );
+      default:
+        return ApiException(
+          message: responseData?['message'] ?? 'API error',
+          statusCode: response.statusCode,
+          responseData: responseData,
+        );
+    }
+  }
+
+  /// 一般的なエラーをAppExceptionに変換
+  AppException _convertToAppException(dynamic error, String context) {
+    if (error is AppException) {
+      return error;
+    }
+
+    final errorString = error.toString().toLowerCase();
+
+    if (errorString.contains('timeout')) {
+      return NetworkException.timeout();
+    }
+
+    if (errorString.contains('connection') || 
+        errorString.contains('network') ||
+        errorString.contains('socket')) {
+      return NetworkException.connectionLost();
+    }
+
+    if (errorString.contains('format') || 
+        errorString.contains('parse')) {
+      return ContentException.parsingFailed(error);
+    }
+
+    return ApiException(
+      message: 'Error $context: ${error.toString()}',
+      originalError: error,
+    );
   }
 
   void dispose() {

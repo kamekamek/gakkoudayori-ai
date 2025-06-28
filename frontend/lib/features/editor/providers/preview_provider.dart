@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../../services/pdf_api_service.dart';
+import '../../../services/pdf_download_service.dart';
+import '../../../core/providers/error_provider.dart';
 
 /// プレビューモードの種類
 enum PreviewMode {
@@ -9,11 +12,16 @@ enum PreviewMode {
 
 /// プレビュー・編集機能の状態管理
 class PreviewProvider extends ChangeNotifier {
+  final ErrorProvider _errorProvider;
+  
   PreviewMode _currentMode = PreviewMode.preview;
   String _htmlContent = '';
   bool _isEditing = false;
   bool _isGeneratingPdf = false;
   String _selectedStyle = 'classic';
+
+  PreviewProvider({required ErrorProvider errorProvider})
+      : _errorProvider = errorProvider;
 
   // Getters
   PreviewMode get currentMode => _currentMode;
@@ -31,8 +39,37 @@ class PreviewProvider extends ChangeNotifier {
 
   // HTMLコンテンツの更新
   void updateHtmlContent(String html) {
-    _htmlContent = html;
-    notifyListeners();
+    try {
+      if (html.trim().isEmpty) {
+        throw Exception('HTML content is required');
+      }
+      
+      // 基本的なHTMLバリデーション
+      _validateHtmlContent(html);
+      
+      _htmlContent = html;
+      notifyListeners();
+    } catch (error) {
+      _errorProvider.setError('Failed to update HTML content: $error');
+      debugPrint('HTML content update error: $error');
+      rethrow;
+    }
+  }
+
+  /// HTMLコンテンツのバリデーション
+  void _validateHtmlContent(String html) {
+    // 基本的なHTMLタグの存在確認
+    if (!html.contains('<') || !html.contains('>')) {
+      throw Exception('Invalid HTML format: Missing HTML tags');
+    }
+    
+    // 潜在的に危険なタグの検出
+    final dangerousTags = ['<script', '<iframe', '<object', '<embed'];
+    for (final tag in dangerousTags) {
+      if (html.toLowerCase().contains(tag)) {
+        throw Exception('Invalid HTML format: Dangerous tag detected: $tag');
+      }
+    }
   }
 
   // テスト用サンプルHTMLの設定
@@ -98,19 +135,62 @@ class PreviewProvider extends ChangeNotifier {
 
   // PDF生成
   Future<void> generatePdf() async {
+    try {
+      await _generatePdfWithRetry();
+    } catch (error) {
+      _errorProvider.setError('Failed to generate PDF: $error');
+      rethrow;
+    }
+  }
+
+  /// リトライ機能付きPDF生成の実装
+  Future<void> _generatePdfWithRetry() async {
     if (_htmlContent.isEmpty) {
-      throw Exception('生成するコンテンツがありません');
+      throw Exception('No content to generate PDF');
     }
 
     setPdfGenerating(true);
     
     try {
-      // TODO: 実際のPDF生成処理を実装
-      await Future.delayed(const Duration(seconds: 2)); // 模擬処理
+      // HTMLコンテンツの妥当性チェック
+      final validation = PdfApiService.validateHtmlForPdf(_htmlContent);
+      if (!validation['isValid']) {
+        final issues = validation['issues'] as List<String>;
+        throw Exception('Invalid HTML format for PDF: ${issues.join(', ')}');
+      }
+
+      // バックエンドでPDF生成
+      final result = await PdfApiService.generatePdf(
+        htmlContent: _htmlContent,
+        title: 'AI学級通信',
+        pageSize: 'A4',
+        margin: '15mm',
+        includeHeader: false,
+        includeFooter: true,
+      );
+
+      // PDF生成成功時にダウンロード
+      if (result['success'] == true) {
+        final pdfBase64 = result['data']['pdf_base64'];
+        final fileSize = result['data']['file_size_mb'];
+        
+        // PDFをダウンロード
+        await PdfDownloadService.downloadPdf(
+          pdfBase64: pdfBase64,
+          title: 'AI学級通信',
+        );
+
+        debugPrint('PDF生成・ダウンロード成功: ${fileSize} MB');
+      } else {
+        final errorMessage = result['error'] ?? 'PDF生成に失敗しました';
+        throw Exception('PDF generation failed: $errorMessage');
+      }
+    } catch (error) {
+      debugPrint('PDF生成エラー: $error');
       
-      // PDF生成成功
-    } catch (e) {
-      throw Exception('PDF生成に失敗しました: $e');
+      _errorProvider.setError('PDF generation process failed: $error');
+      
+      rethrow;
     } finally {
       setPdfGenerating(false);
     }
@@ -118,20 +198,122 @@ class PreviewProvider extends ChangeNotifier {
 
   // 印刷プレビューの表示
   Future<void> showPrintPreview() async {
-    if (_htmlContent.isEmpty) {
-      throw Exception('印刷するコンテンツがありません');
-    }
+    try {
+      if (_htmlContent.isEmpty) {
+        throw Exception('No content to print');
+      }
 
-    // 印刷ビューモードに切り替え
-    switchMode(PreviewMode.printView);
-    
-    // TODO: 実際の印刷プレビュー処理を実装
+      // 印刷ビューモードに切り替え
+      switchMode(PreviewMode.printView);
+      
+      // Web環境での印刷プレビュー実装
+      debugPrint('印刷プレビューモードに切り替えました');
+      
+      // 印刷用のCSSスタイルを適用したHTMLを生成
+      final printHtml = _generatePrintHtml(_htmlContent);
+      
+      // ブラウザの印刷ダイアログを開く場合
+      // html.window.print(); // 必要に応じてコメントアウト解除
+      
+      debugPrint('印刷プレビュー準備完了');
+    } catch (error) {
+      debugPrint('印刷プレビューエラー: $error');
+      
+      _errorProvider.setError('Print preview display failed: $error');
+      
+      rethrow;
+    }
+  }
+  
+  // 印刷用のHTMLを生成
+  String _generatePrintHtml(String html) {
+    return '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>学級通信 - 印刷用</title>
+      <style>
+        @media print {
+          body { 
+            font-family: 'Noto Sans JP', 'Yu Gothic', 'Hiragino Sans', sans-serif;
+            font-size: 12pt;
+            line-height: 1.5;
+            margin: 0;
+            padding: 20mm;
+          }
+          h1 { 
+            font-size: 18pt;
+            color: #000;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+          }
+          h2 { 
+            font-size: 14pt;
+            color: #000;
+            margin-top: 20px;
+            margin-bottom: 10px;
+          }
+          .no-print { display: none !important; }
+          .page-break { page-break-before: always; }
+        }
+        body { 
+          font-family: 'Noto Sans JP', 'Yu Gothic', 'Hiragino Sans', sans-serif;
+          max-width: 210mm;
+          margin: 0 auto;
+          padding: 20mm;
+          background: white;
+        }
+      </style>
+    </head>
+    <body>
+      $html
+    </body>
+    </html>
+    ''';
   }
 
   // コンテンツの再生成
   Future<void> regenerateContent() async {
-    // TODO: 既存の入力内容を使ってコンテンツを再生成
+    if (_htmlContent.isEmpty) {
+      debugPrint('再生成するコンテンツがありません');
+      return;
+    }
+    
+    // 再生成中状態に設定
+    _isGeneratingPdf = true; // 生成中フラグを再利用
     notifyListeners();
+    
+    try {
+      // 既存のHTMLコンテンツから要素を抽出して再生成のヒントとする
+      final contentSummary = extractContentSummary(_htmlContent);
+      debugPrint('コンテンツ再生成: $contentSummary');
+      
+      // 実際の再生成は外部から実行される
+      // この関数は状態管理のみ行う
+    } catch (e) {
+      debugPrint('コンテンツ再生成エラー: $e');
+    } finally {
+      _isGeneratingPdf = false;
+      notifyListeners();
+    }
+  }
+  
+  // HTMLコンテンツから要約を抽出
+  String extractContentSummary(String html) {
+    // 簡単なHTMLパース（タイトルと主要セクションを抽出）
+    final titleMatch = RegExp(r'<h1[^>]*>(.*?)</h1>').firstMatch(html);
+    final title = titleMatch?.group(1)?.replaceAll(RegExp(r'<[^>]*>'), '') ?? '';
+    
+    final h2Matches = RegExp(r'<h2[^>]*>(.*?)</h2>').allMatches(html);
+    final sections = h2Matches
+        .map((match) => match.group(1)?.replaceAll(RegExp(r'<[^>]*>'), '') ?? '')
+        .where((section) => section.isNotEmpty)
+        .toList();
+    
+    return '${title.isNotEmpty ? "タイトル: $title" : ""}'
+           '${sections.isNotEmpty ? "\nセクション: ${sections.join(", ")}" : ""}';
   }
 
   // プレビューのリセット

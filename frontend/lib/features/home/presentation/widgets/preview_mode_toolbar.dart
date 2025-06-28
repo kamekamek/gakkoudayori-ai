@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:convert';
 import '../../../editor/providers/preview_provider.dart';
+import 'classroom_post_dialog.dart';
+import '../../../../services/pdf_api_service.dart';
 
 /// プレビューモード切り替えツールバー
 class PreviewModeToolbar extends StatelessWidget {
@@ -24,12 +27,13 @@ class PreviewModeToolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: const BoxDecoration(
+        color: Colors.white,
         border: Border(
           bottom: BorderSide(
-            color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+            color: Color(0xFFE0E0E0),
+            width: 1,
           ),
         ),
       ),
@@ -38,23 +42,13 @@ class PreviewModeToolbar extends StatelessWidget {
           // プレビューモード切り替えボタン
           _buildModeButton(
             context,
-            icon: Icons.preview,
-            label: 'プレビュー',
+            icon: Icons.visibility,
+            label: '編集',
             mode: PreviewMode.preview,
             isSelected: currentMode == PreviewMode.preview,
           ),
           
-          const SizedBox(width: 8),
-          
-          _buildModeButton(
-            context,
-            icon: Icons.edit,
-            label: '編集',
-            mode: PreviewMode.edit,
-            isSelected: currentMode == PreviewMode.edit,
-          ),
-          
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           
           _buildModeButton(
             context,
@@ -64,52 +58,49 @@ class PreviewModeToolbar extends StatelessWidget {
             isSelected: currentMode == PreviewMode.printView,
           ),
           
+          const SizedBox(width: 6),
+          
+          _buildModeButton(
+            context,
+            icon: Icons.picture_as_pdf,
+            label: 'PDF',
+            mode: PreviewMode.edit, // PDFボタンとして使用
+            isSelected: false,
+            onTap: onPdfGenerate,
+          ),
+          
+          const SizedBox(width: 6),
+          
+          _buildModeButton(
+            context,
+            icon: Icons.school,
+            label: '📚Classroom',
+            mode: PreviewMode.edit, // Classroomボタンとして使用
+            isSelected: false,
+            onTap: () => _showClassroomDialog(context),
+          ),
+          
+          const SizedBox(width: 6),
+          
+          _buildModeButton(
+            context,
+            icon: Icons.refresh,
+            label: '🔄',
+            mode: PreviewMode.edit, // 再生成ボタンとして使用
+            isSelected: false,
+            onTap: onRegenerate,
+          ),
+          
           const Spacer(),
           
-          // サンプル読み込みボタン（常に表示）
+          // サンプル読み込みボタン
           _buildActionButton(
             context,
             icon: Icons.article,
             tooltip: 'サンプル読み込み',
             onPressed: () => _loadSampleContent(context),
-            color: Colors.orange,
+            color: const Color(0xFFFF6B35),
           ),
-          
-          const SizedBox(width: 8),
-          
-          // アクションボタン群
-          if (canExecuteActions) ...[
-            // PDF生成ボタン
-            _buildActionButton(
-              context,
-              icon: Icons.picture_as_pdf,
-              tooltip: 'PDF出力',
-              onPressed: onPdfGenerate,
-              color: Colors.purple,
-            ),
-            
-            const SizedBox(width: 8),
-            
-            // Classroom投稿ボタン（将来実装）
-            _buildActionButton(
-              context,
-              icon: Icons.school,
-              tooltip: 'Classroom投稿',
-              onPressed: () => _showComingSoonDialog(context, 'Classroom投稿'),
-              color: Colors.green,
-            ),
-            
-            const SizedBox(width: 8),
-            
-            // 再生成ボタン
-            _buildActionButton(
-              context,
-              icon: Icons.refresh,
-              tooltip: '再生成',
-              onPressed: onRegenerate,
-              color: Theme.of(context).colorScheme.secondary,
-            ),
-          ],
         ],
       ),
     );
@@ -121,34 +112,36 @@ class PreviewModeToolbar extends StatelessWidget {
     required String label,
     required PreviewMode mode,
     required bool isSelected,
+    VoidCallback? onTap,
   }) {
     return Material(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(6),
       color: isSelected
-          ? Theme.of(context).colorScheme.primaryContainer
+          ? const Color(0xFF2c5aa0).withOpacity(0.1)
           : Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: () => onModeChanged(mode),
+        borderRadius: BorderRadius.circular(6),
+        onTap: onTap ?? () => onModeChanged(mode),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
                 icon,
-                size: 18,
+                size: 16,
                 color: isSelected
-                    ? Theme.of(context).colorScheme.onPrimaryContainer
-                    : Theme.of(context).colorScheme.onSurfaceVariant,
+                    ? const Color(0xFF2c5aa0)
+                    : const Color(0xFF616161),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 4),
               Text(
                 label,
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                style: TextStyle(
+                  fontSize: 12,
                   color: isSelected
-                      ? Theme.of(context).colorScheme.onPrimaryContainer
-                      : Theme.of(context).colorScheme.onSurfaceVariant,
+                      ? const Color(0xFF2c5aa0)
+                      : const Color(0xFF616161),
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                 ),
               ),
@@ -208,5 +201,60 @@ class PreviewModeToolbar extends StatelessWidget {
         duration: Duration(seconds: 2),
       ),
     );
+  }
+
+  void _showClassroomDialog(BuildContext context) async {
+    final previewProvider = context.read<PreviewProvider>();
+    
+    if (previewProvider.htmlContent.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('❌ 投稿するコンテンツがありません'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    try {
+      // PDF生成
+      final result = await PdfApiService.generatePdf(
+        htmlContent: previewProvider.htmlContent,
+        title: 'AI学級通信',
+      );
+
+      if (result['success'] == true) {
+        final pdfBase64 = result['data']['pdf_base64'];
+        final pdfBytes = base64Decode(pdfBase64);
+
+        // Classroomダイアログを表示
+        final posted = await showDialog<bool>(
+          context: context,
+          builder: (context) => ClassroomPostDialog(
+            pdfBytes: pdfBytes,
+            htmlContent: previewProvider.htmlContent,
+            title: 'AI学級通信',
+          ),
+        );
+
+        if (posted == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ Classroomに投稿しました'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        throw Exception(result['error'] ?? 'PDF生成に失敗しました');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Classroom投稿の準備に失敗しました: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }

@@ -4,7 +4,7 @@ class AppConfig {
   // 環境変数から取得、デフォルト値を設定
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://localhost:8081/api/v1',
+    defaultValue: 'http://localhost:8081',
   );
 
   static const String environment = String.fromEnvironment(

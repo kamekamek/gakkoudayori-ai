@@ -41,7 +41,7 @@
     /* Ensure scrollable areas work properly */
     .scrollable {
       -webkit-overflow-scrolling: touch;
-      overflow-scrolling: touch;
+      /* overflow-scrolling is deprecated, modern browsers handle smooth scrolling automatically */
     }
     
     /* Button touch optimization */
@@ -76,6 +76,12 @@
   
   <title>学校だよりAI</title>
   <link rel="manifest" href="manifest.json">
+  
+  <!-- Google Sign-In Client ID (要設定) -->
+  <meta name="google-signin-client_id" content="944053509139-2n9trkb7l7ijoonb8nlgn02923sbf5a3.apps.googleusercontent.com">
+  
+  <!-- Google Identity Services (GIS) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   
   <!-- Phase R2: 音声録音機能 -->
   <script src="audio.js"></script>

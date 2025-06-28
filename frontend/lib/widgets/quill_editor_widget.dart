@@ -66,6 +66,9 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
             if (data.startsWith('QUILL_HTML:')) {
               final html = data.substring('QUILL_HTML:'.length);
               _handleHtmlUpdate(html);
+            } else if (data.startsWith('QUILL_DELTA:')) {
+              final deltaJson = data.substring('QUILL_DELTA:'.length);
+              _handleDeltaUpdate(deltaJson);
             } else if (data.startsWith('QUILL_READY')) {
               _handleQuillReady();
             }
@@ -90,7 +93,15 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
     if (mounted) {
       _currentContent = html;
       widget.onContentChanged?.call(html);
+      widget.onHtmlReady?.call(html);
       if (kDebugMode) debugPrint('📝 [QuillEditor] 内容更新: ${html.length}文字');
+    }
+  }
+
+  void _handleDeltaUpdate(String deltaJson) {
+    if (mounted) {
+      widget.onDeltaChanged?.call(deltaJson);
+      if (kDebugMode) debugPrint('📝 [QuillEditor] Delta更新: ${deltaJson.length}文字');
     }
   }
 
@@ -198,7 +209,21 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
       final iframeWindow = _iframeElement.contentWindow;
       if (iframeWindow == null) return '';
 
-      // TODO: postMessageでDelta取得を実装
+      // JavaScript側のquillGetDelta関数を呼び出し
+      final script = '''
+        try {
+          const delta = window.quillGetDelta();
+          window.parent.postMessage('QUILL_DELTA:' + delta, '*');
+        } catch (e) {
+          console.error('Delta取得エラー:', e);
+        }
+      ''';
+      
+      iframeWindow.postMessage("EXEC:$script", "*");
+
+      if (kDebugMode) debugPrint('📝 [QuillEditor] Delta取得要求送信');
+      
+      // 非同期で結果は _handleDeltaUpdate で受信
       return '';
     } catch (e) {
       if (kDebugMode) debugPrint('❌ [QuillEditor] Delta取得エラー: $e');

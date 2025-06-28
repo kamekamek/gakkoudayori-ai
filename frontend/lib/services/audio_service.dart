@@ -209,7 +209,7 @@ class AudioService {
         debugPrint('📄 [AudioService] 音声データサイズ: ${audioBytes.length} bytes');
 
       // バックエンドAPIのエンドポイント（環境変数から取得）
-      final apiUrl = '${AppConfig.apiBaseUrl}/transcribe';
+      final apiUrl = '${AppConfig.apiBaseUrl}/stt/';
 
       // マルチパートフォームデータとして送信
       final request = http.MultipartRequest('POST', Uri.parse(apiUrl));
@@ -220,9 +220,6 @@ class AudioService {
           filename: 'recording.webm',
         ),
       );
-      request.fields['language'] = 'ja-JP';
-      request.fields['sample_rate'] = '48000'; // WebM Opus形式に合わせて48kHzに変更
-      request.fields['user_dictionary'] = '学級通信,運動会,学習発表会,子どもたち,先生,授業';
 
       if (kDebugMode)
         debugPrint('📤 [AudioService] Speech-to-Text API呼び出し中...');

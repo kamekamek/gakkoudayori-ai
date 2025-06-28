@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
+import '../../features/newsletter/presentation/pages/newsletter_page.dart';
 
 /// アプリケーションのルーティング設定
 class AppRouter {
@@ -14,7 +15,14 @@ class AppRouter {
         name: 'home',
         builder: (context, state) => const HomePage(),
       ),
-      
+
+      // 学級通信生成ページ (MVP)
+      GoRoute(
+        path: '/newsletter',
+        name: 'newsletter',
+        builder: (context, state) => const NewsletterPage(),
+      ),
+
       // 設定画面
       GoRoute(
         path: '/settings',
@@ -22,7 +30,7 @@ class AppRouter {
         builder: (context, state) => const SettingsPage(),
       ),
     ],
-    
+
     // エラーページ
     errorBuilder: (context, state) => Scaffold(
       appBar: AppBar(
