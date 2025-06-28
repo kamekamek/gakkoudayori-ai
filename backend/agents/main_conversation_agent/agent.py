@@ -279,22 +279,18 @@ class MainConversationAgent(LlmAgent):
             logger.error(f"承認状態設定エラー: {e}")
 
     async def _prepare_html_generation_if_approved(self, ctx: InvocationContext):
-        """ユーザー承認後のHTML生成準備"""
+        """ユーザー承認後のHTML生成準備（本番環境対応）"""
         try:
             if not hasattr(ctx, "session") or not hasattr(ctx.session, "state"):
+                logger.warning("セッション状態が利用できません")
                 return
 
-            # セッション状態からファイルシステムのJSONを強制的にセッション状態に同期
-            artifacts_dir = Path("/tmp/adk_artifacts")
-            outline_file = artifacts_dir / "outline.json"
-            
-            if outline_file.exists():
-                with open(outline_file, "r", encoding="utf-8") as f:
-                    json_data = f.read()
-                    
-                # セッション状態に強制保存
-                ctx.session.state["outline"] = json_data
-                logger.info("ファイルシステムからセッション状態にJSONを同期しました")
+            # 🚨 本番環境対応: ファイルシステム使用を廃止
+            # セッション状態にoutlineが既に存在するかチェック
+            if "outline" in ctx.session.state and ctx.session.state["outline"]:
+                logger.info("セッション状態にoutlineが既に存在します - HTML生成準備完了")
+            else:
+                logger.warning("セッション状態にoutlineが見つかりません - LayoutAgentでサンプル生成を実行")
                 
         except Exception as e:
             logger.error(f"HTML生成準備エラー: {e}")
