@@ -100,7 +100,20 @@ class _HomePageState extends ConsumerState<HomePage> {
             IconButton(
               icon: const Icon(Icons.logout),
               onPressed: () async {
-                await GoogleAuthService.signOut();
+                try {
+                  await GoogleAuthService.signOut();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('ログアウトしました')),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('ログアウトエラー: $e')),
+                    );
+                  }
+                }
               },
               tooltip: 'ログアウト',
             ),

@@ -26,13 +26,18 @@ class ClassroomService {
   }
 
   /// 認証チェック
-  static void _checkAuthentication() {
+  static Future<void> _checkAuthentication() async {
     if (!GoogleAuthService.isSignedIn) {
       throw Exception('Googleアカウントにログインしてください');
     }
 
     if (!GoogleAuthService.hasClassroomPermissions()) {
-      throw Exception('Classroom権限が不足しています');
+      throw Exception('認証クライアントが初期化されていません。再ログインしてください');
+    }
+    
+    // 実際の権限を確認
+    if (!await GoogleAuthService.verifyClassroomPermissions()) {
+      throw Exception('Classroom権限が不足しています。Googleアカウントの設定でClassroomへのアクセスを許可してください');
     }
   }
 
@@ -42,7 +47,7 @@ class ClassroomService {
   /// Returns: コース一覧
   static Future<List<classroom.Course>> getCourses(
       {bool teacherOnly = true}) async {
-    _checkAuthentication();
+    await _checkAuthentication();
 
     try {
       await initialize();
@@ -80,7 +85,7 @@ class ClassroomService {
   /// [courseId] コースID
   /// Returns: コース詳細
   static Future<classroom.Course> getCourse(String courseId) async {
-    _checkAuthentication();
+    await _checkAuthentication();
 
     try {
       await initialize();
@@ -111,7 +116,7 @@ class ClassroomService {
     required String mimeType,
     String? folderId,
   }) async {
-    _checkAuthentication();
+    await _checkAuthentication();
 
     try {
       await initialize();
@@ -169,7 +174,7 @@ class ClassroomService {
     List<String> attachmentFileIds = const [],
     DateTime? scheduledTime,
   }) async {
-    _checkAuthentication();
+    await _checkAuthentication();
 
     try {
       await initialize();
@@ -338,7 +343,7 @@ class ClassroomService {
     String courseId, {
     int limit = 20,
   }) async {
-    _checkAuthentication();
+    await _checkAuthentication();
 
     try {
       await initialize();

@@ -107,7 +107,24 @@ class GoogleAuthService {
   /// Google アカウントからログアウト
   static Future<void> signOut() async {
     try {
+      // Firebase からサインアウト
+      if (fb_auth.FirebaseAuth.instance.currentUser != null) {
+        await fb_auth.FirebaseAuth.instance.signOut();
+        if (kDebugMode) {
+          print('Firebase からサインアウトしました');
+        }
+      }
+      
+      // Google からサインアウト
       await googleSignIn.signOut();
+      
+      // 認証クライアントをクリア
+      _authClient = null;
+      _currentUser = null;
+      
+      if (kDebugMode) {
+        print('Google からサインアウトしました');
+      }
     } catch (e) {
       if (kDebugMode) {
         print('Sign-Out エラー: $e');
@@ -173,11 +190,33 @@ class GoogleAuthService {
 
   /// Classroom関連の権限チェック
   static bool hasClassroomPermissions() {
-    // GoogleSignInAccountがnullでなく、必要なスコープをすべて含んでいるか確認
-    return _currentUser != null &&
-        _scopes.contains('https://www.googleapis.com/auth/classroom.courses.readonly') &&
-        _scopes.contains('https://www.googleapis.com/auth/classroom.announcements') &&
-        _scopes.contains('https://www.googleapis.com/auth/drive.file');
+    // ユーザーがログインしており、認証クライアントが利用可能であるかチェック
+    return _currentUser != null && _authClient != null;
+  }
+  
+  /// Classroom権限を非同期で確認（実際のAPI呼び出しでテスト）
+  static Future<bool> verifyClassroomPermissions() async {
+    if (!hasClassroomPermissions()) {
+      return false;
+    }
+    
+    try {
+      // 実際にClassroom APIにアクセスしてテスト
+      final auth.AuthClient? client = _authClient;
+      if (client == null) return false;
+      
+      final response = await http.get(
+        Uri.parse('https://classroom.googleapis.com/v1/courses?pageSize=1'),
+        headers: await _currentUser!.authHeaders,
+      );
+      
+      return response.statusCode == 200;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Classroom権限確認エラー: $e');
+      }
+      return false;
+    }
   }
 
   /// 認証状態の文字列表現

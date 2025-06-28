@@ -88,8 +88,15 @@ class _ClassroomPostDialogState extends State<ClassroomPostDialog> {
 
       setState(() {});
     } catch (e) {
+      final errorString = e.toString();
       setState(() {
-        _errorMessage = 'コース一覧の取得に失敗しました: $e';
+        if (errorString.contains('Classroom権限が不足しています')) {
+          _errorMessage = 'Classroom権限が不足しています。\n右のボタンをクリックして再認証してください。';
+        } else if (errorString.contains('認証クライアントが初期化されていません')) {
+          _errorMessage = '認証の更新が必要です。\n右のボタンをクリックして再ログインしてください。';
+        } else {
+          _errorMessage = 'コース一覧の取得に失敗しました: $e';
+        }
       });
     }
   }
@@ -271,6 +278,16 @@ class _ClassroomPostDialogState extends State<ClassroomPostDialog> {
                         style: TextStyle(color: Colors.red.shade700),
                       ),
                     ),
+                    if (_errorMessage!.contains('権限が不足') || _errorMessage!.contains('認証の更新が必要'))
+                      ElevatedButton(
+                        onPressed: _signInWithGoogle,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        ),
+                        child: const Text('再認証'),
+                      ),
                   ],
                 ),
               ),
