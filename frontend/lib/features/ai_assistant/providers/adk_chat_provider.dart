@@ -31,6 +31,10 @@ class AdkChatProvider extends ChangeNotifier {
   // プロバイダーの生存状態を追跡
   bool _disposed = false;
 
+  // 学級通信生成ボタン関連状態
+  bool _showGenerateButton = false;
+  bool _readyToGenerate = false;
+
   // ゲッター
   List<MutableChatMessage> get messages => _messages;
   String? get sessionId => _sessionId;
@@ -40,6 +44,8 @@ class AdkChatProvider extends ChangeNotifier {
   bool get isVoiceRecording => _isVoiceRecording;
   double get audioLevel => _audioLevel;
   String? get transcriptionResult => _transcriptionResult;
+  bool get showGenerateButton => _showGenerateButton;
+  bool get readyToGenerate => _readyToGenerate;
 
   AdkChatProvider({
     required AdkAgentService adkService,
@@ -257,6 +263,10 @@ class AdkChatProvider extends ChangeNotifier {
     } finally {
       _isProcessing = false;
       debugPrint('[AdkChatProvider] Set isProcessing to false.');
+      
+      // 生成ボタンの表示判定
+      _updateGenerateButtonVisibility();
+      
       _safeNotifyListeners();
     }
   }
@@ -408,6 +418,8 @@ class AdkChatProvider extends ChangeNotifier {
     _error = null;
     _transcriptionResult = null;
     _audioLevel = 0.0;
+    _showGenerateButton = false;
+    _readyToGenerate = false;
     _safeNotifyListeners();
   }
 
@@ -416,6 +428,92 @@ class AdkChatProvider extends ChangeNotifier {
     _error = null;
     _safeNotifyListeners();
   }
+
+  /// 生成ボタンの表示判定を更新
+  void _updateGenerateButtonVisibility() {
+    // 基本情報が含まれているかチェック
+    bool hasBasicInfo = _hasBasicNewsletterInfo();
+    
+    // 既にHTML生成済みでないかチェック
+    bool notGenerated = _generatedHtml == null || _generatedHtml!.isEmpty;
+    
+    // 生成ボタンを表示する条件
+    _showGenerateButton = hasBasicInfo && notGenerated && !_isProcessing;
+    _readyToGenerate = _showGenerateButton;
+    
+    debugPrint('[AdkChatProvider] Generate button visibility: show=$_showGenerateButton, ready=$_readyToGenerate');
+  }
+
+  /// 基本的な学級通信情報が含まれているかチェック
+  bool _hasBasicNewsletterInfo() {
+    // メッセージ履歴から必要な情報が含まれているかを簡易判定
+    String conversationText = _messages.map((m) => m.content).join(' ');
+    
+    // 学校名、学年、先生名、内容のいずれかが含まれていることを確認
+    bool hasSchoolInfo = conversationText.contains('小学校') || 
+                        conversationText.contains('中学校') ||
+                        conversationText.contains('学校');
+    
+    bool hasGradeInfo = RegExp(r'[1-6]年').hasMatch(conversationText);
+    
+    bool hasTeacherInfo = conversationText.contains('先生') || 
+                         conversationText.contains('担任');
+    
+    bool hasContent = conversationText.length > 50; // 内容が十分にある
+    
+    return hasSchoolInfo && (hasGradeInfo || hasTeacherInfo) && hasContent;
+  }
+
+  /// 明示的に学級通信を生成
+  Future<void> generateNewsletter() async {
+    if (!_readyToGenerate) {
+      debugPrint('[AdkChatProvider] 生成準備が整っていません');
+      return;
+    }
+
+    try {
+      debugPrint('[AdkChatProvider] 明示的な学級通信生成を開始');
+      
+      // 生成ボタンを非表示にし、処理中状態にする
+      _showGenerateButton = false;
+      _readyToGenerate = false;
+      _safeNotifyListeners();
+      
+      // 明示的な生成リクエストを送信
+      await sendMessage('学級通信を生成してください');
+      
+    } catch (e) {
+      debugPrint('[AdkChatProvider] 明示的生成エラー: $e');
+      _errorProvider.setError('学級通信の生成に失敗しました: $e');
+      
+      // エラー時は生成ボタンを再表示
+      _updateGenerateButtonVisibility();
+      _safeNotifyListeners();
+    }
+  }
+
+  /// 学級通信の部分修正を要求
+  Future<void> requestModification(String modificationRequest) async {
+    if (_generatedHtml == null || _generatedHtml!.isEmpty) {
+      debugPrint('[AdkChatProvider] HTML未生成のため修正できません');
+      return;
+    }
+
+    try {
+      debugPrint('[AdkChatProvider] 部分修正リクエスト: $modificationRequest');
+      
+      // 修正リクエストのメッセージを送信
+      String modificationMessage = '生成された学級通信を以下のように修正してください：$modificationRequest';
+      await sendMessage(modificationMessage);
+      
+    } catch (e) {
+      debugPrint('[AdkChatProvider] 修正リクエストエラー: $e');
+      _errorProvider.setError('修正リクエストに失敗しました: $e');
+    }
+  }
+
+  /// 修正用のクイックアクションボタンを表示するかどうか
+  bool get showModificationOptions => _generatedHtml != null && _generatedHtml!.isNotEmpty && !_isProcessing;
 
   /// システムメッセージを追加
   void addSystemMessage(String content, {SystemMessageType? type}) {

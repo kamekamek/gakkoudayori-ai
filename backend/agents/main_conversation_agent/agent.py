@@ -87,8 +87,8 @@ class MainConversationAgent(LlmAgent):
             # MALFORMED_FUNCTION_CALL対応: 手動JSON検出を復活
             await self._check_and_save_json_from_conversation(ctx)
             
-            # ユーザー承認後のHTML生成準備
-            await self._prepare_html_generation_if_approved(ctx)
+            # 明示的な生成リクエストの場合のみHTML生成準備
+            await self._prepare_html_generation_if_explicit_request(ctx)
             
             # HTML生成が要求された場合、LayoutAgentを実行
             if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
@@ -574,7 +574,7 @@ class MainConversationAgent(LlmAgent):
             logger.warning(f"イベント内容更新中にエラー: {e}")
 
     async def _save_json_data(self, ctx: InvocationContext, json_str: str):
-        """JSONデータをセッション状態に保存（MALFORMED_FUNCTION_CALL対応版）"""
+        """JSONデータをセッション状態に保存（永続化強化版）"""
         try:
             logger.info(f"=== JSON保存開始 ===")
             logger.info(f"保存対象JSON長: {len(json_str)} 文字")
@@ -583,32 +583,38 @@ class MainConversationAgent(LlmAgent):
             if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
                 logger.info("セッション状態への保存実行中...")
                 
-                # 新しい実装: output_keyではなく直接データ保存
+                # 複数のキーに同一データを保存（冗長化）
                 ctx.session.state["outline"] = json_str
+                ctx.session.state["newsletter_json"] = json_str  # バックアップキー
+                ctx.session.state["user_data_json"] = json_str   # 追加バックアップ
                 ctx.session.state["json_generated"] = True
                 ctx.session.state["json_generation_timestamp"] = get_current_date()
+                ctx.session.state["persistent_data_saved"] = True  # 永続化フラグ
                 
-                logger.info("JSON構成案をセッション状態に保存完了")
+                logger.info("JSON構成案をセッション状態に保存完了（冗長化）")
                 
-                # 保存確認
-                saved_data = ctx.session.state.get("outline", "NOT_FOUND")
-                logger.info(f"保存確認: {len(saved_data) if saved_data != 'NOT_FOUND' else 'NOT_FOUND'} 文字")
+                # 保存確認（全キーをチェック）
+                for key in ["outline", "newsletter_json", "user_data_json"]:
+                    saved_data = ctx.session.state.get(key, "NOT_FOUND")
+                    status = len(saved_data) if saved_data != 'NOT_FOUND' else 'NOT_FOUND'
+                    logger.info(f"保存確認 [{key}]: {status} 文字")
                 
-                # JSON内容の詳細確認
-                if saved_data != "NOT_FOUND":
-                    preview = saved_data[:100] + "..." if len(saved_data) > 100 else saved_data
+                # 主要キー（outline）の詳細確認
+                main_saved_data = ctx.session.state.get("outline", "NOT_FOUND")
+                if main_saved_data != "NOT_FOUND":
+                    preview = main_saved_data[:100] + "..." if len(main_saved_data) > 100 else main_saved_data
                     logger.info(f"保存されたJSON内容(先頭100文字): {preview}")
                     
                     # JSONの有効性確認
                     try:
                         import json as json_module
-                        parsed = json_module.loads(saved_data)
+                        parsed = json_module.loads(main_saved_data)
                         school_name = parsed.get('school_name', 'NOT_FOUND')
                         grade = parsed.get('grade', 'NOT_FOUND') 
                         logger.info(f"✅ JSON解析成功: school_name={school_name}, grade={grade}")
                     except Exception as parse_error:
                         logger.error(f"❌ 保存されたJSONの解析エラー: {parse_error}")
-                        logger.error(f"問題のあるデータ: '{saved_data}'")
+                        logger.error(f"問題のあるデータ: '{main_saved_data}'")
                         
             else:
                 logger.error("セッション状態へのアクセスに失敗しました")
@@ -657,41 +663,88 @@ class MainConversationAgent(LlmAgent):
             logger.error(f"HTML生成判定エラー: {e}")
             return False
 
-    async def _prepare_html_generation_if_approved(self, ctx: InvocationContext):
-        """ユーザー承認後のHTML生成準備（手動委譲実装版）"""
+    async def _prepare_html_generation_if_explicit_request(self, ctx: InvocationContext):
+        """明示的な生成リクエストの場合のみHTML生成準備（UIボタン対応版）"""
         try:
             if not hasattr(ctx, "session") or not hasattr(ctx.session, "state"):
                 logger.warning("セッション状態が利用できません")
                 return
 
-            # 1. セッション状態にJSONが存在するかチェック
+            # 最新のユーザーメッセージを確認
+            latest_user_message = self._get_latest_user_message(ctx)
+            if not latest_user_message:
+                return
+
+            # 明示的な生成リクエストキーワードをチェック
+            explicit_generation_keywords = [
+                "学級通信を生成", "学級通信を作成", "生成してください", "作成してください",
+                "HTMLを生成", "レイアウトを作成", "完成させて"
+            ]
+            
+            is_explicit_request = any(
+                keyword in latest_user_message 
+                for keyword in explicit_generation_keywords
+            )
+            
+            logger.info(f"明示的生成リクエスト判定:")
+            logger.info(f"  - latest_message: {latest_user_message[:100]}...")
+            logger.info(f"  - is_explicit_request: {is_explicit_request}")
+
+            if not is_explicit_request:
+                logger.info("明示的な生成リクエストではありません - HTML生成をスキップ")
+                return
+
+            # セッション状態にJSONが存在するかチェック
             has_json = "outline" in ctx.session.state and ctx.session.state["outline"]
             
-            # 2. ユーザー承認状態をチェック
-            collection_stage = ctx.session.state.get("collection_stage", "initial")
-            user_approved = ctx.session.state.get("user_approved", False)
-            
-            # 3. 最新の対話内容からユーザー承認を検出
-            user_approval_detected = await self._detect_user_approval_from_conversation(ctx)
+            # 既にHTML生成済みかチェック
+            html_already_generated = ctx.session.state.get("html_generated", False)
             
             logger.info(f"HTML生成条件チェック:")
             logger.info(f"  - has_json: {has_json}")
-            logger.info(f"  - collection_stage: {collection_stage}")
-            logger.info(f"  - user_approved: {user_approved}")
-            logger.info(f"  - user_approval_detected: {user_approval_detected}")
+            logger.info(f"  - html_already_generated: {html_already_generated}")
 
-            # 4. すべての条件を満たした場合のみLayoutAgent実行
-            if has_json and (user_approved or user_approval_detected):
-                logger.info("✅ HTML生成条件をすべて満たしました - LayoutAgent手動呼び出し実行")
-                ctx.session.state["user_approved"] = True  # 承認状態を保存
-                
-                # MALFORMED_FUNCTION_CALL回避: LayoutAgentを直接呼び出し
-                await self._invoke_layout_agent_with_yield(ctx)
+            # JSONが存在し、未生成の場合のみHTML生成を実行
+            if has_json and not html_already_generated:
+                logger.info("✅ 明示的な生成リクエストを受理 - HTML生成を開始")
+                ctx.session.state["user_approved"] = True  # 明示的承認
+                ctx.session.state["html_generation_requested"] = True  # HTML生成フラグ
+                logger.info("HTML生成準備が完了しました")
+            elif html_already_generated:
+                logger.info("HTML生成済みのため、再生成をスキップします")
+            elif not has_json:
+                logger.warning("JSON構成案が見つかりません - 情報収集を続行してください")
             else:
-                logger.info("❌ HTML生成条件が不足 - LayoutAgent呼び出しをスキップ")
+                logger.info("HTML生成条件が不足しています")
                 
         except Exception as e:
-            logger.error(f"HTML生成準備エラー: {e}")
+            logger.error(f"明示的生成リクエスト処理エラー: {e}")
+
+    def _get_latest_user_message(self, ctx: InvocationContext) -> str:
+        """最新のユーザーメッセージを取得"""
+        try:
+            if not hasattr(ctx, "session") or not hasattr(ctx.session, "events"):
+                return ""
+                
+            # 最新のユーザーイベントを逆順で検索
+            for event in reversed(ctx.session.events):
+                if hasattr(event, "content") and event.content:
+                    # ユーザーからのメッセージかチェック
+                    if hasattr(event.content, "role") and event.content.role == "user":
+                        text = self._extract_text_from_event(event)
+                        if text:
+                            return text
+                    # role属性がない場合は、ユーザーイベントと仮定してテキストを抽出
+                    elif not hasattr(event.content, "role"):
+                        text = self._extract_text_from_event(event)
+                        if text and len(text) > 5:  # 短すぎるテキストは除外
+                            return text
+            
+            return ""
+            
+        except Exception as e:
+            logger.error(f"最新ユーザーメッセージ取得エラー: {e}")
+            return ""
 
     async def _invoke_layout_agent_with_yield(self, ctx: InvocationContext):
         """LayoutAgentを直接呼び出してイベントをyield（MALFORMED_FUNCTION_CALL対応版）"""
@@ -738,12 +791,25 @@ class MainConversationAgent(LlmAgent):
                 if hasattr(event, "content") and event.content:
                     text = self._extract_text_from_event(event)
                     if text:
-                        # 承認キーワードをチェック
-                        approval_keywords = [
-                            "はい", "大丈夫", "お願いします", "作成して", "生成して",
-                            "OK", "いいです", "問題ありません", "よろしく"
+                        # より厳密な承認キーワードをチェック（誤検出防止）
+                        explicit_approval_patterns = [
+                            "この内容で", "これで大丈夫", "これでお願い", "作成してください",
+                            "生成してください", "この内容でよろしい", "問題ありません",
+                            "はい、大丈夫", "はい、お願い", "OK", "この内容で作成"
                         ]
-                        if any(keyword in text for keyword in approval_keywords):
+                        
+                        # 追加情報と思われるパターンを除外
+                        additional_info_patterns = [
+                            "写真", "枚", "雰囲気", "色", "デザイン", "レイアウト"
+                        ]
+                        
+                        # 追加情報パターンが含まれている場合は承認と判定しない
+                        if any(pattern in text for pattern in additional_info_patterns):
+                            logger.info(f"追加情報と判定（承認ではない）: {text[:50]}...")
+                            return False
+                        
+                        # 明確な承認パターンのみ承認と判定
+                        if any(pattern in text for pattern in explicit_approval_patterns):
                             logger.info(f"ユーザー承認を検出: {text[:50]}...")
                             return True
                             

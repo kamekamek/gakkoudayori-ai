@@ -307,6 +307,94 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
                   ),
                 ),
 
+              // 学級通信生成ボタン
+              if (provider.showGenerateButton)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: provider.readyToGenerate && !provider.isProcessing
+                          ? () => _handleGenerateNewsletter(provider)
+                          : null,
+                      icon: provider.isProcessing
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : const Icon(Icons.auto_awesome, size: 20),
+                      label: Text(
+                        provider.isProcessing ? '生成中...' : '学級通信を生成',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2c5aa0),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 2,
+                        shadowColor: const Color(0xFF2c5aa0).withOpacity(0.3),
+                      ),
+                    ),
+                  ),
+                ),
+
+              // 修正オプション（HTML生成後に表示）
+              if (provider.showModificationOptions)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '🎨 クイック修正',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2c5aa0),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _buildQuickModificationButton(
+                            provider,
+                            '色を変更',
+                            '色合いをもう少し明るくしてください',
+                            Icons.palette,
+                          ),
+                          _buildQuickModificationButton(
+                            provider,
+                            'タイトル変更',
+                            'タイトルをもっと魅力的にしてください',
+                            Icons.title,
+                          ),
+                          _buildQuickModificationButton(
+                            provider,
+                            'レイアウト調整',
+                            'レイアウトをもう少しコンパクトにしてください',
+                            Icons.view_agenda,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
               // 入力エリア（デザインモックアップ準拠）
               Container(
                 padding: const EdgeInsets.all(16),
