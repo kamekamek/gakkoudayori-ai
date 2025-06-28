@@ -19,7 +19,7 @@ class GakkouDayoriAiApp extends StatelessWidget {
       providers: [
         // Services
         Provider(create: (_) => AdkAgentService()),
-        
+
         // Error handling
         ChangeNotifierProvider(create: (_) => ErrorProvider()),
 

@@ -8,6 +8,7 @@ from google.cloud import storage
 storage_client = storage.Client()
 bucket_name = os.environ.get("GCS_BUCKET_NAME", "gakkoudayori-newsletters")
 
+
 def _upload_and_get_url_sync(pdf_bytes: bytes, destination_blob_name: str) -> str:
     """
     【同期】GCSへアップロードし、署名付きURLを取得する内部関数。
@@ -22,9 +23,7 @@ def _upload_and_get_url_sync(pdf_bytes: bytes, destination_blob_name: str) -> st
     # 署名付きURLの生成（CPU処理）
     expiration = datetime.timedelta(days=1)
     signed_url = blob.generate_signed_url(
-        version="v4",
-        expiration=expiration,
-        method="GET"
+        version="v4", expiration=expiration, method="GET"
     )
     return signed_url
 
@@ -39,11 +38,14 @@ async def save_pdf_to_gcs(pdf_bytes: bytes, destination_blob_name: str) -> str:
         None,  # デフォルトのThreadPoolExecutorを使用
         _upload_and_get_url_sync,
         pdf_bytes,
-        destination_blob_name
+        destination_blob_name,
     )
     return signed_url
 
-async def upload_image_to_gcs(session_id: str, image_content: bytes, filename: str) -> str:
+
+async def upload_image_to_gcs(
+    session_id: str, image_content: bytes, filename: str
+) -> str:
     """
     ユーザーがアップロードした画像をGCSに保存し、公開URLを返します。
 
@@ -57,13 +59,12 @@ async def upload_image_to_gcs(session_id: str, image_content: bytes, filename: s
     """
     bucket = storage_client.bucket(bucket_name)
     # ファイル名が重複しないように、セッションIDとタイムスタンプをパスに含める
-    blob = bucket.blob(f"user_images/{session_id}/{datetime.datetime.utcnow().isoformat()}_{filename}")
+    blob = bucket.blob(
+        f"user_images/{session_id}/{datetime.datetime.utcnow().isoformat()}_{filename}"
+    )
 
     # TODO: content_typeを動的に判定する
-    await blob.upload_from_string(
-        image_content,
-        content_type="image/jpeg" # 仮
-    )
+    await blob.upload_from_string(image_content, content_type="image/jpeg")  # 仮
 
     # バケットが公開設定されていることを前提とします
     return blob.public_url

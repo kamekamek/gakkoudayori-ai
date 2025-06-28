@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 /// Google認証サービス
-/// 
+///
 /// Google Classroom APIアクセスに必要な認証機能を提供
 class GoogleAuthService {
   static const List<String> _scopes = [
@@ -25,7 +25,7 @@ class GoogleAuthService {
       scopes: _scopes,
       // Web用の設定は firebase_options.dart で管理される
     );
-    
+
     // Web環境での初期化（google_sign_in_web v0.12.4+では自動的に初期化される）
     if (kIsWeb) {
       // google_sign_in_web の最新版では明示的な登録は不要
@@ -53,7 +53,7 @@ class GoogleAuthService {
   static bool get isSignedIn => _currentUser != null;
 
   /// Google アカウントでログイン
-  /// 
+  ///
   /// Returns: ログインに成功したユーザー情報、失敗時はnull
   static Future<GoogleSignInAccount?> signIn() async {
     try {
@@ -63,7 +63,7 @@ class GoogleAuthService {
 
       // サイレントサインイン試行
       _currentUser = await googleSignIn.signInSilently();
-      
+
       // 明示的サインインが必要な場合
       if (_currentUser == null) {
         // Web環境では新しいAPI使用を推奨、但し既存実装との互換性を保つ
@@ -78,7 +78,7 @@ class GoogleAuthService {
       if (_currentUser != null) {
         // 認証済みHTTPクライアントを作成
         await _createAuthClient();
-        
+
         if (kDebugMode) {
           print('Google Sign-In 成功: ${_currentUser!.email}');
           print('付与されたスコープ: ${_scopes.join(', ')}');
@@ -90,14 +90,14 @@ class GoogleAuthService {
       if (kDebugMode) {
         print('Google Sign-In エラー: $e');
       }
-      
+
       // Web特有のエラーハンドリング
       if (e.toString().contains('popup_closed')) {
         throw Exception('サインインがキャンセルされました。もう一度お試しください。');
       } else if (e.toString().contains('popup_blocked')) {
         throw Exception('ポップアップがブロックされました。ブラウザの設定をご確認ください。');
       }
-      
+
       throw Exception('Googleアカウントへのログインに失敗しました: $e');
     }
   }
@@ -108,7 +108,7 @@ class GoogleAuthService {
       await googleSignIn.signOut();
       _currentUser = null;
       _authClient = null;
-      
+
       if (kDebugMode) {
         print('Google Sign-Out 完了');
       }
@@ -126,7 +126,7 @@ class GoogleAuthService {
       await googleSignIn.disconnect();
       _currentUser = null;
       _authClient = null;
-      
+
       if (kDebugMode) {
         print('Google アカウント接続切断完了');
       }
@@ -147,13 +147,15 @@ class GoogleAuthService {
     try {
       // アクセストークンを取得
       final authHeaders = await _currentUser!.authHeaders;
-      
+
       // GoogleサインインからOAuth2認証情報を作成
-      final accessToken = authHeaders['Authorization']?.replaceFirst('Bearer ', '');
-      
+      final accessToken =
+          authHeaders['Authorization']?.replaceFirst('Bearer ', '');
+
       if (accessToken != null) {
         final credentials = auth.AccessCredentials(
-          auth.AccessToken('Bearer', accessToken, DateTime.now().toUtc().add(const Duration(hours: 1))),
+          auth.AccessToken('Bearer', accessToken,
+              DateTime.now().toUtc().add(const Duration(hours: 1))),
           null, // リフレッシュトークンは不要
           _scopes,
         );
@@ -162,7 +164,7 @@ class GoogleAuthService {
           http.Client(),
           credentials,
         );
-        
+
         if (kDebugMode) {
           print('認証済みHTTPクライアント作成完了');
         }
@@ -186,7 +188,7 @@ class GoogleAuthService {
     try {
       // トークンを再取得
       await _createAuthClient();
-      
+
       if (kDebugMode) {
         print('トークン更新完了');
       }
@@ -213,7 +215,7 @@ class GoogleAuthService {
   }
 
   /// 権限チェック
-  /// 
+  ///
   /// [requiredScopes] チェックしたいスコープのリスト
   /// Returns: すべての権限が付与されている場合はtrue
   static bool hasPermissions(List<String> requiredScopes) {
@@ -240,12 +242,12 @@ class GoogleAuthService {
     if (!isSignedIn) {
       return 'ログインしていません';
     }
-    
+
     return 'ログイン済み: ${_currentUser!.email}';
   }
 
   /// 認証エラーハンドリング
-  /// 
+  ///
   /// API呼び出し時の認証エラーを処理
   static Future<void> handleAuthError(dynamic error) async {
     if (kDebugMode) {
@@ -253,7 +255,7 @@ class GoogleAuthService {
     }
 
     final errorString = error.toString();
-    
+
     if (errorString.contains('401') || errorString.contains('unauthorized')) {
       // 認証エラーの場合はトークン更新を試行
       try {
@@ -262,7 +264,8 @@ class GoogleAuthService {
         // トークン更新にも失敗した場合は再ログインが必要
         throw Exception('認証エラー: 再ログインが必要です');
       }
-    } else if (errorString.contains('403') || errorString.contains('forbidden')) {
+    } else if (errorString.contains('403') ||
+        errorString.contains('forbidden')) {
       throw Exception('権限エラー: 必要な権限が不足しています');
     } else {
       throw Exception('認証エラー: $error');
@@ -270,7 +273,7 @@ class GoogleAuthService {
   }
 
   /// 認証状態リスナーの設定
-  /// 
+  ///
   /// [onSignedIn] ログイン時のコールバック
   /// [onSignedOut] ログアウト時のコールバック
   static void setAuthStateListener({
@@ -279,7 +282,7 @@ class GoogleAuthService {
   }) {
     googleSignIn.onCurrentUserChanged.listen((GoogleSignInAccount? account) {
       _currentUser = account;
-      
+
       if (account != null) {
         _createAuthClient().then((_) {
           onSignedIn(account);
@@ -296,15 +299,15 @@ class GoogleAuthService {
   }
 
   /// 初期認証状態の復元
-  /// 
+  ///
   /// アプリ起動時に前回のログイン状態を復元
   static Future<void> restoreAuthState() async {
     try {
       _currentUser = await googleSignIn.signInSilently();
-      
+
       if (_currentUser != null) {
         await _createAuthClient();
-        
+
         if (kDebugMode) {
           print('認証状態復元完了: ${_currentUser!.email}');
         }

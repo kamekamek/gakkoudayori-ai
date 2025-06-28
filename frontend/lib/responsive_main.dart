@@ -639,7 +639,6 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
     }
   }
 
-
   // 新しい2エージェント処理フロー
   Future<void> _generateNewsletterTwoAgent() async {
     if (_isGenerating || _isProcessing) return;

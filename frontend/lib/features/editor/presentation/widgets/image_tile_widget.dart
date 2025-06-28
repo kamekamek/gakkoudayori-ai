@@ -57,7 +57,7 @@ class _ImageTileWidgetState extends State<ImageTileWidget> {
                 height: 120, // 固定高さを設定
                 child: _buildImageDisplay(),
               ),
-              
+
               // 情報・操作エリア
               if (widget.showDetails) _buildInfoArea(),
             ],
@@ -77,7 +77,8 @@ class _ImageTileWidgetState extends State<ImageTileWidget> {
           // 画像本体
           Positioned.fill(
             child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(12)),
               child: Image.memory(
                 widget.image.bytes,
                 fit: BoxFit.cover,
@@ -87,7 +88,7 @@ class _ImageTileWidgetState extends State<ImageTileWidget> {
               ),
             ),
           ),
-          
+
           // インデックス表示（左上）
           if (widget.showIndex && widget.index != null)
             Positioned(
@@ -102,13 +103,13 @@ class _ImageTileWidgetState extends State<ImageTileWidget> {
                 child: Text(
                   '${widget.index}',
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onPrimary,
-                    fontWeight: FontWeight.bold,
-                  ),
+                        color: Theme.of(context).colorScheme.onPrimary,
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
               ),
             ),
-          
+
           // 圧縮済みマーク（右上）
           if (widget.image.isCompressed)
             Positioned(
@@ -127,14 +128,15 @@ class _ImageTileWidgetState extends State<ImageTileWidget> {
                 ),
               ),
             ),
-          
+
           // ホバー時の操作ボタン
           if (_isHovered)
             Positioned.fill(
               child: Container(
                 decoration: BoxDecoration(
                   color: Colors.black.withOpacity(0.5),
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(12)),
                 ),
                 child: _buildActionButtons(),
               ),
@@ -160,8 +162,8 @@ class _ImageTileWidgetState extends State<ImageTileWidget> {
             Text(
               '画像の表示に\n失敗しました',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onErrorContainer,
-              ),
+                    color: Theme.of(context).colorScheme.onErrorContainer,
+                  ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -181,21 +183,21 @@ class _ImageTileWidgetState extends State<ImageTileWidget> {
             tooltip: 'プレビュー',
             onPressed: () => _showImagePreview(),
           ),
-          
+
           // 左回転ボタン
           _buildActionButton(
             icon: Icons.rotate_left,
             tooltip: '左に90度回転',
             onPressed: () => widget.onRotate(-90),
           ),
-          
+
           // 右回転ボタン
           _buildActionButton(
             icon: Icons.rotate_right,
             tooltip: '右に90度回転',
             onPressed: () => widget.onRotate(90),
           ),
-          
+
           // 削除ボタン
           _buildActionButton(
             icon: Icons.delete,
@@ -217,7 +219,7 @@ class _ImageTileWidgetState extends State<ImageTileWidget> {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: isDestructive 
+        color: isDestructive
             ? Theme.of(context).colorScheme.error
             : Theme.of(context).colorScheme.primary,
         borderRadius: BorderRadius.circular(20),
@@ -253,14 +255,14 @@ class _ImageTileWidgetState extends State<ImageTileWidget> {
           Text(
             widget.image.name,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w500,
-            ),
+                  fontWeight: FontWeight.w500,
+                ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          
+
           const SizedBox(height: 4),
-          
+
           // ファイルサイズ・形式
           Row(
             children: [
@@ -268,22 +270,23 @@ class _ImageTileWidgetState extends State<ImageTileWidget> {
                 child: Text(
                   widget.image.sizeDisplay,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                 ),
               ),
               Text(
                 widget.image.extension.toUpperCase(),
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
-                  fontWeight: FontWeight.bold,
-                ),
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
             ],
           ),
-          
+
           // 圧縮情報
-          if (widget.image.isCompressed && widget.image.compressionRatio != null)
+          if (widget.image.isCompressed &&
+              widget.image.compressionRatio != null)
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Row(
@@ -297,8 +300,8 @@ class _ImageTileWidgetState extends State<ImageTileWidget> {
                   Text(
                     widget.image.compressionDisplay,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.secondary,
-                    ),
+                          color: Theme.of(context).colorScheme.secondary,
+                        ),
                   ),
                 ],
               ),

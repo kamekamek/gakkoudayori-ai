@@ -6,6 +6,7 @@ from google.cloud import firestore
 # このファイルがインポートされると、GCPの認証情報が環境変数から自動的に読み込まれます。
 db = firestore.AsyncClient()
 
+
 async def save_newsletter(user_id: str, title: str, html_content: str) -> str:
     """
     生成された学級通信をFirestoreに保存します。
@@ -19,14 +20,17 @@ async def save_newsletter(user_id: str, title: str, html_content: str) -> str:
         作成されたドキュメントのID。
     """
     collection_ref = db.collection("newsletters")
-    doc_ref = await collection_ref.add({
-        "user_id": user_id,
-        "title": title,
-        "html_content": html_content,
-        "created_at": datetime.utcnow(),
-        "pdf_url": None,  # PDFは後から生成・更新される
-    })
+    doc_ref = await collection_ref.add(
+        {
+            "user_id": user_id,
+            "title": title,
+            "html_content": html_content,
+            "created_at": datetime.utcnow(),
+            "pdf_url": None,  # PDFは後から生成・更新される
+        }
+    )
     return doc_ref.id
+
 
 async def get_newsletter(document_id: str) -> dict | None:
     """
@@ -44,6 +48,7 @@ async def get_newsletter(document_id: str) -> dict | None:
         return doc.to_dict()
     return None
 
+
 async def update_newsletter_pdf_url(document_id: str, pdf_url: str):
     """
     学級通信ドキュメントに、生成されたPDFへのURLを保存します。
@@ -53,6 +58,4 @@ async def update_newsletter_pdf_url(document_id: str, pdf_url: str):
         pdf_url: 保存するPDFのURL。
     """
     doc_ref = db.collection("newsletters").document(document_id)
-    await doc_ref.update({
-        "pdf_url": pdf_url
-    })
+    await doc_ref.update({"pdf_url": pdf_url})

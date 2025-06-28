@@ -63,8 +63,11 @@ class _InlineEditablePreviewWidgetState
 
       try {
         final data = messageEvent.data;
-        if (kDebugMode) debugPrint('🔍 [InlineEdit] postMessage受信 - データ型: ${data.runtimeType}');
-        if (kDebugMode) debugPrint('🔍 [InlineEdit] postMessage受信 - データ内容: $data');
+        if (kDebugMode)
+          debugPrint(
+              '🔍 [InlineEdit] postMessage受信 - データ型: ${data.runtimeType}');
+        if (kDebugMode)
+          debugPrint('🔍 [InlineEdit] postMessage受信 - データ内容: $data');
 
         Map<String, dynamic>? message;
 
@@ -75,7 +78,8 @@ class _InlineEditablePreviewWidgetState
           if (kDebugMode) debugPrint('🔍 [InlineEdit] マップデータを直接使用...');
           message = Map<String, dynamic>.from(data);
         } else {
-          if (kDebugMode) debugPrint('❌ [InlineEdit] 未対応のデータ型: ${data.runtimeType}');
+          if (kDebugMode)
+            debugPrint('❌ [InlineEdit] 未対応のデータ型: ${data.runtimeType}');
           return;
         }
 
@@ -97,11 +101,13 @@ class _InlineEditablePreviewWidgetState
       try {
         final customEvent = event as html.CustomEvent;
         final data = customEvent.detail;
-        if (kDebugMode) debugPrint('🔍 [InlineEdit] CustomEvent受信 - データ: $data');
+        if (kDebugMode)
+          debugPrint('🔍 [InlineEdit] CustomEvent受信 - データ: $data');
 
         if (data is Map) {
           final message = Map<String, dynamic>.from(data);
-          if (kDebugMode) debugPrint('🔍 [InlineEdit] CustomEvent解析済み: $message');
+          if (kDebugMode)
+            debugPrint('🔍 [InlineEdit] CustomEvent解析済み: $message');
           _handleMessage(message);
         }
       } catch (e) {
@@ -125,19 +131,27 @@ class _InlineEditablePreviewWidgetState
         final data = message['data'];
         if (kDebugMode) debugPrint('🔍 [InlineEdit] data部分: $data');
         final newContent = data?['html'] as String?;
-        if (kDebugMode) debugPrint('🔍 [InlineEdit] 抽出されたHTML: ${newContent?.length ?? 0}文字');
+        if (kDebugMode)
+          debugPrint('🔍 [InlineEdit] 抽出されたHTML: ${newContent?.length ?? 0}文字');
 
         if (newContent != null && widget.onContentChanged != null) {
           // HTMLコンテンツをクリーンアップしてから通知
           final cleanedContent = _cleanEditedContent(newContent);
-          if (kDebugMode) debugPrint('🔔 [InlineEdit] 編集内容を親ウィジェットに通知: ${cleanedContent.length}文字');
-          if (kDebugMode) debugPrint(
-              '🔔 [InlineEdit] クリーンアップ後の内容プレビュー: ${cleanedContent.substring(0, cleanedContent.length > 100 ? 100 : cleanedContent.length)}...');
+          if (kDebugMode)
+            debugPrint(
+                '🔔 [InlineEdit] 編集内容を親ウィジェットに通知: ${cleanedContent.length}文字');
+          if (kDebugMode)
+            debugPrint(
+                '🔔 [InlineEdit] クリーンアップ後の内容プレビュー: ${cleanedContent.substring(0, cleanedContent.length > 100 ? 100 : cleanedContent.length)}...');
           widget.onContentChanged!(cleanedContent);
         } else {
-          if (kDebugMode) debugPrint('❌ [InlineEdit] newContentがnullまたはonContentChangedがnull');
+          if (kDebugMode)
+            debugPrint(
+                '❌ [InlineEdit] newContentがnullまたはonContentChangedがnull');
           if (kDebugMode) debugPrint('❌ [InlineEdit] newContent: $newContent');
-          if (kDebugMode) debugPrint('❌ [InlineEdit] onContentChanged: ${widget.onContentChanged}');
+          if (kDebugMode)
+            debugPrint(
+                '❌ [InlineEdit] onContentChanged: ${widget.onContentChanged}');
         }
         break;
 
@@ -151,7 +165,8 @@ class _InlineEditablePreviewWidgetState
         break;
 
       default:
-        if (kDebugMode) debugPrint('🔍 [InlineEdit] 未知のメッセージタイプ: ${message['type']}');
+        if (kDebugMode)
+          debugPrint('🔍 [InlineEdit] 未知のメッセージタイプ: ${message['type']}');
     }
   }
 

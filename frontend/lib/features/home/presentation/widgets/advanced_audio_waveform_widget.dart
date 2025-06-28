@@ -21,18 +21,19 @@ class AdvancedAudioWaveformWidget extends StatefulWidget {
   });
 
   @override
-  State<AdvancedAudioWaveformWidget> createState() => _AdvancedAudioWaveformWidgetState();
+  State<AdvancedAudioWaveformWidget> createState() =>
+      _AdvancedAudioWaveformWidgetState();
 }
 
 enum WaveformStyle {
-  bars,        // 従来のバー形式
-  pulse,       // パルス波形
-  ripple,      // 波紋エフェクト
-  spectrum,    // スペクトラム表示
+  bars, // 従来のバー形式
+  pulse, // パルス波形
+  ripple, // 波紋エフェクト
+  spectrum, // スペクトラム表示
 }
 
-class _AdvancedAudioWaveformWidgetState extends State<AdvancedAudioWaveformWidget>
-    with TickerProviderStateMixin {
+class _AdvancedAudioWaveformWidgetState
+    extends State<AdvancedAudioWaveformWidget> with TickerProviderStateMixin {
   late AnimationController _animationController;
   late AnimationController _pulseController;
   late List<AnimationController> _barControllers;
@@ -42,7 +43,7 @@ class _AdvancedAudioWaveformWidgetState extends State<AdvancedAudioWaveformWidge
   @override
   void initState() {
     super.initState();
-    
+
     // メインアニメーションコントローラー
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 100),
@@ -85,7 +86,7 @@ class _AdvancedAudioWaveformWidgetState extends State<AdvancedAudioWaveformWidge
   @override
   void didUpdateWidget(AdvancedAudioWaveformWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    
+
     if (widget.isRecording != oldWidget.isRecording) {
       if (widget.isRecording) {
         _startAnimation();
@@ -126,20 +127,21 @@ class _AdvancedAudioWaveformWidgetState extends State<AdvancedAudioWaveformWidge
   void _updateWaveform() {
     final random = math.Random();
     final baseLevel = widget.audioLevel.clamp(0.0, 1.0);
-    
+
     for (int i = 0; i < widget.barCount; i++) {
       // 中央が高く、両端が低くなるような分布
-      final centerDistance = (i - widget.barCount / 2).abs() / (widget.barCount / 2);
+      final centerDistance =
+          (i - widget.barCount / 2).abs() / (widget.barCount / 2);
       final centerWeight = 1.0 - (centerDistance * 0.3);
-      
+
       // 音声レベルとランダム要素を組み合わせて自然な波形を作成
       final randomFactor = 0.4 + (random.nextDouble() * 0.6);
       final levelWithCenter = baseLevel * centerWeight * randomFactor;
-      
+
       _barHeights[i] = levelWithCenter.clamp(0.1, 1.0);
       _barOpacities[i] = (0.3 + levelWithCenter * 0.7).clamp(0.3, 1.0);
     }
-    
+
     if (mounted) {
       setState(() {});
     }
@@ -158,7 +160,7 @@ class _AdvancedAudioWaveformWidgetState extends State<AdvancedAudioWaveformWidge
   @override
   Widget build(BuildContext context) {
     final color = widget.color ?? Theme.of(context).colorScheme.primary;
-    
+
     switch (widget.style) {
       case WaveformStyle.pulse:
         return _buildPulseWaveform(color);
@@ -181,17 +183,15 @@ class _AdvancedAudioWaveformWidgetState extends State<AdvancedAudioWaveformWidge
           return AnimatedBuilder(
             animation: _barControllers[index],
             builder: (context, child) {
-              final animationValue = widget.isRecording 
-                  ? _barControllers[index].value 
-                  : 0.0;
-              
+              final animationValue =
+                  widget.isRecording ? _barControllers[index].value : 0.0;
+
               final barHeight = widget.isRecording
-                  ? (_barHeights[index] + (animationValue * 0.2)) * widget.height
+                  ? (_barHeights[index] + (animationValue * 0.2)) *
+                      widget.height
                   : widget.height * 0.1;
 
-              final opacity = widget.isRecording 
-                  ? _barOpacities[index]
-                  : 0.3;
+              final opacity = widget.isRecording ? _barOpacities[index] : 0.3;
 
               return Container(
                 width: math.max(2, (widget.height / widget.barCount) * 0.6),
@@ -207,13 +207,15 @@ class _AdvancedAudioWaveformWidgetState extends State<AdvancedAudioWaveformWidge
                     end: Alignment.topCenter,
                   ),
                   borderRadius: BorderRadius.circular(1),
-                  boxShadow: widget.isRecording ? [
-                    BoxShadow(
-                      color: color.withOpacity(0.3),
-                      blurRadius: 2,
-                      spreadRadius: 0.5,
-                    ),
-                  ] : null,
+                  boxShadow: widget.isRecording
+                      ? [
+                          BoxShadow(
+                            color: color.withOpacity(0.3),
+                            blurRadius: 2,
+                            spreadRadius: 0.5,
+                          ),
+                        ]
+                      : null,
                 ),
               );
             },
@@ -236,7 +238,7 @@ class _AdvancedAudioWaveformWidgetState extends State<AdvancedAudioWaveformWidge
               final delay = index / widget.barCount;
               final animationValue = ((_pulseController.value + delay) % 1.0);
               final baseLevel = widget.audioLevel.clamp(0.0, 1.0);
-              
+
               final height = widget.isRecording
                   ? (baseLevel * (0.5 + animationValue * 0.5)) * widget.height
                   : widget.height * 0.1;
@@ -266,8 +268,9 @@ class _AdvancedAudioWaveformWidgetState extends State<AdvancedAudioWaveformWidge
             alignment: Alignment.center,
             children: List.generate(3, (ring) {
               final scale = 0.3 + (ring * 0.3) + (_pulseController.value * 0.4);
-              final opacity = (1.0 - _pulseController.value) * (1.0 - ring * 0.3);
-              
+              final opacity =
+                  (1.0 - _pulseController.value) * (1.0 - ring * 0.3);
+
               return Transform.scale(
                 scale: scale,
                 child: Container(
@@ -301,7 +304,7 @@ class _AdvancedAudioWaveformWidgetState extends State<AdvancedAudioWaveformWidge
               final frequency = (index + 1) / widget.barCount;
               final animationValue = _barControllers[index].value;
               final baseLevel = widget.audioLevel * frequency;
-              
+
               final barHeight = widget.isRecording
                   ? (baseLevel + (animationValue * 0.3)) * widget.height
                   : widget.height * 0.05;
@@ -395,7 +398,8 @@ class _RecordingDotsIndicatorState extends State<RecordingDotsIndicator>
               margin: EdgeInsets.symmetric(horizontal: widget.size * 0.2),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: widget.color.withOpacity(0.3 + _controllers[index].value * 0.7),
+                color: widget.color
+                    .withOpacity(0.3 + _controllers[index].value * 0.7),
               ),
             );
           },

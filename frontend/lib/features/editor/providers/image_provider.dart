@@ -18,7 +18,8 @@ class ImageManagementProvider extends ChangeNotifier {
   String? get lastError => _lastError;
   bool get hasImages => _uploadedImages.isNotEmpty;
   int get imageCount => _uploadedImages.length;
-  bool get canAddMore => _uploadedImages.length < ImageUploadService.maxImageCount;
+  bool get canAddMore =>
+      _uploadedImages.length < ImageUploadService.maxImageCount;
 
   /// 総ファイルサイズを取得
   int get totalSize => _uploadedImages.fold(0, (sum, img) => sum + img.size);
@@ -43,7 +44,7 @@ class ImageManagementProvider extends ChangeNotifier {
 
     try {
       final selectedImages = await ImageUploadService.pickImagesFromDevice();
-      
+
       if (selectedImages.isEmpty) {
         _setUploading(false, '');
         return;
@@ -69,7 +70,7 @@ class ImageManagementProvider extends ChangeNotifier {
 
     try {
       final capturedImage = await ImageUploadService.captureImageFromCamera();
-      
+
       if (capturedImage == null) {
         _setUploading(false, '');
         return;
@@ -100,7 +101,7 @@ class ImageManagementProvider extends ChangeNotifier {
 
     try {
       final fetchedImage = await ImageUploadService.fetchImageFromUrl(url);
-      
+
       if (fetchedImage == null) {
         _setError('URLから画像を取得できませんでした');
         return;
@@ -119,7 +120,8 @@ class ImageManagementProvider extends ChangeNotifier {
     final index = _uploadedImages.indexWhere((img) => img.id == imageId);
     if (index != -1) {
       final removedImage = _uploadedImages.removeAt(index);
-      if (kDebugMode) debugPrint('🗑️ [ImageProvider] 画像削除: ${removedImage.name}');
+      if (kDebugMode)
+        debugPrint('🗑️ [ImageProvider] 画像削除: ${removedImage.name}');
       notifyListeners();
     }
   }
@@ -134,10 +136,12 @@ class ImageManagementProvider extends ChangeNotifier {
 
     try {
       final originalImage = _uploadedImages[index];
-      final rotatedImage = await ImageUploadService.rotateImage(originalImage, degrees);
+      final rotatedImage =
+          await ImageUploadService.rotateImage(originalImage, degrees);
       _uploadedImages[index] = rotatedImage;
-      
-      if (kDebugMode) debugPrint('🔄 [ImageProvider] 画像回転完了: ${rotatedImage.name}');
+
+      if (kDebugMode)
+        debugPrint('🔄 [ImageProvider] 画像回転完了: ${rotatedImage.name}');
       notifyListeners();
     } catch (e) {
       _setError('画像の回転に失敗しました: $e');
@@ -161,8 +165,9 @@ class ImageManagementProvider extends ChangeNotifier {
     }
     final item = _uploadedImages.removeAt(oldIndex);
     _uploadedImages.insert(newIndex, item);
-    
-    if (kDebugMode) debugPrint('↕️ [ImageProvider] 画像順序変更: $oldIndex → $newIndex');
+
+    if (kDebugMode)
+      debugPrint('↕️ [ImageProvider] 画像順序変更: $oldIndex → $newIndex');
     notifyListeners();
   }
 
@@ -183,25 +188,25 @@ class ImageManagementProvider extends ChangeNotifier {
   /// 画像を処理して追加
   Future<void> _processAndAddImages(List<ImageFile> images) async {
     _setProcessing(true, '画像を処理中...');
-    
+
     try {
       final processedImages = await ImageUploadService.processImages(images);
-      
+
       for (final image in processedImages) {
         if (_uploadedImages.length >= ImageUploadService.maxImageCount) {
           if (kDebugMode) debugPrint('⚠️ [ImageProvider] 画像数上限到達');
           break;
         }
-        
+
         // 重複チェック
         if (_uploadedImages.any((existing) => existing.id == image.id)) {
           continue;
         }
-        
+
         _uploadedImages.add(image);
         if (kDebugMode) debugPrint('✅ [ImageProvider] 画像追加: ${image.name}');
       }
-      
+
       notifyListeners();
     } catch (e) {
       _setError('画像の処理に失敗しました: $e');
@@ -256,7 +261,8 @@ class ImageManagementProvider extends ChangeNotifier {
   void debugPrintStatus() {
     if (kDebugMode) {
       debugPrint('📊 [ImageProvider] Status:');
-      debugPrint('  - Images: ${_uploadedImages.length}/${ImageUploadService.maxImageCount}');
+      debugPrint(
+          '  - Images: ${_uploadedImages.length}/${ImageUploadService.maxImageCount}');
       debugPrint('  - Total size: $totalSizeDisplay');
       debugPrint('  - Uploading: $_isUploading');
       debugPrint('  - Processing: $_isProcessing');

@@ -17,7 +17,7 @@ class AppTheme {
       useMaterial3: true,
       colorScheme: colorScheme,
       textTheme: textTheme,
-      
+
       // AppBar
       appBarTheme: AppBarTheme(
         backgroundColor: colorScheme.primary,
@@ -84,7 +84,8 @@ class AppTheme {
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(color: colorScheme.error, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         hintStyle: AppTextStyles.bodyMedium.copyWith(
           color: AppColors.onSurfaceVariant,
         ),

@@ -27,35 +27,35 @@ class _StudioRecordingWidgetState extends State<StudioRecordingWidget>
   late AnimationController _levelMeterController;
   late AnimationController _pulseController;
   late AnimationController _rotationController;
-  
+
   @override
   void initState() {
     super.initState();
-    
+
     _levelMeterController = AnimationController(
       duration: const Duration(milliseconds: 100),
       vsync: this,
     );
-    
+
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
-    
+
     _rotationController = AnimationController(
       duration: const Duration(seconds: 10),
       vsync: this,
     );
-    
+
     if (widget.isRecording) {
       _startAnimations();
     }
   }
-  
+
   @override
   void didUpdateWidget(StudioRecordingWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    
+
     if (widget.isRecording != oldWidget.isRecording) {
       if (widget.isRecording) {
         _startAnimations();
@@ -63,24 +63,24 @@ class _StudioRecordingWidgetState extends State<StudioRecordingWidget>
         _stopAnimations();
       }
     }
-    
+
     if (widget.audioLevel != oldWidget.audioLevel) {
       _levelMeterController.animateTo(widget.audioLevel);
     }
   }
-  
+
   void _startAnimations() {
     _pulseController.repeat();
     _rotationController.repeat();
   }
-  
+
   void _stopAnimations() {
     _pulseController.stop();
     _pulseController.reset();
     _rotationController.stop();
     _rotationController.reset();
   }
-  
+
   @override
   void dispose() {
     _levelMeterController.dispose();
@@ -91,9 +91,11 @@ class _StudioRecordingWidgetState extends State<StudioRecordingWidget>
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = widget.primaryColor ?? Theme.of(context).colorScheme.error;
-    final accentColor = widget.accentColor ?? Theme.of(context).colorScheme.errorContainer;
-    
+    final primaryColor =
+        widget.primaryColor ?? Theme.of(context).colorScheme.error;
+    final accentColor =
+        widget.accentColor ?? Theme.of(context).colorScheme.errorContainer;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -128,7 +130,9 @@ class _StudioRecordingWidgetState extends State<StudioRecordingWidget>
               animation: _rotationController,
               builder: (context, child) {
                 return Transform.rotate(
-                  angle: widget.isRecording ? _rotationController.value * 2 * math.pi : 0,
+                  angle: widget.isRecording
+                      ? _rotationController.value * 2 * math.pi
+                      : 0,
                   child: Container(
                     width: 45,
                     height: 45,
@@ -176,7 +180,9 @@ class _StudioRecordingWidgetState extends State<StudioRecordingWidget>
                         ),
                         // 録音アイコン
                         Icon(
-                          widget.isRecording ? Icons.stop : Icons.fiber_manual_record,
+                          widget.isRecording
+                              ? Icons.stop
+                              : Icons.fiber_manual_record,
                           color: Colors.white,
                           size: 16,
                         ),
@@ -187,9 +193,9 @@ class _StudioRecordingWidgetState extends State<StudioRecordingWidget>
               },
             ),
           ),
-          
+
           const SizedBox(width: 16),
-          
+
           // スタジオ級レベルメーター
           Expanded(
             child: Column(
@@ -212,9 +218,9 @@ class _StudioRecordingWidgetState extends State<StudioRecordingWidget>
                     },
                   ),
                 ),
-                
+
                 const SizedBox(height: 8),
-                
+
                 // レベルメーターバー
                 Row(
                   children: [
@@ -248,9 +254,9 @@ class _StudioRecordingWidgetState extends State<StudioRecordingWidget>
               ],
             ),
           ),
-          
+
           const SizedBox(width: 16),
-          
+
           // ステータス表示
           Column(
             mainAxisSize: MainAxisSize.min,
@@ -263,8 +269,9 @@ class _StudioRecordingWidgetState extends State<StudioRecordingWidget>
                     height: 8,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: widget.isRecording 
-                          ? primaryColor.withOpacity(0.5 + _pulseController.value * 0.5)
+                      color: widget.isRecording
+                          ? primaryColor
+                              .withOpacity(0.5 + _pulseController.value * 0.5)
                           : Colors.grey[600],
                     ),
                   );
@@ -286,14 +293,14 @@ class _StudioRecordingWidgetState extends State<StudioRecordingWidget>
       ),
     );
   }
-  
+
   Color _getLevelColor(double level, Color baseColor) {
     if (level < 0.3) return Colors.green;
     if (level < 0.7) return Colors.yellow;
     if (level < 0.9) return Colors.orange;
     return Colors.red;
   }
-  
+
   double _audioLevelToDb(double level) {
     if (level <= 0) return -60.0;
     return 20 * math.log(level) / math.ln10;
@@ -306,7 +313,7 @@ class StudioWaveformPainter extends CustomPainter {
   final bool isRecording;
   final Color color;
   final Animation<double> animation;
-  
+
   StudioWaveformPainter({
     required this.audioLevel,
     required this.isRecording,
@@ -317,37 +324,43 @@ class StudioWaveformPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (!isRecording) return;
-    
+
     final paint = Paint()
       ..color = color
       ..strokeWidth = 1
       ..style = PaintingStyle.stroke;
-    
+
     final path = Path();
     final random = math.Random(42); // 固定シードで一貫した波形
-    
+
     // 複数の周波数成分を重ね合わせて自然な波形を作成
     for (double x = 0; x < size.width; x += 2) {
       double y = size.height / 2;
-      
+
       // 基本波
-      y += math.sin((x / size.width * 4 * math.pi) + animation.value * 2 * math.pi) * 
-           audioLevel * size.height * 0.3;
-      
+      y += math.sin(
+              (x / size.width * 4 * math.pi) + animation.value * 2 * math.pi) *
+          audioLevel *
+          size.height *
+          0.3;
+
       // 高周波成分
-      y += math.sin((x / size.width * 8 * math.pi) + animation.value * 4 * math.pi) * 
-           audioLevel * size.height * 0.1;
-      
+      y += math.sin(
+              (x / size.width * 8 * math.pi) + animation.value * 4 * math.pi) *
+          audioLevel *
+          size.height *
+          0.1;
+
       // ランダムノイズ
       y += (random.nextDouble() - 0.5) * audioLevel * size.height * 0.05;
-      
+
       if (x == 0) {
         path.moveTo(x, y);
       } else {
         path.lineTo(x, y);
       }
     }
-    
+
     // グラデーション効果
     final gradient = LinearGradient(
       colors: [
@@ -357,14 +370,15 @@ class StudioWaveformPainter extends CustomPainter {
       ],
       stops: const [0.0, 0.5, 1.0],
     );
-    
-    paint.shader = gradient.createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    paint.shader =
+        gradient.createShader(Rect.fromLTWH(0, 0, size.width, size.height));
     canvas.drawPath(path, paint);
   }
 
   @override
   bool shouldRepaint(StudioWaveformPainter oldDelegate) {
     return oldDelegate.audioLevel != audioLevel ||
-           oldDelegate.isRecording != isRecording;
+        oldDelegate.isRecording != isRecording;
   }
 }

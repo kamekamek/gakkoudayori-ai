@@ -101,7 +101,8 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
   void _handleDeltaUpdate(String deltaJson) {
     if (mounted) {
       widget.onDeltaChanged?.call(deltaJson);
-      if (kDebugMode) debugPrint('📝 [QuillEditor] Delta更新: ${deltaJson.length}文字');
+      if (kDebugMode)
+        debugPrint('📝 [QuillEditor] Delta更新: ${deltaJson.length}文字');
     }
   }
 
@@ -218,11 +219,11 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
           console.error('Delta取得エラー:', e);
         }
       ''';
-      
+
       iframeWindow.postMessage("EXEC:$script", "*");
 
       if (kDebugMode) debugPrint('📝 [QuillEditor] Delta取得要求送信');
-      
+
       // 非同期で結果は _handleDeltaUpdate で受信
       return '';
     } catch (e) {
@@ -263,7 +264,8 @@ class _QuillEditorWidgetState extends State<QuillEditorWidget> {
   /// PDF生成要求処理
   void _requestPdfGeneration(String html) {
     // PDF生成機能は Phase R3-C で実装予定
-    if (kDebugMode) debugPrint('📄 [QuillEditor] PDF生成要求受信 - HTML文字数: ${html.length}');
+    if (kDebugMode)
+      debugPrint('📄 [QuillEditor] PDF生成要求受信 - HTML文字数: ${html.length}');
 
     // 将来的にはPDFサービスに送信
     // PdfService.generateFromHtml(html);

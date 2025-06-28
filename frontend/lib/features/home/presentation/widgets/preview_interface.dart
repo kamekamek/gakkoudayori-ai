@@ -315,21 +315,22 @@ class PreviewInterface extends StatelessWidget {
   void _regenerateContent(BuildContext context) async {
     final previewProvider = context.read<PreviewProvider>();
     final adkChatProvider = context.read<AdkChatProvider>();
-    
+
     if (previewProvider.htmlContent.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('再生成するコンテンツがありません')),
       );
       return;
     }
-    
+
     try {
       // PreviewProviderの再生成処理を開始
       await previewProvider.regenerateContent();
-      
+
       // 既存コンテンツの要約を取得（PreviewProvider内で解析済み）
-      final contentSummary = previewProvider.extractContentSummary(previewProvider.htmlContent);
-      
+      final contentSummary =
+          previewProvider.extractContentSummary(previewProvider.htmlContent);
+
       // Open_SuperAgent風の再生成プロンプト作成
       final regenerationPrompt = '''
 現在の学級通信を改善してください：
@@ -345,10 +346,10 @@ $contentSummary
 
 学級通信の内容を再生成してください。
 ''';
-      
+
       // ADKChatProviderに再生成を依頼
       adkChatProvider.sendMessage(regenerationPrompt);
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('🔄 コンテンツの再生成を開始しました...')),
       );

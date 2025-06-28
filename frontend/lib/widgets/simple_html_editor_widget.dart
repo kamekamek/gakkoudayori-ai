@@ -88,7 +88,8 @@ class _SimpleHtmlEditorWidgetState extends State<SimpleHtmlEditorWidget> {
         _isModified = false;
       });
 
-      if (kDebugMode) debugPrint('📝 [SimpleEditor] 編集内容保存: ${htmlContent.length}文字');
+      if (kDebugMode)
+        debugPrint('📝 [SimpleEditor] 編集内容保存: ${htmlContent.length}文字');
 
       // 保存完了のフィードバック
       ScaffoldMessenger.of(context).showSnackBar(

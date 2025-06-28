@@ -26,20 +26,20 @@ class ImageUploadWidget extends StatelessWidget {
           children: [
             // ヘッダー（任意）
             if (showHeader) _buildHeader(context, imageProvider),
-            
+
             // アップロードボタン群
             _buildUploadButtons(context, imageProvider),
-            
+
             // ステータス表示
             if (imageProvider.isUploading || imageProvider.isProcessing)
               _buildStatusIndicator(context, imageProvider),
-            
+
             // エラー表示
             if (imageProvider.lastError != null)
               _buildErrorCard(context, imageProvider),
-            
+
             const SizedBox(height: 16),
-            
+
             // 画像グリッド
             if (imageProvider.hasImages)
               SizedBox(
@@ -68,7 +68,8 @@ class ImageUploadWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context, ImageManagementProvider imageProvider) {
+  Widget _buildHeader(
+      BuildContext context, ImageManagementProvider imageProvider) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -87,9 +88,9 @@ class ImageUploadWidget extends StatelessWidget {
             child: Text(
               '画像アップロード',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.bold,
-              ),
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
           ),
           if (imageProvider.hasImages)
@@ -102,9 +103,9 @@ class ImageUploadWidget extends StatelessWidget {
               child: Text(
                 '${imageProvider.imageCount}/$maxImages',
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSecondary,
-                  fontWeight: FontWeight.bold,
-                ),
+                      color: Theme.of(context).colorScheme.onSecondary,
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
             ),
         ],
@@ -112,9 +113,10 @@ class ImageUploadWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildUploadButtons(BuildContext context, ImageManagementProvider imageProvider) {
+  Widget _buildUploadButtons(
+      BuildContext context, ImageManagementProvider imageProvider) {
     final canAdd = imageProvider.canAddMore;
-    
+
     return Container(
       padding: const EdgeInsets.all(16),
       child: Wrap(
@@ -127,30 +129,36 @@ class ImageUploadWidget extends StatelessWidget {
             icon: Icons.folder_open,
             label: 'ファイル選択',
             tooltip: 'デバイスから画像ファイルを選択',
-            enabled: canAdd && !imageProvider.isUploading && !imageProvider.isProcessing,
+            enabled: canAdd &&
+                !imageProvider.isUploading &&
+                !imageProvider.isProcessing,
             onPressed: () => imageProvider.addImagesFromDevice(),
           ),
-          
+
           // カメラ撮影ボタン
           _buildUploadButton(
             context: context,
             icon: Icons.camera_alt,
             label: 'カメラ撮影',
             tooltip: 'カメラで写真を撮影',
-            enabled: canAdd && !imageProvider.isUploading && !imageProvider.isProcessing,
+            enabled: canAdd &&
+                !imageProvider.isUploading &&
+                !imageProvider.isProcessing,
             onPressed: () => imageProvider.addImageFromCamera(),
           ),
-          
+
           // URL指定ボタン
           _buildUploadButton(
             context: context,
             icon: Icons.link,
             label: 'URL指定',
             tooltip: 'URLから画像を取得',
-            enabled: canAdd && !imageProvider.isUploading && !imageProvider.isProcessing,
+            enabled: canAdd &&
+                !imageProvider.isUploading &&
+                !imageProvider.isProcessing,
             onPressed: () => _showUrlInputDialog(context, imageProvider),
           ),
-          
+
           // 全削除ボタン（画像がある場合のみ）
           if (imageProvider.hasImages)
             _buildUploadButton(
@@ -158,7 +166,8 @@ class ImageUploadWidget extends StatelessWidget {
               icon: Icons.clear_all,
               label: '全削除',
               tooltip: '全ての画像を削除',
-              enabled: !imageProvider.isUploading && !imageProvider.isProcessing,
+              enabled:
+                  !imageProvider.isUploading && !imageProvider.isProcessing,
               onPressed: () => _showClearConfirmDialog(context, imageProvider),
               isDestructive: true,
             ),
@@ -183,7 +192,7 @@ class ImageUploadWidget extends StatelessWidget {
         icon: Icon(icon, size: 18),
         label: Text(label),
         style: ElevatedButton.styleFrom(
-          backgroundColor: isDestructive 
+          backgroundColor: isDestructive
               ? Theme.of(context).colorScheme.error
               : Theme.of(context).colorScheme.primary,
           foregroundColor: isDestructive
@@ -198,7 +207,8 @@ class ImageUploadWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusIndicator(BuildContext context, ImageManagementProvider imageProvider) {
+  Widget _buildStatusIndicator(
+      BuildContext context, ImageManagementProvider imageProvider) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(12),
@@ -223,9 +233,9 @@ class ImageUploadWidget extends StatelessWidget {
             child: Text(
               imageProvider.statusMessage,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onPrimaryContainer,
-                fontWeight: FontWeight.w500,
-              ),
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    fontWeight: FontWeight.w500,
+                  ),
             ),
           ),
         ],
@@ -233,7 +243,8 @@ class ImageUploadWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildErrorCard(BuildContext context, ImageManagementProvider imageProvider) {
+  Widget _buildErrorCard(
+      BuildContext context, ImageManagementProvider imageProvider) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(12),
@@ -253,8 +264,8 @@ class ImageUploadWidget extends StatelessWidget {
             child: Text(
               imageProvider.lastError!,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onErrorContainer,
-              ),
+                    color: Theme.of(context).colorScheme.onErrorContainer,
+                  ),
             ),
           ),
           IconButton(
@@ -295,15 +306,15 @@ class ImageUploadWidget extends StatelessWidget {
             Text(
               '画像が追加されていません',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
             ),
             const SizedBox(height: 8),
             Text(
               '上のボタンから画像を追加してください',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.outline,
-              ),
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
             ),
           ],
         ),
@@ -311,7 +322,8 @@ class ImageUploadWidget extends StatelessWidget {
     );
   }
 
-  void _showUrlInputDialog(BuildContext context, ImageManagementProvider imageProvider) {
+  void _showUrlInputDialog(
+      BuildContext context, ImageManagementProvider imageProvider) {
     showDialog(
       context: context,
       builder: (context) => UrlInputDialog(
@@ -323,7 +335,8 @@ class ImageUploadWidget extends StatelessWidget {
     );
   }
 
-  void _showClearConfirmDialog(BuildContext context, ImageManagementProvider imageProvider) {
+  void _showClearConfirmDialog(
+      BuildContext context, ImageManagementProvider imageProvider) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(

@@ -10,10 +10,12 @@ class PlatformService {
   static bool get isMobile => !kIsWeb;
 
   /// 現在のプラットフォームがiOSかどうか
-  static bool get isIOS => !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+  static bool get isIOS =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
 
   /// 現在のプラットフォームがAndroidかどうか
-  static bool get isAndroid => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+  static bool get isAndroid =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
   /// プラットフォーム名を取得
   static String get platformName {
@@ -56,7 +58,7 @@ class PlatformService {
       return {
         'editorType': 'inapp_webview',
         'audioRecording': 'native_recorder',
-        'fileUpload': 'native_file_picker', 
+        'fileUpload': 'native_file_picker',
         'allowInlineEdit': true,
       };
     }

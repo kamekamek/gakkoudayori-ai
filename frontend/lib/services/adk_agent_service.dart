@@ -20,16 +20,18 @@ class AdkAgentService {
   }) async {
     try {
       final url = Uri.parse('$_baseUrl/chat');
-      final response = await _httpClient.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'session': sessionId,
-          'message': message,
-        }),
-      ).timeout(const Duration(seconds: 30));
+      final response = await _httpClient
+          .post(
+            url,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({
+              'session': sessionId,
+              'message': message,
+            }),
+          )
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -315,14 +317,13 @@ class AdkAgentService {
       return NetworkException.timeout();
     }
 
-    if (errorString.contains('connection') || 
+    if (errorString.contains('connection') ||
         errorString.contains('network') ||
         errorString.contains('socket')) {
       return NetworkException.connectionLost();
     }
 
-    if (errorString.contains('format') || 
-        errorString.contains('parse')) {
+    if (errorString.contains('format') || errorString.contains('parse')) {
       return ContentException.parsingFailed(error);
     }
 

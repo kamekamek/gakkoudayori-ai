@@ -33,7 +33,7 @@ class _UrlInputDialogState extends State<UrlInputDialog> {
   void _validateUrl() {
     final url = _urlController.text.trim();
     final isValid = _isValidImageUrl(url);
-    
+
     if (isValid != _isValidUrl) {
       setState(() {
         _isValidUrl = isValid;
@@ -43,19 +43,19 @@ class _UrlInputDialogState extends State<UrlInputDialog> {
 
   bool _isValidImageUrl(String url) {
     if (url.isEmpty) return false;
-    
+
     try {
       final uri = Uri.parse(url);
-      
+
       // スキームチェック
       if (!uri.hasScheme || (!uri.scheme.startsWith('http'))) {
         return false;
       }
-      
+
       // 画像拡張子チェック
       final path = uri.path.toLowerCase();
       final supportedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
-      
+
       return supportedExtensions.any((ext) => path.endsWith(ext));
     } catch (e) {
       return false;
@@ -103,23 +103,25 @@ class _UrlInputDialogState extends State<UrlInputDialog> {
                     Text(
                       '対応形式',
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
-                        fontWeight: FontWeight.bold,
-                      ),
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'JPEG, PNG, GIF, WebP',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
-                      ),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onPrimaryContainer,
+                          ),
                     ),
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               // URL入力フィールド
               TextFormField(
                 controller: _urlController,
@@ -140,18 +142,18 @@ class _UrlInputDialogState extends State<UrlInputDialog> {
                   if (value == null || value.trim().isEmpty) {
                     return 'URLを入力してください';
                   }
-                  
+
                   if (!_isValidImageUrl(value.trim())) {
                     return '有効な画像URLを入力してください';
                   }
-                  
+
                   return null;
                 },
                 onFieldSubmitted: (_) => _submitUrl(),
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               // 使用例
               ExpansionTile(
                 title: Text(
@@ -169,8 +171,10 @@ class _UrlInputDialogState extends State<UrlInputDialog> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildExampleUrl('https://example.com/photo.jpg'),
-                        _buildExampleUrl('https://cdn.example.com/images/school.png'),
-                        _buildExampleUrl('https://photos.google.com/share/image.webp'),
+                        _buildExampleUrl(
+                            'https://cdn.example.com/images/school.png'),
+                        _buildExampleUrl(
+                            'https://photos.google.com/share/image.webp'),
                       ],
                     ),
                   ),
@@ -209,9 +213,9 @@ class _UrlInputDialogState extends State<UrlInputDialog> {
         child: Text(
           url,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.primary,
-            decoration: TextDecoration.underline,
-          ),
+                color: Theme.of(context).colorScheme.primary,
+                decoration: TextDecoration.underline,
+              ),
         ),
       ),
     );

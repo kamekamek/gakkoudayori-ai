@@ -3,21 +3,21 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 
 /// PDF生成APIクライアント
-/// 
+///
 /// バックエンドのPDF生成エンドポイントと通信
 class PdfApiService {
-  static const String _baseUrl = kDebugMode 
-      ? 'http://localhost:8081'  // 開発環境
-      : 'https://yutori-backend-944053509139.asia-northeast1.run.app';  // 本番環境
+  static const String _baseUrl = kDebugMode
+      ? 'http://localhost:8081' // 開発環境
+      : 'https://yutori-backend-944053509139.asia-northeast1.run.app'; // 本番環境
 
   /// HTMLからPDFを生成
-  /// 
+  ///
   /// [htmlContent] PDF化するHTMLコンテンツ
   /// [title] ドキュメントタイトル
   /// [pageSize] ページサイズ（A4, A3等）
   /// [includeHeader] ヘッダーを含めるか
   /// [includeFooter] フッターを含めるか
-  /// 
+  ///
   /// Returns: PDF生成結果（Base64エンコードされたPDFを含む）
   static Future<Map<String, dynamic>> generatePdf({
     required String htmlContent,
@@ -29,7 +29,7 @@ class PdfApiService {
     String customCss = '',
   }) async {
     final url = Uri.parse('$_baseUrl/api/v1/pdf/generate');
-    
+
     final requestBody = {
       'html_content': htmlContent,
       'title': title,
@@ -47,15 +47,17 @@ class PdfApiService {
         print('HTMLコンテンツ長: ${htmlContent.length}文字');
       }
 
-      final response = await http.post(
+      final response = await http
+          .post(
         url,
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
         body: jsonEncode(requestBody),
-      ).timeout(
-        const Duration(seconds: 30),  // 30秒タイムアウト
+      )
+          .timeout(
+        const Duration(seconds: 30), // 30秒タイムアウト
         onTimeout: () {
           throw Exception('PDF生成がタイムアウトしました（30秒）');
         },
@@ -67,11 +69,12 @@ class PdfApiService {
 
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
-        
+
         if (responseData['success'] == true) {
           if (kDebugMode) {
             final pdfData = responseData['data'];
-            print('PDF生成成功: ${pdfData['file_size_mb']} MB, ${pdfData['page_count']}ページ');
+            print(
+                'PDF生成成功: ${pdfData['file_size_mb']} MB, ${pdfData['page_count']}ページ');
           }
           return responseData;
         } else {
@@ -79,10 +82,12 @@ class PdfApiService {
         }
       } else if (response.statusCode == 400) {
         final errorData = jsonDecode(response.body);
-        throw Exception('リクエストエラー: ${errorData['detail'] ?? 'Invalid request'}');
+        throw Exception(
+            'リクエストエラー: ${errorData['detail'] ?? 'Invalid request'}');
       } else if (response.statusCode == 500) {
         final errorData = jsonDecode(response.body);
-        throw Exception('サーバーエラー: ${errorData['detail'] ?? 'Internal server error'}');
+        throw Exception(
+            'サーバーエラー: ${errorData['detail'] ?? 'Internal server error'}');
       } else {
         throw Exception('PDF生成に失敗しました (HTTP ${response.statusCode})');
       }
@@ -90,10 +95,12 @@ class PdfApiService {
       if (kDebugMode) {
         print('PDF生成エラー: $e');
       }
-      
-      if (e.toString().contains('SocketException') || e.toString().contains('Connection')) {
+
+      if (e.toString().contains('SocketException') ||
+          e.toString().contains('Connection')) {
         throw Exception('ネットワーク接続エラー: バックエンドサーバーに接続できません');
-      } else if (e.toString().contains('TimeoutException') || e.toString().contains('タイムアウト')) {
+      } else if (e.toString().contains('TimeoutException') ||
+          e.toString().contains('タイムアウト')) {
         throw Exception('PDF生成がタイムアウトしました。時間をおいて再試行してください');
       } else {
         rethrow;
@@ -102,7 +109,7 @@ class PdfApiService {
   }
 
   /// PDF生成のテスト
-  /// 
+  ///
   /// サービスが正常に動作するかテスト
   static Future<bool> testPdfGeneration() async {
     try {
@@ -134,15 +141,15 @@ class PdfApiService {
   }
 
   /// サーバーの健康状態チェック
-  /// 
+  ///
   /// バックエンドサーバーが稼働中かチェック
   static Future<bool> checkServerHealth() async {
     try {
       final url = Uri.parse('$_baseUrl/health');
       final response = await http.get(url).timeout(
-        const Duration(seconds: 5),
-      );
-      
+            const Duration(seconds: 5),
+          );
+
       return response.statusCode == 200;
     } catch (e) {
       if (kDebugMode) {
@@ -153,7 +160,7 @@ class PdfApiService {
   }
 
   /// PDF生成可能性チェック
-  /// 
+  ///
   /// HTMLコンテンツがPDF生成に適しているかチェック
   static Map<String, dynamic> validateHtmlForPdf(String htmlContent) {
     final issues = <String>[];
@@ -168,7 +175,8 @@ class PdfApiService {
       warnings.add('HTMLコンテンツが短すぎる可能性があります');
     }
 
-    if (htmlContent.length > 1000000) {  // 1MB
+    if (htmlContent.length > 1000000) {
+      // 1MB
       warnings.add('HTMLコンテンツが大きすぎる可能性があります');
     }
 
@@ -187,7 +195,8 @@ class PdfApiService {
     }
 
     // 大きな画像の警告
-    final base64ImageRegex = RegExp(r'data:image/[^;]+;base64,[A-Za-z0-9+/=]{10000,}');
+    final base64ImageRegex =
+        RegExp(r'data:image/[^;]+;base64,[A-Za-z0-9+/=]{10000,}');
     if (base64ImageRegex.hasMatch(htmlContent)) {
       warnings.add('大きなBase64画像が含まれています（PDF生成に時間がかかる可能性があります）');
     }

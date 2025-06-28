@@ -31,7 +31,7 @@ class _AudioWaveformWidgetState extends State<AudioWaveformWidget>
   @override
   void initState() {
     super.initState();
-    
+
     // メインアニメーションコントローラー
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 100),
@@ -59,7 +59,7 @@ class _AudioWaveformWidgetState extends State<AudioWaveformWidget>
   @override
   void didUpdateWidget(AudioWaveformWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    
+
     if (widget.isRecording != oldWidget.isRecording) {
       if (widget.isRecording) {
         _startAnimation();
@@ -94,7 +94,7 @@ class _AudioWaveformWidgetState extends State<AudioWaveformWidget>
       final randomFactor = 0.3 + (random.nextDouble() * 0.7);
       _barHeights[i] = (baseLevel * randomFactor).clamp(0.1, 1.0);
     }
-    
+
     if (mounted) {
       setState(() {});
     }
@@ -112,7 +112,7 @@ class _AudioWaveformWidgetState extends State<AudioWaveformWidget>
   @override
   Widget build(BuildContext context) {
     final color = widget.color ?? Theme.of(context).colorScheme.primary;
-    
+
     return SizedBox(
       height: widget.height,
       child: Row(
@@ -122,12 +122,12 @@ class _AudioWaveformWidgetState extends State<AudioWaveformWidget>
           return AnimatedBuilder(
             animation: _barControllers[index],
             builder: (context, child) {
-              final animationValue = widget.isRecording 
-                  ? _barControllers[index].value 
-                  : 0.0;
-              
+              final animationValue =
+                  widget.isRecording ? _barControllers[index].value : 0.0;
+
               final barHeight = widget.isRecording
-                  ? (_barHeights[index] + (animationValue * 0.3)) * widget.height
+                  ? (_barHeights[index] + (animationValue * 0.3)) *
+                      widget.height
                   : widget.height * 0.1;
 
               return Container(
@@ -172,7 +172,7 @@ class _AnimatedMicIconState extends State<AnimatedMicIcon>
   @override
   void initState() {
     super.initState();
-    
+
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 1000),
       vsync: this,
@@ -202,7 +202,7 @@ class _AnimatedMicIconState extends State<AnimatedMicIcon>
   @override
   void didUpdateWidget(AnimatedMicIcon oldWidget) {
     super.didUpdateWidget(oldWidget);
-    
+
     if (widget.isRecording != oldWidget.isRecording) {
       if (widget.isRecording) {
         _animationController.repeat(reverse: true);

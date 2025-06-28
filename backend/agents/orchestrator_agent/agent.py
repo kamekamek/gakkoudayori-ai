@@ -10,7 +10,8 @@
 # from google.genai.types import Content, Part
 # import google.genai.types as genai_types
 
-from google.adk.agents import SequentialAgent 
+from google.adk.agents import SequentialAgent
+
 ORCHESTRATOR_INSTRUCTION = """# オーケストレーターエージェント指示書
 
 あなたは学級通信作成ワークフローを管理するオーケストレーターエージェントです。
@@ -41,8 +42,6 @@ ORCHESTRATOR_INSTRUCTION = """# オーケストレーターエージェント指
 - ADKの標準的なセッション状態管理を使用"""
 
 
-
-
 def create_orchestrator_agent() -> SequentialAgent:
     """
     学級通信作成のワークフロー（計画→生成）を実行するシーケンシャルエージェントを作成します。
@@ -52,7 +51,7 @@ def create_orchestrator_agent() -> SequentialAgent:
     # 循環importを避けるため、関数内でimport
     from agents.conversation_agent.agent import create_conversation_agent
     from agents.layout_agent.agent import create_layout_agent
-    
+
     return SequentialAgent(
         name="orchestrator_agent",
         sub_agents=[

@@ -5,7 +5,7 @@ import '../../../../services/google_auth_service.dart';
 import '../../../../services/classroom_service.dart';
 
 /// Google Classroom投稿ダイアログ
-/// 
+///
 /// 学級通信をClassroomに投稿するためのUI
 class ClassroomPostDialog extends StatefulWidget {
   final Uint8List pdfBytes;
@@ -26,7 +26,7 @@ class ClassroomPostDialog extends StatefulWidget {
 class _ClassroomPostDialogState extends State<ClassroomPostDialog> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
-  
+
   bool _isLoading = false;
   bool _isAuthenticated = false;
   String? _selectedCourseId;
@@ -61,7 +61,7 @@ class _ClassroomPostDialogState extends State<ClassroomPostDialog> {
 
     try {
       _isAuthenticated = GoogleAuthService.isSignedIn;
-      
+
       if (_isAuthenticated) {
         await _loadCourses();
       }
@@ -80,11 +80,11 @@ class _ClassroomPostDialogState extends State<ClassroomPostDialog> {
   Future<void> _loadCourses() async {
     try {
       _courses = await ClassroomService.getCourses();
-      
+
       if (_courses.isNotEmpty) {
         _selectedCourseId = _courses.first.id;
       }
-      
+
       setState(() {});
     } catch (e) {
       setState(() {
@@ -102,7 +102,7 @@ class _ClassroomPostDialogState extends State<ClassroomPostDialog> {
 
     try {
       final user = await GoogleAuthService.signIn();
-      
+
       if (user != null) {
         _isAuthenticated = true;
         await _loadCourses();
@@ -192,7 +192,7 @@ class _ClassroomPostDialogState extends State<ClassroomPostDialog> {
 
         // 成功時は少し待ってからダイアログを閉じる
         await Future.delayed(const Duration(seconds: 2));
-        
+
         if (mounted) {
           Navigator.of(context).pop(true);
         }
@@ -234,8 +234,8 @@ class _ClassroomPostDialogState extends State<ClassroomPostDialog> {
                 Text(
                   'Google Classroom に投稿',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
                 const Spacer(),
                 IconButton(
@@ -244,7 +244,7 @@ class _ClassroomPostDialogState extends State<ClassroomPostDialog> {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 24),
 
             // メッセージ表示
@@ -284,7 +284,8 @@ class _ClassroomPostDialogState extends State<ClassroomPostDialog> {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.check_circle, color: Colors.green.shade700, size: 20),
+                    Icon(Icons.check_circle,
+                        color: Colors.green.shade700, size: 20),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -411,8 +412,8 @@ class _ClassroomPostDialogState extends State<ClassroomPostDialog> {
           Text(
             'コース選択',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+                  fontWeight: FontWeight.bold,
+                ),
           ),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
@@ -440,8 +441,8 @@ class _ClassroomPostDialogState extends State<ClassroomPostDialog> {
           Text(
             'タイトル',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+                  fontWeight: FontWeight.bold,
+                ),
           ),
           const SizedBox(height: 8),
           TextField(
@@ -458,8 +459,8 @@ class _ClassroomPostDialogState extends State<ClassroomPostDialog> {
           Text(
             '説明文',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+                  fontWeight: FontWeight.bold,
+                ),
           ),
           const SizedBox(height: 8),
           TextField(
@@ -477,8 +478,8 @@ class _ClassroomPostDialogState extends State<ClassroomPostDialog> {
           Text(
             '投稿設定',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+                  fontWeight: FontWeight.bold,
+                ),
           ),
           const SizedBox(height: 8),
 
@@ -496,8 +497,8 @@ class _ClassroomPostDialogState extends State<ClassroomPostDialog> {
                       Text(
                         '予約投稿',
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                              fontWeight: FontWeight.bold,
+                            ),
                       ),
                       const Spacer(),
                       TextButton(
@@ -516,7 +517,8 @@ class _ClassroomPostDialogState extends State<ClassroomPostDialog> {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.schedule, size: 16, color: Colors.orange.shade700),
+                          Icon(Icons.schedule,
+                              size: 16, color: Colors.orange.shade700),
                           const SizedBox(width: 8),
                           Text(
                             '投稿予定: ${_scheduledTime!.month}/${_scheduledTime!.day} ${_scheduledTime!.hour}:${_scheduledTime!.minute.toString().padLeft(2, '0')}',
@@ -524,8 +526,10 @@ class _ClassroomPostDialogState extends State<ClassroomPostDialog> {
                           ),
                           const Spacer(),
                           IconButton(
-                            onPressed: () => setState(() => _scheduledTime = null),
-                            icon: Icon(Icons.clear, size: 16, color: Colors.orange.shade700),
+                            onPressed: () =>
+                                setState(() => _scheduledTime = null),
+                            icon: Icon(Icons.clear,
+                                size: 16, color: Colors.orange.shade700),
                           ),
                         ],
                       ),
@@ -556,8 +560,8 @@ class _ClassroomPostDialogState extends State<ClassroomPostDialog> {
                       Text(
                         '添付ファイル',
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                              fontWeight: FontWeight.bold,
+                            ),
                       ),
                     ],
                   ),
@@ -578,7 +582,8 @@ class _ClassroomPostDialogState extends State<ClassroomPostDialog> {
                             children: [
                               Text(
                                 '${_titleController.text.trim()}.pdf',
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
                               ),
                               Text(
                                 'サイズ: ${(widget.pdfBytes.length / 1024 / 1024).toStringAsFixed(1)} MB',

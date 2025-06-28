@@ -30,7 +30,7 @@ class AppColors {
   static const Color background = Color(0xFFFAFAFA);
   static const Color surface = Color(0xFFFFFFFF);
   static const Color surfaceVariant = Color(0xFFF5F5F5);
-  
+
   // テキストカラー
   static const Color onBackground = Color(0xFF212121);
   static const Color onSurface = Color(0xFF424242);
@@ -53,17 +53,17 @@ class AppColors {
 
   /// ColorSchemeを生成する
   static ColorScheme get colorScheme => const ColorScheme(
-    brightness: Brightness.light,
-    primary: primary,
-    onPrimary: onPrimary,
-    secondary: secondary,
-    onSecondary: onSecondary,
-    tertiary: education,
-    onTertiary: Colors.white,
-    error: error,
-    onError: Colors.white,
-    surface: surface,
-    onSurface: onSurface,
-    onBackground: onBackground,
-  );
+        brightness: Brightness.light,
+        primary: primary,
+        onPrimary: onPrimary,
+        secondary: secondary,
+        onSecondary: onSecondary,
+        tertiary: education,
+        onTertiary: Colors.white,
+        error: error,
+        onError: Colors.white,
+        surface: surface,
+        onSurface: onSurface,
+        onBackground: onBackground,
+      );
 }

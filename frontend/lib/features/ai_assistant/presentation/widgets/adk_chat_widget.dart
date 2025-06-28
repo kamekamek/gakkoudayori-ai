@@ -26,7 +26,7 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
   final TextEditingController _textController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
-  
+
   @override
   void initState() {
     super.initState();
@@ -36,29 +36,29 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
       provider.addListener(_onProviderChanged);
     });
   }
-  
+
   void _onProviderChanged() {
     final provider = context.read<AdkChatProvider>();
-    if (provider.transcriptionResult != null && 
+    if (provider.transcriptionResult != null &&
         provider.transcriptionResult!.isNotEmpty) {
       setState(() {
         // 既存のテキストに音声認識結果を追記
         final currentText = _textController.text;
         final transcription = provider.transcriptionResult!;
-        
+
         // 既存テキストがある場合はスペースを追加してから追記
         if (currentText.isNotEmpty) {
           _textController.text = '$currentText $transcription';
         } else {
           _textController.text = transcription;
         }
-        
+
         // カーソルを末尾に移動
         _textController.selection = TextSelection.fromPosition(
           TextPosition(offset: _textController.text.length),
         );
       });
-      
+
       // 使用後は音声認識結果をクリア（再適用を防ぐため）
       provider.clearTranscriptionResult();
     }
@@ -88,20 +88,20 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
   Widget build(BuildContext context) {
     return Consumer<AdkChatProvider>(
       builder: (context, provider, _) {
-          // HTMLが生成されたらコールバックを呼び出す
-          if (provider.generatedHtml != null &&
-              widget.onHtmlGenerated != null) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              widget.onHtmlGenerated!(provider.generatedHtml!);
-            });
-          }
+        // HTMLが生成されたらコールバックを呼び出す
+        if (provider.generatedHtml != null && widget.onHtmlGenerated != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            widget.onHtmlGenerated!(provider.generatedHtml!);
+          });
+        }
 
-          return Flexible(
-            child: Column(
-              children: [
+        return Flexible(
+          child: Column(
+            children: [
               // ヘッダー（デザインモックアップ準拠）
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   border: Border(
@@ -141,7 +141,8 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
                         icon: const Icon(Icons.refresh, size: 16),
                         label: const Text('🔄', style: TextStyle(fontSize: 12)),
                         style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
                         ),
                       ),
                   ],
@@ -171,7 +172,8 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
               if (provider.error != null)
                 Container(
                   padding: const EdgeInsets.all(12),
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.red.shade50,
                     borderRadius: BorderRadius.circular(8),
@@ -201,12 +203,19 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
               // 音声録音中の表示（スタイリッシュ版）
               if (provider.isVoiceRecording)
                 Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        Theme.of(context).colorScheme.errorContainer.withOpacity(0.9),
-                        Theme.of(context).colorScheme.errorContainer.withOpacity(0.7),
+                        Theme.of(context)
+                            .colorScheme
+                            .errorContainer
+                            .withOpacity(0.9),
+                        Theme.of(context)
+                            .colorScheme
+                            .errorContainer
+                            .withOpacity(0.7),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -214,20 +223,25 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: Theme.of(context).colorScheme.error.withOpacity(0.3),
+                        color: Theme.of(context)
+                            .colorScheme
+                            .error
+                            .withOpacity(0.3),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
                     ],
                     border: Border.all(
-                      color: Theme.of(context).colorScheme.error.withOpacity(0.2),
+                      color:
+                          Theme.of(context).colorScheme.error.withOpacity(0.2),
                       width: 1,
                     ),
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(24),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
                       child: Row(
                         children: [
                           // アニメーション付きマイクアイコン
@@ -235,7 +249,10 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
                             padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Theme.of(context).colorScheme.error.withOpacity(0.2),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .error
+                                  .withOpacity(0.2),
                             ),
                             child: AnimatedMicIcon(
                               isRecording: provider.isVoiceRecording,
@@ -243,9 +260,9 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
                               size: 16,
                             ),
                           ),
-                          
+
                           const SizedBox(width: 12),
-                          
+
                           // メイン波形表示
                           Expanded(
                             flex: 3,
@@ -258,20 +275,25 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
                               style: WaveformStyle.ripple, // 波紋エフェクト
                             ),
                           ),
-                          
+
                           const SizedBox(width: 12),
-                          
+
                           // ステータステキストとドットアニメーション
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
                                 '録音中',
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Theme.of(context).colorScheme.onErrorContainer,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 12,
-                                ),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onErrorContainer,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 12,
+                                    ),
                               ),
                               const SizedBox(width: 4),
                               RecordingDotsIndicator(
@@ -338,15 +360,16 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
                             color: Color(0xFF424242),
                           ),
                           onSubmitted: (_) {
-                            debugPrint('[AdkChatWidget] onSubmitted triggered!');
+                            debugPrint(
+                                '[AdkChatWidget] onSubmitted triggered!');
                             _sendMessage(provider);
                           },
                         ),
                       ),
                     ),
-                    
+
                     const SizedBox(width: 12),
-                    
+
                     // 画像アップロードボタン
                     Container(
                       width: 48,
@@ -372,9 +395,9 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
                         tooltip: '画像アップロード',
                       ),
                     ),
-                    
+
                     const SizedBox(width: 8),
-                    
+
                     // 音声入力ボタン
                     Container(
                       width: 48,
@@ -398,16 +421,18 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
                       child: IconButton(
                         onPressed: () => _handleVoiceRecordingToggle(provider),
                         icon: Icon(
-                          provider.isVoiceRecording ? Icons.mic : Icons.mic_none,
+                          provider.isVoiceRecording
+                              ? Icons.mic
+                              : Icons.mic_none,
                           color: Colors.white,
                           size: 24,
                         ),
                         tooltip: provider.isVoiceRecording ? '🎤' : '🎤',
                       ),
                     ),
-                    
+
                     const SizedBox(width: 8),
-                    
+
                     // 送信ボタン
                     Container(
                       width: 48,
@@ -440,15 +465,16 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
                 ),
               ),
             ],
-            ),
-          );
-        },
-      );
+          ),
+        );
+      },
+    );
   }
 
   Widget _buildMessageBubble(MutableChatMessage message) {
     final isUser = message.role == 'user';
-    final hasImages = message.content.contains('📷') && message.content.contains('画像を添付しました');
+    final hasImages =
+        message.content.contains('📷') && message.content.contains('画像を添付しました');
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
@@ -475,14 +501,17 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: isUser
-                    ? const Color(0xFF2c5aa0)
-                    : const Color(0xFFF5F5F5),
+                color:
+                    isUser ? const Color(0xFF2c5aa0) : const Color(0xFFF5F5F5),
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(16),
                   topRight: const Radius.circular(16),
-                  bottomLeft: isUser ? const Radius.circular(16) : const Radius.circular(4),
-                  bottomRight: isUser ? const Radius.circular(4) : const Radius.circular(16),
+                  bottomLeft: isUser
+                      ? const Radius.circular(16)
+                      : const Radius.circular(4),
+                  bottomRight: isUser
+                      ? const Radius.circular(4)
+                      : const Radius.circular(16),
                 ),
                 boxShadow: [
                   BoxShadow(
@@ -503,13 +532,17 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
                           Icon(
                             Icons.image,
                             size: 16,
-                            color: isUser ? Colors.white.withOpacity(0.8) : const Color(0xFF666666),
+                            color: isUser
+                                ? Colors.white.withOpacity(0.8)
+                                : const Color(0xFF666666),
                           ),
                           const SizedBox(width: 4),
                           Text(
                             '画像添付',
                             style: TextStyle(
-                              color: isUser ? Colors.white.withOpacity(0.8) : const Color(0xFF666666),
+                              color: isUser
+                                  ? Colors.white.withOpacity(0.8)
+                                  : const Color(0xFF666666),
                               fontSize: 12,
                               fontStyle: FontStyle.italic,
                             ),
@@ -602,10 +635,10 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
 
     // テキストコントローラーをクリア
     _textController.clear();
-    
+
     // 音声認識結果もクリア（再適用を防ぐため）
     provider.clearTranscriptionResult();
-    
+
     _focusNode.requestFocus();
 
     // スクロールを最下部へ
@@ -615,8 +648,9 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
   }
 
   Future<void> _handleVoiceRecordingToggle(AdkChatProvider provider) async {
-    debugPrint('🎤 [AdkChatWidget] Voice recording toggle pressed. Current state: ${provider.isVoiceRecording}');
-    
+    debugPrint(
+        '🎤 [AdkChatWidget] Voice recording toggle pressed. Current state: ${provider.isVoiceRecording}');
+
     if (provider.isVoiceRecording) {
       // 録音停止
       debugPrint('⏹️ [AdkChatWidget] Stopping voice recording...');
@@ -626,7 +660,7 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
       debugPrint('🎙️ [AdkChatWidget] Starting voice recording...');
       final success = await provider.startVoiceRecording();
       debugPrint('📊 [AdkChatWidget] Voice recording start result: $success');
-      
+
       if (!success) {
         debugPrint('❌ [AdkChatWidget] Voice recording failed to start');
         if (mounted) {
@@ -691,10 +725,12 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
                             const SizedBox(width: 8),
                             ElevatedButton.icon(
                               onPressed: imageProvider.hasImages
-                                  ? () => _addImagesToChat(context, imageProvider)
+                                  ? () =>
+                                      _addImagesToChat(context, imageProvider)
                                   : null,
                               icon: const Icon(Icons.add_photo_alternate),
-                              label: Text('チャットに追加 (${imageProvider.imageCount})'),
+                              label:
+                                  Text('チャットに追加 (${imageProvider.imageCount})'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF2c5aa0),
                                 foregroundColor: Colors.white,
@@ -714,24 +750,25 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
     );
   }
 
-  void _addImagesToChat(BuildContext context, ImageManagementProvider imageProvider) {
+  void _addImagesToChat(
+      BuildContext context, ImageManagementProvider imageProvider) {
     final provider = context.read<AdkChatProvider>();
-    
+
     // 画像情報をチャットに追加
     final imageDescriptions = imageProvider.uploadedImages
         .map((img) => '📷 ${img.name} (${img.sizeDisplay})')
         .join('\n');
-    
+
     // テキストフィールドに画像情報を追加
     final currentText = _textController.text;
-    final newText = currentText.isEmpty 
+    final newText = currentText.isEmpty
         ? '画像を添付しました:\n$imageDescriptions'
         : '$currentText\n\n画像を添付しました:\n$imageDescriptions';
-    
+
     _textController.text = newText;
-    
+
     Navigator.of(context).pop();
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('📷 ${imageProvider.imageCount}枚の画像をチャットに追加しました'),

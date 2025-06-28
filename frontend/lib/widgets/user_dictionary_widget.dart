@@ -35,7 +35,7 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
   // 新規用語追加用
   final TextEditingController _termController = TextEditingController();
   final TextEditingController _variationsController = TextEditingController();
-  
+
   // 検索用
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
@@ -64,7 +64,6 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
 
     try {
       final terms = await _dictionaryService.getTerms(widget.userId);
-      
 
       setState(() {
         _customTerms = terms;
@@ -110,9 +109,8 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
     }
 
     // 読み方を設定
-    final variations = variationsText.isNotEmpty
-        ? [variationsText.trim()]
-        : <String>[];
+    final variations =
+        variationsText.isNotEmpty ? [variationsText.trim()] : <String>[];
 
     setState(() {
       _isLoading = true;
@@ -260,7 +258,8 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
 
   void _showEditTermDialog(UserDictionaryEntry entryToEdit) {
     _termController.text = entryToEdit.term;
-    _variationsController.text = entryToEdit.variations.isNotEmpty ? entryToEdit.variations.first : '';
+    _variationsController.text =
+        entryToEdit.variations.isNotEmpty ? entryToEdit.variations.first : '';
 
     showDialog(
       context: context,
@@ -319,9 +318,8 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
       return;
     }
 
-    final variations = variationsText.isNotEmpty
-        ? [variationsText.trim()]
-        : <String>[];
+    final variations =
+        variationsText.isNotEmpty ? [variationsText.trim()] : <String>[];
 
     final newEntry = UserDictionaryEntry(
       term: term,
@@ -449,7 +447,6 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                   padding: EdgeInsets.all(16),
                   child: Column(
                     children: [
-
                       // 用語追加ボタン
                       SizedBox(
                         width: double.infinity,
@@ -478,7 +475,8 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                                   children: [
                                     Row(
                                       children: [
-                                        Icon(Icons.list, color: Colors.blue[600]),
+                                        Icon(Icons.list,
+                                            color: Colors.blue[600]),
                                         SizedBox(width: 8),
                                         Text(
                                           '登録用語一覧',
@@ -511,14 +509,16 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                                               )
                                             : null,
                                         border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
                                         ),
                                         contentPadding: EdgeInsets.symmetric(
                                           horizontal: 16,
                                           vertical: 12,
                                         ),
                                       ),
-                                      style: GoogleFonts.notoSansJp(fontSize: 14),
+                                      style:
+                                          GoogleFonts.notoSansJp(fontSize: 14),
                                     ),
                                   ],
                                 ),
@@ -559,14 +559,20 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                                           final term = _filteredTerms[index];
                                           // デフォルト用語かカスタム用語かを判定
                                           // variationsに2つ以上あり、最後がtermと同じ場合はデフォルト用語
-                                          final isDefaultTerm = term.variations.length >= 2 && 
-                                              term.variations.last == term.term;
-                                          
+                                          final isDefaultTerm =
+                                              term.variations.length >= 2 &&
+                                                  term.variations.last ==
+                                                      term.term;
+
                                           return ListTile(
                                             leading: CircleAvatar(
-                                              backgroundColor: isDefaultTerm ? Colors.grey : Colors.blue,
+                                              backgroundColor: isDefaultTerm
+                                                  ? Colors.grey
+                                                  : Colors.blue,
                                               child: Icon(
-                                                isDefaultTerm ? Icons.book : Icons.text_fields,
+                                                isDefaultTerm
+                                                    ? Icons.book
+                                                    : Icons.text_fields,
                                                 color: Colors.white,
                                               ),
                                             ),
@@ -584,44 +590,49 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
                                                       '読み: ${term.variations.isNotEmpty ? term.variations.first : ''}'),
                                               ],
                                             ),
-                                            trailing: isDefaultTerm ? null : PopupMenuButton(
-                                              itemBuilder: (context) => [
-                                                PopupMenuItem(
-                                                  value: 'edit',
-                                                  child: Row(
-                                                    children: [
-                                                      Icon(Icons.edit,
-                                                          size: 16),
-                                                      SizedBox(width: 8),
-                                                      Text('編集'),
+                                            trailing: isDefaultTerm
+                                                ? null
+                                                : PopupMenuButton(
+                                                    itemBuilder: (context) => [
+                                                      PopupMenuItem(
+                                                        value: 'edit',
+                                                        child: Row(
+                                                          children: [
+                                                            Icon(Icons.edit,
+                                                                size: 16),
+                                                            SizedBox(width: 8),
+                                                            Text('編集'),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                      PopupMenuItem(
+                                                        value: 'delete',
+                                                        child: Row(
+                                                          children: [
+                                                            Icon(Icons.delete,
+                                                                size: 16,
+                                                                color:
+                                                                    Colors.red),
+                                                            SizedBox(width: 8),
+                                                            Text('削除',
+                                                                style: GoogleFonts
+                                                                    .notoSansJp(
+                                                                        color: Colors
+                                                                            .red)),
+                                                          ],
+                                                        ),
+                                                      ),
                                                     ],
+                                                    onSelected: (value) {
+                                                      if (value == 'edit') {
+                                                        _showEditTermDialog(
+                                                            term);
+                                                      } else if (value ==
+                                                          'delete') {
+                                                        _deleteTerm(term);
+                                                      }
+                                                    },
                                                   ),
-                                                ),
-                                                PopupMenuItem(
-                                                  value: 'delete',
-                                                  child: Row(
-                                                    children: [
-                                                      Icon(Icons.delete,
-                                                          size: 16,
-                                                          color: Colors.red),
-                                                      SizedBox(width: 8),
-                                                      Text('削除',
-                                                          style: GoogleFonts
-                                                              .notoSansJp(
-                                                                  color: Colors
-                                                                      .red)),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
-                                              onSelected: (value) {
-                                                if (value == 'edit') {
-                                                  _showEditTermDialog(term);
-                                                } else if (value == 'delete') {
-                                                  _deleteTerm(term);
-                                                }
-                                              },
-                                            ),
                                           );
                                         },
                                       ),
@@ -641,6 +652,4 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
       ),
     );
   }
-
-
 }

@@ -110,7 +110,8 @@ class ApiException extends AppException {
     super.severity = 3,
   });
 
-  factory ApiException.badRequest(String message, [Map<String, dynamic>? data]) {
+  factory ApiException.badRequest(String message,
+      [Map<String, dynamic>? data]) {
     return ApiException(
       message: message,
       statusCode: 400,
@@ -403,13 +404,13 @@ bool isRetryableError(dynamic error) {
   if (error is AppException) {
     return error.isRetryable;
   }
-  
+
   // 一般的なネットワークエラーはリトライ可能
   final errorString = error.toString().toLowerCase();
   return errorString.contains('timeout') ||
-         errorString.contains('connection') ||
-         errorString.contains('network') ||
-         errorString.contains('socket');
+      errorString.contains('connection') ||
+      errorString.contains('network') ||
+      errorString.contains('socket');
 }
 
 /// エラーの重要度を取得するヘルパー関数

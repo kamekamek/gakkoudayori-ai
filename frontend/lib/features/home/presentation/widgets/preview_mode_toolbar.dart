@@ -47,9 +47,9 @@ class PreviewModeToolbar extends StatelessWidget {
             mode: PreviewMode.preview,
             isSelected: currentMode == PreviewMode.preview,
           ),
-          
+
           const SizedBox(width: 6),
-          
+
           _buildModeButton(
             context,
             icon: Icons.print,
@@ -57,9 +57,9 @@ class PreviewModeToolbar extends StatelessWidget {
             mode: PreviewMode.printView,
             isSelected: currentMode == PreviewMode.printView,
           ),
-          
+
           const SizedBox(width: 6),
-          
+
           _buildModeButton(
             context,
             icon: Icons.picture_as_pdf,
@@ -68,9 +68,9 @@ class PreviewModeToolbar extends StatelessWidget {
             isSelected: false,
             onTap: onPdfGenerate,
           ),
-          
+
           const SizedBox(width: 6),
-          
+
           _buildModeButton(
             context,
             icon: Icons.school,
@@ -79,9 +79,9 @@ class PreviewModeToolbar extends StatelessWidget {
             isSelected: false,
             onTap: () => _showClassroomDialog(context),
           ),
-          
+
           const SizedBox(width: 6),
-          
+
           _buildModeButton(
             context,
             icon: Icons.refresh,
@@ -90,9 +90,9 @@ class PreviewModeToolbar extends StatelessWidget {
             isSelected: false,
             onTap: onRegenerate,
           ),
-          
+
           const Spacer(),
-          
+
           // サンプル読み込みボタン
           _buildActionButton(
             context,
@@ -205,7 +205,7 @@ class PreviewModeToolbar extends StatelessWidget {
 
   void _showClassroomDialog(BuildContext context) async {
     final previewProvider = context.read<PreviewProvider>();
-    
+
     if (previewProvider.htmlContent.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

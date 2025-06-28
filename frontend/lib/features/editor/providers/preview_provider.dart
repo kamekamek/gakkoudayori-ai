@@ -5,15 +5,15 @@ import '../../../core/providers/error_provider.dart';
 
 /// プレビューモードの種類
 enum PreviewMode {
-  preview,    // 読み取り専用プレビュー
-  edit,       // 編集モード
-  printView,  // 印刷ビューモード
+  preview, // 読み取り専用プレビュー
+  edit, // 編集モード
+  printView, // 印刷ビューモード
 }
 
 /// プレビュー・編集機能の状態管理
 class PreviewProvider extends ChangeNotifier {
   final ErrorProvider _errorProvider;
-  
+
   PreviewMode _currentMode = PreviewMode.preview;
   String _htmlContent = '';
   bool _isEditing = false;
@@ -43,10 +43,10 @@ class PreviewProvider extends ChangeNotifier {
       if (html.trim().isEmpty) {
         throw Exception('HTML content is required');
       }
-      
+
       // 基本的なHTMLバリデーション
       _validateHtmlContent(html);
-      
+
       _htmlContent = html;
       notifyListeners();
     } catch (error) {
@@ -62,7 +62,7 @@ class PreviewProvider extends ChangeNotifier {
     if (!html.contains('<') || !html.contains('>')) {
       throw Exception('Invalid HTML format: Missing HTML tags');
     }
-    
+
     // 潜在的に危険なタグの検出
     final dangerousTags = ['<script', '<iframe', '<object', '<embed'];
     for (final tag in dangerousTags) {
@@ -150,7 +150,7 @@ class PreviewProvider extends ChangeNotifier {
     }
 
     setPdfGenerating(true);
-    
+
     try {
       // HTMLコンテンツの妥当性チェック
       final validation = PdfApiService.validateHtmlForPdf(_htmlContent);
@@ -173,7 +173,7 @@ class PreviewProvider extends ChangeNotifier {
       if (result['success'] == true) {
         final pdfBase64 = result['data']['pdf_base64'];
         final fileSize = result['data']['file_size_mb'];
-        
+
         // PDFをダウンロード
         await PdfDownloadService.downloadPdf(
           pdfBase64: pdfBase64,
@@ -187,9 +187,9 @@ class PreviewProvider extends ChangeNotifier {
       }
     } catch (error) {
       debugPrint('PDF生成エラー: $error');
-      
+
       _errorProvider.setError('PDF generation process failed: $error');
-      
+
       rethrow;
     } finally {
       setPdfGenerating(false);
@@ -205,26 +205,26 @@ class PreviewProvider extends ChangeNotifier {
 
       // 印刷ビューモードに切り替え
       switchMode(PreviewMode.printView);
-      
+
       // Web環境での印刷プレビュー実装
       debugPrint('印刷プレビューモードに切り替えました');
-      
+
       // 印刷用のCSSスタイルを適用したHTMLを生成
       final printHtml = _generatePrintHtml(_htmlContent);
-      
+
       // ブラウザの印刷ダイアログを開く場合
       // html.window.print(); // 必要に応じてコメントアウト解除
-      
+
       debugPrint('印刷プレビュー準備完了');
     } catch (error) {
       debugPrint('印刷プレビューエラー: $error');
-      
+
       _errorProvider.setError('Print preview display failed: $error');
-      
+
       rethrow;
     }
   }
-  
+
   // 印刷用のHTMLを生成
   String _generatePrintHtml(String html) {
     return '''
@@ -280,16 +280,16 @@ class PreviewProvider extends ChangeNotifier {
       debugPrint('再生成するコンテンツがありません');
       return;
     }
-    
+
     // 再生成中状態に設定
     _isGeneratingPdf = true; // 生成中フラグを再利用
     notifyListeners();
-    
+
     try {
       // 既存のHTMLコンテンツから要素を抽出して再生成のヒントとする
       final contentSummary = extractContentSummary(_htmlContent);
       debugPrint('コンテンツ再生成: $contentSummary');
-      
+
       // 実際の再生成は外部から実行される
       // この関数は状態管理のみ行う
     } catch (e) {
@@ -299,21 +299,23 @@ class PreviewProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   // HTMLコンテンツから要約を抽出
   String extractContentSummary(String html) {
     // 簡単なHTMLパース（タイトルと主要セクションを抽出）
     final titleMatch = RegExp(r'<h1[^>]*>(.*?)</h1>').firstMatch(html);
-    final title = titleMatch?.group(1)?.replaceAll(RegExp(r'<[^>]*>'), '') ?? '';
-    
+    final title =
+        titleMatch?.group(1)?.replaceAll(RegExp(r'<[^>]*>'), '') ?? '';
+
     final h2Matches = RegExp(r'<h2[^>]*>(.*?)</h2>').allMatches(html);
     final sections = h2Matches
-        .map((match) => match.group(1)?.replaceAll(RegExp(r'<[^>]*>'), '') ?? '')
+        .map(
+            (match) => match.group(1)?.replaceAll(RegExp(r'<[^>]*>'), '') ?? '')
         .where((section) => section.isNotEmpty)
         .toList();
-    
+
     return '${title.isNotEmpty ? "タイトル: $title" : ""}'
-           '${sections.isNotEmpty ? "\nセクション: ${sections.join(", ")}" : ""}';
+        '${sections.isNotEmpty ? "\nセクション: ${sections.join(", ")}" : ""}';
   }
 
   // プレビューのリセット

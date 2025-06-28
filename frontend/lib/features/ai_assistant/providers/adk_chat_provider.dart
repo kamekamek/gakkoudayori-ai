@@ -212,7 +212,7 @@ class AdkChatProvider extends ChangeNotifier {
           assistantMessage.content += extractedText;
         }
       }
-      
+
       _safeNotifyListeners();
     } catch (e) {
       debugPrint('[AdkChatProvider] Error parsing message event: $e');

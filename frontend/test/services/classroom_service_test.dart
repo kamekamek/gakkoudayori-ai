@@ -31,20 +31,20 @@ void main() {
       test('Classroom統合テストが結果を返す', () async {
         // 統合テスト機能をテスト（認証なしでも結果を返すべき）
         final results = await ClassroomService.testClassroomIntegration();
-        
+
         expect(results, isA<Map<String, bool>>());
         expect(results.containsKey('authentication'), isTrue);
-        
+
         // 認証していない場合は false が返される
         expect(results['authentication'], isFalse);
       });
 
       test('テスト結果にすべての必要なキーが含まれる', () async {
         final results = await ClassroomService.testClassroomIntegration();
-        
+
         // 認証されていない場合、他のテストは実行されない
         expect(results.containsKey('authentication'), isTrue);
-        
+
         if (results['authentication'] == true) {
           expect(results.containsKey('getCourses'), isTrue);
           expect(results.containsKey('uploadFile'), isTrue);
@@ -71,7 +71,7 @@ void main() {
         expect(result, isA<Map<String, dynamic>>());
         expect(result.containsKey('success'), isTrue);
         expect(result.containsKey('message'), isTrue);
-        
+
         // 認証エラーで失敗することを確認
         expect(result['success'], isFalse);
       });
@@ -161,7 +161,8 @@ void main() {
 
     group('データ妥当性チェック', () {
       test('PDFデータの妥当性', () {
-        final validPdfBytes = Uint8List.fromList([0x25, 0x50, 0x44, 0x46]); // %PDF
+        final validPdfBytes =
+            Uint8List.fromList([0x25, 0x50, 0x44, 0x46]); // %PDF
         final invalidPdfBytes = Uint8List.fromList([0x00, 0x01, 0x02, 0x03]);
 
         // PDFヘッダーの確認（実際のサービスでは使用されていないが、データ妥当性の例）

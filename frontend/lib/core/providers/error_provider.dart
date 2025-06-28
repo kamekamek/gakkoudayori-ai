@@ -11,12 +11,12 @@ class ErrorProvider extends ChangeNotifier {
   void setError(String error) {
     _lastError = error;
     _errorHistory.add(error);
-    
+
     // 履歴は最大50件まで
     if (_errorHistory.length > 50) {
       _errorHistory.removeAt(0);
     }
-    
+
     notifyListeners();
   }
 

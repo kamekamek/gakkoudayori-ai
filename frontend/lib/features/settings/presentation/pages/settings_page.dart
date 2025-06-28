@@ -103,8 +103,8 @@ class _SettingsPageState extends State<SettingsPage> {
                 Text(
                   'よく使う言葉を登録して音声認識の精度を上げます',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                 ),
                 const SizedBox(height: 16),
                 OutlinedButton.icon(
@@ -175,8 +175,8 @@ class _SettingsPageState extends State<SettingsPage> {
                 Text(
                   title,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
               ],
             ),

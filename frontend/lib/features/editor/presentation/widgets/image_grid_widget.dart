@@ -32,9 +32,9 @@ class ImageGridWidget extends StatelessWidget {
       children: [
         // 統計情報
         _buildStatsHeader(context),
-        
+
         const SizedBox(height: 12),
-        
+
         // 画像グリッド
         Expanded(
           child: ReorderableGridView.count(
@@ -46,7 +46,7 @@ class ImageGridWidget extends StatelessWidget {
             children: images.asMap().entries.map((entry) {
               final index = entry.key;
               final image = entry.value;
-              
+
               return ReorderableDragStartListener(
                 key: ValueKey(image.id),
                 index: index,
@@ -69,7 +69,7 @@ class ImageGridWidget extends StatelessWidget {
   Widget _buildStatsHeader(BuildContext context) {
     final totalSize = images.fold(0, (sum, img) => sum + img.size);
     final compressedCount = images.where((img) => img.isCompressed).length;
-    
+
     String totalSizeDisplay;
     if (totalSize < 1024) {
       totalSizeDisplay = '${totalSize}B';
@@ -101,16 +101,16 @@ class ImageGridWidget extends StatelessWidget {
                 Text(
                   '${images.length}枚の画像 • $totalSizeDisplay',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w500,
-                  ),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w500,
+                      ),
                 ),
                 if (compressedCount > 0)
                   Text(
                     '$compressedCount枚が圧縮済み',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                   ),
               ],
             ),
@@ -134,8 +134,8 @@ class ImageGridWidget extends StatelessWidget {
                 Text(
                   '順序変更可能',
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
                 ),
               ],
             ),
@@ -161,15 +161,15 @@ class ImageGridWidget extends StatelessWidget {
             Text(
               '画像がありません',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
             ),
             const SizedBox(height: 8),
             Text(
               '画像を追加して学級通信を華やかにしましょう',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.outline,
-              ),
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -180,7 +180,7 @@ class ImageGridWidget extends StatelessWidget {
 
   int _calculateCrossAxisCount(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    
+
     // レスポンシブ対応
     if (screenWidth < 600) {
       return 1; // モバイル：1列
