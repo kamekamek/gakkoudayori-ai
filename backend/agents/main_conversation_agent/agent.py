@@ -84,7 +84,7 @@ class MainConversationAgent(LlmAgent):
             # JSON構成案が生成された場合はセッション状態に保存
             await self._check_and_save_json_from_conversation(ctx)
             
-            # ユーザー承認後のHTML生成準備
+            # ユーザー承認後のHTML生成準備（条件付き実行）
             await self._prepare_html_generation_if_approved(ctx)
 
         except Exception as e:
@@ -505,22 +505,118 @@ class MainConversationAgent(LlmAgent):
         except Exception as e:
             logger.error(f"承認状態設定エラー: {e}")
 
+    def _should_generate_html(self, ctx: InvocationContext) -> bool:
+        """HTML生成すべきかどうかを判定"""
+        try:
+            if not hasattr(ctx, "session") or not hasattr(ctx.session, "state"):
+                return False
+            
+            # セッション状態にoutlineが存在するかチェック
+            has_outline = "outline" in ctx.session.state and ctx.session.state["outline"]
+            
+            # ユーザー承認状態をチェック（オプション）
+            collection_stage = ctx.session.state.get("collection_stage", "initial")
+            
+            logger.info(f"HTML生成判定: has_outline={has_outline}, collection_stage={collection_stage}")
+            
+            return has_outline
+            
+        except Exception as e:
+            logger.error(f"HTML生成判定エラー: {e}")
+            return False
+
     async def _prepare_html_generation_if_approved(self, ctx: InvocationContext):
-        """ユーザー承認後のHTML生成準備（本番環境対応）"""
+        """ユーザー承認後のHTML生成準備（条件チェック強化版）"""
         try:
             if not hasattr(ctx, "session") or not hasattr(ctx.session, "state"):
                 logger.warning("セッション状態が利用できません")
                 return
 
-            # 🚨 本番環境対応: ファイルシステム使用を廃止
-            # セッション状態にoutlineが既に存在するかチェック
-            if "outline" in ctx.session.state and ctx.session.state["outline"]:
-                logger.info("セッション状態にoutlineが既に存在します - HTML生成準備完了")
+            # 1. セッション状態にJSONが存在するかチェック
+            has_json = "outline" in ctx.session.state and ctx.session.state["outline"]
+            
+            # 2. ユーザー承認状態をチェック
+            collection_stage = ctx.session.state.get("collection_stage", "initial")
+            user_approved = ctx.session.state.get("user_approved", False)
+            
+            # 3. 最新の対話内容からユーザー承認を検出
+            user_approval_detected = await self._detect_user_approval_from_conversation(ctx)
+            
+            logger.info(f"HTML生成条件チェック:")
+            logger.info(f"  - has_json: {has_json}")
+            logger.info(f"  - collection_stage: {collection_stage}")
+            logger.info(f"  - user_approved: {user_approved}")
+            logger.info(f"  - user_approval_detected: {user_approval_detected}")
+
+            # 4. すべての条件を満たした場合のみLayoutAgent実行
+            if has_json and (user_approved or user_approval_detected):
+                logger.info("✅ HTML生成条件をすべて満たしました - LayoutAgent呼び出し実行")
+                ctx.session.state["user_approved"] = True  # 承認状態を保存
+                # まだ実装しない - プロンプト修正でLayoutAgentがtransfer_to_agentで呼ばれるはず
             else:
-                logger.warning("セッション状態にoutlineが見つかりません - LayoutAgentでサンプル生成を実行")
+                logger.info("❌ HTML生成条件が不足 - LayoutAgent呼び出しをスキップ")
                 
         except Exception as e:
             logger.error(f"HTML生成準備エラー: {e}")
+
+    async def _detect_user_approval_from_conversation(self, ctx: InvocationContext) -> bool:
+        """最新の対話からユーザー承認を検出"""
+        try:
+            if not hasattr(ctx, "session") or not hasattr(ctx.session, "events"):
+                return False
+                
+            # 最新のユーザーイベントを確認
+            for event in reversed(ctx.session.events):
+                if hasattr(event, "content") and event.content:
+                    text = self._extract_text_from_event(event)
+                    if text:
+                        # 承認キーワードをチェック
+                        approval_keywords = [
+                            "はい", "大丈夫", "お願いします", "作成して", "生成して",
+                            "OK", "いいです", "問題ありません", "よろしく"
+                        ]
+                        if any(keyword in text for keyword in approval_keywords):
+                            logger.info(f"ユーザー承認を検出: {text[:50]}...")
+                            return True
+                            
+            return False
+            
+        except Exception as e:
+            logger.error(f"ユーザー承認検出エラー: {e}")
+            return False
+
+    async def _invoke_layout_agent_directly(self, ctx: InvocationContext):
+        """LayoutAgentを直接呼び出し（transfer_to_agentを使わずに）"""
+        try:
+            logger.info("=== LayoutAgent直接呼び出し開始 ===")
+            
+            # sub_agentsからLayoutAgentを取得
+            layout_agent = None
+            for agent in self.sub_agents:
+                if agent.name == "layout_agent":
+                    layout_agent = agent
+                    break
+            
+            if layout_agent is None:
+                logger.error("LayoutAgentがsub_agentsに見つかりません")
+                return
+            
+            logger.info(f"LayoutAgent取得成功: {layout_agent.name}")
+            
+            # 同一セッション状態でLayoutAgentを実行
+            logger.info(f"LayoutAgent実行前のセッション状態: {list(ctx.session.state.keys())}")
+            
+            # LayoutAgentを直接実行
+            async for event in layout_agent._run_async_impl(ctx):
+                # LayoutAgentのイベントをそのまま通す
+                yield event
+                
+            logger.info("LayoutAgent直接実行完了")
+            
+        except Exception as e:
+            logger.error(f"LayoutAgent直接呼び出しエラー: {e}")
+            import traceback
+            logger.error(f"詳細エラー: {traceback.format_exc()}")
 
 
 def create_main_conversation_agent() -> MainConversationAgent:
