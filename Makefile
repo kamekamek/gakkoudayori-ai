@@ -31,6 +31,7 @@ help:
 	@echo "  make deploy-backend   - バックエンドをCloud Runにデプロイ"
 	@echo "  make deploy-staging   - ステージング環境にデプロイ"
 	@echo "  make deploy-preview   - プレビュー環境にデプロイ"
+	@echo "  make warmup           - バックエンドWarm-up実行"
 	@echo ""
 	@echo "⚙️ CI/CD:"
 	@echo "  make ci-setup     - CI/CD環境セットアップ"
@@ -131,6 +132,10 @@ deploy-backend:
 		--allow-unauthenticated \
 		--memory=2Gi \
 		--timeout=300 \
+		--min-instances=1 \
+		--max-instances=10 \
+		--cpu=2 \
+		--concurrency=100 \
 		--set-env-vars="ENVIRONMENT=production" \
 		--platform=managed
 
@@ -203,3 +208,15 @@ backend-test:
 test-adk:
 	@echo "🤖 ADK v1.0.0 互換性テスト実行中..."
 	cd backend && uv run python test_uv_migration.py 
+
+# バックエンドWarm-up
+warmup:
+	@echo "🔥 バックエンドWarm-up実行中..."
+	@echo "📊 本番環境ヘルスチェック..."
+	@curl -f -s https://gakkoudayori-backend-944053509139.asia-northeast1.run.app/health || echo "❌ 本番環境エラー"
+	@echo "🔥 本番環境Warm-up..."
+	@curl -f -s https://gakkoudayori-backend-944053509139.asia-northeast1.run.app/warmup || echo "❌ 本番Warm-upエラー"
+	@echo "🧪 ステージング環境チェック..."
+	@curl -f -s https://gakkoudayori-backend-staging-944053509139.asia-northeast1.run.app/health || echo "⚠️ ステージング環境エラー"
+	@curl -f -s https://gakkoudayori-backend-staging-944053509139.asia-northeast1.run.app/warmup || echo "⚠️ ステージングWarm-upエラー"
+	@echo "✅ Warm-up完了"

@@ -135,3 +135,18 @@ async def adk_chat_stream(req: AdkChatRequest):
 def health_check():
     """ヘルスチェック用エンドポイント"""
     return {"status": "ok", "environment": ENVIRONMENT}
+
+@app.get("/warmup")
+def warmup():
+    """Cloud Run warmup用エンドポイント - ADK初期化"""
+    try:
+        # ADKランナーの状態確認
+        runner_status = "ready" if runner else "not_ready"
+        return {
+            "status": "warm", 
+            "environment": ENVIRONMENT,
+            "adk_runner": runner_status,
+            "message": "Backend is warmed up and ready"
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
