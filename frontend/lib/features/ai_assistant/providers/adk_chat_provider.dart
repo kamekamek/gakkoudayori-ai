@@ -314,16 +314,6 @@ class AdkChatProvider extends ChangeNotifier {
     _safeNotifyListeners();
   }
 
-  /// PreviewProviderにHTMLを通知
-  void _notifyPreviewProvider(String htmlContent) {
-    if (_previewProvider != null) {
-      debugPrint('[AdkChatProvider] Notifying PreviewProvider with HTML content');
-      _previewProvider!.updateHtmlContent(htmlContent);
-    } else {
-      debugPrint('[AdkChatProvider] PreviewProvider is not set');
-    }
-  }
-
   /// システムメッセージを追加
   void addSystemMessage(String content, {SystemMessageType? type}) {
     final message = MutableChatMessage.system(content, systemMessageType: type);
