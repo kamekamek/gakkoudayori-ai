@@ -29,6 +29,14 @@ module.exports = defineConfig({
     
     /* Record video on failure */
     video: 'retain-on-failure',
+
+    /* Ignore HTTPS errors */
+    ignoreHTTPSErrors: true,
+    
+    /* Extra HTTP headers */
+    extraHTTPHeaders: {
+      'Accept-Language': 'ja-JP,ja;q=0.9'
+    }
   },
 
   /* Configure projects for major browsers */

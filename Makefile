@@ -40,7 +40,7 @@ help:
 # 開発環境で起動
 dev:
 	@echo "🔧 開発環境で起動中..."
-	cd frontend && flutter run -d chrome \
+	cd frontend && flutter run -d chrome --web-port 8080 \
 		--dart-define=ENVIRONMENT=development \
 		--dart-define=API_BASE_URL=http://localhost:8081/api/v1
 
