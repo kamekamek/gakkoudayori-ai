@@ -67,7 +67,7 @@ class GoogleAuthService {
   }
 
   /// 現在のGoogle Sign-Inクライアントを取得
-  static dynamic get googleSignIn {
+  static GoogleSignIn get googleSignIn {
     if (_googleSignIn == null) {
       initialize();
     }
