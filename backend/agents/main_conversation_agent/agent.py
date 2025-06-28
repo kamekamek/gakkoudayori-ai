@@ -68,12 +68,20 @@ class MainConversationAgent(LlmAgent):
         """
         try:
             logger.info("=== MainConversationAgent実行開始 ===")
+            logger.info(f"プロンプト長: {len(self.instruction)} 文字")
+            logger.info(f"プロンプト(最初の200文字): {self.instruction[:200]}...")
             event_count = 0
             
             # 親クラスの通常のLLM対話を実行
             async for event in super()._run_async_impl(ctx):
                 event_count += 1
                 logger.info(f"LLMイベント #{event_count}: author={getattr(event, 'author', 'unknown')}")
+                
+                # イベントの詳細をログ出力
+                if hasattr(event, 'content') and event.content:
+                    event_text = self._extract_text_from_event(event)
+                    logger.info(f"イベント内容(最初の100文字): {event_text[:100]}...")
+                
                 yield event
 
             logger.info(f"=== LLM実行完了: {event_count}個のイベント ===")
@@ -175,6 +183,7 @@ class MainConversationAgent(LlmAgent):
             cleaned_response = llm_response_text
             
             logger.info(f"JSON検索開始: 複数パターンでの検索")
+            logger.info(f"LLM応答全文(先頭1000文字): {llm_response_text[:1000]}...")
             
             # パターン1: Markdownコードブロック
             if "```json" in llm_response_text and "```" in llm_response_text:
@@ -198,6 +207,15 @@ class MainConversationAgent(LlmAgent):
                 json_str = await self._extract_json_from_function_calls(ctx)
                 if json_str:
                     logger.info(f"function_call JSON長: {len(json_str)} 文字")
+            
+            # デバッグ：どのパターンも該当しない場合の詳細ログ
+            if not json_str:
+                logger.warning("=== JSON検索失敗の詳細分析 ===")
+                logger.warning(f"```json 含有: {'```json' in llm_response_text}")
+                logger.warning(f"{{ 含有: {'{' in llm_response_text}")
+                logger.warning(f"school_name 含有: {'school_name' in llm_response_text}")
+                logger.warning(f"応答テキスト長: {len(llm_response_text)}")
+                logger.warning(f"応答テキスト(全文): '{llm_response_text}'")
             
             # JSON保存処理
             if json_str:
