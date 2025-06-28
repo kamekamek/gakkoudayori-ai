@@ -60,59 +60,27 @@ class LayoutAgent(LlmAgent):
                 content=Content(parts=[Part(text="学級通信のレイアウトを作成しています。少々お待ちください...")])
             )
             
-            # セッション状態からJSONデータを取得（第一優先）
+            # ADK推奨パターン: transfer_to_agentでの堅牢なJSON取得
             json_data = None
-            logger.info("=== LayoutAgent JSON取得開始 ===")
+            logger.info("=== LayoutAgent JSON取得開始 (ADK推奨パターン) ===")
             
-            # InvocationContext詳細情報
-            logger.info(f"LayoutAgent InvocationContext詳細:")
-            logger.info(f"  - hasattr(ctx, 'session'): {hasattr(ctx, 'session')}")
-            if hasattr(ctx, "session"):
-                logger.info(f"  - session type: {type(ctx.session)}")
-                logger.info(f"  - hasattr(session, 'state'): {hasattr(ctx.session, 'state')}")
-                logger.info(f"  - hasattr(session, 'session_id'): {hasattr(ctx.session, 'session_id')}")
-                if hasattr(ctx.session, "session_id"):
-                    logger.info(f"  - session_id: {ctx.session.session_id}")
-                if hasattr(ctx.session, "state"):
-                    logger.info(f"  - state type: {type(ctx.session.state)}")
-                    logger.info(f"  - state keys: {list(ctx.session.state.keys()) if ctx.session.state else 'None'}")
-                    logger.info(f"  - state content: {dict(ctx.session.state) if ctx.session.state else 'None'}")
+            # セッション状態詳細確認
+            await self._log_session_state_details(ctx)
             
-            if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
-                logger.info("セッション状態からoutline取得を試行...")
-                json_data = ctx.session.state.get("outline")
-                logger.info(f"セッション状態から取得: {bool(json_data)}")
+            # ADK推奨: outline キーからの取得（第一優先）
+            json_data = await self._get_json_from_adk_output_key(ctx)
+            
+            if json_data:
+                logger.info(f"✅ ADK output_key取得成功: {len(json_data)} 文字")
                 
-                if json_data:
-                    logger.info(f"取得したJSON長: {len(json_data)} 文字")
-                    logger.info(f"取得したJSON(最初の200文字): {json_data[:200]}...")
-                    
-                    # JSON内容の詳細確認
-                    try:
-                        import json as json_module
-                        parsed = json_module.loads(json_data)
-                        school_name = parsed.get('school_name', 'NOT_FOUND')
-                        grade = parsed.get('grade', 'NOT_FOUND')
-                        main_title = parsed.get('main_title', 'NOT_FOUND')
-                        logger.info(f"LayoutAgent JSON解析成功: school_name={school_name}, grade={grade}, main_title={main_title}")
-                    except Exception as parse_error:
-                        logger.error(f"LayoutAgent JSON解析エラー: {parse_error}")
-                        
+                # JSON検証
+                if await self._validate_json_data(json_data):
+                    logger.info("✅ JSON検証成功: 有効なデータです")
                 else:
-                    logger.warning("セッション状態に'outline'キーが存在しないか、値が空です")
-                    
-                    # セッション状態の全キーを確認
-                    all_keys = list(ctx.session.state.keys()) if ctx.session.state else []
-                    logger.info(f"セッション状態の全キー: {all_keys}")
-                    
-                    # 各キーの値も確認
-                    if ctx.session.state:
-                        for key, value in ctx.session.state.items():
-                            value_preview = str(value)[:100] + "..." if len(str(value)) > 100 else str(value)
-                            logger.info(f"  - {key}: {value_preview}")
+                    logger.warning("❌ JSON検証失敗: フォールバック処理を実行")
+                    json_data = None
             else:
-                logger.error("セッションまたはセッション状態にアクセスできません")
-                logger.error(f"LayoutAgent ctx attributes: {dir(ctx) if ctx else 'ctx is None'}")
+                logger.warning("❌ ADK output_key取得失敗: outline キーが見つかりません")
                 
                 # セッション状態のデータ検証
                 if json_data:
@@ -676,6 +644,84 @@ HTMLのみを出力し、説明文は一切不要です。
             "max_pages": 1,
         }
         return json.dumps(sample_json, ensure_ascii=False, indent=2)
+
+    async def _log_session_state_details(self, ctx: InvocationContext):
+        """セッション状態の詳細ログ出力"""
+        try:
+            logger.info(f"LayoutAgent InvocationContext詳細:")
+            logger.info(f"  - hasattr(ctx, 'session'): {hasattr(ctx, 'session')}")
+            if hasattr(ctx, "session"):
+                logger.info(f"  - session type: {type(ctx.session)}")
+                logger.info(f"  - hasattr(session, 'state'): {hasattr(ctx.session, 'state')}")
+                logger.info(f"  - hasattr(session, 'session_id'): {hasattr(ctx.session, 'session_id')}")
+                if hasattr(ctx.session, "session_id"):
+                    logger.info(f"  - session_id: {ctx.session.session_id}")
+                if hasattr(ctx.session, "state"):
+                    logger.info(f"  - state type: {type(ctx.session.state)}")
+                    logger.info(f"  - state keys: {list(ctx.session.state.keys()) if ctx.session.state else 'None'}")
+                    
+                    # 各キーの値も確認
+                    if ctx.session.state:
+                        for key, value in ctx.session.state.items():
+                            value_preview = str(value)[:100] + "..." if len(str(value)) > 100 else str(value)
+                            logger.info(f"  - {key}: {value_preview}")
+        except Exception as e:
+            logger.error(f"セッション状態詳細ログエラー: {e}")
+
+    async def _get_json_from_adk_output_key(self, ctx: InvocationContext) -> str:
+        """ADK output_keyから確実にJSONを取得"""
+        try:
+            if not hasattr(ctx, "session") or not hasattr(ctx.session, "state"):
+                logger.warning("セッション状態が利用できません")
+                return None
+                
+            # outline キーから取得
+            json_data = ctx.session.state.get("outline")
+            
+            if json_data:
+                logger.info(f"outline キーから取得: {len(str(json_data))} 文字")
+                logger.info(f"取得データ(先頭200文字): {str(json_data)[:200]}...")
+                return str(json_data)
+            else:
+                logger.warning("outline キーが存在しないか空です")
+                return None
+                
+        except Exception as e:
+            logger.error(f"ADK output_key取得エラー: {e}")
+            return None
+
+    async def _validate_json_data(self, json_data: str) -> bool:
+        """JSONデータの有効性検証"""
+        try:
+            if not json_data or not json_data.strip():
+                logger.warning("JSONデータが空です")
+                return False
+                
+            # JSON形式として解析可能かチェック
+            parsed = json.loads(json_data)
+            
+            # 必須フィールドの存在確認
+            required_fields = ['school_name', 'grade', 'author']
+            for field in required_fields:
+                if field not in parsed:
+                    logger.warning(f"必須フィールド '{field}' が見つかりません")
+                    return False
+                    
+            # サンプルデータでないことを確認
+            school_name = parsed.get('school_name', '')
+            if 'サンプル' in school_name or '○○' in school_name or 'ERROR' in school_name:
+                logger.warning(f"サンプルデータを検出: school_name={school_name}")
+                return False
+                
+            logger.info(f"JSON検証成功: school_name={parsed.get('school_name')}")
+            return True
+            
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON解析エラー: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"JSON検証エラー: {e}")
+            return False
 
 
 def create_layout_agent() -> LayoutAgent:
