@@ -387,4 +387,350 @@ $printStyles
     final processed = extractAndSanitizeHtml(htmlContent);
     return RegExp(r'<h[1-6][^>]*>', caseSensitive: false).hasMatch(processed);
   }
+
+  /// HTML構造保持型エディター用の高度な処理機能
+  
+  /// HTML要素の構造を保持しながら安全にサニタイズ
+  /// リッチエディター用に設計されており、スタイル属性やクラスを保持
+  static String sanitizeForRichEditor(String htmlContent) {
+    if (htmlContent.trim().isEmpty) {
+      return '<p>ここに学級通信の内容を入力してください...</p>';
+    }
+
+    String sanitized = htmlContent;
+
+    // 危険なタグの除去（セキュリティ重視）
+    final dangerousTags = [
+      r'<script[^>]*>.*?</script>',
+      r'<iframe[^>]*>.*?</iframe>', 
+      r'<object[^>]*>.*?</object>',
+      r'<embed[^>]*>.*?</embed>',
+      r'<link[^>]*>',
+      r'<meta[^>]*>',
+      r'<form[^>]*>.*?</form>',
+      r'<input[^>]*>',
+      r'<button[^>]*>.*?</button>',
+    ];
+
+    for (final pattern in dangerousTags) {
+      sanitized = sanitized.replaceAll(
+        RegExp(pattern, caseSensitive: false, dotAll: true), 
+        ''
+      );
+    }
+
+    // 危険なイベント属性の除去
+    final dangerousAttributes = [
+      r'on\w+="[^"]*"',
+      r"on\w+='[^']*'",
+      r'javascript:[^"' "'" r'>\s]*',
+    ];
+
+    for (final pattern in dangerousAttributes) {
+      sanitized = sanitized.replaceAll(
+        RegExp(pattern, caseSensitive: false), 
+        ''
+      );
+    }
+
+    // 空のHTMLタグを整理
+    sanitized = _cleanEmptyTags(sanitized);
+
+    return sanitized;
+  }
+
+  /// 空のHTMLタグを整理
+  static String _cleanEmptyTags(String html) {
+    // 空のタグパターン（中身が空白のみ、または完全に空）
+    final emptyTagPatterns = [
+      r'<p[^>]*>\s*</p>',
+      r'<div[^>]*>\s*</div>',
+      r'<span[^>]*>\s*</span>',
+      r'<h[1-6][^>]*>\s*</h[1-6]>',
+    ];
+
+    String cleaned = html;
+    for (final pattern in emptyTagPatterns) {
+      cleaned = cleaned.replaceAll(RegExp(pattern, dotAll: true), '');
+    }
+
+    // 連続する改行を整理
+    cleaned = cleaned.replaceAll(RegExp(r'\n\s*\n\s*\n'), '\n\n');
+
+    return cleaned.trim();
+  }
+
+  /// HTML要素の構造分析
+  /// エディター用にHTML要素の階層構造を分析
+  static Map<String, dynamic> analyzeHtmlStructure(String htmlContent) {
+    final processed = sanitizeForRichEditor(htmlContent);
+    
+    // 見出しの抽出
+    final headings = <Map<String, String>>[];
+    for (int level = 1; level <= 6; level++) {
+      final headingRegex = RegExp(r'<h' + level.toString() + r'[^>]*>(.*?)</h' + level.toString() + r'>', dotAll: true);
+      final matches = headingRegex.allMatches(processed);
+      for (final match in matches) {
+        headings.add({
+          'level': level.toString(),
+          'text': match.group(1)?.replaceAll(RegExp(r'<[^>]*>'), '').trim() ?? '',
+          'html': match.group(0) ?? '',
+        });
+      }
+    }
+
+    // 段落の抽出
+    final paragraphs = <String>[];
+    final paragraphRegex = RegExp(r'<p[^>]*>(.*?)</p>', dotAll: true);
+    final paragraphMatches = paragraphRegex.allMatches(processed);
+    for (final match in paragraphMatches) {
+      final text = match.group(1)?.replaceAll(RegExp(r'<[^>]*>'), '').trim() ?? '';
+      if (text.isNotEmpty) {
+        paragraphs.add(text);
+      }
+    }
+
+    // リストの抽出
+    final lists = <Map<String, dynamic>>[];
+    final ulRegex = RegExp(r'<ul[^>]*>(.*?)</ul>', dotAll: true);
+    final olRegex = RegExp(r'<ol[^>]*>(.*?)</ol>', dotAll: true);
+    
+    // 順序なしリスト
+    final ulMatches = ulRegex.allMatches(processed);
+    for (final match in ulMatches) {
+      final listHtml = match.group(1) ?? '';
+      final items = _extractListItems(listHtml);
+      if (items.isNotEmpty) {
+        lists.add({
+          'type': 'ul',
+          'items': items,
+        });
+      }
+    }
+
+    // 順序付きリスト
+    final olMatches = olRegex.allMatches(processed);
+    for (final match in olMatches) {
+      final listHtml = match.group(1) ?? '';
+      final items = _extractListItems(listHtml);
+      if (items.isNotEmpty) {
+        lists.add({
+          'type': 'ol',
+          'items': items,
+        });
+      }
+    }
+
+    // スタイル情報の抽出
+    final styles = _extractStyleInformation(processed);
+
+    return {
+      'headings': headings,
+      'paragraphs': paragraphs,
+      'lists': lists,
+      'styles': styles,
+      'wordCount': _countWords(processed),
+      'characterCount': processed.length,
+      'estimatedReadingTime': _estimateReadingTime(processed),
+    };
+  }
+
+  /// リストアイテムの抽出
+  static List<String> _extractListItems(String listHtml) {
+    final items = <String>[];
+    final itemRegex = RegExp(r'<li[^>]*>(.*?)</li>', dotAll: true);
+    final matches = itemRegex.allMatches(listHtml);
+    for (final match in matches) {
+      final text = match.group(1)?.replaceAll(RegExp(r'<[^>]*>'), '').trim() ?? '';
+      if (text.isNotEmpty) {
+        items.add(text);
+      }
+    }
+    return items;
+  }
+
+  /// スタイル情報の抽出
+  static Map<String, dynamic> _extractStyleInformation(String html) {
+    final styleInfo = <String, dynamic>{
+      'hasColors': false,
+      'hasBackgroundColors': false,
+      'hasBoldText': false,
+      'hasItalicText': false,
+      'colorCount': 0,
+      'fontSizes': <String>[],
+    };
+
+    // 色の使用チェック
+    if (html.contains('color:') || html.contains('color=')) {
+      styleInfo['hasColors'] = true;
+      final colorMatches = RegExp(r'color:\s*([^;"' "'" r'>]+)', caseSensitive: false).allMatches(html);
+      styleInfo['colorCount'] = colorMatches.length;
+    }
+
+    // 背景色の使用チェック
+    if (html.contains('background-color:') || html.contains('background:')) {
+      styleInfo['hasBackgroundColors'] = true;
+    }
+
+    // 太字のチェック
+    if (html.contains('<strong>') || html.contains('<b>') || html.contains('font-weight:')) {
+      styleInfo['hasBoldText'] = true;
+    }
+
+    // 斜体のチェック
+    if (html.contains('<em>') || html.contains('<i>') || html.contains('font-style:')) {
+      styleInfo['hasItalicText'] = true;
+    }
+
+    // フォントサイズの抽出
+    final fontSizeMatches = RegExp(r'font-size:\s*([^;"' "'" r'>]+)', caseSensitive: false).allMatches(html);
+    for (final match in fontSizeMatches) {
+      final size = match.group(1)?.trim() ?? '';
+      if (size.isNotEmpty && !styleInfo['fontSizes'].contains(size)) {
+        styleInfo['fontSizes'].add(size);
+      }
+    }
+
+    return styleInfo;
+  }
+
+  /// 単語数のカウント（日本語対応）
+  static int _countWords(String html) {
+    final text = html.replaceAll(RegExp(r'<[^>]*>'), ' ').trim();
+    
+    // 日本語文字のカウント（ひらがな、カタカナ、漢字）
+    final japaneseChars = RegExp(r'[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]').allMatches(text).length;
+    
+    // 英数字の単語のカウント
+    final englishWords = text.split(RegExp(r'[\s\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]+')).where((word) => word.isNotEmpty).length;
+    
+    return japaneseChars + englishWords;
+  }
+
+  /// 読み取り時間の推定（分）
+  static int _estimateReadingTime(String html) {
+    final wordCount = _countWords(html);
+    // 日本語の平均読み取り速度：400-600文字/分
+    const averageReadingSpeed = 500;
+    return (wordCount / averageReadingSpeed).ceil().clamp(1, 60);
+  }
+
+  /// HTML差分検出
+  /// 編集前後のHTMLを比較して変更箇所を特定
+  static Map<String, dynamic> detectHtmlChanges(String oldHtml, String newHtml) {
+    final oldProcessed = sanitizeForRichEditor(oldHtml);
+    final newProcessed = sanitizeForRichEditor(newHtml);
+
+    if (oldProcessed == newProcessed) {
+      return {
+        'hasChanges': false,
+        'changeType': 'none',
+        'details': 'コンテンツに変更はありません',
+      };
+    }
+
+    final changes = <String, dynamic>{
+      'hasChanges': true,
+      'oldLength': oldProcessed.length,
+      'newLength': newProcessed.length,
+      'lengthDiff': newProcessed.length - oldProcessed.length,
+    };
+
+    // 変更タイプの判定
+    if (newProcessed.length > oldProcessed.length) {
+      changes['changeType'] = 'addition';
+      changes['details'] = '${changes['lengthDiff']}文字が追加されました';
+    } else if (newProcessed.length < oldProcessed.length) {
+      changes['changeType'] = 'deletion';
+      changes['details'] = '${-changes['lengthDiff']}文字が削除されました';
+    } else {
+      changes['changeType'] = 'modification';
+      changes['details'] = 'コンテンツが変更されました';
+    }
+
+    // 構造的変更の検出
+    final oldStructure = analyzeHtmlStructure(oldHtml);
+    final newStructure = analyzeHtmlStructure(newHtml);
+
+    final structuralChanges = <String>[];
+    
+    if (oldStructure['headings'].length != newStructure['headings'].length) {
+      structuralChanges.add('見出しの数が変更されました');
+    }
+    
+    if (oldStructure['paragraphs'].length != newStructure['paragraphs'].length) {
+      structuralChanges.add('段落の数が変更されました');
+    }
+    
+    if (oldStructure['lists'].length != newStructure['lists'].length) {
+      structuralChanges.add('リストの数が変更されました');
+    }
+
+    changes['structuralChanges'] = structuralChanges;
+    changes['hasStructuralChanges'] = structuralChanges.isNotEmpty;
+
+    return changes;
+  }
+
+  /// HTMLの復元・マージ機能
+  /// 編集中にエラーが発生した場合の復元用
+  static String restoreHtmlStructure(String corruptedHtml, String referenceHtml) {
+    try {
+      final sanitized = sanitizeForRichEditor(corruptedHtml);
+      
+      // 基本的なHTMLバリデーション
+      if (sanitized.trim().isEmpty || !sanitized.contains('<')) {
+        return referenceHtml;
+      }
+
+      // 閉じタグの不足をチェック・修正
+      final corrected = _fixUnclosedTags(sanitized);
+      
+      return corrected.isNotEmpty ? corrected : referenceHtml;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('🔧 [HtmlUtils] HTML復元エラー: $e');
+      }
+      return referenceHtml;
+    }
+  }
+
+  /// 閉じタグの不足を修正
+  static String _fixUnclosedTags(String html) {
+    final tagStack = <String>[];
+    final fixedTags = <String>[];
+    
+    // 簡易的なタグ修正（完全なパーサーではない）
+    final tagRegex = RegExp(r'<(/?)(\w+)[^>]*>');
+    final matches = tagRegex.allMatches(html);
+    
+    String result = html;
+    
+    // 自己終了タグ
+    const selfClosingTags = {'br', 'hr', 'img', 'input', 'meta', 'link'};
+    
+    for (final match in matches) {
+      final isClosing = match.group(1) == '/';
+      final tagName = match.group(2)?.toLowerCase() ?? '';
+      
+      if (selfClosingTags.contains(tagName)) {
+        continue;
+      }
+      
+      if (isClosing) {
+        if (tagStack.isNotEmpty && tagStack.last == tagName) {
+          tagStack.removeLast();
+        }
+      } else {
+        tagStack.add(tagName);
+      }
+    }
+    
+    // 未閉じタグを閉じる
+    for (final tag in tagStack.reversed) {
+      result += '</$tag>';
+    }
+    
+    return result;
+  }
 }
