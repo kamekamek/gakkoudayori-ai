@@ -4,6 +4,7 @@ import '../../../services/adk_agent_service.dart';
 import '../../../services/audio_service.dart';
 import '../../../core/providers/error_provider.dart';
 import '../../../core/models/chat_message.dart';
+import '../../editor/providers/preview_provider.dart';
 
 /// ADKチャットの状態管理プロバイダー
 class AdkChatProvider extends ChangeNotifier {
@@ -11,6 +12,7 @@ class AdkChatProvider extends ChangeNotifier {
   final AudioService _audioService = AudioService();
   final ErrorProvider _errorProvider;
   final String userId;
+  PreviewProvider? _previewProvider;
 
   // 状態
   final List<MutableChatMessage> _messages = [];
@@ -44,6 +46,11 @@ class AdkChatProvider extends ChangeNotifier {
   })  : _adkService = adkService,
         _errorProvider = errorProvider {
     _initializeAudioService();
+  }
+
+  /// PreviewProviderを設定
+  void setPreviewProvider(PreviewProvider previewProvider) {
+    _previewProvider = previewProvider;
   }
 
   /// 安全なnotifyListeners呼び出し
@@ -202,10 +209,32 @@ class AdkChatProvider extends ChangeNotifier {
       }
 
       // HTML生成完了のチェック
-      if (extractedText.contains('<html>') ||
+      if (extractedText.contains('<html_generated>')) {
+        // HTML完了通知からHTMLを抽出
+        final htmlStartTag = '<html_generated>';
+        final htmlEndTag = '</html_generated>';
+        final startIndex = extractedText.indexOf(htmlStartTag);
+        final endIndex = extractedText.indexOf(htmlEndTag);
+        
+        if (startIndex != -1 && endIndex != -1) {
+          final htmlContent = extractedText.substring(
+            startIndex + htmlStartTag.length, 
+            endIndex
+          );
+          _generatedHtml = htmlContent;
+          assistantMessage.content = '🎉 学級通信が完成しました！プレビューをご確認ください。';
+          
+          // PreviewProviderにHTMLを渡す
+          _notifyPreviewProvider(htmlContent);
+          
+          debugPrint('[AdkChatProvider] HTML extracted and set: ${htmlContent.length} characters');
+        }
+      } else if (extractedText.contains('<html>') ||
           extractedText.contains('<!DOCTYPE html>')) {
+        // 従来のHTML検出方法も維持
         _generatedHtml = extractedText;
-        assistantMessage.content = '🎉 学級通信が完成しました！編集タブでご確認ください。';
+        assistantMessage.content = '🎉 学級通信が完成しました！プレビューをご確認ください。';
+        _notifyPreviewProvider(extractedText);
       } else {
         // 通常のメッセージとして表示
         if (extractedText.isNotEmpty) {
@@ -283,6 +312,16 @@ class AdkChatProvider extends ChangeNotifier {
   void clearError() {
     _error = null;
     _safeNotifyListeners();
+  }
+
+  /// PreviewProviderにHTMLを通知
+  void _notifyPreviewProvider(String htmlContent) {
+    if (_previewProvider != null) {
+      debugPrint('[AdkChatProvider] Notifying PreviewProvider with HTML content');
+      _previewProvider!.updateHtmlContent(htmlContent);
+    } else {
+      debugPrint('[AdkChatProvider] PreviewProvider is not set');
+    }
   }
 
   /// システムメッセージを追加
@@ -373,6 +412,20 @@ class AdkChatProvider extends ChangeNotifier {
         lowerMessage.contains('がっきゅうつうしん') ||
         lowerMessage.contains('おたより') ||
         lowerMessage.contains('newsletter');
+  }
+
+  /// PreviewProviderにHTMLを通知
+  void _notifyPreviewProvider(String htmlContent) {
+    if (_previewProvider != null) {
+      try {
+        _previewProvider!.updateHtmlContent(htmlContent);
+        debugPrint('[AdkChatProvider] HTML passed to PreviewProvider: ${htmlContent.length} characters');
+      } catch (e) {
+        debugPrint('[AdkChatProvider] Error notifying PreviewProvider: $e');
+      }
+    } else {
+      debugPrint('[AdkChatProvider] PreviewProvider is not set, cannot update HTML');
+    }
   }
 
   @override
