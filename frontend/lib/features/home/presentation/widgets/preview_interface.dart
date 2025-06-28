@@ -10,7 +10,8 @@ import '../../../../widgets/notification_widget.dart';
 import '../../../../widgets/unified_preview_widget.dart';
 import '../../../../widgets/accurate_print_preview_widget.dart';
 import '../../../../widgets/simple_html_editor_widget.dart';
-
+import '../../../../widgets/rich_html_editor_widget.dart';
+import '../../../../utils/html_processing_utils.dart';
 import '../../../../core/models/chat_message.dart';
 
 /// プレビューインターフェース（右側パネル）
@@ -231,17 +232,33 @@ class _PreviewInterfaceState extends State<PreviewInterface> {
             child: Row(
               children: [
                 Icon(
-                  Icons.edit,
+                  Icons.edit_outlined,
                   size: 18,
                   color: Theme.of(context).colorScheme.primary,
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'インライン編集モード',
+                  'リッチHTML編集モード',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade100,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    'NEW',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green.shade700,
+                    ),
                   ),
                 ),
                 const Spacer(),
@@ -255,19 +272,60 @@ class _PreviewInterfaceState extends State<PreviewInterface> {
                     textStyle: const TextStyle(fontSize: 11),
                   ),
                 ),
+                const SizedBox(width: 8),
+                TextButton.icon(
+                  onPressed: () => _showLegacyEditor(context, previewProvider),
+                  icon: const Icon(Icons.text_fields, size: 14),
+                  label: const Text('旧'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.grey.shade600,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    textStyle: const TextStyle(fontSize: 11),
+                  ),
+                ),
               ],
             ),
           ),
           
-          // インライン編集エリア
+          // インライン編集エリア（新しいRichHtmlEditor使用）
           Expanded(
-            child: SimpleHtmlEditorWidget(
-              initialContent: previewProvider.htmlContent,
+            child: RichHtmlEditorWidget(
+              key: ValueKey('rich-editor-${previewProvider.hashCode}'),
+              initialContent: HtmlProcessingUtils.sanitizeForRichEditor(previewProvider.htmlContent),
               onContentChanged: (editedHtml) {
-                previewProvider.updateHtmlContent(editedHtml);
-                _addNotification('編集内容を更新しました', SystemMessageType.success);
+                // 相互更新ループを防ぐため、内容が実際に変わった場合のみ処理
+                if (editedHtml == previewProvider.htmlContent) return;
+                
+                // HTML構造の検証と変更検出
+                final changes = HtmlProcessingUtils.detectHtmlChanges(
+                  previewProvider.htmlContent, 
+                  editedHtml
+                );
+                
+                try {
+                  // デバウンス的な処理で連続更新を防ぐ
+                  Future.delayed(const Duration(milliseconds: 100), () {
+                    if (mounted && editedHtml != previewProvider.htmlContent) {
+                      previewProvider.updateHtmlContent(editedHtml);
+                      
+                      if (changes['hasChanges']) {
+                        final changeDetails = changes['details'] as String;
+                        _addNotification('✅ $changeDetails', SystemMessageType.success);
+                        
+                        // 構造的変更がある場合は特別な通知
+                        if (changes['hasStructuralChanges']) {
+                          final structuralChanges = changes['structuralChanges'] as List<String>;
+                          _addNotification('🔄 ${structuralChanges.join(', ')}', SystemMessageType.info);
+                        }
+                      }
+                    }
+                  });
+                } catch (e) {
+                  _addNotification('❌ 編集内容の保存に失敗: $e', SystemMessageType.error);
+                }
               },
               height: double.infinity,
+              showToolbar: true,
             ),
           ),
         ],
@@ -524,5 +582,96 @@ $contentSummary
                 ),
               ],
             ));
+  }
+
+  /// 旧エディター（SimpleHtmlEditor）を表示するダイアログ
+  void _showLegacyEditor(BuildContext context, PreviewProvider previewProvider) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        insetPadding: const EdgeInsets.all(40),
+        child: SizedBox(
+          width: MediaQuery.of(context).size.width * 0.8,
+          height: MediaQuery.of(context).size.height * 0.8,
+          child: Column(
+            children: [
+              // ヘッダー
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(8),
+                    topRight: Radius.circular(8),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.text_fields, size: 20),
+                    const SizedBox(width: 8),
+                    const Text(
+                      '旧エディター（テキストベース）',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('閉じる'),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // エディター部分
+              Expanded(
+                child: SimpleHtmlEditorWidget(
+                  initialContent: previewProvider.htmlContent,
+                  onContentChanged: (editedHtml) {
+                    try {
+                      previewProvider.updateHtmlContent(editedHtml);
+                      _addNotification('旧エディターで編集内容を更新しました', SystemMessageType.success);
+                    } catch (e) {
+                      _addNotification('編集内容の保存に失敗: $e', SystemMessageType.error);
+                    }
+                  },
+                  height: double.infinity,
+                ),
+              ),
+              
+              // フッター
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(8),
+                    bottomRight: Radius.circular(8),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning_amber, size: 16, color: Colors.orange.shade700),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '注意: 旧エディターはHTMLの構造を保持しません。編集後、色やスタイルが失われる可能性があります。',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.orange.shade700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

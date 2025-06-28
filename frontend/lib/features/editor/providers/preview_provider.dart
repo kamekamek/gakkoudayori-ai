@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../services/pdf_api_service.dart';
 import '../../../services/pdf_download_service.dart';
 import '../../../core/providers/error_provider.dart';
+import '../../../utils/html_processing_utils.dart';
 
 /// プレビューモードの種類
 enum PreviewMode {
@@ -19,6 +20,12 @@ class PreviewProvider extends ChangeNotifier {
   bool _isEditing = false;
   bool _isGeneratingPdf = false;
   String _selectedStyle = 'classic';
+  
+  // HTML構造保持・編集履歴機能
+  List<String> _htmlHistory = [];
+  int _historyIndex = -1;
+  bool _isRichEditorMode = true;
+  Map<String, dynamic>? _lastHtmlAnalysis;
 
   PreviewProvider({required ErrorProvider errorProvider})
       : _errorProvider = errorProvider;
@@ -29,6 +36,10 @@ class PreviewProvider extends ChangeNotifier {
   bool get isEditing => _isEditing;
   bool get isGeneratingPdf => _isGeneratingPdf;
   String get selectedStyle => _selectedStyle;
+  bool get isRichEditorMode => _isRichEditorMode;
+  Map<String, dynamic>? get lastHtmlAnalysis => _lastHtmlAnalysis;
+  bool get canUndo => _historyIndex > 0;
+  bool get canRedo => _historyIndex < _htmlHistory.length - 1;
 
   // プレビューモードの切り替え
   void switchMode(PreviewMode mode) {
@@ -37,17 +48,33 @@ class PreviewProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // HTMLコンテンツの更新
-  void updateHtmlContent(String html) {
+  // HTMLコンテンツの更新（強化版：構造保持・履歴機能付き）
+  void updateHtmlContent(String html, {bool addToHistory = true}) {
     try {
       if (html.trim().isEmpty) {
         throw Exception('HTML content is required');
       }
 
-      // 基本的なHTMLバリデーション
-      _validateHtmlContent(html);
+      // リッチエディターモードの場合は高度な処理
+      final processedHtml = _isRichEditorMode 
+          ? HtmlProcessingUtils.sanitizeForRichEditor(html)
+          : html;
 
-      _htmlContent = html;
+      // 基本的なHTMLバリデーション
+      _validateHtmlContent(processedHtml);
+
+      // HTML構造分析（統計情報・デバッグ用）
+      _lastHtmlAnalysis = HtmlProcessingUtils.analyzeHtmlStructure(processedHtml);
+
+      // 履歴管理
+      if (addToHistory && processedHtml != _htmlContent) {
+        _addToHistory(_htmlContent);
+      }
+
+      _htmlContent = processedHtml;
+      
+      debugPrint('📝 [PreviewProvider] HTML更新: ${_htmlContent.length}文字 (履歴: ${_htmlHistory.length}件)');
+      
       notifyListeners();
     } catch (error) {
       _errorProvider.setError('Failed to update HTML content: $error');
@@ -357,5 +384,119 @@ class PreviewProvider extends ChangeNotifier {
       case PreviewMode.printView:
         return Icons.print;
     }
+  }
+
+  /// 履歴管理機能
+
+  // 履歴に追加
+  void _addToHistory(String html) {
+    if (html.trim().isEmpty) return;
+
+    // 現在位置より後の履歴を削除（新しい分岐）
+    if (_historyIndex < _htmlHistory.length - 1) {
+      _htmlHistory = _htmlHistory.sublist(0, _historyIndex + 1);
+    }
+
+    _htmlHistory.add(html);
+    _historyIndex = _htmlHistory.length - 1;
+
+    // 履歴上限（メモリ管理）
+    const maxHistorySize = 50;
+    if (_htmlHistory.length > maxHistorySize) {
+      _htmlHistory.removeAt(0);
+      _historyIndex--;
+    }
+  }
+
+  // Undo機能
+  void undo() {
+    if (canUndo) {
+      _historyIndex--;
+      final previousHtml = _htmlHistory[_historyIndex];
+      updateHtmlContent(previousHtml, addToHistory: false);
+      debugPrint('⏪ [PreviewProvider] Undo実行: 履歴位置 $_historyIndex');
+    }
+  }
+
+  // Redo機能
+  void redo() {
+    if (canRedo) {
+      _historyIndex++;
+      final nextHtml = _htmlHistory[_historyIndex];
+      updateHtmlContent(nextHtml, addToHistory: false);
+      debugPrint('⏩ [PreviewProvider] Redo実行: 履歴位置 $_historyIndex');
+    }
+  }
+
+  // 履歴をクリア
+  void clearHistory() {
+    _htmlHistory.clear();
+    _historyIndex = -1;
+    debugPrint('🗑️ [PreviewProvider] 履歴をクリアしました');
+  }
+
+  /// エディターモード管理
+
+  // リッチエディターモードの切り替え
+  void setRichEditorMode(bool isRichMode) {
+    if (_isRichEditorMode != isRichMode) {
+      _isRichEditorMode = isRichMode;
+      debugPrint('🔄 [PreviewProvider] エディターモード変更: ${isRichMode ? "リッチ" : "テキスト"}');
+      notifyListeners();
+    }
+  }
+
+  /// HTML復元機能
+
+  // HTMLの復元（エラー時の復旧用）
+  void restoreHtml(String backupHtml) {
+    try {
+      final restoredHtml = HtmlProcessingUtils.restoreHtmlStructure(_htmlContent, backupHtml);
+      updateHtmlContent(restoredHtml);
+      debugPrint('🔧 [PreviewProvider] HTML復元完了');
+    } catch (e) {
+      debugPrint('❌ [PreviewProvider] HTML復元失敗: $e');
+      _errorProvider.setError('HTML復元に失敗しました: $e');
+    }
+  }
+
+  /// HTML差分機能
+
+  // 前回の内容との差分を取得
+  Map<String, dynamic>? getLastChanges() {
+    if (_htmlHistory.isNotEmpty && _historyIndex >= 0) {
+      final previousHtml = _historyIndex > 0 ? _htmlHistory[_historyIndex - 1] : '';
+      return HtmlProcessingUtils.detectHtmlChanges(previousHtml, _htmlContent);
+    }
+    return null;
+  }
+
+  /// デバッグ・統計情報
+
+  // HTML統計情報を取得
+  Map<String, dynamic> getHtmlStats() {
+    return {
+      'currentLength': _htmlContent.length,
+      'historyCount': _htmlHistory.length,
+      'historyIndex': _historyIndex,
+      'canUndo': canUndo,
+      'canRedo': canRedo,
+      'isRichMode': _isRichEditorMode,
+      'analysis': _lastHtmlAnalysis,
+    };
+  }
+
+  // プレビューの完全リセット（履歴込み）
+  void fullReset() {
+    _currentMode = PreviewMode.preview;
+    _htmlContent = '';
+    _isEditing = false;
+    _isGeneratingPdf = false;
+    _selectedStyle = 'classic';
+    _isRichEditorMode = true;
+    _lastHtmlAnalysis = null;
+    clearHistory();
+    debugPrint('🔄 [PreviewProvider] 完全リセット実行');
+    notifyListeners();
   }
 }
