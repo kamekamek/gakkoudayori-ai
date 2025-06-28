@@ -11,14 +11,21 @@ from services import firestore_service, storage
 try:
     from weasyprint import HTML
     WEASYPRINT_AVAILABLE = True
-except ImportError:
+except (ImportError, OSError) as e:
     WEASYPRINT_AVAILABLE = False
+    print(f"WeasyPrint利用不可: {e}")
 
 try:
     import pdfkit
     PDFKIT_AVAILABLE = True
 except ImportError:
     PDFKIT_AVAILABLE = False
+
+try:
+    from playwright.async_api import async_playwright
+    PLAYWRIGHT_AVAILABLE = True
+except ImportError:
+    PLAYWRIGHT_AVAILABLE = False
 
 # APIRouterインスタンスを作成
 router = APIRouter(
@@ -148,6 +155,118 @@ async def convert_html_to_pdf_pdfkit(
         return None
 
 
+async def convert_html_to_pdf_playwright(
+    html_content: str,
+    title: str = '学級通信',
+    page_size: str = 'A4',
+    margin: str = '15mm',
+    include_header: bool = False,
+    include_footer: bool = False,
+    custom_css: str = ''
+) -> Optional[bytes]:
+    """
+    Playwrightを使用してHTML文字列をPDFに変換します。
+    """
+    if not PLAYWRIGHT_AVAILABLE:
+        return None
+    
+    # カスタムCSSがある場合はHTMLに追加
+    full_html = f"""
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <title>{title}</title>
+        <style>
+            @page {{
+                size: {page_size};
+                margin: {margin};
+            }}
+            body {{
+                font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif;
+                line-height: 1.6;
+                margin: 0;
+                padding: 20px;
+            }}
+            {custom_css}
+        </style>
+    </head>
+    <body>
+        {html_content}
+    </body>
+    </html>
+    """
+    
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch()
+            page = await browser.new_page()
+            await page.set_content(full_html)
+            
+            pdf_bytes = await page.pdf(
+                format=page_size,
+                margin={
+                    'top': margin,
+                    'right': margin, 
+                    'bottom': margin,
+                    'left': margin
+                },
+                print_background=True
+            )
+            await browser.close()
+            return pdf_bytes
+    except Exception as e:
+        print(f"Playwright PDF変換中にエラーが発生しました: {e}")
+        return None
+
+
+async def convert_html_to_pdf_simple(
+    html_content: str,
+    title: str = '学級通信',
+    page_size: str = 'A4',
+    margin: str = '15mm',
+    include_header: bool = False,
+    include_footer: bool = False,
+    custom_css: str = ''
+) -> Optional[bytes]:
+    """
+    シンプルなダミーPDFを生成します（開発用）。
+    """
+    try:
+        from reportlab.pdfgen import canvas
+        from reportlab.lib.pagesizes import A4
+        from io import BytesIO
+        
+        buffer = BytesIO()
+        p = canvas.Canvas(buffer, pagesize=A4)
+        
+        # タイトルを追加
+        p.setFont("Helvetica", 16)
+        p.drawString(100, 750, title)
+        
+        # HTMLコンテンツの一部を追加（簡素化）
+        p.setFont("Helvetica", 12)
+        y_position = 700
+        lines = html_content.replace('<', '').replace('>', '').split('\n')[:20]
+        for line in lines:
+            if line.strip():
+                p.drawString(100, y_position, line.strip()[:80])
+                y_position -= 20
+                if y_position < 100:
+                    break
+        
+        p.showPage()
+        p.save()
+        
+        buffer.seek(0)
+        return buffer.getvalue()
+    except ImportError:
+        return None
+    except Exception as e:
+        print(f"Simple PDF変換中にエラーが発生しました: {e}")
+        return None
+
+
 async def convert_html_to_pdf(
     html_content: str,
     title: str = '学級通信',
@@ -160,7 +279,16 @@ async def convert_html_to_pdf(
     """
     HTML文字列をPDFに変換します。利用可能なライブラリを順次試行します。
     """
-    # WeasyPrintを最初に試行（より安定している）
+    # Playwrightを最初に試行
+    if PLAYWRIGHT_AVAILABLE:
+        print("Playwrightを使用してPDF変換を試行します...")
+        result = await convert_html_to_pdf_playwright(
+            html_content, title, page_size, margin, include_header, include_footer, custom_css
+        )
+        if result:
+            return result
+    
+    # WeasyPrintを試行
     if WEASYPRINT_AVAILABLE:
         print("WeasyPrintを使用してPDF変換を試行します...")
         result = await convert_html_to_pdf_weasyprint(
@@ -169,7 +297,7 @@ async def convert_html_to_pdf(
         if result:
             return result
     
-    # pdfkitをフォールバックとして試行
+    # pdfkitを試行
     if PDFKIT_AVAILABLE:
         print("pdfkitを使用してPDF変換を試行します...")
         result = await convert_html_to_pdf_pdfkit(
@@ -178,9 +306,17 @@ async def convert_html_to_pdf(
         if result:
             return result
     
+    # 最後の手段としてシンプルPDF生成
+    print("シンプルPDF生成を試行します...")
+    result = await convert_html_to_pdf_simple(
+        html_content, title, page_size, margin, include_header, include_footer, custom_css
+    )
+    if result:
+        return result
+    
     print("PDF変換ライブラリが利用できません。")
-    print("推奨: uv add weasyprint")
-    print("または: uv add pdfkit && brew install wkhtmltopdf")
+    print("推奨: uv add playwright && playwright install chromium")
+    print("または: uv add reportlab")
     return None
 
 

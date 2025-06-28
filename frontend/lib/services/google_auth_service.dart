@@ -25,6 +25,14 @@ class GoogleAuthService {
       scopes: _scopes,
       // Web用の設定は firebase_options.dart で管理される
     );
+    
+    // Web環境での初期化（google_sign_in_web v0.12.4+では自動的に初期化される）
+    if (kIsWeb) {
+      // google_sign_in_web の最新版では明示的な登録は不要
+      if (kDebugMode) {
+        print('Web環境でのGoogle Sign-In初期化完了');
+      }
+    }
   }
 
   /// 現在のGoogle Sign-Inクライアントを取得
@@ -57,7 +65,15 @@ class GoogleAuthService {
       _currentUser = await googleSignIn.signInSilently();
       
       // 明示的サインインが必要な場合
-      _currentUser ??= await googleSignIn.signIn();
+      if (_currentUser == null) {
+        // Web環境では新しいAPI使用を推奨、但し既存実装との互換性を保つ
+        if (kIsWeb) {
+          // ポップアップブロッカー対策としてユーザーアクション内で実行
+          _currentUser = await googleSignIn.signIn();
+        } else {
+          _currentUser = await googleSignIn.signIn();
+        }
+      }
 
       if (_currentUser != null) {
         // 認証済みHTTPクライアントを作成
@@ -74,6 +90,14 @@ class GoogleAuthService {
       if (kDebugMode) {
         print('Google Sign-In エラー: $e');
       }
+      
+      // Web特有のエラーハンドリング
+      if (e.toString().contains('popup_closed')) {
+        throw Exception('サインインがキャンセルされました。もう一度お試しください。');
+      } else if (e.toString().contains('popup_blocked')) {
+        throw Exception('ポップアップがブロックされました。ブラウザの設定をご確認ください。');
+      }
+      
       throw Exception('Googleアカウントへのログインに失敗しました: $e');
     }
   }

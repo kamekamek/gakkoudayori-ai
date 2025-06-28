@@ -109,10 +109,14 @@ class _ClassroomPostDialogState extends State<ClassroomPostDialog> {
         setState(() {
           _successMessage = 'ログインしました: ${user.email}';
         });
+      } else {
+        setState(() {
+          _errorMessage = 'ログインがキャンセルされました。';
+        });
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'ログインに失敗しました: $e';
+        _errorMessage = '$e';
       });
     } finally {
       setState(() {
