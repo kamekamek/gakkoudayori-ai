@@ -57,8 +57,9 @@ class GoogleAuthService {
           if (kDebugMode) {
             print('Error during Firebase sign-in via listener: $e');
           }
-          // エラーが発生した場合は、不整合な状態を避けるためにサインアウトする
-          signOut();
+          // エラーが発生した場合は、認証クライアントをクリアして状態をリセット
+          _authClient = null;
+          _currentUser = null;
         }
       } else {
         // Googleアカウントからサイン��ウトした場合の処理
@@ -194,10 +195,21 @@ class GoogleAuthService {
     return _currentUser != null && _authClient != null;
   }
   
-  /// Classroom権限を非同期で確認（実際のAPI呼び出しでテスト）
+  static DateTime? _lastPermissionCheck;
+  static bool _lastPermissionResult = false;
+  
+  /// Classroom権限を非同期で確認（キャッシュ付き）
   static Future<bool> verifyClassroomPermissions() async {
     if (!hasClassroomPermissions()) {
       return false;
+    }
+    
+    // 5分以内の結果はキャッシュを使用
+    final now = DateTime.now();
+    if (_lastPermissionCheck != null && 
+        now.difference(_lastPermissionCheck!).inMinutes < 5 &&
+        _lastPermissionResult) {
+      return _lastPermissionResult;
     }
     
     try {
@@ -210,11 +222,15 @@ class GoogleAuthService {
         headers: await _currentUser!.authHeaders,
       );
       
-      return response.statusCode == 200;
+      _lastPermissionResult = response.statusCode == 200;
+      _lastPermissionCheck = now;
+      return _lastPermissionResult;
     } catch (e) {
       if (kDebugMode) {
         print('Classroom権限確認エラー: $e');
       }
+      _lastPermissionResult = false;
+      _lastPermissionCheck = now;
       return false;
     }
   }

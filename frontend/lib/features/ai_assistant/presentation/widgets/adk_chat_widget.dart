@@ -26,20 +26,31 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
   final TextEditingController _textController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
+  AdkChatProvider? _adkChatProvider;
 
   @override
   void initState() {
     super.initState();
-    // 文字起こし結果をテキストフィールドに反映
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = context.read<AdkChatProvider>();
-      provider.addListener(_onProviderChanged);
-    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // プロバイダーの参照を安全に保存（重複登録を防ぐ）
+    final newProvider = context.read<AdkChatProvider>();
+    if (_adkChatProvider != newProvider) {
+      // 既存のリスナーを削除
+      _adkChatProvider?.removeListener(_onProviderChanged);
+      // 新しいプロバイダーを設定
+      _adkChatProvider = newProvider;
+      _adkChatProvider?.addListener(_onProviderChanged);
+    }
   }
 
   void _onProviderChanged() {
-    final provider = context.read<AdkChatProvider>();
-    if (provider.transcriptionResult != null &&
+    final provider = _adkChatProvider;
+    if (provider != null &&
+        provider.transcriptionResult != null &&
         provider.transcriptionResult!.isNotEmpty) {
       setState(() {
         // 既存のテキストに音声認識結果を追記
@@ -66,8 +77,8 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
 
   @override
   void dispose() {
-    final provider = context.read<AdkChatProvider>();
-    provider.removeListener(_onProviderChanged);
+    // 保存した参照を使用してリスナーを削除
+    _adkChatProvider?.removeListener(_onProviderChanged);
     _textController.dispose();
     _focusNode.dispose();
     _scrollController.dispose();
