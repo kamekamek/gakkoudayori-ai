@@ -11,15 +11,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### 🏗️ システムアーキテクチャ
 
-**マルチエージェントシステム（Google ADK v1.4.2+）**
+**2エージェント連携システム（Google ADK v1.4.2+）**
 ```
 Flutter Web App (フロントエンド)
-    ↓ HTTP API
+    ↓ HTTP API (/api/v1/adk/chat/stream)
 FastAPI Backend (バックエンド - Cloud Run)
-    ↓ Google ADK
-┌─ OrchestratorAgent ─┬─ ConversationAgent ─┬─ LayoutAgent ─┐
-│  (ワークフロー管理)   │  (対話・JSON生成)  │  (HTML生成)   │
-└─────────────────────┴──────────────────────┴──────────────┘
+    ↓ Google ADK Runner
+MainConversationAgent (root_agent)
+    ├─ ユーザー対話・音声認識
+    ├─ outline.json生成・保存
+    └─ LayoutAgent (sub_agent) 呼び出し
+            ↓
+        LayoutAgent
+            ├─ JSON読み込み (/tmp/adk_artifacts/)
+            ├─ HTML生成 (newsletter.html)
+            └─ セッション状態保存
     ↓ 
 ┌─ Vertex AI ────┬─ Firebase ──────┬─ その他 ─────────┐
 │  - Gemini Pro  │  - Auth         │  - Cloud Storage │
@@ -29,10 +35,21 @@ FastAPI Backend (バックエンド - Cloud Run)
 
 ### 🤖 ADKエージェント構成
 
-- **OrchestratorAgent**: SequentialAgentベースの2段階パイプライン制御
-- **ConversationAgent**: LlmAgentでユーザー対話 → `outline.json`生成
-- **LayoutAgent**: LlmAgentでJSON → `newsletter.html`変換
-- **データフロー**: `/tmp/adk_artifacts/` でのファイルベース連携
+- **MainConversationAgent** (root_agent): 
+  - LlmAgentベースでユーザーとの自然対話
+  - 音声入力対応・JSON構成案生成
+  - LayoutAgentをsub_agentとして管理
+  - セッション状態とファイルシステム両方でデータ永続化
+
+- **LayoutAgent** (sub_agent):
+  - LlmAgentでJSON → HTMLレイアウト変換
+  - テンプレートフォールバック機能
+  - 整合性検証・品質保証
+  
+- **データフロー**: 
+  - セッション状態: `ctx.session.state["outline"]` → `ctx.session.state["html"]`
+  - ファイルシステム: `/tmp/adk_artifacts/outline.json` → `/tmp/adk_artifacts/newsletter.html`
+  - 2重保存によるデータ損失防止
 
 ## 📦 パッケージ管理 (uv)
 
@@ -82,11 +99,12 @@ python -c "import google.adk; print(f'ADK version: {google.adk.__version__}')"
 
 ### python -m を使ったモジュール実行
 ```bash
-# ADKサーバーをモジュールとして起動
-python -m google.adk.cli.main web
+# ADKサーバーをモジュールとして起動 (main_conversation_agentがroot_agent)
+python -m google.adk.cli.main web --agent-path ./agents --port 8080
 
-# 特定のモジュールが存在するか確認
-python -m agents.orchestrator_agent.agent
+# 特定のエージェントが存在するか確認
+python -m agents.main_conversation_agent.agent
+python -m agents.layout_agent.agent
 
 # pipでパッケージ管理
 python -m pip list | grep google
@@ -181,10 +199,17 @@ uv sync                         # Sync dependencies
 ```
 
 ### 主要Provider
-- `AdkChatProvider`: ADKエージェントとの通信状態管理
-- `PreviewProvider`: HTMLプレビュー表示管理
-- `NewsletterProvider`: 学級通信データ管理
+- `AdkChatProvider`: ADKエージェントとの通信状態管理・HTML受信処理
+- `PreviewProvider`: HTMLプレビュー表示管理・編集履歴機能
+- `NewsletterProvider`: 学級通信データ管理・基本情報保存
 - `ImageProvider`: 画像アップロード・Grid表示管理
+
+### 🔄 フロントエンド・バックエンド連携フロー
+1. **ユーザー入力** → `AdkChatProvider.sendMessage()`
+2. **ADKストリーミング** → `/api/v1/adk/chat/stream` (FastAPI)
+3. **エージェント処理** → MainConversationAgent → LayoutAgent
+4. **HTML受信** → `AdkChatProvider._generatedHtml`
+5. **プレビュー表示** → `PreviewProvider.updateHtmlContent()`
 
 ### レスポンシブ対応
 - **デスクトップ(>768px)**: 左右分割レイアウト（チャット｜プレビュー）
@@ -200,7 +225,8 @@ uv run python -m google.adk.cli.main web --agent-path ./agents --port 8080
 # → http://localhost:8080/adk/ui でデバッグ可能
 
 # エージェント個別テスト
-uv run python -c "from agents.conversation_agent.agent import create_conversation_agent; agent = create_conversation_agent(); print('Agent created successfully')"
+uv run python -c "from agents.main_conversation_agent.agent import create_main_conversation_agent; agent = create_main_conversation_agent(); print('MainConversationAgent created successfully')"
+uv run python -c "from agents.layout_agent.agent import create_layout_agent; agent = create_layout_agent(); print('LayoutAgent created successfully')"
 
 # プロンプトファイル変更後の反映確認
 # agents/*/prompts/*.md を編集後、ADKサーバー再起動が必要
@@ -210,11 +236,15 @@ uv run python -c "from agents.conversation_agent.agent import create_conversatio
 ```bash
 # ADK artifacts確認
 ls -la /tmp/adk_artifacts/
-# outline.json (ConversationAgent出力)
+# outline.json (MainConversationAgent出力)
 # newsletter.html (LayoutAgent出力) 
 
 # ファイルベース連携のデバッグ
 tail -f /tmp/adk_artifacts/outline.json
+tail -f /tmp/adk_artifacts/newsletter.html
+
+# セッション状態確認（実装時）
+# ADK Web UI: http://localhost:8080/adk/ui でセッション状態を確認可能
 ```
 
 ### Firebase・GCP認証設定
@@ -245,9 +275,12 @@ make ci-test                     # CI環境模擬テスト
 ## 📋 重要なファイルパス
 
 ### エージェント関連
-- `backend/agents/orchestrator_agent/agent.py` - メインワークフロー
-- `backend/agents/*/prompts/*.md` - エージェントプロンプト
+- `backend/agents/main_conversation_agent/agent.py` - メインエージェント (root_agent)
+- `backend/agents/layout_agent/agent.py` - HTMLレイアウト生成エージェント (sub_agent)
+- `backend/agents/*/prompt*.py` - エージェントプロンプト定義
 - `/tmp/adk_artifacts/` - エージェント間データ交換
+  - `outline.json` - MainConversationAgentが生成するJSON構成案
+  - `newsletter.html` - LayoutAgentが生成するHTMLファイル
 
 ### フロントエンド主要ファイル
 - `frontend/lib/services/adk_agent_service.dart` - ADK通信サービス
@@ -264,13 +297,16 @@ make ci-test                     # CI環境模擬テスト
 
 ### ハッカソン要件対応状況
 - ✅ **必須**: Google Cloud (Cloud Run + Vertex AI + Speech-to-Text)
-- ✅ **特別賞**: Flutter + Firebase + Deep Dive (ADK・マルチエージェント)
+- ✅ **特別賞**: Flutter + Firebase + Deep Dive (ADK・2エージェント連携)
 - ✅ **完成度**: 目標達成（2-3時間→15分短縮）・全機能実装済み
+- ✅ **技術特徴**: MainConversationAgent + LayoutAgentのシンプルな2段階構成
 
 ### ADK v1.4.2+ 使用時の注意
 - `Gemini(model_name="gemini-2.5-pro")` - 最新Geminiモデル使用
-- `google.adk.agents` - SequentialAgent・LlmAgent・SimpleOrchestratorAgent使用
+- `google.adk.agents` - **LlmAgentのみ使用** (MainConversationAgent・LayoutAgent)
+- sub_agents機能でエージェント間連携を実現
 - プロンプトファイル変更時はADKサーバー再起動必須
+- セッション状態とファイルシステム両方でデータ永続化
 
 ### Poetry→uv移行完了
 - ✅ `pyproject.toml`でuv管理設定済み

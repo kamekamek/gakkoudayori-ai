@@ -21,7 +21,8 @@ class MobileTabLayout extends StatelessWidget {
               Tab(icon: Icon(Icons.preview), text: 'プレビュー'),
             ],
             labelColor: Theme.of(context).primaryColor,
-            unselectedLabelColor: Colors.grey,
+            unselectedLabelColor: Colors.grey[700],
+            indicatorColor: Theme.of(context).primaryColor,
           ),
         ),
         body: const TabBarView(
