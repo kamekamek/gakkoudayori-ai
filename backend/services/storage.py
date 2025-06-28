@@ -1,11 +1,15 @@
 import asyncio
 import datetime
 import os
+from functools import lru_cache
 
 from google.cloud import storage
 
-# GCSのクライアントを正しく初期化
-storage_client = storage.Client()
+@lru_cache()
+def get_storage_client() -> storage.Client:
+    """Cloud Storageクライアントのシングルトンインスタンスを返す"""
+    return storage.Client()
+
 bucket_name = os.environ.get("GCS_BUCKET_NAME", "gakkoudayori-newsletters")
 
 
@@ -14,6 +18,7 @@ def _upload_and_get_url_sync(pdf_bytes: bytes, destination_blob_name: str) -> st
     【同期】GCSへアップロードし、署名付きURLを取得する内部関数。
     ブロッキングI/Oを別スレッドで実行するために使用します。
     """
+    storage_client = get_storage_client()
     bucket = storage_client.bucket(bucket_name)
     blob = bucket.blob(destination_blob_name)
 
@@ -57,6 +62,7 @@ async def upload_image_to_gcs(
     Returns:
         画像の公開URL。
     """
+    storage_client = get_storage_client()
     bucket = storage_client.bucket(bucket_name)
     # ファイル名が重複しないように、セッションIDとタイムスタンプをパスに含める
     blob = bucket.blob(

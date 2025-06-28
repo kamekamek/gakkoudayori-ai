@@ -39,10 +39,10 @@ help:
 
 # 開発環境で起動
 dev:
-	@echo "🔧 開発環境で起動中..."
-	cd frontend && flutter run -d chrome \
+	@echo "🔧 開発環境で起動中 (ポート: 5001, API: 8082)..."
+	cd frontend && flutter run -d chrome --web-port 5001 \
 		--dart-define=ENVIRONMENT=development \
-		--dart-define=API_BASE_URL=http://localhost:8081/api/v1
+		--dart-define=API_BASE_URL=http://localhost:8082/api/v1
 
 # ステージング環境で起動
 staging:
@@ -193,9 +193,10 @@ reset-dev:
 
 # バックエンド開発サーバー起動
 backend-dev:
-	@echo "🐍 バックエンド開発サーバー起動中 (ENVIRONMENT=development)..."
-	cd backend && uv sync --extra dev && \
-	ENVIRONMENT=development GOOGLE_APPLICATION_CREDENTIALS=$$(pwd)/secrets/service-account-key.json uv run uvicorn app.main:app --host 0.0.0.0 --port 8081 --reload
+	@echo "🐍 バックエンド開発サーバー起動中 (ポート: 8082, ENVIRONMENT=development)..."
+	@cd backend && uv sync --extra dev && ENVIRONMENT=development GOOGLE_APPLICATION_CREDENTIALS="secrets/service-account-key.json" uv run uvicorn app.main:app --host 0.0.0.0 --port 8082 --reload
+
+
 
 # Python環境セットアップ
 backend-setup:
@@ -206,7 +207,7 @@ backend-setup:
 # Pythonテスト実行
 backend-test:
 	@echo "🧪 Pythonテスト実行中..."
-	cd backend && uv run pytest tests/ -v 
+	cd backend && uv run bash -c "PYTHONPATH=. pytest tests/ -v" 
 
 # ADK v1.0.0互換性テスト
 test-adk:

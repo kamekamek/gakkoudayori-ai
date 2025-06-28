@@ -21,6 +21,7 @@ dependencies = [
     "html5lib",
     "google-adk>=1.4.2",
     "deprecated",
+    "firebase-admin>=6.9.0",
 ]
 
 # アプリケーションなのでパッケージビルドは不要
@@ -97,4 +98,9 @@ python_classes = "Test*"
 python_functions = "test_*"
 addopts = "-v --tb=short"
 asyncio_mode = "auto"
+
+[dependency-groups]
+dev = [
+    "pytest-mock>=3.14.1",
+]
 

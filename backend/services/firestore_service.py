@@ -1,61 +1,102 @@
-from datetime import datetime
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
+from functools import lru_cache
 
+from app.auth import User
 from google.cloud import firestore
 
-# Firestoreクライアントを初期化
-# このファイルがインポートされると、GCPの認証情報が環境変数から自動的に読み込まれます。
-db = firestore.AsyncClient()
+@lru_cache()
+def get_db_client() -> firestore.AsyncClient:
+    """Firestoreクライアントのシングルトンインスタンスを返す"""
+    return firestore.AsyncClient()
 
-
-async def save_newsletter(user_id: str, title: str, html_content: str) -> str:
+async def get_or_create_user(user: User) -> Dict[str, Any]:
     """
-    生成された学級通信をFirestoreに保存します。
-
-    Args:
-        user_id: ユーザーID。
-        title: 学級通信のタイトル。
-        html_content: 生成されたHTMLコンテンツ。
-
-    Returns:
-        作成されたドキュメントのID。
+    Firestoreにユーザーが存在するか確認し、存在しない場合は作成する。
+    ユーザー情報を返す。
     """
-    collection_ref = db.collection("newsletters")
+    db = get_db_client()
+    user_ref = db.collection("users").document(user.uid)
+    doc = await user_ref.get()
+
+    if doc.exists:
+        return doc.to_dict()
+    else:
+        user_data = {
+            "uid": user.uid,
+            "email": user.email,
+            "displayName": user.name,
+            "photoURL": user.picture,
+            "createdAt": datetime.now(timezone.utc),
+            "googleRefreshToken": None,  # 初期値はNone
+        }
+        await user_ref.set(user_data)
+        return user_data
+
+async def save_document(
+    user_id: str, title: str, html_content: str, conversation_history: List[Dict]
+) -> str:
+    """
+    生成された学級通信をFirestoreのdocumentsコレクションに保存します。
+    """
+    db = get_db_client()
+    collection_ref = db.collection("documents")
+    now = datetime.now(timezone.utc)
     doc_ref = await collection_ref.add(
         {
-            "user_id": user_id,
+            "userId": user_id,
             "title": title,
-            "html_content": html_content,
-            "created_at": datetime.utcnow(),
-            "pdf_url": None,  # PDFは後から生成・更新される
+            "htmlContent": html_content,
+            "conversationHistory": conversation_history,
+            "status": "draft",
+            "createdAt": now,
+            "updatedAt": now,
         }
     )
     return doc_ref.id
 
-
-async def get_newsletter(document_id: str) -> dict | None:
+async def get_document(document_id: str) -> Optional[Dict[str, Any]]:
     """
-    指定されたIDの学級通信をFirestoreから取得します。
-
-    Args:
-        document_id: 取得するドキュメントのID。
-
-    Returns:
-        ドキュメントのデータを辞書として返します。存在しない場合はNoneを返します。
+    指定されたIDのドキュメントをFirestoreから取得します。
     """
-    doc_ref = db.collection("newsletters").document(document_id)
+    db = get_db_client()
+    doc_ref = db.collection("documents").document(document_id)
     doc = await doc_ref.get()
     if doc.exists:
         return doc.to_dict()
     return None
 
-
-async def update_newsletter_pdf_url(document_id: str, pdf_url: str):
+async def get_documents_by_user(user_id: str) -> List[Dict[str, Any]]:
     """
-    学級通信ドキュメントに、生成されたPDFへのURLを保存します。
-
-    Args:
-        document_id: 更新するドキュメントのID。
-        pdf_url: 保存するPDFのURL。
+    指定されたユーザーが作成したドキュメントの一覧を取得します。
     """
-    doc_ref = db.collection("newsletters").document(document_id)
-    await doc_ref.update({"pdf_url": pdf_url})
+    db = get_db_client()
+    docs_query = (
+        db.collection("documents")
+        .where("userId", "==", user_id)
+        .order_by("updatedAt", direction=firestore.Query.DESCENDING)
+    )
+    docs_stream = docs_query.stream()
+    
+    documents = []
+    async for doc in docs_stream:
+        doc_data = doc.to_dict()
+        doc_data["id"] = doc.id
+        documents.append(doc_data)
+    return documents
+
+async def update_document(document_id: str, update_data: Dict[str, Any]) -> None:
+    """
+    指定されたIDのドキュメントを更新します。
+    """
+    db = get_db_client()
+    doc_ref = db.collection("documents").document(document_id)
+    update_data["updatedAt"] = datetime.now(timezone.utc)
+    await doc_ref.update(update_data)
+
+async def delete_document(document_id: str) -> None:
+    """
+    指定されたIDのドキュメントを削除します。
+    """
+    db = get_db_client()
+    await db.collection("documents").document(document_id).delete()

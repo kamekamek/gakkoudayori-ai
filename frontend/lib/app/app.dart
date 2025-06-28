@@ -1,46 +1,51 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart' as legacy;
 
 import '../core/router/app_router.dart';
 import '../core/theme/app_theme.dart';
 import '../core/providers/error_provider.dart';
 import '../features/ai_assistant/providers/adk_chat_provider.dart';
+import '../features/auth/auth_provider.dart';
 import '../features/editor/providers/image_provider.dart';
 import '../features/editor/providers/preview_provider.dart';
 import '../features/home/providers/newsletter_provider.dart';
 import '../services/adk_agent_service.dart';
 
-class GakkouDayoriAiApp extends StatelessWidget {
+class GakkouDayoriAiApp extends ConsumerWidget {
   const GakkouDayoriAiApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MultiProvider(
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 認証状態を監視し、変更があればGoRouterを再評価させる
+    ref.watch(authStateChangesProvider);
+
+    return legacy.MultiProvider(
       providers: [
         // Services
-        Provider(create: (_) => AdkAgentService()),
+        legacy.Provider(create: (_) => AdkAgentService()),
 
         // Error handling
-        ChangeNotifierProvider(create: (_) => ErrorProvider()),
+        legacy.ChangeNotifierProvider(create: (_) => ErrorProvider()),
 
         // Providers
-        ChangeNotifierProvider(
+        legacy.ChangeNotifierProvider(
           create: (context) => AdkChatProvider(
-            adkService: context.read<AdkAgentService>(),
-            errorProvider: context.read<ErrorProvider>(),
-            userId: 'user_12345',
+            adkService: legacy.Provider.of<AdkAgentService>(context, listen: false),
+            errorProvider: legacy.Provider.of<ErrorProvider>(context, listen: false),
+            userId: 'user_12345', // This will be replaced with the actual user ID
           ),
         ),
-        ChangeNotifierProvider(
+        legacy.ChangeNotifierProvider(
           create: (context) => NewsletterProvider(
-            adkAgentService: context.read<AdkAgentService>(),
-            adkChatProvider: context.read<AdkChatProvider>(),
+            adkAgentService: legacy.Provider.of<AdkAgentService>(context, listen: false),
+            adkChatProvider: legacy.Provider.of<AdkChatProvider>(context, listen: false),
           ),
         ),
-        ChangeNotifierProvider(create: (_) => ImageManagementProvider()),
-        ChangeNotifierProvider(
+        legacy.ChangeNotifierProvider(create: (_) => ImageManagementProvider()),
+        legacy.ChangeNotifierProvider(
           create: (context) => PreviewProvider(
-            errorProvider: context.read<ErrorProvider>(),
+            errorProvider: legacy.Provider.of<ErrorProvider>(context, listen: false),
           ),
         ),
       ],

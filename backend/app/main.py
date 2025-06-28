@@ -1,8 +1,9 @@
 import json
 import os
+from contextlib import asynccontextmanager
 
 import google.genai.types as genai_types
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from google.adk.runners import Runner
 from google.adk.sessions.in_memory_session_service import InMemorySessionService
@@ -15,14 +16,27 @@ from app import classroom as classroom_api
 from app import pdf as pdf_api
 from app import stt as stt_api
 from app import user_dictionary as user_dictionary_api
+from app.api.v1.endpoints import documents as documents_api
+from app.auth import User, get_current_user, initialize_firebase_app
 
 # --- 環境設定 ---
 ENVIRONMENT = os.getenv("ENVIRONMENT", "production")
+
+# --- FastAPIのライフサイクル管理 ---
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # アプリケーション起動時に実行
+    print("🚀 Application startup...")
+    initialize_firebase_app()
+    yield
+    # アプリケーション終了時に実行
+    print("👋 Application shutdown...")
 
 # --- FastAPIアプリの初期化 ---
 app = FastAPI(
     title="Gakkoudayori AI Backend v2",
     description=f"ADK v1.0.0-compatible version (Environment: {ENVIRONMENT})",
+    lifespan=lifespan,
 )
 
 # --- CORS設定 ---
@@ -63,26 +77,33 @@ runner = Runner(
 )
 print("✅ ADK Runner initialized manually for v1.0.0")
 
+from app.api.v1.endpoints import documents as documents_api
+
 # --- APIルーターの組み込み ---
 app.include_router(pdf_api.router, prefix="/api/v1")
 app.include_router(classroom_api.router, prefix="/api/v1")
 app.include_router(stt_api.router, prefix="/api/v1")
 app.include_router(user_dictionary_api.router, prefix="/api/v1")
+app.include_router(documents_api.router, prefix="/api/v1")
 
 
 # --- モデル定義 ---
 class AdkChatRequest(BaseModel):
     message: str
-    user_id: str
+    # user_idはトークンから取得するため不要に
+    # user_id: str
     session_id: str
 
 
 # --- ADKチャットエンドポイント ---
 @app.post("/api/v1/adk/chat/stream")
-async def adk_chat_stream(req: AdkChatRequest):
+async def adk_chat_stream(
+    req: AdkChatRequest, current_user: User = Depends(get_current_user)
+):
     """ADK v1.0.0互換のチャットストリーミングエンドポイント"""
 
-    user_id = req.user_id
+    # トークンから取得したユーザーIDを使用
+    user_id = current_user.uid
     # フロントエンドは "user_id:session_id" 形式で送ってくるため分割
     try:
         session_id = req.session_id.split(":", 1)[1]
