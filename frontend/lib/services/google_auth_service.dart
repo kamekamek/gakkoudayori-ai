@@ -23,20 +23,17 @@ class GoogleAuthService {
   /// Google Sign-Inクライアントを初期化し、認証状態の監視を開始します。
   /// このメソッドはアプリの起動時に一度だけ呼び出してください。
   static void initialize() {
-    _googleSignIn = GoogleSignIn(
-      scopes: _scopes,
-    );
+    _googleSignIn = GoogleSignIn(scopes: _scopes);
     _listenToAuthChanges();
   }
 
-  /// Googleの認証状態の変更を監視し、Firebaseの認証状態を同期させます。
+  /// Googleの認証状態の変更を監視し、Firebaseの認証状��を同期させます。
   static void _listenToAuthChanges() {
     googleSignIn.onCurrentUserChanged
         .listen((GoogleSignInAccount? account) async {
       _currentUser = account;
 
       if (account != null) {
-        // Googleアカウントでサインインした場合の処理
         try {
           final GoogleSignInAuthentication googleAuth =
               await account.authentication;
@@ -45,10 +42,8 @@ class GoogleAuthService {
             accessToken: googleAuth.accessToken,
             idToken: googleAuth.idToken,
           );
-          // Firebaseにサインイン
           await fb_auth.FirebaseAuth.instance
               .signInWithCredential(credential);
-          // 認証済みHTTPクライアントを作成
           await _createAuthClient();
           if (kDebugMode) {
             print('Firebase Sign-In successful via listener: ${account.email}');
@@ -57,12 +52,9 @@ class GoogleAuthService {
           if (kDebugMode) {
             print('Error during Firebase sign-in via listener: $e');
           }
-          // エラーが発生した場合は、不整合な状態を避けるためにサインアウトする
           signOut();
         }
       } else {
-        // Googleアカウントからサイン��ウトした場合の処理
-        // Firebaseからもサインアウトする
         if (fb_auth.FirebaseAuth.instance.currentUser != null) {
           await fb_auth.FirebaseAuth.instance.signOut();
           if (kDebugMode) {
@@ -75,7 +67,7 @@ class GoogleAuthService {
   }
 
   /// 現在のGoogle Sign-Inクライアントを取得
-  static GoogleSignIn get googleSignIn {
+  static dynamic get googleSignIn {
     if (_googleSignIn == null) {
       initialize();
     }
@@ -92,7 +84,7 @@ class GoogleAuthService {
   static bool get isSignedIn =>
       fb_auth.FirebaseAuth.instance.currentUser != null;
 
-  /// Google アカウントでログイン（主にモバイルプラットフォーム用のフォールバック）
+  /// Google アカウントでログイン
   static Future<void> signIn() async {
     try {
       await googleSignIn.signIn();
@@ -146,7 +138,7 @@ class GoogleAuthService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('認証済みHTTPクライアン���作成エラー: $e');
+        print('認証済みHTTPクライアント作成エラー: $e');
       }
       _authClient = null;
     }
@@ -173,7 +165,6 @@ class GoogleAuthService {
 
   /// Classroom関連の権限チェック
   static bool hasClassroomPermissions() {
-    // GoogleSignInAccountがnullでなく、必要なスコープをすべて含んでいるか確認
     return _currentUser != null &&
         _scopes.contains('https://www.googleapis.com/auth/classroom.courses.readonly') &&
         _scopes.contains('https://www.googleapis.com/auth/classroom.announcements') &&
