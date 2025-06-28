@@ -57,11 +57,11 @@ class GoogleAuthService {
           if (kDebugMode) {
             print('Error during Firebase sign-in via listener: $e');
           }
-          // エラーが発生した場合は、不整合な状態を避けるためにサイン��ウトする
+          // エラーが発生した場合は、不整合な状態を避けるためにサインアウトする
           signOut();
         }
       } else {
-        // Googleアカウントからサインアウトした場合の処理
+        // Googleアカウントからサイン��ウトした場合の処理
         // Firebaseからもサインアウトする
         if (fb_auth.FirebaseAuth.instance.currentUser != null) {
           await fb_auth.FirebaseAuth.instance.signOut();
@@ -77,8 +77,6 @@ class GoogleAuthService {
   /// 現在のGoogle Sign-Inクライアントを取得
   static GoogleSignIn get googleSignIn {
     if (_googleSignIn == null) {
-      // 初期化されていない場合はエラーを投げるか、再度初期化する
-      // ここでは安全のために初期化を呼び出す
       initialize();
     }
     return _googleSignIn!;
@@ -98,7 +96,6 @@ class GoogleAuthService {
   static Future<void> signIn() async {
     try {
       await googleSignIn.signIn();
-      // この後の処理は _listenToAuthChanges リスナーに任せる
     } catch (e) {
       if (kDebugMode) {
         print('Google Sign-In エラー: $e');
@@ -110,13 +107,7 @@ class GoogleAuthService {
   /// Google アカウントからログアウト
   static Future<void> signOut() async {
     try {
-      // Googleからサインアウトする。
-      // これによりonCurrentUserChangedがnullイベントを発火し、
-      // _listenToAuthChangesリスナーがFirebaseからのサインアウトを処理する。
       await googleSignIn.signOut();
-      if (kDebugMode) {
-        print('Google Sign-Out initiated.');
-      }
     } catch (e) {
       if (kDebugMode) {
         print('Google Sign-Out エラー: $e');
@@ -155,9 +146,65 @@ class GoogleAuthService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('認証済みHTTPクライアント作成エラー: $e');
+        print('認証済みHTTPクライアン���作成エラー: $e');
       }
       _authClient = null;
+    }
+  }
+
+  /// トークンを更新
+  static Future<void> refreshToken() async {
+    if (_currentUser == null) {
+      throw Exception('ユーザーがログインしていません');
+    }
+    try {
+      await _createAuthClient();
+      if (kDebugMode) {
+        print('トークン更新完了');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('トークン更新エラー: $e');
+      }
+      await signOut();
+      throw Exception('トークンの更新に失敗しました。再ログインが必要です: $e');
+    }
+  }
+
+  /// Classroom関連の権限チェック
+  static bool hasClassroomPermissions() {
+    // GoogleSignInAccountがnullでなく、必要なスコープをすべて含んでいるか確認
+    return _currentUser != null &&
+        _scopes.contains('https://www.googleapis.com/auth/classroom.courses.readonly') &&
+        _scopes.contains('https://www.googleapis.com/auth/classroom.announcements') &&
+        _scopes.contains('https://www.googleapis.com/auth/drive.file');
+  }
+
+  /// 認証状態の文字列表現
+  static String getAuthStatusText() {
+    if (!isSignedIn) {
+      return 'ログインしていません';
+    }
+    return 'ログイン済み: ${fb_auth.FirebaseAuth.instance.currentUser?.email ?? ''}';
+  }
+
+  /// 認証エラーハンドリング
+  static Future<void> handleAuthError(dynamic error) async {
+    if (kDebugMode) {
+      print('認証エラーハンドリング: $error');
+    }
+    final errorString = error.toString();
+    if (errorString.contains('401') || errorString.contains('unauthorized')) {
+      try {
+        await refreshToken();
+      } catch (e) {
+        throw Exception('認証エラー: 再ログインが必要です');
+      }
+    } else if (errorString.contains('403') ||
+        errorString.contains('forbidden')) {
+      throw Exception('権限エラー: 必要な権限が不足しています');
+    } else {
+      throw Exception('認証エラー: $error');
     }
   }
 }

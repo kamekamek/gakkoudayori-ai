@@ -588,7 +588,6 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
   /// システムメッセージ専用のバブル表示
   Widget _buildSystemMessageBubble(MutableChatMessage message) {
     final type = message.systemMessageType ?? SystemMessageType.info;
-    final isError = message.role == 'error' || type == SystemMessageType.error;
     
     // タイプに応じたアイコンと色を決定
     IconData icon;
@@ -628,7 +627,6 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
         iconColor = Colors.orange.shade600;
         break;
       case SystemMessageType.info:
-      default:
         icon = Icons.info_outline;
         backgroundColor = Colors.blue.shade50;
         textColor = Colors.blue.shade800;

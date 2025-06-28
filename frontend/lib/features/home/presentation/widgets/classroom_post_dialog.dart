@@ -69,7 +69,8 @@ class _ClassroomPostDialogState extends State<ClassroomPostDialog> {
       setState(() {
         _errorMessage = '認証状態の確認に失敗しました: $e';
       });
-    } finally {
+    }
+ finally {
       setState(() {
         _isLoading = false;
       });
@@ -101,13 +102,13 @@ class _ClassroomPostDialogState extends State<ClassroomPostDialog> {
     });
 
     try {
-      final user = await GoogleAuthService.signIn();
-
-      if (user != null) {
-        _isAuthenticated = true;
-        await _loadCourses();
+      await GoogleAuthService.signIn();
+      // 認証状態の変更はリスナーが検知してUIを更新するため、ここでは待つだけ
+      // ログイン成功後の処理は checkAuthenticationStatus に集約
+      await _checkAuthenticationStatus();
+      if (GoogleAuthService.isSignedIn) {
         setState(() {
-          _successMessage = 'ログインしました: ${user.email}';
+          _successMessage = 'ログインしました: ${GoogleAuthService.currentUser?.email}';
         });
       } else {
         setState(() {
@@ -118,7 +119,8 @@ class _ClassroomPostDialogState extends State<ClassroomPostDialog> {
       setState(() {
         _errorMessage = '$e';
       });
-    } finally {
+    }
+ finally {
       setState(() {
         _isLoading = false;
       });
@@ -205,7 +207,8 @@ class _ClassroomPostDialogState extends State<ClassroomPostDialog> {
       setState(() {
         _errorMessage = '投稿に失敗しました: $e';
       });
-    } finally {
+    }
+ finally {
       setState(() {
         _isLoading = false;
       });
