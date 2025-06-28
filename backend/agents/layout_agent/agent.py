@@ -38,6 +38,7 @@ class LayoutAgent(LlmAgent):
         """
         エージェントの実行ロジックをオーバーライドし、
         セッション状態からJSONデータを読み込んでHTMLを生成します。
+        AgentTool経由での呼び出しに対応します。
         """
         try:
             # セッション状態からJSONデータを取得
@@ -57,12 +58,17 @@ class LayoutAgent(LlmAgent):
                     with open(outline_file, "r", encoding="utf-8") as f:
                         json_data = f.read()
                 else:
-                    error_msg = "outline データが見つかりません。先に対話エージェントを実行してください。"
-                    logger.error(error_msg)
-                    yield Event(
-                        author=self.name, content=Content(parts=[Part(text=error_msg)])
-                    )
-                    return
+                    # AgentToolとして呼び出された場合、JSONデータがない場合はサンプルを生成
+                    logger.info("JSONデータが見つからないため、サンプルJSONでHTML生成を試行します")
+                    json_data = self._generate_sample_json()
+
+            if not json_data:
+                error_msg = "HTML生成用のデータを準備できませんでした。"
+                logger.error(error_msg)
+                yield Event(
+                    author=self.name, content=Content(parts=[Part(text=error_msg)])
+                )
+                return
 
             logger.info(f"JSON データを読み込みました: {len(str(json_data))} 文字")
 
@@ -201,6 +207,64 @@ class LayoutAgent(LlmAgent):
             "明確なHTMLブロックが検出されませんでした。応答全体を使用します。"
         )
         return response_text
+
+    def _generate_sample_json(self) -> str:
+        """AgentTool用のサンプルJSONを生成します。"""
+        from datetime import datetime
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        sample_json = {
+            "schema_version": "2.4",
+            "school_name": "○○小学校",
+            "grade": "1年1組",
+            "issue": "12月号",
+            "issue_date": current_date,
+            "author": {"name": "担任", "title": "担任"},
+            "main_title": "1年1組だより12月号",
+            "sub_title": None,
+            "season": "冬",
+            "theme": "学級の様子",
+            "color_scheme": {
+                "primary": "#4A90E2",
+                "secondary": "#7ED321", 
+                "accent": "#F5A623",
+                "background": "#ffffff",
+            },
+            "color_scheme_source": "冬の季節に合わせた爽やかな色合い",
+            "sections": [
+                {
+                    "type": "main_content",
+                    "title": "最近の学級の様子",
+                    "content": "みなさん、いつも元気に過ごしていますね。最近の学習や生活の様子をお伝えします。",
+                    "estimated_length": "medium",
+                    "section_visual_hint": "children_activities",
+                }
+            ],
+            "photo_placeholders": {
+                "count": 1,
+                "suggested_positions": [
+                    {
+                        "section_type": "main_content",
+                        "position": "top-right",
+                        "caption_suggestion": "学習の様子",
+                    }
+                ],
+            },
+            "enhancement_suggestions": [
+                "季節の行事について追加",
+                "お知らせやお願い事項の追加",
+            ],
+            "has_editor_note": False,
+            "editor_note": None,
+            "layout_suggestion": {
+                "page_count": 1,
+                "columns": 2,
+                "column_ratio": "1:1",
+                "blocks": ["header", "main_content", "photos", "footer"],
+            },
+            "force_single_page": True,
+            "max_pages": 1,
+        }
+        return json.dumps(sample_json, ensure_ascii=False, indent=2)
 
 
 def create_layout_agent() -> LayoutAgent:

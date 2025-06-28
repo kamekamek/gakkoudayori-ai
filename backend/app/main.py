@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
 # 実行対象のエージェントを直接インポート
-from agents.orchestrator_agent.agent import root_agent
+from agents.main_conversation_agent.agent import root_agent
 from app import classroom as classroom_api
 from app import pdf as pdf_api
 from app import stt as stt_api
@@ -49,11 +49,12 @@ else:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
+        allow_origin_regex=r"https://gakkoudayori-ai--.*\.web\.app",  # ステージング・プレビュー環境を許可
         allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE"],
-        allow_headers=["Content-Type", "Authorization"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["Content-Type", "Authorization", "Accept", "Origin", "X-Requested-With"],
     )
-    print("✅ CORS: Production mode enabled")
+    print("✅ CORS: Production mode enabled with staging support")
 
 # --- ADK v1.0.0手動セットアップ ---
 session_service = InMemorySessionService()

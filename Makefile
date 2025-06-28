@@ -1,6 +1,6 @@
 # 学校だよりAI - 環境管理Makefile
 
-.PHONY: help dev prod staging build-dev build-prod deploy deploy-frontend deploy-backend deploy-all deploy-staging deploy-preview ci-setup test lint format reset-dev backend-dev backend-test backend-setup check-backend test-adk
+.PHONY: help dev prod staging build-dev build-prod deploy deploy-frontend deploy-backend deploy-backend-staging deploy-all deploy-staging deploy-preview ci-setup test lint format reset-dev backend-dev backend-test backend-setup check-backend test-adk warmup
 
 # デフォルトターゲット
 help:
@@ -142,12 +142,16 @@ deploy-backend:
 # ステージングバックエンドデプロイ
 deploy-backend-staging:
 	@echo "📤 ステージングバックエンドをCloud Runにデプロイ中 (Dockerfile使用)..."
-	cd backend/app && gcloud run deploy gakkoudayori-backend-staging \
+	cd backend && gcloud run deploy gakkoudayori-backend-staging \
 		--source=. \
 		--region=asia-northeast1 \
 		--allow-unauthenticated \
 		--memory=2Gi \
 		--timeout=300 \
+		--min-instances=0 \
+		--max-instances=5 \
+		--cpu=1 \
+		--concurrency=50 \
 		--set-env-vars="ENVIRONMENT=staging" \
 		--platform=managed
 

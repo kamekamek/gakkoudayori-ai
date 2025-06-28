@@ -130,7 +130,7 @@ def test_agent_loading():
     """各エージェントの読み込みをテストします。"""
     print("🔍 エージェント読み込みテスト...")
 
-    agents_to_test = ["orchestrator_agent", "planner_agent", "generator_agent"]
+    agents_to_test = ["main_conversation_agent", "layout_agent"]
 
     results = {}
 
@@ -159,14 +159,14 @@ def test_agent_loading():
     return all(results.values())
 
 
-def test_orchestrator_creation():
-    """OrchestratorAgentの作成をテストします。"""
-    print("🔍 OrchestratorAgent作成テスト...")
+def test_main_conversation_creation():
+    """MainConversationAgentの作成をテストします。"""
+    print("🔍 MainConversationAgent作成テスト...")
     try:
-        from agents.orchestrator_agent.agent import create_orchestrator_agent
+        from agents.main_conversation_agent.agent import create_main_conversation_agent
 
-        agent = create_orchestrator_agent()
-        print(f"✅ OrchestratorAgent作成成功: {type(agent)}")
+        agent = create_main_conversation_agent()
+        print(f"✅ MainConversationAgent作成成功: {type(agent)}")
 
         # sub_agentsの存在確認
         if hasattr(agent, "sub_agents"):
@@ -174,9 +174,15 @@ def test_orchestrator_creation():
             for i, sub_agent in enumerate(agent.sub_agents):
                 print(f"  - {i}: {sub_agent.name} ({type(sub_agent).__name__})")
 
+        # toolsの存在確認
+        if hasattr(agent, "tools"):
+            print(f"  ツール数: {len(agent.tools)}")
+            for i, tool in enumerate(agent.tools):
+                print(f"  - {i}: {tool.name if hasattr(tool, 'name') else str(tool)}")
+
         return True
     except Exception as e:
-        print(f"❌ OrchestratorAgent作成エラー: {e}")
+        print(f"❌ MainConversationAgent作成エラー: {e}")
         traceback.print_exc()
         return False
 
@@ -210,7 +216,7 @@ def main():
         ("InvocationContextメソッド", test_invocation_context_methods),
         ("Event構造", test_event_structure),
         ("エージェント読み込み", test_agent_loading),
-        ("OrchestratorAgent作成", test_orchestrator_creation),
+        ("MainConversationAgent作成", test_main_conversation_creation),
         ("アーティファクトディレクトリ", test_artifact_directory),
     ]
 
