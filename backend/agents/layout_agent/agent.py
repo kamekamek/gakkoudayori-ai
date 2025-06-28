@@ -203,6 +203,12 @@ HTMLのみを出力し、説明文は一切不要です。
                 html_content = ctx.session.state["html"]
                 logger.info(f"HTML生成完了: {len(html_content)}文字")
                 
+                # HTML生成完了フラグを設定
+                ctx.session.state["html_generated"] = True
+                from datetime import datetime
+                ctx.session.state["html_generation_timestamp"] = datetime.now().strftime("%Y-%m-%d")
+                logger.info("HTML生成完了フラグを設定しました")
+                
                 # HTML配信ツールを自動実行
                 try:
                     import json
@@ -669,25 +675,55 @@ HTMLのみを出力し、説明文は一切不要です。
             logger.error(f"セッション状態詳細ログエラー: {e}")
 
     async def _get_json_from_adk_output_key(self, ctx: InvocationContext) -> str:
-        """ADK output_keyから確実にJSONを取得"""
+        """ADK output_keyから確実にJSONを取得（冗長化対応）"""
         try:
             if not hasattr(ctx, "session") or not hasattr(ctx.session, "state"):
                 logger.warning("セッション状態が利用できません")
                 return None
-                
-            # outline キーから取得
-            json_data = ctx.session.state.get("outline")
             
-            if json_data:
-                logger.info(f"outline キーから取得: {len(str(json_data))} 文字")
-                logger.info(f"取得データ(先頭200文字): {str(json_data)[:200]}...")
-                return str(json_data)
-            else:
-                logger.warning("outline キーが存在しないか空です")
-                return None
+            # セッション状態の詳細ログ出力
+            logger.info(f"=== セッション状態詳細確認 ===")
+            session_keys = list(ctx.session.state.keys()) if ctx.session.state else []
+            logger.info(f"セッション状態のキー一覧: {session_keys}")
+            
+            # 複数のキーから順次取得を試行（優先順位順）
+            json_keys_priority = ["outline", "newsletter_json", "user_data_json"]
+            
+            for key in json_keys_priority:
+                json_data = ctx.session.state.get(key)
+                if json_data:
+                    logger.info(f"✅ {key} キーから取得成功: {len(str(json_data))} 文字")
+                    logger.info(f"取得データ(先頭200文字): {str(json_data)[:200]}...")
+                    
+                    # JSON形式として有効かチェック
+                    try:
+                        import json as json_module
+                        parsed = json_module.loads(str(json_data))
+                        school_name = parsed.get('school_name', 'UNKNOWN')
+                        grade = parsed.get('grade', 'UNKNOWN')
+                        logger.info(f"✅ JSONデータ確認成功: {school_name} {grade}")
+                        return str(json_data)
+                    except Exception as parse_error:
+                        logger.warning(f"❌ {key} キーのJSONが不正: {parse_error}")
+                        continue  # 次のキーを試す
+                else:
+                    logger.info(f"❌ {key} キーは存在しないか空です")
+            
+            # 全てのキーで取得に失敗
+            logger.error("❌ 全てのJSONキーから取得に失敗しました")
+            
+            # デバッグ情報：セッション状態の全体を出力
+            logger.info("=== セッション状態デバッグ情報 ===")
+            for key, value in ctx.session.state.items():
+                value_preview = str(value)[:100] + "..." if len(str(value)) > 100 else str(value)
+                logger.info(f"  {key}: {value_preview}")
+            
+            return None
                 
         except Exception as e:
             logger.error(f"ADK output_key取得エラー: {e}")
+            import traceback
+            logger.error(f"取得エラー詳細: {traceback.format_exc()}")
             return None
 
     async def _validate_json_data(self, json_data: str) -> bool:
