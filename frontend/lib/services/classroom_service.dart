@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:googleapis/classroom/v1.dart' as classroom;
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:flutter/foundation.dart';

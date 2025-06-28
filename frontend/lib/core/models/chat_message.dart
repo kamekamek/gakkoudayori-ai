@@ -15,27 +15,23 @@ class MutableChatMessage {
   }) : timestamp = timestamp ?? DateTime.now();
 
   /// ユーザーメッセージを作成
-  MutableChatMessage.user(String content)
+  MutableChatMessage.user(this.content)
       : role = 'user',
-        content = content,
         timestamp = DateTime.now();
 
   /// アシスタントメッセージを作成
-  MutableChatMessage.assistant(String content)
+  MutableChatMessage.assistant(this.content)
       : role = 'assistant',
-        content = content,
         timestamp = DateTime.now();
 
   /// システムメッセージを作成
-  MutableChatMessage.system(String content)
+  MutableChatMessage.system(this.content)
       : role = 'system',
-        content = content,
         timestamp = DateTime.now();
 
   /// エラーメッセージを作成
-  MutableChatMessage.error(String content)
+  MutableChatMessage.error(this.content)
       : role = 'error',
-        content = content,
         timestamp = DateTime.now();
 
   /// JSONから作成

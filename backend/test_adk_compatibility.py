@@ -163,12 +163,7 @@ def test_orchestrator_creation():
     """OrchestratorAgentの作成をテストします。"""
     print("🔍 OrchestratorAgent作成テスト...")
     try:
-        # agents ディレクトリをPythonパスに追加
-        agents_dir = Path.cwd() / "agents"
-        if str(agents_dir) not in sys.path:
-            sys.path.insert(0, str(agents_dir))
-
-        from orchestrator_agent.agent import create_orchestrator_agent
+        from agents.orchestrator_agent.agent import create_orchestrator_agent
 
         agent = create_orchestrator_agent()
         print(f"✅ OrchestratorAgent作成成功: {type(agent)}")

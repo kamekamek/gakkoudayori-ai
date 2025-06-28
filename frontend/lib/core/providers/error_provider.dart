@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 /// シンプルなエラー管理Provider
 class ErrorProvider extends ChangeNotifier {
   String? _lastError;
-  List<String> _errorHistory = [];
+  final List<String> _errorHistory = [];
 
   String? get lastError => _lastError;
   List<String> get errorHistory => List.unmodifiable(_errorHistory);
