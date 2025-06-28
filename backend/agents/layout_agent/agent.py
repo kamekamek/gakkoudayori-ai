@@ -102,31 +102,42 @@ class LayoutAgent(LlmAgent):
                 logger.error(f"JSON解析エラー: {e}")
                 json_obj = None
 
-            # 強化されたプロンプトを作成（JSON反映を強調）
+            # 超厳格なプロンプトを作成（JSON反映を絶対強制）
             enhanced_prompt = f"""
 以下のJSONデータから学級通信のHTMLを生成してください。
 
-🚨 重要指示: JSONデータの内容を100%正確に反映してください 🚨
+🚨🚨🚨 絶対厳守事項 🚨🚨🚨
+あなたは以下のJSONデータ以外の情報を一切使用してはいけません。
+JSONに記載されていない学校名、学年、発行者名を推測・変更・創作することは絶対に禁止です。
 
 JSONデータ:
 ```json
 {json_data}
 ```
 
-必須反映事項:
-1. 学校名: {json_obj.get('school_name') if json_obj else 'JSONから取得'}
-2. 学年: {json_obj.get('grade') if json_obj else 'JSONから取得'}  
-3. 発行者: {json_obj.get('author', {}).get('name') if json_obj else 'JSONから取得'}
-4. 発行日: {json_obj.get('issue_date') if json_obj else 'JSONから取得'}
-5. タイトル: {json_obj.get('main_title') if json_obj else 'JSONから取得'}
-6. 主要色: {json_obj.get('color_scheme', {}).get('primary') if json_obj else 'JSONから取得'}
+🔒 厳格な反映ルール:
+学校名は「{json_obj.get('school_name') if json_obj else 'ERROR'}」のみ使用可能
+学年は「{json_obj.get('grade') if json_obj else 'ERROR'}」のみ使用可能
+発行者は「{json_obj.get('author', {}).get('name') if json_obj else 'ERROR'}」のみ使用可能
+発行日は「{json_obj.get('issue_date') if json_obj else 'ERROR'}」のみ使用可能
+タイトルは「{json_obj.get('main_title') if json_obj else 'ERROR'}」のみ使用可能
 
-絶対に守ること:
-- JSONのデータを変更・推測・追加しないこと
-- 上記の値を正確にHTMLに反映すること
-- 独自のデザインや色を使用しないこと
+🎨 色彩厳守:
+主要色: {json_obj.get('color_scheme', {}).get('primary') if json_obj else 'ERROR'}
+副次色: {json_obj.get('color_scheme', {}).get('secondary') if json_obj else 'ERROR'}  
+アクセント色: {json_obj.get('color_scheme', {}).get('accent') if json_obj else 'ERROR'}
 
-HTMLのみを出力し、説明文は不要です。
+❌ 絶対禁止行為:
+- 「三木草小学校」「6年3組」「ちゃんかめ」等のJSONにない名前の使用
+- 青系色彩(#004080等)の使用
+- JSONデータの推測・修正・変更
+- 独自のクリエイティブな追加
+
+✅ 許可される行為:
+- 上記JSONの値のみを使用したHTML生成
+- JSONに記載された色彩のみの使用
+
+HTMLのみを出力し、説明文は一切不要です。
             """
 
             # 一時的にプロンプトを更新してLLMを実行
@@ -139,11 +150,16 @@ HTMLのみを出力し、説明文は不要です。
                 # LLMの生成イベントは内部処理として隠蔽し、後でHTML抽出用に保存
                 llm_events.append(event)
             
-            # 生成されたイベントからHTMLを抽出して保存
-            await self._save_html_from_llm_events(ctx, llm_events)
+            # フォールバック: LLMが失敗した場合はテンプレート生成
+            llm_html_valid = await self._save_html_from_llm_events(ctx, llm_events)
             
             # HTMLとJSONの一致検証
-            await self._validate_html_json_consistency(ctx, json_obj)
+            is_consistent = await self._validate_html_json_consistency(ctx, json_obj)
+            
+            # 不整合がある場合はテンプレート生成でフォールバック
+            if not is_consistent and json_obj:
+                logger.warning("LLM生成HTMLに不整合があります。テンプレート生成にフォールバック...")
+                await self._generate_html_from_template(ctx, json_obj)
 
             # プロンプトを元に戻す
             self.instruction = original_instruction
@@ -227,12 +243,136 @@ HTMLのみを出力し、説明文は不要です。
                     
                     if inconsistencies:
                         logger.warning(f"HTML-JSON不整合検出: {', '.join(inconsistencies)}")
+                        return False
                     else:
                         logger.info("HTML-JSON整合性検証: 正常")
+                        return True
                 else:
                     logger.warning("HTML検証スキップ: HTMLコンテンツがありません")
+                    return False
         except Exception as e:
             logger.error(f"HTML-JSON検証エラー: {e}")
+            return False
+    
+    async def _generate_html_from_template(self, ctx: InvocationContext, json_obj):
+        """JSONデータからテンプレートベースでHTMLを確実に生成"""
+        try:
+            school_name = json_obj.get('school_name', 'ERROR')
+            grade = json_obj.get('grade', 'ERROR')
+            author_name = json_obj.get('author', {}).get('name', 'ERROR')
+            author_title = json_obj.get('author', {}).get('title', 'ERROR')
+            issue_date = json_obj.get('issue_date', 'ERROR')
+            main_title = json_obj.get('main_title', 'ERROR')
+            
+            color_scheme = json_obj.get('color_scheme', {})
+            primary_color = color_scheme.get('primary', '#FFFF99')
+            secondary_color = color_scheme.get('secondary', '#FFCC99')
+            accent_color = color_scheme.get('accent', '#FF9966')
+            
+            sections = json_obj.get('sections', [])
+            main_content = ""
+            for section in sections:
+                content = section.get('content', '')
+                # 改行を<p>タグに変換
+                paragraphs = content.split('\n')
+                for paragraph in paragraphs:
+                    if paragraph.strip():
+                        main_content += f"    <p>{paragraph.strip()}</p>\n"
+            
+            # 確実なHTMLテンプレート生成
+            template_html = f'''<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{school_name} {grade} {json_obj.get('issue', '学級通信')}</title>
+  <style>
+    body {{
+      font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #ffffff;
+      color: #333333;
+      line-height: 1.6;
+    }}
+    .container {{
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }}
+    .header {{
+      background-color: {primary_color};
+      padding: 20px;
+      text-align: center;
+      border-bottom: 3px solid {accent_color};
+    }}
+    .header h1 {{
+      margin: 0;
+      color: #333333;
+      font-size: 24px;
+    }}
+    .header p {{
+      margin: 10px 0 0 0;
+      color: #333333;
+    }}
+    .main-content {{
+      padding: 30px;
+    }}
+    .main-content h2 {{
+      color: {accent_color};
+      border-left: 4px solid {secondary_color};
+      padding-left: 15px;
+      margin-bottom: 20px;
+    }}
+    .footer {{
+      background-color: {secondary_color};
+      padding: 15px;
+      text-align: center;
+      color: #333333;
+    }}
+    @media print {{
+      body {{ margin: 0; }}
+      .container {{ box-shadow: none; }}
+    }}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>{school_name} {grade}</h1>
+      <p>{json_obj.get('issue', '学級通信')} - {issue_date}</p>
+      <p>発行者: {author_title} {author_name}</p>
+    </div>
+    <div class="main-content">
+      <h2>{main_title}</h2>
+{main_content}
+    </div>
+    <div class="footer">
+      <p>{school_name} {grade}</p>
+    </div>
+  </div>
+</body>
+</html>'''
+
+            # セッション状態に保存
+            if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
+                ctx.session.state["html"] = template_html
+                logger.info("テンプレートHTMLをセッション状態に保存しました")
+
+            # ファイルにも保存
+            artifacts_dir = Path("/tmp/adk_artifacts")
+            newsletter_file = artifacts_dir / "newsletter.html"
+            
+            with open(newsletter_file, "w", encoding="utf-8") as f:
+                f.write(template_html)
+            
+            logger.info(f"テンプレートHTMLをファイルに保存しました: {newsletter_file}")
+            
+        except Exception as e:
+            logger.error(f"テンプレートHTML生成エラー: {e}")
 
     async def _save_html_from_response(self, ctx: InvocationContext):
         """LLM応答からHTMLを抽出してセッション状態に保存"""
