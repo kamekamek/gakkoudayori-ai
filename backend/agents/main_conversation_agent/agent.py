@@ -42,21 +42,20 @@ class MainConversationAgent(LlmAgent):
     """
 
     def __init__(self):
-        # LayoutAgentをサブエージェントとして設定
+        # MALFORMED_FUNCTION_CALL対応: 手動sub_agents呼び出しに戻す
         from agents.layout_agent.agent import create_layout_agent
-        
         layout_agent = create_layout_agent()
-
+        
         super().__init__(
             name="main_conversation_agent",
             model=Gemini(model_name="gemini-2.5-pro"),
             instruction=MAIN_CONVERSATION_INSTRUCTION,
-            description="ユーザーと自然な対話を行い、学級通信作成をサポートします。必要に応じてHTML生成を委譲します。",
+            description="ユーザーと自然な対話を行い、学級通信作成をサポートします。手動でHTML生成を委譲します。",
             tools=[
                 FunctionTool(get_current_date)
             ],
-            sub_agents=[layout_agent],
-            output_key="outline",
+            sub_agents=[layout_agent],  # 手動呼び出し用
+            # output_key="outline",  # MALFORMED_FUNCTION_CALL対応: 無効化
         )
 
     async def _run_async_impl(
@@ -67,33 +66,56 @@ class MainConversationAgent(LlmAgent):
         HTML生成は明示的なユーザー要求があった場合のみ委譲します。
         """
         try:
-            logger.info("=== MainConversationAgent実行開始 ===")
-            logger.info(f"プロンプト長: {len(self.instruction)} 文字")
-            logger.info(f"プロンプト(最初の200文字): {self.instruction[:200]}...")
+            logger.info("=== MainConversationAgent実行開始 (ADK推奨パターン) ===")
+            logger.info(f"Output key: {self.output_key}")
+            logger.info(f"Sub agents: {len(self.sub_agents)}")
             event_count = 0
             
-            # 親クラスの通常のLLM対話を実行
+            # ADK推奨: LLM実行のみでoutput_keyによる自動保存に任せる
             async for event in super()._run_async_impl(ctx):
                 event_count += 1
                 logger.info(f"LLMイベント #{event_count}: author={getattr(event, 'author', 'unknown')}")
                 
-                # イベントの詳細をログ出力
-                if hasattr(event, 'content') and event.content:
-                    event_text = self._extract_text_from_event(event)
-                    logger.info(f"イベント内容(最初の100文字): {event_text[:100]}...")
+                # transfer_to_agentの実行を確認
+                if hasattr(event, 'actions') and event.actions and event.actions.transfer_to_agent:
+                    logger.info(f"✅ transfer_to_agent実行: {event.actions.transfer_to_agent}")
                 
                 yield event
 
-            logger.info(f"=== LLM実行完了: {event_count}個のイベント ===")
+            logger.info(f"=== MainConversationAgent完了: {event_count}個のイベント ===")
             
-            # 最後に対話状態をセッションに保存
-            await self._save_conversation_state(ctx)
-            
-            # JSON構成案が生成された場合はセッション状態に保存
+            # MALFORMED_FUNCTION_CALL対応: 手動JSON検出を復活
             await self._check_and_save_json_from_conversation(ctx)
             
-            # ユーザー承認後のHTML生成準備（条件付き実行）
+            # ユーザー承認後のHTML生成準備
             await self._prepare_html_generation_if_approved(ctx)
+            
+            # HTML生成が要求された場合、LayoutAgentを実行
+            if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
+                if ctx.session.state.get("html_generation_requested", False):
+                    logger.info("=== HTML生成要求を検出 - LayoutAgent実行開始 ===")
+                    
+                    # フラグをクリア
+                    ctx.session.state["html_generation_requested"] = False
+                    
+                    # LayoutAgentを直接実行してイベントをyield
+                    layout_agent = None
+                    for agent in self.sub_agents:
+                        if agent.name == "layout_agent":
+                            layout_agent = agent
+                            break
+                    
+                    if layout_agent:
+                        logger.info("LayoutAgentを直接実行します")
+                        async for layout_event in layout_agent._run_async_impl(ctx):
+                            logger.info(f"LayoutAgentイベント: {getattr(layout_event, 'author', 'unknown')}")
+                            yield layout_event
+                        logger.info("LayoutAgent実行完了")
+                    else:
+                        logger.error("LayoutAgentが見つかりません")
+            
+            # ADKセッション状態確認
+            await self._log_session_state_for_debug(ctx)
 
         except Exception as e:
             error_msg = f"対話中にエラーが発生しました: {str(e)}"
@@ -125,23 +147,9 @@ class MainConversationAgent(LlmAgent):
             logger.error(f"対話状態保存エラー: {e}")
 
     async def _check_and_save_json_from_conversation(self, ctx: InvocationContext):
-        """対話からJSON構成案を検出して保存（完全サイレント処理）"""
+        """対話からユーザー情報を検出してJSON構成案を生成（MALFORMED_FUNCTION_CALL対応版）"""
         try:
-            logger.info("=== JSON構成案検出開始 ===")
-            
-            # セッション詳細情報をログ出力
-            if hasattr(ctx, "session"):
-                logger.info(f"セッション存在: True")
-                logger.info(f"セッション属性: {dir(ctx.session)}")
-                
-                if hasattr(ctx.session, "session_id"):
-                    logger.info(f"セッションID: {ctx.session.session_id}")
-                if hasattr(ctx.session, "user_id"):
-                    logger.info(f"ユーザーID: {ctx.session.user_id}")
-                if hasattr(ctx.session, "state"):
-                    logger.info(f"セッション状態キー: {list(ctx.session.state.keys()) if ctx.session.state else 'None'}")
-            else:
-                logger.warning("セッションオブジェクトが存在しません")
+            logger.info("=== ユーザー情報検出・JSON構築開始 ===")
             
             # セッションイベントから最後のエージェント応答を取得
             if not hasattr(ctx, "session") or not hasattr(ctx.session, "events"):
@@ -153,90 +161,212 @@ class MainConversationAgent(LlmAgent):
                 logger.warning("セッションイベントが空です")
                 return
             
-            logger.info(f"セッションイベント数: {len(session_events)}")
+            # すべてのユーザー・エージェントイベントから情報を収集
+            user_info = self._extract_user_info_from_conversation(session_events)
+            logger.info(f"収集されたユーザー情報: {user_info}")
             
-            # イベントの詳細情報をログ出力
-            for i, event in enumerate(session_events[-3:]):  # 最新の3つだけ
-                logger.info(f"イベント #{i}: author={getattr(event, 'author', 'unknown')}, type={type(event)}")
-
-            # メインエージェントが作成した最後のイベントを探す
-            conversation_event = None
-            for event in reversed(session_events):
-                if hasattr(event, "author") and event.author == self.name:
-                    conversation_event = event
-                    break
-
-            if conversation_event is None:
-                return
-
-            # イベントの内容からテキストを抽出
-            llm_response_text = self._extract_text_from_event(conversation_event)
-            logger.info(f"LLM応答テキスト長: {len(llm_response_text)}")
-            logger.info(f"LLM応答テキスト(最初の200文字): {llm_response_text[:200]}...")
-
-            if not llm_response_text.strip():
-                logger.warning("LLM応答テキストが空です")
-                return
-
-            # JSONブロックをユーザー表示から除去し、内部処理のみ実行
-            json_str = None
-            cleaned_response = llm_response_text
-            
-            logger.info(f"JSON検索開始: 複数パターンでの検索")
-            logger.info(f"LLM応答全文(先頭1000文字): {llm_response_text[:1000]}...")
-            
-            # パターン1: Markdownコードブロック
-            if "```json" in llm_response_text and "```" in llm_response_text:
-                logger.info("パターン1: ```json コードブロック検出")
-                json_str = self._extract_json_from_response(llm_response_text)
-                if json_str:
-                    logger.info(f"抽出されたJSON長: {len(json_str)} 文字")
-                    logger.info(f"抽出されたJSON(最初の300文字): {json_str[:300]}...")
-                    cleaned_response = self._remove_json_blocks_from_response(llm_response_text)
-            
-            # パターン2: 直接JSONオブジェクト検出
-            elif "{" in llm_response_text and "school_name" in llm_response_text:
-                logger.info("パターン2: 直接JSONオブジェクト検出")
-                json_str = self._extract_direct_json_from_response(llm_response_text)
-                if json_str:
-                    logger.info(f"直接抽出JSON長: {len(json_str)} 文字")
-            
-            # パターン3: function_call引数からJSON抽出
-            elif not json_str:
-                logger.info("パターン3: セッションイベントからfunction_call JSON検索")
-                json_str = await self._extract_json_from_function_calls(ctx)
-                if json_str:
-                    logger.info(f"function_call JSON長: {len(json_str)} 文字")
-            
-            # デバッグ：どのパターンも該当しない場合の詳細ログ
-            if not json_str:
-                logger.warning("=== JSON検索失敗の詳細分析 ===")
-                logger.warning(f"```json 含有: {'```json' in llm_response_text}")
-                logger.warning(f"{{ 含有: {'{' in llm_response_text}")
-                logger.warning(f"school_name 含有: {'school_name' in llm_response_text}")
-                logger.warning(f"応答テキスト長: {len(llm_response_text)}")
-                logger.warning(f"応答テキスト(全文): '{llm_response_text}'")
-            
-            # JSON保存処理
-            if json_str:
-                logger.info(f"JSON抽出成功: {len(json_str)} 文字")
-                logger.info(f"抽出されたJSON(最初の300文字): {json_str[:300]}...")
+            # 情報が十分収集されている場合はJSON構築
+            if self._has_sufficient_info(user_info):
+                logger.info("十分な情報が収集されました - JSON構築を実行")
                 
-                # 内部保存処理（サイレント）
-                await self._save_json_data(ctx, json_str)
-                logger.info("JSON構成案をサイレントで保存しました（ユーザーには非表示）")
+                # 手動でJSONを構築（MALFORMED_FUNCTION_CALL回避）
+                json_data = await self._build_json_from_user_info(user_info)
                 
-                # イベント内容を更新（JSONブロックを除去したクリーンなテキストに置き換え）
-                await self._update_event_content_silently(ctx, conversation_event, cleaned_response)
+                if json_data:
+                    # 内部保存処理（サイレント）
+                    await self._save_json_data(ctx, json_data)
+                    logger.info("ユーザー情報ベースのJSON構成案を保存しました")
+                    
+                    # ユーザー承認状態を確認
+                    if await self._detect_user_approval_from_conversation(ctx):
+                        await self._mark_user_approval(ctx)
+                        logger.info("ユーザー承認を検出しました")
             else:
-                logger.warning("全パターンでJSON抽出に失敗しました")
-            
-            # ユーザー承認確認を判定
-            if self._is_user_approval(cleaned_response):
-                await self._mark_user_approval(ctx)
+                logger.info("情報収集が不完全です - JSON構築をスキップ")
 
         except Exception as e:
-            logger.error(f"JSON検出・保存エラー: {e}")
+            logger.error(f"ユーザー情報検出・JSON構築エラー: {e}")
+
+    def _extract_user_info_from_conversation(self, session_events) -> dict:
+        """対話履歴からユーザー情報を抽出"""
+        user_info = {
+            'school_name': None,
+            'grade': None,
+            'teacher_name': None,
+            'title': None,
+            'content': None,
+            'photo_count': 0,
+            'issue_date': None
+        }
+        
+        try:
+            # 最新の日付を取得
+            user_info['issue_date'] = get_current_date()
+            
+            # 全てのイベントからテキストを抽出して分析
+            all_text = ""
+            for event in session_events:
+                event_text = self._extract_text_from_event(event)
+                all_text += event_text + " "
+            
+            logger.info(f"対話履歴全体: {all_text[:500]}...")
+            
+            # パターンマッチングで情報を抽出
+            import re
+            
+            # 学校名を抽出（「〇〇小学校」「〇〇中学校」など）
+            school_patterns = [
+                r'([あ-ん一-龯A-Za-z0-9\-〇○]+(?:小学校|中学校|高等学校|高校))',
+                r'学校名[：:]\s*([あ-ん一-龯A-Za-z0-9\-〇○]+)',
+                r'([あ-ん一-龯]+小)',
+            ]
+            for pattern in school_patterns:
+                match = re.search(pattern, all_text)
+                if match:
+                    user_info['school_name'] = match.group(1)
+                    break
+            
+            # 学年・組を抽出
+            grade_patterns = [
+                r'([1-6]年[1-9]組)',
+                r'([1-6])年([1-9])組', 
+                r'学年[：:]\s*([1-6]年[1-9]組)',
+                r'([1-6]年)',
+            ]
+            for pattern in grade_patterns:
+                match = re.search(pattern, all_text)
+                if match:
+                    if len(match.groups()) == 1:
+                        user_info['grade'] = match.group(1)
+                    else:
+                        user_info['grade'] = f"{match.group(1)}年{match.group(2)}組"
+                    break
+            
+            # 先生名を抽出
+            teacher_patterns = [
+                r'([あ-ん一-龯]+)先生',
+                r'担任[：:]\s*([あ-ん一-龯]+)',
+                r'発行者[：:]\s*([あ-ん一-龯]+)',
+                r'私は([あ-ん一-龯]+)です',
+            ]
+            for pattern in teacher_patterns:
+                match = re.search(pattern, all_text)
+                if match:
+                    user_info['teacher_name'] = match.group(1)
+                    break
+            
+            # タイトルを抽出
+            title_patterns = [
+                r'タイトル[：:]\s*([あ-ん一-龯A-Za-z0-9\s]+)',
+                r'題名[：:]\s*([あ-ん一-龯A-Za-z0-9\s]+)',
+                r'([あ-ん一-龯]+(?:大成功|練習|発表会|運動会|遠足))',
+            ]
+            for pattern in title_patterns:
+                match = re.search(pattern, all_text)
+                if match:
+                    user_info['title'] = match.group(1).strip()
+                    break
+            
+            # 内容を抽出（長めのテキストブロック）
+            content_patterns = [
+                r'内容[：:]\s*([あ-ん一-龯A-Za-z0-9\s。、！？]{20,})',
+                r'([あ-ん一-龯]{10,}(?:ました|です|でした)。[あ-ん一-龯\s。、]{20,})',
+            ]
+            for pattern in content_patterns:
+                match = re.search(pattern, all_text)
+                if match:
+                    user_info['content'] = match.group(1).strip()
+                    break
+            
+            # 写真枚数を抽出
+            photo_patterns = [
+                r'写真[：:]?\s*([0-9]+)枚',
+                r'([0-9]+)枚の写真',
+                r'写真.*?([0-9]+)',
+            ]
+            for pattern in photo_patterns:
+                match = re.search(pattern, all_text)
+                if match:
+                    user_info['photo_count'] = int(match.group(1))
+                    break
+            
+            logger.info(f"抽出結果: {user_info}")
+            return user_info
+            
+        except Exception as e:
+            logger.error(f"ユーザー情報抽出エラー: {e}")
+            return user_info
+
+    def _has_sufficient_info(self, user_info: dict) -> bool:
+        """十分な情報が収集されているかチェック"""
+        required_fields = ['school_name', 'grade', 'teacher_name']
+        missing_fields = [field for field in required_fields if not user_info.get(field)]
+        
+        if missing_fields:
+            logger.info(f"不足情報: {missing_fields}")
+            return False
+        
+        logger.info("必要情報が揃いました")
+        return True
+
+    async def _build_json_from_user_info(self, user_info: dict) -> str:
+        """ユーザー情報からJSONを手動構築"""
+        try:
+            json_obj = {
+                "schema_version": "2.4",
+                "school_name": user_info.get('school_name', '学校名'),
+                "grade": user_info.get('grade', '学年'),
+                "issue": "学級通信",
+                "issue_date": user_info.get('issue_date', get_current_date()),
+                "author": {
+                    "name": user_info.get('teacher_name', '担任'),
+                    "title": "担任"
+                },
+                "main_title": user_info.get('title', f"{user_info.get('grade', '学年')}だより"),
+                "sub_title": None,
+                "season": "通年",
+                "theme": "学級の様子",
+                "color_scheme": {
+                    "primary": "#FFFF99",
+                    "secondary": "#FFCC99", 
+                    "accent": "#FF9966",
+                    "background": "#ffffff"
+                },
+                "color_scheme_source": "温かみのある色合い",
+                "sections": [
+                    {
+                        "type": "main_content",
+                        "title": user_info.get('title', 'お知らせ'),
+                        "content": user_info.get('content', '学級の様子をお伝えします。'),
+                        "estimated_length": "medium",
+                        "section_visual_hint": "text_content"
+                    }
+                ],
+                "photo_placeholders": {
+                    "count": user_info.get('photo_count', 0),
+                    "suggested_positions": []
+                },
+                "enhancement_suggestions": [],
+                "has_editor_note": False,
+                "editor_note": None,
+                "layout_suggestion": {
+                    "page_count": 1,
+                    "columns": 2,
+                    "column_ratio": "1:1",
+                    "blocks": ["header", "main_content", "footer"]
+                },
+                "force_single_page": True,
+                "max_pages": 1
+            }
+            
+            import json
+            json_str = json.dumps(json_obj, ensure_ascii=False, indent=2)
+            logger.info(f"JSON構築完了: {len(json_str)}文字")
+            return json_str
+            
+        except Exception as e:
+            logger.error(f"JSON構築エラー: {e}")
+            return None
 
     def _extract_text_from_event(self, event) -> str:
         """イベントからテキストを抽出（function_call対応強化版）"""
@@ -444,39 +574,27 @@ class MainConversationAgent(LlmAgent):
             logger.warning(f"イベント内容更新中にエラー: {e}")
 
     async def _save_json_data(self, ctx: InvocationContext, json_str: str):
-        """JSONデータをセッション状態とファイルシステムに保存"""
+        """JSONデータをセッション状態に保存（MALFORMED_FUNCTION_CALL対応版）"""
         try:
             logger.info(f"=== JSON保存開始 ===")
             logger.info(f"保存対象JSON長: {len(json_str)} 文字")
             
-            # セッション詳細情報を強化ログで出力
-            logger.info(f"InvocationContext詳細:")
-            logger.info(f"  - hasattr(ctx, 'session'): {hasattr(ctx, 'session')}")
-            if hasattr(ctx, "session"):
-                logger.info(f"  - session type: {type(ctx.session)}")
-                logger.info(f"  - hasattr(session, 'state'): {hasattr(ctx.session, 'state')}")
-                logger.info(f"  - hasattr(session, 'session_id'): {hasattr(ctx.session, 'session_id')}")
-                if hasattr(ctx.session, "session_id"):
-                    logger.info(f"  - session_id: {ctx.session.session_id}")
-                if hasattr(ctx.session, "state"):
-                    logger.info(f"  - state type: {type(ctx.session.state)}")
-                    logger.info(f"  - state keys before save: {list(ctx.session.state.keys()) if ctx.session.state else 'None'}")
-            
             # セッション状態に保存（ADK標準）
             if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
                 logger.info("セッション状態への保存実行中...")
+                
+                # 新しい実装: output_keyではなく直接データ保存
                 ctx.session.state["outline"] = json_str
+                ctx.session.state["json_generated"] = True
+                ctx.session.state["json_generation_timestamp"] = get_current_date()
+                
                 logger.info("JSON構成案をセッション状態に保存完了")
                 
-                # 保存確認（強化版）
+                # 保存確認
                 saved_data = ctx.session.state.get("outline", "NOT_FOUND")
                 logger.info(f"保存確認: {len(saved_data) if saved_data != 'NOT_FOUND' else 'NOT_FOUND'} 文字")
                 
-                # セッション状態の全キーを確認
-                all_keys_after = list(ctx.session.state.keys()) if ctx.session.state else []
-                logger.info(f"保存後のセッション状態全キー: {all_keys_after}")
-                
-                # JSON内容の詳細確認（最初の100文字）
+                # JSON内容の詳細確認
                 if saved_data != "NOT_FOUND":
                     preview = saved_data[:100] + "..." if len(saved_data) > 100 else saved_data
                     logger.info(f"保存されたJSON内容(先頭100文字): {preview}")
@@ -487,17 +605,13 @@ class MainConversationAgent(LlmAgent):
                         parsed = json_module.loads(saved_data)
                         school_name = parsed.get('school_name', 'NOT_FOUND')
                         grade = parsed.get('grade', 'NOT_FOUND') 
-                        logger.info(f"JSON解析成功: school_name={school_name}, grade={grade}")
+                        logger.info(f"✅ JSON解析成功: school_name={school_name}, grade={grade}")
                     except Exception as parse_error:
-                        logger.error(f"保存されたJSONの解析エラー: {parse_error}")
+                        logger.error(f"❌ 保存されたJSONの解析エラー: {parse_error}")
+                        logger.error(f"問題のあるデータ: '{saved_data}'")
                         
             else:
                 logger.error("セッション状態へのアクセスに失敗しました")
-                logger.error(f"ctx attributes: {dir(ctx) if ctx else 'ctx is None'}")
-
-            # 🚨 本番環境対応: ファイルシステム保存を無効化
-            # Cloud Runでは/tmpが一時的なため、セッション状態のみに依存
-            logger.info("JSON構成案をセッション状態に保存（本番環境ではファイル保存無効）")
 
         except Exception as e:
             logger.error(f"JSON保存エラー: {e}")
@@ -544,7 +658,7 @@ class MainConversationAgent(LlmAgent):
             return False
 
     async def _prepare_html_generation_if_approved(self, ctx: InvocationContext):
-        """ユーザー承認後のHTML生成準備（条件チェック強化版）"""
+        """ユーザー承認後のHTML生成準備（手動委譲実装版）"""
         try:
             if not hasattr(ctx, "session") or not hasattr(ctx.session, "state"):
                 logger.warning("セッション状態が利用できません")
@@ -568,14 +682,50 @@ class MainConversationAgent(LlmAgent):
 
             # 4. すべての条件を満たした場合のみLayoutAgent実行
             if has_json and (user_approved or user_approval_detected):
-                logger.info("✅ HTML生成条件をすべて満たしました - LayoutAgent呼び出し実行")
+                logger.info("✅ HTML生成条件をすべて満たしました - LayoutAgent手動呼び出し実行")
                 ctx.session.state["user_approved"] = True  # 承認状態を保存
-                # まだ実装しない - プロンプト修正でLayoutAgentがtransfer_to_agentで呼ばれるはず
+                
+                # MALFORMED_FUNCTION_CALL回避: LayoutAgentを直接呼び出し
+                await self._invoke_layout_agent_with_yield(ctx)
             else:
                 logger.info("❌ HTML生成条件が不足 - LayoutAgent呼び出しをスキップ")
                 
         except Exception as e:
             logger.error(f"HTML生成準備エラー: {e}")
+
+    async def _invoke_layout_agent_with_yield(self, ctx: InvocationContext):
+        """LayoutAgentを直接呼び出してイベントをyield（MALFORMED_FUNCTION_CALL対応版）"""
+        try:
+            logger.info("=== LayoutAgent手動呼び出し開始 ===")
+            
+            # sub_agentsからLayoutAgentを取得
+            layout_agent = None
+            for agent in self.sub_agents:
+                if agent.name == "layout_agent":
+                    layout_agent = agent
+                    break
+            
+            if layout_agent is None:
+                logger.error("LayoutAgentがsub_agentsに見つかりません")
+                return
+            
+            logger.info(f"LayoutAgent取得成功: {layout_agent.name}")
+            
+            # 同一セッション状態でLayoutAgentを実行
+            logger.info(f"LayoutAgent実行前のセッション状態: {list(ctx.session.state.keys())}")
+            
+            # 手動でyieldするため、現在の_run_async_implの実行を一旦保存
+            logger.info("LayoutAgentを非同期実行します...")
+            # ここでは委譲の準備のみ行い、実際のyieldは親の_run_async_implで行う
+            
+            # セッション状態にHTML生成フラグを設定
+            ctx.session.state["html_generation_requested"] = True
+            logger.info("HTML生成リクエストフラグを設定しました")
+            
+        except Exception as e:
+            logger.error(f"LayoutAgent手動呼び出しエラー: {e}")
+            import traceback
+            logger.error(f"詳細エラー: {traceback.format_exc()}")
 
     async def _detect_user_approval_from_conversation(self, ctx: InvocationContext) -> bool:
         """最新の対話からユーザー承認を検出"""
@@ -602,6 +752,26 @@ class MainConversationAgent(LlmAgent):
         except Exception as e:
             logger.error(f"ユーザー承認検出エラー: {e}")
             return False
+
+    async def _log_session_state_for_debug(self, ctx: InvocationContext):
+        """ADK推奨パターンでのセッション状態確認（デバッグ用）"""
+        try:
+            if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
+                logger.info("=== セッション状態確認 (ADK推奨パターン) ===")
+                all_keys = list(ctx.session.state.keys()) if ctx.session.state else []
+                logger.info(f"セッション状態キー: {all_keys}")
+                
+                # output_keyによる自動保存を確認
+                if "outline" in ctx.session.state:
+                    outline_data = ctx.session.state["outline"]
+                    logger.info(f"✅ ADK output_key保存成功: {len(str(outline_data))} 文字")
+                    logger.info(f"outline内容(先頭200文字): {str(outline_data)[:200]}...")
+                else:
+                    logger.warning("❌ ADK output_key保存なし: 'outline'キーが見つかりません")
+            else:
+                logger.error("セッション状態にアクセスできません")
+        except Exception as e:
+            logger.error(f"セッション状態確認エラー: {e}")
 
     async def _invoke_layout_agent_directly(self, ctx: InvocationContext):
         """LayoutAgentを直接呼び出し（transfer_to_agentを使わずに）"""
