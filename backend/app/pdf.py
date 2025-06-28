@@ -10,14 +10,6 @@ from services import firestore_service, storage
 
 # PDF変換のためのライブラリ
 try:
-    from weasyprint import HTML
-
-    WEASYPRINT_AVAILABLE = True
-except (ImportError, OSError) as e:
-    WEASYPRINT_AVAILABLE = False
-    print(f"WeasyPrint利用不可: {e}")
-
-try:
     import pdfkit
 
     PDFKIT_AVAILABLE = True
@@ -47,58 +39,6 @@ class PdfRequest(BaseModel):
     include_footer: bool = False
     custom_css: str = ""
 
-
-async def convert_html_to_pdf_weasyprint(
-    html_content: str,
-    title: str = "学級通信",
-    page_size: str = "A4",
-    margin: str = "15mm",
-    include_header: bool = False,
-    include_footer: bool = False,
-    custom_css: str = "",
-) -> Optional[bytes]:
-    """
-    WeasyPrintを使用してHTML文字列をPDFに非同期で変換します。
-    """
-    if not WEASYPRINT_AVAILABLE:
-        print("WeasyPrintが利用できません。uv add weasyprintを実行してください。")
-        return None
-
-    # カスタムCSSがある場合はHTMLに追加
-    full_html = f"""
-    <!DOCTYPE html>
-    <html lang="ja">
-    <head>
-        <meta charset="UTF-8">
-        <title>{title}</title>
-        <style>
-            @page {{
-                size: {page_size};
-                margin: {margin};
-            }}
-            body {{
-                font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif;
-                line-height: 1.6;
-            }}
-            {custom_css}
-        </style>
-    </head>
-    <body>
-        {html_content}
-    </body>
-    </html>
-    """
-
-    try:
-        # WeasyPrintは非同期に対応していないため、run_in_executorでブロッキングを防ぐ
-        loop = asyncio.get_running_loop()
-        pdf_bytes = await loop.run_in_executor(
-            None, lambda: HTML(string=full_html).write_pdf()
-        )
-        return pdf_bytes
-    except Exception as e:
-        print(f"WeasyPrint PDF変換中にエラーが発生しました: {e}")
-        return None
 
 
 async def convert_html_to_pdf_pdfkit(
@@ -289,21 +229,6 @@ async def convert_html_to_pdf(
     if PLAYWRIGHT_AVAILABLE:
         print("Playwrightを使用してPDF変換を試行します...")
         result = await convert_html_to_pdf_playwright(
-            html_content,
-            title,
-            page_size,
-            margin,
-            include_header,
-            include_footer,
-            custom_css,
-        )
-        if result:
-            return result
-
-    # WeasyPrintを試行
-    if WEASYPRINT_AVAILABLE:
-        print("WeasyPrintを使用してPDF変換を試行します...")
-        result = await convert_html_to_pdf_weasyprint(
             html_content,
             title,
             page_size,
