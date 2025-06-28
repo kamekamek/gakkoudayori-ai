@@ -99,11 +99,21 @@ class GoogleAuthService {
   /// Google アカウントからログアウト
   static Future<void> signOut() async {
     try {
+      // FirebaseとGoogleの両方からサインアウトする
+      await fb_auth.FirebaseAuth.instance.signOut();
       await googleSignIn.signOut();
+      _currentUser = null;
+      _authClient = null;
+      if (kDebugMode) {
+        print('Sign-Out successful from both Firebase and Google.');
+      }
     } catch (e) {
       if (kDebugMode) {
-        print('Google Sign-Out エラー: $e');
+        print('Sign-Out エラー: $e');
       }
+      // エラーが発生しても、状態をクリアする試み
+      _currentUser = null;
+      _authClient = null;
       throw Exception('ログアウトに失敗しました: $e');
     }
   }
