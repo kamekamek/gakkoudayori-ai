@@ -35,12 +35,12 @@ class _HomePageState extends State<HomePage> {
       teacherName: '担任の先生',
     );
 
-    // final chatProvider = context.read<ChatProvider>();
-    // final previewProvider = context.read<PreviewProvider>();
-
-    // chatProvider.onNewsletterGenerated = (htmlContent) {
-    //   previewProvider.updateHtmlContent(htmlContent);
-    // };
+    // ADKチャットプロバイダーにプレビュープロバイダーを設定
+    final adkChatProvider = context.read<AdkChatProvider>();
+    final previewProvider = context.read<PreviewProvider>();
+    
+    adkChatProvider.setPreviewProvider(previewProvider);
+    print('[HomePage] AdkChatProvider に PreviewProvider を設定しました');
   }
 
   @override
