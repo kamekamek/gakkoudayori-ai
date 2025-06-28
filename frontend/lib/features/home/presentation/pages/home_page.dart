@@ -1,22 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:gakkoudayori_ai/features/auth/auth_provider.dart';
+import 'package:gakkoudayori_ai/services/google_auth_service.dart';
 import '../../providers/newsletter_provider.dart';
 import '../../../ai_assistant/presentation/widgets/adk_chat_widget.dart';
 import '../../../editor/providers/preview_provider.dart';
 import '../widgets/preview_interface.dart';
 import '../widgets/mobile_tab_layout.dart';
 import '../../../ai_assistant/providers/adk_chat_provider.dart';
+import 'package:provider/provider.dart' as legacy_provider;
 
 /// メインのホーム画面（チャットボット形式）
-class HomePage extends StatefulWidget {
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  ConsumerState<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends ConsumerState<HomePage> {
   @override
   void initState() {
     super.initState();
@@ -28,30 +31,26 @@ class _HomePageState extends State<HomePage> {
 
   void _initializeProviders() {
     // デフォルトの学校情報を設定（後で設定画面から変更可能）
-    final newsletterProvider = context.read<NewsletterProvider>();
+    final newsletterProvider =
+        legacy_provider.Provider.of<NewsletterProvider>(context, listen: false);
     newsletterProvider.updateSchoolInfo(
       schoolName: '〇〇小学校',
       className: '1年1組',
       teacherName: '担任の先生',
     );
-
-    // final chatProvider = context.read<ChatProvider>();
-    // final previewProvider = context.read<PreviewProvider>();
-
-    // chatProvider.onNewsletterGenerated = (htmlContent) {
-    //   previewProvider.updateHtmlContent(htmlContent);
-    // };
   }
 
   @override
   Widget build(BuildContext context) {
     // AdkChatProviderを監視して、変更があったらUIを再ビルド
-    final adkChatProvider = context.watch<AdkChatProvider>();
+    final adkChatProvider =
+        legacy_provider.Provider.of<AdkChatProvider>(context);
 
     // ビルド完了後にプロバイダー間のデータ連携を行う
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final newHtml = adkChatProvider.generatedHtml;
-      final previewProvider = context.read<PreviewProvider>();
+      final previewProvider =
+          legacy_provider.Provider.of<PreviewProvider>(context, listen: false);
 
       // 無限ループを防ぐため、現在のプレビュー内容と異なる場合のみ更新
       if (newHtml != null &&
@@ -60,6 +59,8 @@ class _HomePageState extends State<HomePage> {
         previewProvider.updateHtmlContent(newHtml);
       }
     });
+
+    final user = ref.watch(authStateChangesProvider).asData?.value;
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.background,
@@ -72,6 +73,21 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
         actions: [
+          if (user != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: Center(
+                  child: Text(user.email ?? 'No email',
+                      style: const TextStyle(fontSize: 12))),
+            ),
+          if (user != null)
+            IconButton(
+              icon: const Icon(Icons.logout),
+              onPressed: () async {
+                await GoogleAuthService.signOut();
+              },
+              tooltip: 'ログアウト',
+            ),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () => context.push('/settings'),
@@ -86,7 +102,7 @@ class _HomePageState extends State<HomePage> {
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          // レスポンシブレイアウト（デザインモックアップ準拠）
+          // レスポンシブレイアウト（デザインモックアッ���準拠）
           if (constraints.maxWidth < 768) {
             // モバイル：タブ切り替え
             return const MobileTabLayout();
@@ -183,3 +199,4 @@ class DesktopLayout extends StatelessWidget {
     );
   }
 }
+
