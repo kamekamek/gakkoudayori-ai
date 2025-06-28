@@ -110,7 +110,7 @@ class MainConversationAgent(LlmAgent):
             logger.error(f"対話状態保存エラー: {e}")
 
     async def _check_and_save_json_from_conversation(self, ctx: InvocationContext):
-        """対話からJSON構成案を検出して保存"""
+        """対話からJSON構成案を検出して保存（完全サイレント処理）"""
         try:
             # セッションイベントから最後のエージェント応答を取得
             if not hasattr(ctx, "session") or not hasattr(ctx.session, "events"):
@@ -136,15 +136,25 @@ class MainConversationAgent(LlmAgent):
             if not llm_response_text.strip():
                 return
 
-            # JSONブロックが含まれているかチェック（ユーザーには見せない内部処理）
+            # JSONブロックをユーザー表示から除去し、内部処理のみ実行
+            json_str = None
+            cleaned_response = llm_response_text
+            
             if "```json" in llm_response_text and "```" in llm_response_text:
                 json_str = self._extract_json_from_response(llm_response_text)
                 if json_str:
+                    # JSONブロックをユーザー表示から完全に除去
+                    cleaned_response = self._remove_json_blocks_from_response(llm_response_text)
+                    
+                    # 内部保存処理（サイレント）
                     await self._save_json_data(ctx, json_str)
-                    logger.info("JSON構成案をサイレントで保存しました")
+                    logger.info("JSON構成案をサイレントで保存しました（ユーザーには非表示）")
+                    
+                    # イベント内容を更新（JSONブロックを除去したクリーンなテキストに置き換え）
+                    await self._update_event_content_silently(ctx, conversation_event, cleaned_response)
             
             # ユーザー承認確認を判定
-            if self._is_user_approval(llm_response_text):
+            if self._is_user_approval(cleaned_response):
                 await self._mark_user_approval(ctx)
 
         except Exception as e:
@@ -184,6 +194,55 @@ class MainConversationAgent(LlmAgent):
             logger.warning(f"JSON抽出・検証エラー: {e}")
         
         return None
+
+    def _remove_json_blocks_from_response(self, response_text: str) -> str:
+        """LLM応答からJSONブロックを完全に除去してクリーンなテキストを返す"""
+        try:
+            # 複数のJSONブロックに対応
+            cleaned_text = response_text
+            while "```json" in cleaned_text and "```" in cleaned_text:
+                json_start = cleaned_text.find("```json")
+                json_end = cleaned_text.find("```", json_start + 7) + 3
+                if json_end > json_start:
+                    # JSONブロックを除去
+                    cleaned_text = cleaned_text[:json_start] + cleaned_text[json_end:]
+                else:
+                    break
+            
+            # 余分な空白行を整理
+            lines = cleaned_text.split('\n')
+            cleaned_lines = []
+            consecutive_empty = 0
+            
+            for line in lines:
+                if line.strip() == '':
+                    consecutive_empty += 1
+                    if consecutive_empty <= 1:  # 最大1行の空白行のみ許可
+                        cleaned_lines.append(line)
+                else:
+                    consecutive_empty = 0
+                    cleaned_lines.append(line)
+            
+            return '\n'.join(cleaned_lines).strip()
+            
+        except Exception as e:
+            logger.warning(f"JSONブロック除去中にエラー: {e}")
+            return response_text
+
+    async def _update_event_content_silently(self, ctx: InvocationContext, event, new_content: str):
+        """イベント内容をサイレントに更新（ユーザー表示をクリーン化）"""
+        try:
+            from google.genai.types import Content, Part
+            
+            # 新しいコンテンツでイベントを更新
+            if hasattr(event, "content") and event.content:
+                # Google Generative AI形式での更新
+                new_content_obj = Content(parts=[Part(text=new_content)])
+                event.content = new_content_obj
+                logger.info("イベント内容をクリーンなテキストに更新しました")
+                
+        except Exception as e:
+            logger.warning(f"イベント内容更新中にエラー: {e}")
 
     async def _save_json_data(self, ctx: InvocationContext, json_str: str):
         """JSONデータをセッション状態とファイルシステムに保存"""

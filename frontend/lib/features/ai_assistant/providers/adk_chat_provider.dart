@@ -208,11 +208,11 @@ class AdkChatProvider extends ChangeNotifier {
         extractedText = contentData;
       }
 
-      // HTML生成完了のチェック
-      if (extractedText.contains('<html_generated>')) {
-        // HTML完了通知からHTMLを抽出
-        final htmlStartTag = '<html_generated>';
-        final htmlEndTag = '</html_generated>';
+      // 新しい専用HTML完了タグをチェック（優先）
+      if (extractedText.contains('<html_ready>')) {
+        // 新しいHTML完了通知からHTMLを抽出
+        final htmlStartTag = '<html_ready>';
+        final htmlEndTag = '</html_ready>';
         final startIndex = extractedText.indexOf(htmlStartTag);
         final endIndex = extractedText.indexOf(htmlEndTag);
         
@@ -227,19 +227,44 @@ class AdkChatProvider extends ChangeNotifier {
           // PreviewProviderにHTMLを渡す
           _notifyPreviewProvider(htmlContent);
           
-          debugPrint('[AdkChatProvider] HTML extracted and set: ${htmlContent.length} characters');
+          debugPrint('[AdkChatProvider] HTML ready extracted: ${htmlContent.length} characters');
+          return; // HTMLが見つかったので処理終了
         }
-      } else if (extractedText.contains('<html>') ||
-          extractedText.contains('<!DOCTYPE html>')) {
-        // 従来のHTML検出方法も維持
+      }
+      
+      // フォールバック: 従来のHTML検出方法
+      if (extractedText.contains('<html_generated>')) {
+        // 旧HTML完了通知からHTMLを抽出
+        final htmlStartTag = '<html_generated>';
+        final htmlEndTag = '</html_generated>';
+        final startIndex = extractedText.indexOf(htmlStartTag);
+        final endIndex = extractedText.indexOf(htmlEndTag);
+        
+        if (startIndex != -1 && endIndex != -1) {
+          final htmlContent = extractedText.substring(
+            startIndex + htmlStartTag.length, 
+            endIndex
+          );
+          _generatedHtml = htmlContent;
+          assistantMessage.content = '🎉 学級通信が完成しました！プレビューをご確認ください。';
+          _notifyPreviewProvider(htmlContent);
+          debugPrint('[AdkChatProvider] HTML extracted (legacy): ${htmlContent.length} characters');
+          return; // HTMLが見つかったので処理終了
+        }
+      }
+      
+      // 最終フォールバック: 直接HTML検出
+      if (extractedText.contains('<html>') || extractedText.contains('<!DOCTYPE html>')) {
         _generatedHtml = extractedText;
         assistantMessage.content = '🎉 学級通信が完成しました！プレビューをご確認ください。';
         _notifyPreviewProvider(extractedText);
-      } else {
-        // 通常のメッセージとして表示
-        if (extractedText.isNotEmpty) {
-          assistantMessage.content += extractedText;
-        }
+        debugPrint('[AdkChatProvider] Direct HTML detected: ${extractedText.length} characters');
+        return; // HTMLが見つかったので処理終了
+      }
+      
+      // 通常のメッセージとして表示（HTMLではない場合）
+      if (extractedText.isNotEmpty) {
+        assistantMessage.content += extractedText;
       }
 
       _safeNotifyListeners();

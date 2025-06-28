@@ -51,31 +51,38 @@ class LayoutAgent(LlmAgent):
                 content=Content(parts=[Part(text="学級通信のレイアウトを作成しています。少々お待ちください...")])
             )
             
-            # セッション状態からJSONデータを取得（優先）
+            # セッション状態からJSONデータを取得（第一優先）
             json_data = None
             if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
                 json_data = ctx.session.state.get("outline")
                 logger.info(f"セッション状態から取得: {bool(json_data)}")
-                if hasattr(ctx.session, "state"):
-                    logger.info(f"セッション状態のキー: {list(ctx.session.state.keys())}")
+                
+                # セッション状態のデータ検証
+                if json_data:
+                    try:
+                        import json as json_module
+                        json_obj = json_module.loads(json_data)
+                        required_fields = ['school_name', 'grade', 'author', 'main_title']
+                        missing_fields = [field for field in required_fields if not json_obj.get(field)]
+                        
+                        if missing_fields:
+                            logger.warning(f"セッション状態のJSONに必須フィールドが不足: {missing_fields}")
+                            json_data = None  # 不完全なデータは使用しない
+                        else:
+                            logger.info(f"セッション状態のJSONデータ検証完了: {json_obj.get('school_name')} {json_obj.get('grade')}")
+                    except Exception as e:
+                        logger.error(f"セッション状態のJSON検証エラー: {e}")
+                        json_data = None
 
-            # セッション状態に無い場合は、ファイルシステムから強制読み込み
+            # フォールバック: MainConversationAgentから直接取得を試行
             if not json_data:
-                logger.warning("セッション状態にoutlineが見つかりません。ファイルシステムから読み込み...")
-                artifacts_dir = Path("/tmp/adk_artifacts")
-                outline_file = artifacts_dir / "outline.json"
+                logger.info("セッション状態からの直接取得を試行中...")
+                json_data = await self._retrieve_json_from_main_agent(ctx)
 
-                if outline_file.exists():
-                    with open(outline_file, "r", encoding="utf-8") as f:
-                        json_data = f.read()
-                    logger.info(f"ファイルシステムから読み込み成功: {len(json_data)} 文字")
-                    
-                    # ファイルデータをセッション状態に即座に同期
-                    if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
-                        ctx.session.state["outline"] = json_data
-                        logger.info("ファイルデータをセッション状態に同期しました")
-                else:
-                    logger.error("outline.jsonファイルが存在しません")
+            # 最終フォールバック: ファイルシステムから読み込み（警告付き）
+            if not json_data:
+                logger.warning("セッション状態にoutlineが見つかりません。ファイルシステムから読み込み中...")
+                json_data = await self._load_json_from_filesystem(ctx)
 
             if not json_data:
                 error_msg = "申し訳ございません。学級通信の作成に必要な情報が見つかりませんでした。もう一度最初からお試しください。"
@@ -165,6 +172,18 @@ HTMLのみを出力し、説明文は一切不要です。
             self.instruction = original_instruction
 
             # HTMLは既に上記で保存済み
+            
+            # HTML完了の専用イベントを生成（フロントエンド用）
+            if hasattr(ctx, "session") and hasattr(ctx.session, "state") and ctx.session.state.get("html"):
+                html_content = ctx.session.state["html"]
+                
+                # 専用イベントタイプでHTML完了を通知
+                yield Event(
+                    author=self.name,
+                    content=Content(parts=[Part(text=f"<html_ready>{html_content}</html_ready>")]),
+                    metadata={"event_type": "html_complete", "html_length": len(html_content)}
+                )
+                logger.info(f"HTML完了イベントを送信: {len(html_content)}文字")
             
             # ユーザーフレンドリーな完了メッセージ
             yield Event(
@@ -373,6 +392,63 @@ HTMLのみを出力し、説明文は一切不要です。
             
         except Exception as e:
             logger.error(f"テンプレートHTML生成エラー: {e}")
+
+    async def _retrieve_json_from_main_agent(self, ctx: InvocationContext) -> str:
+        """MainConversationAgentのセッション状態から直接JSONを取得"""
+        try:
+            # セッションイベントからMainConversationAgentの最新の保存されたJSONを探す
+            if hasattr(ctx, "session") and hasattr(ctx.session, "events"):
+                session_events = ctx.session.events
+                
+                # 最新のイベントから情報を抽出
+                for event in reversed(session_events):
+                    if hasattr(event, "author") and "main_conversation_agent" in str(event.author):
+                        event_text = self._extract_text_from_event(event)
+                        
+                        # 内部的に保存されたJSONがあるかチェック
+                        if hasattr(event, "metadata") and event.metadata:
+                            if "internal_json" in event.metadata:
+                                logger.info("MainConversationAgentの内部JSONを発見")
+                                return event.metadata["internal_json"]
+                
+                # セッション状態の他のキーもチェック
+                state_keys = ['json_data', 'outline_data', 'conversation_json']
+                for key in state_keys:
+                    if key in ctx.session.state and ctx.session.state[key]:
+                        logger.info(f"セッション状態の{key}から取得")
+                        return ctx.session.state[key]
+                        
+            logger.warning("MainConversationAgentからのJSON取得に失敗")
+            return None
+            
+        except Exception as e:
+            logger.error(f"MainConversationAgentからのJSON取得エラー: {e}")
+            return None
+
+    async def _load_json_from_filesystem(self, ctx: InvocationContext) -> str:
+        """ファイルシステムからJSONを読み込み（最終フォールバック）"""
+        try:
+            artifacts_dir = Path("/tmp/adk_artifacts")
+            outline_file = artifacts_dir / "outline.json"
+
+            if outline_file.exists():
+                with open(outline_file, "r", encoding="utf-8") as f:
+                    json_data = f.read()
+                logger.info(f"ファイルシステムから読み込み成功: {len(json_data)} 文字")
+                
+                # 読み込んだデータをセッション状態に保存して次回の高速化
+                if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
+                    ctx.session.state["outline"] = json_data
+                    logger.info("ファイルデータをセッション状態に同期しました")
+                
+                return json_data
+            else:
+                logger.error("outline.jsonファイルが存在しません")
+                return None
+                
+        except Exception as e:
+            logger.error(f"ファイルシステムからのJSON読み込みエラー: {e}")
+            return None
 
     async def _save_html_from_response(self, ctx: InvocationContext):
         """LLM応答からHTMLを抽出してセッション状態に保存"""
