@@ -55,45 +55,77 @@ class MainConversationAgent(LlmAgent):
                 FunctionTool(get_current_date)
             ],
             sub_agents=[layout_agent],  # 手動呼び出し用
-            # output_key="outline",  # MALFORMED_FUNCTION_CALL対応: 無効化
+            output_key="outline",  # ADK標準のoutput_key機能を再有効化
         )
 
     async def _run_async_impl(
         self, ctx: InvocationContext
     ) -> AsyncGenerator[Event, None]:
         """
-        純粋な対話エージェントとして実行します。
-        HTML生成は明示的なユーザー要求があった場合のみ委譲します。
+        JSON保存を確実に完了してからLayoutAgentを実行する順序制御版。
         """
         try:
-            logger.info("=== MainConversationAgent実行開始 (ADK推奨パターン) ===")
+            logger.info("=== MainConversationAgent実行開始 (順序制御版) ===")
             logger.info(f"Output key: {self.output_key}")
             logger.info(f"Sub agents: {len(self.sub_agents)}")
-            event_count = 0
             
-            # ADK推奨: LLM実行のみでoutput_keyによる自動保存に任せる
+            # 段階1: LLM実行とJSON保存
+            logger.info("📝 段階1: LLM実行とユーザー情報収集")
+            event_count = 0
+            transfer_to_agent_requested = False
+            
             async for event in super()._run_async_impl(ctx):
                 event_count += 1
                 logger.info(f"LLMイベント #{event_count}: author={getattr(event, 'author', 'unknown')}")
                 
-                # transfer_to_agentの実行を確認
+                # transfer_to_agentの要求を検出（但し、まだ実行しない）
                 if hasattr(event, 'actions') and event.actions and event.actions.transfer_to_agent:
-                    logger.info(f"✅ transfer_to_agent実行: {event.actions.transfer_to_agent}")
+                    logger.info(f"⏸️ transfer_to_agent要求を検出（保留中）: {event.actions.transfer_to_agent}")
+                    transfer_to_agent_requested = True
+                    # transfer_to_agentアクションを一時的に無効化
+                    event.actions.transfer_to_agent = None
                 
                 yield event
 
-            logger.info(f"=== MainConversationAgent完了: {event_count}個のイベント ===")
+            logger.info(f"=== LLM実行完了: {event_count}個のイベント ===")
             
-            # MALFORMED_FUNCTION_CALL対応: 手動JSON検出を復活
+            # 段階2: JSON保存を確実に実行
+            logger.info("💾 段階2: JSON保存を強制実行")
             await self._check_and_save_json_from_conversation(ctx)
-            
-            # 明示的な生成リクエストの場合のみHTML生成準備
             await self._prepare_html_generation_if_explicit_request(ctx)
             
-            # HTML生成が要求された場合、LayoutAgentを実行
+            # セッション状態を強制確定
             if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
+                # セッション状態のJSON確認
+                outline_data = ctx.session.state.get("outline")
+                if outline_data:
+                    logger.info(f"✅ JSON保存確認完了: {len(str(outline_data))} 文字")
+                else:
+                    logger.warning("❌ JSON保存が不完全です")
+            
+            # 段階3: transfer_to_agentが要求されていた場合、LayoutAgentを実行
+            if transfer_to_agent_requested:
+                logger.info("🔄 段階3: LayoutAgent実行開始（JSON保存後）")
+                
+                layout_agent = None
+                for agent in self.sub_agents:
+                    if agent.name == "layout_agent":
+                        layout_agent = agent
+                        break
+                
+                if layout_agent:
+                    logger.info("LayoutAgentを実行します（JSON保存完了後）")
+                    async for layout_event in layout_agent._run_async_impl(ctx):
+                        logger.info(f"LayoutAgentイベント: {getattr(layout_event, 'author', 'unknown')}")
+                        yield layout_event
+                    logger.info("LayoutAgent実行完了")
+                else:
+                    logger.error("LayoutAgentが見つかりません")
+            
+            # 追加: 明示的な生成リクエストの場合の処理
+            elif hasattr(ctx, "session") and hasattr(ctx.session, "state"):
                 if ctx.session.state.get("html_generation_requested", False):
-                    logger.info("=== HTML生成要求を検出 - LayoutAgent実行開始 ===")
+                    logger.info("=== 明示的HTML生成要求を検出 - LayoutAgent実行開始 ===")
                     
                     # フラグをクリア
                     ctx.session.state["html_generation_requested"] = False
@@ -574,27 +606,38 @@ class MainConversationAgent(LlmAgent):
             logger.warning(f"イベント内容更新中にエラー: {e}")
 
     async def _save_json_data(self, ctx: InvocationContext, json_str: str):
-        """JSONデータをセッション状態に保存（永続化強化版）"""
+        """JSONデータをセッション状態に保存（ADKのoutput_key機能活用版）"""
         try:
-            logger.info(f"=== JSON保存開始 ===")
+            logger.info(f"=== JSON保存開始（ADK output_key対応版） ===")
             logger.info(f"保存対象JSON長: {len(json_str)} 文字")
             
             # セッション状態に保存（ADK標準）
             if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
                 logger.info("セッション状態への保存実行中...")
                 
-                # 複数のキーに同一データを保存（冗長化）
+                # ADKのoutput_keyに直接保存（最優先）
                 ctx.session.state["outline"] = json_str
-                ctx.session.state["newsletter_json"] = json_str  # バックアップキー
-                ctx.session.state["user_data_json"] = json_str   # 追加バックアップ
+                
+                # 冗長化バックアップ（複数キー保存）
+                ctx.session.state["newsletter_json"] = json_str  # バックアップキー1
+                ctx.session.state["user_data_json"] = json_str   # バックアップキー2
+                ctx.session.state["json_data"] = json_str        # バックアップキー3
+                
+                # メタデータ保存
                 ctx.session.state["json_generated"] = True
                 ctx.session.state["json_generation_timestamp"] = get_current_date()
-                ctx.session.state["persistent_data_saved"] = True  # 永続化フラグ
+                ctx.session.state["persistent_data_saved"] = True
                 
-                logger.info("JSON構成案をセッション状態に保存完了（冗長化）")
+                # 即座に値を確定させるため、セッション状態を明示的にコミット
+                if hasattr(ctx.session, 'save') and callable(ctx.session.save):
+                    await ctx.session.save()
+                    logger.info("セッション状態を明示的に保存しました")
+                
+                logger.info("JSON構成案をセッション状態に保存完了（ADK output_key + 冗長化）")
                 
                 # 保存確認（全キーをチェック）
-                for key in ["outline", "newsletter_json", "user_data_json"]:
+                backup_keys = ["outline", "newsletter_json", "user_data_json", "json_data"]
+                for key in backup_keys:
                     saved_data = ctx.session.state.get(key, "NOT_FOUND")
                     status = len(saved_data) if saved_data != 'NOT_FOUND' else 'NOT_FOUND'
                     logger.info(f"保存確認 [{key}]: {status} 文字")
@@ -612,6 +655,12 @@ class MainConversationAgent(LlmAgent):
                         school_name = parsed.get('school_name', 'NOT_FOUND')
                         grade = parsed.get('grade', 'NOT_FOUND') 
                         logger.info(f"✅ JSON解析成功: school_name={school_name}, grade={grade}")
+                        
+                        # さらに詳細なJSON内容確認
+                        author_name = parsed.get('author', {}).get('name', 'NOT_FOUND')
+                        main_title = parsed.get('main_title', 'NOT_FOUND')
+                        logger.info(f"✅ JSON詳細確認: author={author_name}, title={main_title}")
+                        
                     except Exception as parse_error:
                         logger.error(f"❌ 保存されたJSONの解析エラー: {parse_error}")
                         logger.error(f"問題のあるデータ: '{main_saved_data}'")

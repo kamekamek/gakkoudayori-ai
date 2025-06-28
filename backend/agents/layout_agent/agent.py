@@ -114,10 +114,11 @@ class LayoutAgent(LlmAgent):
                 # json_data = await self._load_json_from_filesystem(ctx)  # 無効化
 
             if not json_data:
-                logger.warning("JSON データが見つかりません。サンプルJSONでHTML生成を実行します")
+                logger.error("❌ JSON データが見つかりません。これはMainConversationAgentの情報収集が不完全であることを示します")
+                logger.error("❌ サンプルJSONでフォールバック実行 - ユーザーの実際の情報は反映されません")
                 # サンプルJSONでフォールバック実行
                 json_data = self._generate_sample_json()
-                logger.info(f"サンプルJSON生成完了: {len(json_data)} 文字")
+                logger.warning(f"⚠️ サンプルJSON生成完了: {len(json_data)} 文字（実際のユーザーデータではありません）")
 
             logger.info(f"JSON データを読み込みました: {len(str(json_data))} 文字")
 
@@ -675,19 +676,19 @@ HTMLのみを出力し、説明文は一切不要です。
             logger.error(f"セッション状態詳細ログエラー: {e}")
 
     async def _get_json_from_adk_output_key(self, ctx: InvocationContext) -> str:
-        """ADK output_keyから確実にJSONを取得（冗長化対応）"""
+        """ADK output_keyから確実にJSONを取得（強化版・冗長化対応）"""
         try:
             if not hasattr(ctx, "session") or not hasattr(ctx.session, "state"):
                 logger.warning("セッション状態が利用できません")
                 return None
             
             # セッション状態の詳細ログ出力
-            logger.info(f"=== セッション状態詳細確認 ===")
+            logger.info(f"=== セッション状態詳細確認（強化版） ===")
             session_keys = list(ctx.session.state.keys()) if ctx.session.state else []
             logger.info(f"セッション状態のキー一覧: {session_keys}")
             
-            # 複数のキーから順次取得を試行（優先順位順）
-            json_keys_priority = ["outline", "newsletter_json", "user_data_json"]
+            # 複数のキーから順次取得を試行（優先順位順・拡張）
+            json_keys_priority = ["outline", "newsletter_json", "user_data_json", "json_data"]
             
             for key in json_keys_priority:
                 json_data = ctx.session.state.get(key)
@@ -701,13 +702,40 @@ HTMLのみを出力し、説明文は一切不要です。
                         parsed = json_module.loads(str(json_data))
                         school_name = parsed.get('school_name', 'UNKNOWN')
                         grade = parsed.get('grade', 'UNKNOWN')
-                        logger.info(f"✅ JSONデータ確認成功: {school_name} {grade}")
+                        author_name = parsed.get('author', {}).get('name', 'UNKNOWN')
+                        
+                        # サンプルデータ判定を強化
+                        if (school_name in ['○○小学校', 'ERROR', 'UNKNOWN', '学校名'] or
+                            grade in ['1年1組', 'ERROR', 'UNKNOWN', '学年'] or  
+                            author_name in ['担任', 'ERROR', 'UNKNOWN']):
+                            logger.warning(f"⚠️ {key} キーにサンプルデータを検出: {school_name}/{grade}/{author_name}")
+                            continue  # サンプルデータの場合は次のキーを試す
+                        
+                        logger.info(f"✅ JSONデータ確認成功: {school_name} {grade} {author_name}")
                         return str(json_data)
+                        
                     except Exception as parse_error:
                         logger.warning(f"❌ {key} キーのJSONが不正: {parse_error}")
                         continue  # 次のキーを試す
                 else:
                     logger.info(f"❌ {key} キーは存在しないか空です")
+            
+            # 標準キーで失敗した場合、追加キーも確認
+            additional_keys = [k for k in session_keys if 'json' in k.lower() or 'outline' in k.lower()]
+            logger.info(f"追加JSON候補キー: {additional_keys}")
+            
+            for key in additional_keys:
+                if key not in json_keys_priority:  # 既に確認済みのキーはスキップ
+                    json_data = ctx.session.state.get(key)
+                    if json_data and len(str(json_data)) > 50:  # 十分な長さがある場合のみ
+                        try:
+                            import json as json_module
+                            parsed = json_module.loads(str(json_data))
+                            if 'school_name' in parsed and 'grade' in parsed:
+                                logger.info(f"✅ 追加キー {key} からJSONを発見")
+                                return str(json_data)
+                        except:
+                            continue
             
             # 全てのキーで取得に失敗
             logger.error("❌ 全てのJSONキーから取得に失敗しました")
@@ -715,8 +743,10 @@ HTMLのみを出力し、説明文は一切不要です。
             # デバッグ情報：セッション状態の全体を出力
             logger.info("=== セッション状態デバッグ情報 ===")
             for key, value in ctx.session.state.items():
+                value_type = type(value).__name__
+                value_length = len(str(value)) if value else 0
                 value_preview = str(value)[:100] + "..." if len(str(value)) > 100 else str(value)
-                logger.info(f"  {key}: {value_preview}")
+                logger.info(f"  {key} ({value_type}, {value_length}文字): {value_preview}")
             
             return None
                 
