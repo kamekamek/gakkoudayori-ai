@@ -5,7 +5,8 @@ import 'package:gakkoudayori_ai/features/auth/auth_provider.dart';
 import 'package:gakkoudayori_ai/services/google_auth_service.dart';
 import 'package:google_sign_in_web/google_sign_in_web.dart' as web;
 import 'dart:html' as html;
-import 'dart:ui' as ui;
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:ui_web' as ui_web;
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -21,8 +22,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void initState() {
     super.initState();
     if (kIsWeb) {
-      // ignore: undefined_prefixed_name
-      ui.platformViewRegistry.registerViewFactory(
+      ui_web.platformViewRegistry.registerViewFactory(
         _viewTypeId,
         (int viewId) => html.DivElement()..id = 'g_id_signin',
       );

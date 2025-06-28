@@ -3,7 +3,7 @@ import os
 from contextlib import asynccontextmanager
 
 import google.genai.types as genai_types
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from google.adk.runners import Runner
 from google.adk.sessions.in_memory_session_service import InMemorySessionService

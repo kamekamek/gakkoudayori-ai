@@ -20,9 +20,12 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
+  late final TextEditingController titleController;
+
   @override
   void initState() {
     super.initState();
+    titleController = TextEditingController();
     // 初期設定
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeProviders();
@@ -44,7 +47,13 @@ class _HomePageState extends ConsumerState<HomePage> {
     final previewProvider = context.read<PreviewProvider>();
     
     adkChatProvider.setPreviewProvider(previewProvider);
-    print('[HomePage] AdkChatProvider に PreviewProvider を設定しました');
+    debugPrint('[HomePage] AdkChatProvider に PreviewProvider を設定しました');
+  }
+
+  @override
+  void dispose() {
+    titleController.dispose();
+    super.dispose();
   }
 
   @override
@@ -170,8 +179,27 @@ class _HomePageState extends ConsumerState<HomePage> {
 }
 
 /// デスクトップレイアウト（左右分割・デザインモックアップ準拠）
-class DesktopLayout extends StatelessWidget {
+class DesktopLayout extends StatefulWidget {
   const DesktopLayout({super.key});
+
+  @override
+  State<DesktopLayout> createState() => _DesktopLayoutState();
+}
+
+class _DesktopLayoutState extends State<DesktopLayout> {
+  late final TextEditingController titleController;
+
+  @override
+  void initState() {
+    super.initState();
+    titleController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    titleController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -205,15 +233,24 @@ class DesktopLayout extends StatelessWidget {
                 ],
               ),
               Expanded(
-                child: user != null
-                    ? AdkChatWidget(userId: user.uid)
-                    : const Center(child: Text("ログインしてください")),
+                child: Consumer(
+                  builder: (context, ref, child) {
+                    final authState = ref.watch(authStateChangesProvider);
+                    return authState.when(
+                      data: (user) => user != null
+                          ? AdkChatWidget(userId: user.uid)
+                          : const Center(child: Text("ログインしてください")),
+                      loading: () => const Center(child: CircularProgressIndicator()),
+                      error: (error, stack) => Center(child: Text("エラー: $error")),
+                    );
+                  },
+                ),
               ),
             ],
           ),
         ),
         const VerticalDivider(width: 1),
-        const Expanded(
+        Expanded(
           flex: 1,
           child: Container(
             color: const Color(0xFFFAFAFA),

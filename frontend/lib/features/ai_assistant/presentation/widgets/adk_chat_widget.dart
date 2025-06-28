@@ -979,4 +979,39 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
       ),
     );
   }
+
+  void _handleGenerateNewsletter(AdkChatProvider provider) {
+    provider.generateNewsletter();
+  }
+
+  Widget _buildQuickModificationButton(
+    AdkChatProvider provider,
+    String label,
+    String promptText,
+    IconData icon,
+  ) {
+    return ElevatedButton.icon(
+      onPressed: provider.isProcessing 
+          ? null 
+          : () => provider.sendMessage(promptText),
+      icon: Icon(icon, size: 16),
+      label: Text(
+        label,
+        style: const TextStyle(fontSize: 12),
+      ),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF2c5aa0).withOpacity(0.1),
+        foregroundColor: const Color(0xFF2c5aa0),
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(
+            color: const Color(0xFF2c5aa0).withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+      ),
+    );
+  }
 }
