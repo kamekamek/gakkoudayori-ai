@@ -153,6 +153,8 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
                 child: ListView.builder(
                   controller: _scrollController,
                   padding: const EdgeInsets.all(16),
+                  shrinkWrap: true,
+                  physics: const ClampingScrollPhysics(),
                   itemCount: provider.messages.length +
                       (provider.isProcessing ? 1 : 0),
                   itemBuilder: (context, index) {

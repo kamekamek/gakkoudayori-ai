@@ -324,7 +324,7 @@ class _PreviewInterfaceState extends State<PreviewInterface> {
                   _addNotification('❌ 編集内容の保存に失敗: $e', SystemMessageType.error);
                 }
               },
-              height: double.infinity,
+              height: 400, // 適切な高さに変更
               showToolbar: true,
             ),
           ),
@@ -638,7 +638,7 @@ $contentSummary
                       _addNotification('編集内容の保存に失敗: $e', SystemMessageType.error);
                     }
                   },
-                  height: double.infinity,
+                  height: 400, // 適切な高さに変更
                 ),
               ),
               

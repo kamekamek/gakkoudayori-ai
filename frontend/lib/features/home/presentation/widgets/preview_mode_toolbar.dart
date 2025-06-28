@@ -44,6 +44,7 @@ class PreviewModeToolbar extends StatelessWidget {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             // プレビューモード切り替えボタン
             _buildModeButton(
@@ -107,7 +108,7 @@ class PreviewModeToolbar extends StatelessWidget {
               onTap: onRegenerate,
             ),
 
-            const Spacer(),
+            const SizedBox(width: 16),
 
             // サンプル読み込みボタン
             _buildActionButton(
