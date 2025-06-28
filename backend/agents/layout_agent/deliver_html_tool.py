@@ -17,7 +17,7 @@ class DeliverHtmlTool:
     
     def __init__(self):
         # FastAPIサーバーのベースURL設定
-        self.base_url = os.getenv("FASTAPI_BASE_URL", "http://localhost:8080")
+        self.base_url = os.getenv("FASTAPI_BASE_URL", "http://localhost:8081")
         self.artifact_endpoint = f"{self.base_url}/api/v1/artifacts/html"
         
         # 現在のセッションIDを保存するための変数
@@ -31,16 +31,16 @@ class DeliverHtmlTool:
     async def deliver_html_to_frontend(
         self, 
         html_content: str,
-        artifact_type: str = "newsletter",
-        metadata: Optional[Dict] = None
+        artifact_type: str,
+        metadata_json: str
     ) -> str:
         """
         HTMLコンテンツをフロントエンドに配信
         
         Args:
             html_content: 配信するHTMLコンテンツ
-            artifact_type: アーティファクトの種類（デフォルト: newsletter）
-            metadata: 追加のメタデータ
+            artifact_type: アーティファクトの種類（例: newsletter）
+            metadata_json: 追加のメタデータのJSON文字列（例: "{}"）
             
         Returns:
             配信結果のメッセージ
@@ -56,13 +56,21 @@ class DeliverHtmlTool:
             return error_msg
 
         try:
+            # JSON文字列をDictに変換
+            import json
+            try:
+                metadata = json.loads(metadata_json) if metadata_json.strip() else {}
+            except json.JSONDecodeError:
+                logger.warning(f"Invalid metadata JSON: {metadata_json}, using empty dict")
+                metadata = {}
+            
             # FastAPI エンドポイントにHTMLを送信
             async with httpx.AsyncClient(timeout=30.0) as client:
                 payload = {
                     "session_id": self._current_session_id,
                     "html_content": html_content,
                     "artifact_type": artifact_type,
-                    "metadata": metadata or {}
+                    "metadata": metadata
                 }
                 
                 logger.info(f"DeliverHtmlTool: HTML配信開始 - セッション:{self._current_session_id}, サイズ:{len(html_content)}文字")
