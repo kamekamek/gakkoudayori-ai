@@ -48,7 +48,7 @@ staging:
 	@echo "🧪 ステージング環境で起動中..."
 	cd frontend && flutter run -d chrome \
 		--dart-define=ENVIRONMENT=staging \
-		--dart-define=API_BASE_URL=https://staging-yutori-backend.asia-northeast1.run.app/api/v1
+		--dart-define=API_BASE_URL=https://yutori-backend-staging-944053509139.asia-northeast1.run.app/api/v1
 
 # 開発環境用ビルド
 build-dev:
@@ -134,6 +134,18 @@ deploy-backend:
 		--set-env-vars="ENVIRONMENT=production" \
 		--platform=managed
 
+# ステージングバックエンドデプロイ
+deploy-backend-staging:
+	@echo "📤 ステージングバックエンドをCloud Runにデプロイ中 (Dockerfile使用)..."
+	cd backend/app && gcloud run deploy yutori-backend-staging \
+		--source=. \
+		--region=asia-northeast1 \
+		--allow-unauthenticated \
+		--memory=2Gi \
+		--timeout=300 \
+		--set-env-vars="ENVIRONMENT=staging" \
+		--platform=managed
+
 # 全体デプロイ（推奨）
 deploy: deploy-backend deploy-frontend
 	@echo "✅ 全体デプロイ完了！"
@@ -157,7 +169,7 @@ deploy-staging:
 	@echo "🧪 ステージング環境用ビルド中..."
 	cd frontend && flutter build web \
 		--dart-define=ENVIRONMENT=staging \
-		--dart-define=API_BASE_URL=https://staging-yutori-backend.asia-northeast1.run.app/api/v1 \
+		--dart-define=API_BASE_URL=https://yutori-backend-staging-944053509139.asia-northeast1.run.app/api/v1 \
 		--release
 	@echo "📤 ステージング環境にデプロイ中..."
 	firebase hosting:channel:deploy staging --expires 30d
