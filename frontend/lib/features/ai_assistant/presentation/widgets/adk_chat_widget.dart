@@ -95,8 +95,7 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
           });
         }
 
-        return Flexible(
-          child: Column(
+        return Column(
             children: [
               // ヘッダー（デザインモックアップ準拠）
               Container(
@@ -465,7 +464,6 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
                 ),
               ),
             ],
-          ),
         );
       },
     );
