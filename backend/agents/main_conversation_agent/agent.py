@@ -19,7 +19,9 @@ logger = logging.getLogger(__name__)
 
 def get_current_date() -> str:
     """現在の日付を'YYYY-MM-DD'形式で返します。ユーザーには自然な形で表示されます。"""
-    return datetime.now().strftime("%Y-%m-%d")
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    logger.info(f"正確な現在日付を取得しました: {current_date}")
+    return current_date
 
 
 def save_json_to_session(json_data: str) -> str:
