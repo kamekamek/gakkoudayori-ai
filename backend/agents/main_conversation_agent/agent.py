@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 from typing import AsyncGenerator, Optional
 
-from pathlib import Path
+# from pathlib import Path  # 本番環境対応: ファイルシステム使用無効化
 from google.adk.agents import LlmAgent
 from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events.event import Event
@@ -252,15 +252,9 @@ class MainConversationAgent(LlmAgent):
                 ctx.session.state["outline"] = json_str
                 logger.info("JSON構成案をセッション状態に保存しました")
 
-            # ファイルシステムにもバックアップ保存
-            artifacts_dir = Path("/tmp/adk_artifacts")
-            artifacts_dir.mkdir(exist_ok=True)
-            outline_file = artifacts_dir / "outline.json"
-
-            with open(outline_file, "w", encoding="utf-8") as f:
-                f.write(json_str)
-
-            logger.info(f"JSON構成案をファイルにも保存しました: {outline_file}")
+            # 🚨 本番環境対応: ファイルシステム保存を無効化
+            # Cloud Runでは/tmpが一時的なため、セッション状態のみに依存
+            logger.info("JSON構成案をセッション状態に保存（本番環境ではファイル保存無効）")
 
         except Exception as e:
             logger.error(f"JSON保存エラー: {e}")

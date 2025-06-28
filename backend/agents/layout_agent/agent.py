@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-from pathlib import Path
+# from pathlib import Path  # 本番環境対応: ファイルシステム使用無効化
 from typing import AsyncGenerator, Optional
 
 from google.adk.agents import LlmAgent
@@ -88,10 +88,10 @@ class LayoutAgent(LlmAgent):
                 logger.info("セッション状態からの直接取得を試行中...")
                 json_data = await self._retrieve_json_from_main_agent(ctx)
 
-            # 最終フォールバック: ファイルシステムから読み込み（警告付き）
+            # 🚨 本番環境対応: ファイルシステムフォールバック無効化
             if not json_data:
-                logger.warning("セッション状態にoutlineが見つかりません。ファイルシステムから読み込み中...")
-                json_data = await self._load_json_from_filesystem(ctx)
+                logger.warning("セッション状態にoutlineが見つかりません。本番環境ではファイルシステム使用不可")
+                # json_data = await self._load_json_from_filesystem(ctx)  # 無効化
 
             if not json_data:
                 error_msg = "申し訳ございません。学級通信の作成に必要な情報が見つかりませんでした。もう一度最初からお試しください。"
@@ -187,10 +187,12 @@ HTMLのみを出力し、説明文は一切不要です。
                 
                 # HTML配信ツールを自動実行
                 try:
+                    import json
+                    metadata_json = json.dumps({"auto_generated": True, "agent": "layout_agent"})
                     delivery_result = await html_delivery_tool.deliver_html_to_frontend(
                         html_content=html_content,
                         artifact_type="newsletter",
-                        metadata={"auto_generated": True, "agent": "layout_agent"}
+                        metadata_json=metadata_json
                     )
                     
                     # 配信結果をユーザーに通知
@@ -245,14 +247,9 @@ HTMLのみを出力し、説明文は一切不要です。
                 ctx.session.state["html"] = html_content
                 logger.info("HTMLをセッション状態に保存しました")
 
-            # ファイルシステムにもバックアップ保存
-            artifacts_dir = Path("/tmp/adk_artifacts")
-            newsletter_file = artifacts_dir / "newsletter.html"
-
-            with open(newsletter_file, "w", encoding="utf-8") as f:
-                f.write(html_content)
-
-            logger.info(f"HTMLをファイルにも保存しました: {newsletter_file}")
+            # 🚨 本番環境対応: ファイルシステム保存を無効化
+            # Cloud Runでは/tmpが一時的なため、セッション状態のみに依存
+            logger.info("HTMLをセッション状態に保存（本番環境ではファイル保存無効）")
 
         except Exception as e:
             logger.error(f"LLMイベントからのHTML保存エラー: {e}")
@@ -403,14 +400,9 @@ HTMLのみを出力し、説明文は一切不要です。
                 ctx.session.state["html"] = template_html
                 logger.info("テンプレートHTMLをセッション状態に保存しました")
 
-            # ファイルにも保存
-            artifacts_dir = Path("/tmp/adk_artifacts")
-            newsletter_file = artifacts_dir / "newsletter.html"
-            
-            with open(newsletter_file, "w", encoding="utf-8") as f:
-                f.write(template_html)
-            
-            logger.info(f"テンプレートHTMLをファイルに保存しました: {newsletter_file}")
+            # 🚨 本番環境対応: ファイルシステム保存を無効化  
+            # Cloud Runでは/tmpが一時的なため、セッション状態のみに依存
+            logger.info("テンプレートHTMLをセッション状態に保存（本番環境ではファイル保存無効）")
             
         except Exception as e:
             logger.error(f"テンプレートHTML生成エラー: {e}")
@@ -448,29 +440,11 @@ HTMLのみを出力し、説明文は一切不要です。
             return None
 
     async def _load_json_from_filesystem(self, ctx: InvocationContext) -> str:
-        """ファイルシステムからJSONを読み込み（最終フォールバック）"""
-        try:
-            artifacts_dir = Path("/tmp/adk_artifacts")
-            outline_file = artifacts_dir / "outline.json"
-
-            if outline_file.exists():
-                with open(outline_file, "r", encoding="utf-8") as f:
-                    json_data = f.read()
-                logger.info(f"ファイルシステムから読み込み成功: {len(json_data)} 文字")
-                
-                # 読み込んだデータをセッション状態に保存して次回の高速化
-                if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
-                    ctx.session.state["outline"] = json_data
-                    logger.info("ファイルデータをセッション状態に同期しました")
-                
-                return json_data
-            else:
-                logger.error("outline.jsonファイルが存在しません")
-                return None
-                
-        except Exception as e:
-            logger.error(f"ファイルシステムからのJSON読み込みエラー: {e}")
-            return None
+        """ファイルシステムからJSONを読み込み（レガシー・本番環境では無効）"""
+        # 🚨 本番環境（Cloud Run）ではファイルシステム使用不可
+        # セッション状態のみに依存する設計に変更
+        logger.warning("ファイルシステムフォールバックは本番環境で利用不可 - セッション状態のみ使用")
+        return None
 
     def _extract_session_id(self, ctx: InvocationContext) -> Optional[str]:
         """InvocationContextからセッションIDを抽出"""
@@ -535,14 +509,9 @@ HTMLのみを出力し、説明文は一切不要です。
                 ctx.session.state["html"] = html_content
                 logger.info("HTMLをセッション状態に保存しました")
 
-            # ファイルシステムにもバックアップ保存
-            artifacts_dir = Path("/tmp/adk_artifacts")
-            newsletter_file = artifacts_dir / "newsletter.html"
-
-            with open(newsletter_file, "w", encoding="utf-8") as f:
-                f.write(html_content)
-
-            logger.info(f"HTMLをファイルにも保存しました: {newsletter_file}")
+            # 🚨 本番環境対応: ファイルシステム保存を無効化
+            # Cloud Runでは/tmpが一時的なため、セッション状態のみに依存
+            logger.info("HTMLをセッション状態に保存（本番環境ではファイル保存無効）")
 
         except Exception as e:
             logger.error(f"HTML保存エラー: {e}")

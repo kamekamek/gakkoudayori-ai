@@ -19,7 +19,7 @@ class ArtifactWebSocketService {
   
   // Base URL設定（環境に応じて変更）
   static const String _baseUrl = kDebugMode 
-    ? 'ws://localhost:8080' 
+    ? 'ws://localhost:8081' 
     : 'wss://gakkoudayori-backend-url'; // 本番環境のURL
 
   // ストリーム
@@ -30,7 +30,13 @@ class ArtifactWebSocketService {
   void connect(String sessionId) {
     if (_disposed) return;
     
+    if (sessionId.isEmpty) {
+      debugPrint('[ArtifactWebSocket] ERROR: Empty session ID provided, aborting connection');
+      return;
+    }
+    
     _currentSessionId = sessionId;
+    debugPrint('[ArtifactWebSocket] Session ID set to: $_currentSessionId');
     _connectWebSocket();
   }
 

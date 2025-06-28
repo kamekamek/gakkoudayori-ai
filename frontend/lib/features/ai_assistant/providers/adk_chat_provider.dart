@@ -493,9 +493,11 @@ class AdkChatProvider extends ChangeNotifier {
 
   /// WebSocket接続を確立（必要に応じて）
   void _connectWebSocketIfNeeded() {
-    if (_sessionId != null && !_artifactWebSocketService.isConnected) {
+    if (_sessionId != null && _sessionId!.isNotEmpty && !_artifactWebSocketService.isConnected) {
       debugPrint('[AdkChatProvider] Establishing WebSocket connection for session: $_sessionId');
       _artifactWebSocketService.connect(_sessionId!);
+    } else if (_sessionId == null || _sessionId!.isEmpty) {
+      debugPrint('[AdkChatProvider] WARNING: Session ID is null or empty, skipping WebSocket connection');
     }
   }
 
