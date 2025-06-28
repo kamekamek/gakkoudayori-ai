@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../config/app_config.dart';
@@ -165,10 +166,14 @@ class AdkAgentService {
     String? sessionId,
   }) async* {
     try {
+      final token = await FirebaseAuth.instance.currentUser?.getIdToken();
+      if (token == null) {
+        throw Exception('Not authenticated');
+      }
+
       final url = Uri.parse('$_baseUrl/adk/chat/stream');
       final body = {
         'message': message,
-        'user_id': userId,
         'session_id': sessionId ?? '${userId}:default',
       };
 
@@ -177,6 +182,7 @@ class AdkAgentService {
 
       final request = http.Request('POST', url)
         ..headers['Content-Type'] = 'application/json'
+        ..headers['Authorization'] = 'Bearer $token'
         ..body = jsonEncode(body);
 
       final response = await _httpClient.send(request);

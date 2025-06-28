@@ -180,22 +180,40 @@ class DesktopLayout extends StatelessWidget {
         // 左側：チャットインターフェース
         Expanded(
           flex: 1,
-          child: Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(
-                right: BorderSide(
-                  color: Color(0xFFE0E0E0),
-                  width: 1,
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(
+                    labelText: '記事のタイトル',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
               ),
-            ),
-            child: const AdkChatWidget(userId: 'user_12345'),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.image_outlined),
+                    tooltip: '画像を追加',
+                    onPressed: () async {
+                      // (画像アップロードのロジックは省略)
+                    },
+                  ),
+                ],
+              ),
+              Expanded(
+                child: user != null
+                    ? AdkChatWidget(userId: user.uid)
+                    : const Center(child: Text("ログインしてください")),
+              ),
+            ],
           ),
         ),
-
-        // 右側：プレビューインターフェース
-        Expanded(
+        const VerticalDivider(width: 1),
+        const Expanded(
           flex: 1,
           child: Container(
             color: const Color(0xFFFAFAFA),

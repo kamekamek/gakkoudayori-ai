@@ -35,26 +35,18 @@ class AppRouter {
       ),
     ],
     redirect: (BuildContext context, GoRouterState state) {
-      // このリダイレクトロジックを機能させるには、MaterialApp.routerの上位に
-      // ProviderScopeが存在し、authStateChangesProviderが利用可能である必要がある。
-      // main.dartでProviderScopeがGakkouDayoriAiAppをラップしているため、
-      // ここでref.watchを使うには、GoRouterのインスタンスをProviderにする必要がある。
-      // 今回は、よりシンプルなアプローチとして、リダイレクト内でFirebaseAuthのインスタンスを直接使用する。
-      // よりクリーンな方法は、ルーター自体をProviderにすること。
       final loggedIn = FirebaseAuth.instance.currentUser != null;
       final loggingIn = state.matchedLocation == '/login';
 
       if (!loggedIn) {
-        // ログインしていない場合、ログインページにリダイレクト
         return loggingIn ? null : '/login';
       }
 
       if (loggingIn) {
-        // ログインしている状態でログインページにアクセスしようとした場合、ホームにリダイレクト
         return '/';
       }
 
-      return null; // リダイレクトなし
+      return null;
     },
     errorBuilder: (context, state) => Scaffold(
       appBar: AppBar(
