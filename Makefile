@@ -121,7 +121,7 @@ ci-test: ci-setup lint test
 # フロントエンドデプロイ
 deploy-frontend: build-prod
 	@echo "📤 フロントエンドをFirebase Hostingにデプロイ中..."
-	firebase deploy --only hosting
+	firebase deploy --only hosting --project gakkoudayori-ai
 
 # バックエンドデプロイ
 deploy-backend:
@@ -167,7 +167,7 @@ deploy-preview:
 		--dart-define=ENVIRONMENT=preview \
 		--dart-define=API_BASE_URL=https://gakkoudayori-backend-944053509139.asia-northeast1.run.app \
 		--release
-	firebase hosting:channel:deploy preview --expires 7d
+	firebase hosting:channel:deploy preview --expires 7d --project gakkoudayori-ai
 
 # ステージングデプロイ
 deploy-staging: 
@@ -177,7 +177,7 @@ deploy-staging:
 		--dart-define=API_BASE_URL=https://gakkoudayori-backend-staging-944053509139.asia-northeast1.run.app/api/v1 \
 		--release
 	@echo "📤 ステージング環境にデプロイ中..."
-	firebase hosting:channel:deploy staging --expires 30d
+	firebase hosting:channel:deploy staging --expires 30d --project gakkoudayori-ai
 	@echo "✅ ステージング環境デプロイ完了！"
 	@echo "🌐 ステージング: https://gakkoudayori-ai--staging.web.app"
 
