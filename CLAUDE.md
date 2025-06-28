@@ -1,6 +1,8 @@
 # CLAUDE.md
-必ず日本語で応答すること
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+**重要**: 必ず日本語で応答すること
 
 ## 🎯 プロジェクト概要
 
@@ -109,6 +111,11 @@ python -c "import os, sys; print(f'CWD: {os.getcwd()}'); print(f'Python path: {s
 ```
 
 ## 🏃‍♂️ Quick Start Commands
+
+### 重要：Claude Codeからのタスク実行時の注意点
+- Bashツールを使用する際は、必ず実行前にコマンドの説明を行うこと
+- テストやリントを実行する前に、事前チェックとして `make check-backend` を実行すること
+- エラーが発生した場合は、詳細なエラーメッセージと解決方法を日本語で説明すること
 
 ### Most Common Development Commands
 ```bash
@@ -274,3 +281,20 @@ make ci-test                     # CI環境模擬テスト
 - デスクトップ: 左右分割レイアウト (768px+)
 - モバイル: タブ切り替えレイアウト (768px-)
 - Flutter Webで完全対応
+
+## 🎯 Claude Code使用時の重要なルール
+
+### タスク管理
+- 複数ステップの作業では、必ずTodoWriteツールを使用してタスクを管理すること
+- タスク完了時は即座にTodoWriteツールで状況を更新すること
+- テストやビルドが失敗した場合、該当タスクは完了マークしないこと
+
+### コード品質
+- コード変更前に必ず既存のコードスタイルを確認し、それに従うこと
+- 新しいライブラリを使用する前に、既存のプロジェクトで使用されているかを確認すること
+- セキュリティベストプラクティスに従い、秘密情報をコードに含めないこと
+
+### Cursor Rulesとの統合
+このプロジェクトは以下のCursor Rulesに従います：
+- [task_management_tdd.mdc](.cursor/rules/task_management_tdd.mdc): TDD実装フローとタスク管理の統合
+- [document_management.mdc](.cursor/rules/document_management.mdc): ドキュメント管理ルール

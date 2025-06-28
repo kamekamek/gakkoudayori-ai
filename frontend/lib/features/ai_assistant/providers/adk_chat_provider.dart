@@ -285,6 +285,41 @@ class AdkChatProvider extends ChangeNotifier {
     _safeNotifyListeners();
   }
 
+  /// システムメッセージを追加
+  void addSystemMessage(String content, {SystemMessageType? type}) {
+    final message = MutableChatMessage.system(content, systemMessageType: type);
+    _messages.add(message);
+    _safeNotifyListeners();
+  }
+
+  /// 成功通知メッセージを追加
+  void addSuccessMessage(String content) {
+    final message = MutableChatMessage.success(content);
+    _messages.add(message);
+    _safeNotifyListeners();
+  }
+
+  /// PDF生成完了メッセージを追加
+  void addPdfGeneratedMessage(String content) {
+    final message = MutableChatMessage.pdfGenerated(content);
+    _messages.add(message);
+    _safeNotifyListeners();
+  }
+
+  /// Classroom投稿完了メッセージを追加
+  void addClassroomPostedMessage(String content) {
+    final message = MutableChatMessage.classroomPosted(content);
+    _messages.add(message);
+    _safeNotifyListeners();
+  }
+
+  /// エラーメッセージを追加
+  void addErrorMessage(String content) {
+    final message = MutableChatMessage.error(content);
+    _messages.add(message);
+    _safeNotifyListeners();
+  }
+
   /// 音声認識結果をクリア
   void clearTranscriptionResult() {
     _transcriptionResult = null;
