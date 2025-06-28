@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis_auth/googleapis_auth.dart' as auth;
 import 'package:flutter/foundation.dart';
@@ -76,6 +77,14 @@ class GoogleAuthService {
       }
 
       if (_currentUser != null) {
+        final GoogleSignInAuthentication googleAuth =
+            await _currentUser!.authentication;
+        final fb_auth.AuthCredential credential =
+            fb_auth.GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+        await fb_auth.FirebaseAuth.instance.signInWithCredential(credential);
         // 認証済みHTTPクライアントを作成
         await _createAuthClient();
 
@@ -95,7 +104,7 @@ class GoogleAuthService {
       if (e.toString().contains('popup_closed')) {
         throw Exception('サインインがキャンセルされました。もう一度お試しください。');
       } else if (e.toString().contains('popup_blocked')) {
-        throw Exception('ポップアップがブロックされました。ブラウザの設定をご確認ください。');
+        throw Exception('ポップアップがブロックされました。ブラウザの設���をご確認ください。');
       }
 
       throw Exception('Googleアカウントへのログインに失敗しました: $e');
@@ -106,6 +115,7 @@ class GoogleAuthService {
   static Future<void> signOut() async {
     try {
       await googleSignIn.signOut();
+      await fb_auth.FirebaseAuth.instance.signOut();
       _currentUser = null;
       _authClient = null;
 
@@ -182,7 +192,7 @@ class GoogleAuthService {
   /// トークンを更新
   static Future<void> refreshToken() async {
     if (_currentUser == null) {
-      throw Exception('ユーザーがログインしていません');
+      throw Exception('ユー��ーがログインしていません');
     }
 
     try {
@@ -322,3 +332,4 @@ class GoogleAuthService {
     }
   }
 }
+

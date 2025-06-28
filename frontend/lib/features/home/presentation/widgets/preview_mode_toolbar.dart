@@ -41,81 +41,84 @@ class PreviewModeToolbar extends StatelessWidget {
           ),
         ),
       ),
-      child: Row(
-        children: [
-          // プレビューモード切り替えボタン
-          _buildModeButton(
-            context,
-            icon: Icons.visibility,
-            label: 'プレビュー',
-            mode: PreviewMode.preview,
-            isSelected: currentMode == PreviewMode.preview,
-          ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            // プレビューモード切り替えボタン
+            _buildModeButton(
+              context,
+              icon: Icons.visibility,
+              label: 'プレビュー',
+              mode: PreviewMode.preview,
+              isSelected: currentMode == PreviewMode.preview,
+            ),
 
-          const SizedBox(width: 6),
+            const SizedBox(width: 6),
 
-          _buildModeButton(
-            context,
-            icon: Icons.edit,
-            label: '編集',
-            mode: PreviewMode.edit,
-            isSelected: currentMode == PreviewMode.edit,
-          ),
+            _buildModeButton(
+              context,
+              icon: Icons.edit,
+              label: '編集',
+              mode: PreviewMode.edit,
+              isSelected: currentMode == PreviewMode.edit,
+            ),
 
-          const SizedBox(width: 6),
+            const SizedBox(width: 6),
 
-          _buildModeButton(
-            context,
-            icon: Icons.print,
-            label: '印刷プレビュー',
-            mode: PreviewMode.printView,
-            isSelected: currentMode == PreviewMode.printView,
-          ),
+            _buildModeButton(
+              context,
+              icon: Icons.print,
+              label: '印刷',
+              mode: PreviewMode.printView,
+              isSelected: currentMode == PreviewMode.printView,
+            ),
 
-          const SizedBox(width: 6),
+            const SizedBox(width: 6),
 
-          _buildModeButton(
-            context,
-            icon: Icons.picture_as_pdf,
-            label: 'PDF',
-            mode: PreviewMode.edit, // PDFボタンとして使用
-            isSelected: false,
-            onTap: onPdfGenerate,
-          ),
+            _buildModeButton(
+              context,
+              icon: Icons.picture_as_pdf,
+              label: 'PDF',
+              mode: PreviewMode.edit, // PDFボタンと��て使用
+              isSelected: false,
+              onTap: onPdfGenerate,
+            ),
 
-          const SizedBox(width: 6),
+            const SizedBox(width: 6),
 
-          _buildModeButton(
-            context,
-            icon: Icons.school,
-            label: '📚Classroom',
-            mode: PreviewMode.edit, // Classroomボタンとして使用
-            isSelected: false,
-            onTap: () => _showClassroomDialog(context),
-          ),
+            _buildModeButton(
+              context,
+              icon: Icons.school,
+              label: '📚Classroom',
+              mode: PreviewMode.edit, // Classroomボタンとして使用
+              isSelected: false,
+              onTap: () => _showClassroomDialog(context),
+            ),
 
-          const SizedBox(width: 6),
+            const SizedBox(width: 6),
 
-          _buildModeButton(
-            context,
-            icon: Icons.refresh,
-            label: '🔄',
-            mode: PreviewMode.edit, // 再生成ボタンとして使用
-            isSelected: false,
-            onTap: onRegenerate,
-          ),
+            _buildModeButton(
+              context,
+              icon: Icons.refresh,
+              label: '🔄',
+              mode: PreviewMode.edit, // 再生成ボタンとして使用
+              isSelected: false,
+              onTap: onRegenerate,
+            ),
 
-          const Spacer(),
+            const Spacer(),
 
-          // サンプル読み込みボタン
-          _buildActionButton(
-            context,
-            icon: Icons.article,
-            tooltip: 'サンプル読み込み',
-            onPressed: () => _loadSampleContent(context),
-            color: const Color(0xFFFF6B35),
-          ),
-        ],
+            // サンプル読み込みボタン
+            _buildActionButton(
+              context,
+              icon: Icons.article,
+              tooltip: 'サンプル読み込み',
+              onPressed: () => _loadSampleContent(context),
+              color: const Color(0xFFFF6B35),
+            ),
+          ],
+        ),
       ),
     );
   }
