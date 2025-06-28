@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gakkoudayori_ai/features/auth/auth_provider.dart';
 import 'package:gakkoudayori_ai/services/google_auth_service.dart';
+import 'package:google_sign_in_web/google_sign_in_web.dart' as web;
 import 'dart:html' as html;
 import 'dart:ui' as ui;
 
@@ -22,23 +24,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       // ignore: undefined_prefixed_name
       ui.platformViewRegistry.registerViewFactory(
         _viewTypeId,
-        (int viewId) => html.DivElement()
-          ..id = 'g_id_signin'
-          ..style.border = 'none',
+        (int viewId) => html.DivElement()..id = 'g_id_signin',
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // ログイン状態を監視し、ログイン済みならすぐにGoogleボタンを描画
-    // これにより、自動サインイン後の再描画がトリガーされる
+    // 認証状態を監視し、変更があればGoRouterが自動的にリダイレクトする
     ref.watch(authStateChangesProvider);
 
     // ビルドの直後にGoogleボタンのレンダリングをトリガー
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (kIsWeb && mounted) {
-        GoogleAuthService.googleSignIn.renderButton();
+        (GoogleAuthService.googleSignIn as web.GoogleSignInPlugin)
+            .renderButton();
       }
     });
 
@@ -71,7 +71,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Widget _buildMobileSignInButton() {
     return ElevatedButton.icon(
-      icon: const Icon(Icons.login), // TODO: Googleアイコンに差し替え
+      icon: const Icon(Icons.login),
       label: const Text('Googleでサインイン'),
       onPressed: () async {
         await GoogleAuthService.signIn();
