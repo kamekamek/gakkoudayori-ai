@@ -41,6 +41,12 @@ class LayoutAgent(LlmAgent):
         AgentTool経由での呼び出しに対応します。
         """
         try:
+            # ユーザーフレンドリーな開始メッセージ
+            yield Event(
+                author=self.name,
+                content=Content(parts=[Part(text="学級通信のレイアウトを作成しています。少々お待ちください...")])
+            )
+            
             # セッション状態からJSONデータを取得
             json_data = None
             if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
@@ -63,14 +69,20 @@ class LayoutAgent(LlmAgent):
                     json_data = self._generate_sample_json()
 
             if not json_data:
-                error_msg = "HTML生成用のデータを準備できませんでした。"
-                logger.error(error_msg)
+                error_msg = "申し訳ございません。学級通信の作成に必要な情報が見つかりませんでした。もう一度最初からお試しください。"
+                logger.error("HTML生成用のデータを準備できませんでした")
                 yield Event(
                     author=self.name, content=Content(parts=[Part(text=error_msg)])
                 )
                 return
 
             logger.info(f"JSON データを読み込みました: {len(str(json_data))} 文字")
+
+            # ユーザーフレンドリーな進行中メッセージ
+            yield Event(
+                author=self.name,
+                content=Content(parts=[Part(text="美しいデザインで仕上げています...")])
+            )
 
             # JSONデータを含むプロンプトを作成
             enhanced_prompt = f"""
@@ -91,18 +103,29 @@ class LayoutAgent(LlmAgent):
 
             # LLM実行
             async for event in super()._run_async_impl(ctx):
-                yield event
+                # LLMの生成イベントは内部処理として隠蔽
+                pass
 
             # プロンプトを元に戻す
             self.instruction = original_instruction
 
             # 生成されたHTMLを保存
             await self._save_html_from_response(ctx)
+            
+            # ユーザーフレンドリーな完了メッセージ
+            yield Event(
+                author=self.name,
+                content=Content(parts=[Part(text="学級通信が完成しました！プレビューをご確認ください。")])
+            )
 
         except Exception as e:
-            error_msg = f"レイアウト生成中にエラーが発生しました: {str(e)}"
-            logger.error(error_msg)
-            yield Event(author=self.name, content=error_msg)
+            # 技術的エラーをユーザーフレンドリーなメッセージに変換
+            user_friendly_msg = "申し訳ございません。レイアウト作成中に問題が発生しました。もう一度お試しください。"
+            logger.error(f"レイアウト生成中にエラーが発生しました: {str(e)}")
+            yield Event(
+                author=self.name, 
+                content=Content(parts=[Part(text=user_friendly_msg)])
+            )
 
     async def _save_html_from_response(self, ctx: InvocationContext):
         """LLM応答からHTMLを抽出してセッション状態に保存"""

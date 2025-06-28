@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_current_date() -> str:
-    """現在の日付を'YYYY-MM-DD'形式で返します。"""
+    """現在の日付を'YYYY-MM-DD'形式で返します。ユーザーには自然な形で表示されます。"""
     return datetime.now().strftime("%Y-%m-%d")
 
 
@@ -90,6 +90,15 @@ class MainConversationAgent(LlmAgent):
             if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
                 ctx.session.state["conversation_active"] = True
                 ctx.session.state["last_interaction"] = get_current_date()
+                
+                # ユーザー承認状態の初期化
+                if "user_approved" not in ctx.session.state:
+                    ctx.session.state["user_approved"] = False
+                    
+                # 情報収集進捗の管理
+                if "collection_stage" not in ctx.session.state:
+                    ctx.session.state["collection_stage"] = "initial"
+                    
                 logger.info("対話状態をセッション状態に保存しました")
 
         except Exception as e:
@@ -122,11 +131,16 @@ class MainConversationAgent(LlmAgent):
             if not llm_response_text.strip():
                 return
 
-            # JSONブロックが含まれているかチェック
+            # JSONブロックが含まれているかチェック（ユーザーには見せない内部処理）
             if "```json" in llm_response_text and "```" in llm_response_text:
                 json_str = self._extract_json_from_response(llm_response_text)
                 if json_str:
                     await self._save_json_data(ctx, json_str)
+                    logger.info("JSON構成案をサイレントで保存しました")
+            
+            # ユーザー承認確認を判定
+            if self._is_user_approval(llm_response_text):
+                await self._mark_user_approval(ctx)
 
         except Exception as e:
             logger.error(f"JSON検出・保存エラー: {e}")
@@ -186,6 +200,25 @@ class MainConversationAgent(LlmAgent):
 
         except Exception as e:
             logger.error(f"JSON保存エラー: {e}")
+
+    def _is_user_approval(self, response_text: str) -> bool:
+        """ユーザーの承認を示すキーワードを検出"""
+        approval_keywords = [
+            "この内容でよろしいですか？",
+            "この内容で大丈夫ですか？",
+            "修正点があればお聞かせください",
+            "いかがでしょうか？"
+        ]
+        return any(keyword in response_text for keyword in approval_keywords)
+
+    async def _mark_user_approval(self, ctx: InvocationContext):
+        """ユーザー承認段階をマーク"""
+        try:
+            if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
+                ctx.session.state["collection_stage"] = "awaiting_approval"
+                logger.info("ユーザー承認待ち状態に設定しました")
+        except Exception as e:
+            logger.error(f"承認状態設定エラー: {e}")
 
 
 def create_main_conversation_agent() -> MainConversationAgent:
