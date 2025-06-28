@@ -180,7 +180,6 @@ class _NotificationWidgetState extends State<NotificationWidget>
       case SystemMessageType.warning:
         return Icons.warning_outlined;
       case SystemMessageType.info:
-      default:
         return Icons.info_outline;
     }
   }
@@ -198,7 +197,6 @@ class _NotificationWidgetState extends State<NotificationWidget>
       case SystemMessageType.warning:
         return Colors.orange.shade50;
       case SystemMessageType.info:
-      default:
         return Colors.blue.shade50;
     }
   }
@@ -216,7 +214,6 @@ class _NotificationWidgetState extends State<NotificationWidget>
       case SystemMessageType.warning:
         return Colors.orange.shade800;
       case SystemMessageType.info:
-      default:
         return Colors.blue.shade800;
     }
   }
@@ -234,7 +231,6 @@ class _NotificationWidgetState extends State<NotificationWidget>
       case SystemMessageType.warning:
         return Colors.orange.shade600;
       case SystemMessageType.info:
-      default:
         return Colors.blue.shade600;
     }
   }

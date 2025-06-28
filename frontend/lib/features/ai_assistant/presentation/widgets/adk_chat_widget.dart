@@ -628,7 +628,6 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
         iconColor = Colors.orange.shade600;
         break;
       case SystemMessageType.info:
-      default:
         icon = Icons.info_outline;
         backgroundColor = Colors.blue.shade50;
         textColor = Colors.blue.shade800;

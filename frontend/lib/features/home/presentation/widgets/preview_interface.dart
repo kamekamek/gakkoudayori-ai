@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'dart:html' as html;
 import '../../../editor/providers/preview_provider.dart';
 import '../../providers/newsletter_provider.dart';
@@ -11,7 +10,6 @@ import '../../../../widgets/notification_widget.dart';
 import '../../../../widgets/unified_preview_widget.dart';
 import '../../../../widgets/accurate_print_preview_widget.dart';
 import '../../../../widgets/simple_html_editor_widget.dart';
-import '../../../../utils/html_processing_utils.dart';
 import '../../../../core/models/chat_message.dart';
 
 /// プレビューインターフェース（右側パネル）
