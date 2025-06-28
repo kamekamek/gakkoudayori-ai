@@ -714,7 +714,18 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
   Future<void> _downloadPdf() async {
     if (_generatedHtml.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('PDFを生成する内容がありません。')),
+        SnackBar(
+          content: const Text('PDFを生成する内容がありません。'),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.only(top: 50, left: 16, right: 16),
+          action: SnackBarAction(
+            label: '✕',
+            textColor: Colors.white,
+            onPressed: () {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            },
+          ),
+        ),
       );
       return;
     }
@@ -749,8 +760,19 @@ class ResponsiveHomePageState extends State<ResponsiveHomePage> {
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content: Text('❌ PDFの生成中にエラーが発生しました: $e'),
-            backgroundColor: Colors.red),
+          content: Text('❌ PDFの生成中にエラーが発生しました: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.only(top: 50, left: 16, right: 16),
+          action: SnackBarAction(
+            label: '✕',
+            textColor: Colors.white,
+            onPressed: () {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            },
+          ),
+        ),
       );
     } finally {
       setState(() {

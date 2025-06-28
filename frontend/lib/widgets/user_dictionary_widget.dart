@@ -135,6 +135,16 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
           SnackBar(
             content: Text('「$term」を辞書に追加しました'),
             backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.only(top: 50, left: 16, right: 16),
+            action: SnackBarAction(
+              label: '✕',
+              textColor: Colors.white,
+              onPressed: () {
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              },
+            ),
           ),
         );
       }
@@ -187,6 +197,16 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
             SnackBar(
               content: Text('「${entry.term}」を削除しました'),
               backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.only(top: 50, left: 16, right: 16),
+              action: SnackBarAction(
+                label: '✕',
+                textColor: Colors.white,
+                onPressed: () {
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                },
+              ),
             ),
           );
         }
@@ -230,6 +250,16 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
             SnackBar(
               content: Text('修正を学習しました: $original → $corrected'),
               backgroundColor: Colors.blue,
+              duration: const Duration(seconds: 3),
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.only(top: 50, left: 16, right: 16),
+              action: SnackBarAction(
+                label: '✕',
+                textColor: Colors.white,
+                onPressed: () {
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                },
+              ),
             ),
           );
           await _loadDictionary(); // 統計を更新
@@ -342,6 +372,16 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
           SnackBar(
             content: Text('「${newEntry.term}」に更新しました'),
             backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.only(top: 50, left: 16, right: 16),
+            action: SnackBarAction(
+              label: '✕',
+              textColor: Colors.white,
+              onPressed: () {
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              },
+            ),
           ),
         );
       }

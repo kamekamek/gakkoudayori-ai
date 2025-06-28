@@ -59,7 +59,20 @@ class _NewsletterPageState extends ConsumerState<NewsletterPage> {
               final errorText = 'Agent Error: ${decoded['message']}';
               _chatHistory.add("AI: $errorText");
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(errorText), backgroundColor: Colors.red),
+                SnackBar(
+                  content: Text(errorText),
+                  backgroundColor: Colors.red,
+                  duration: const Duration(seconds: 5),
+                  behavior: SnackBarBehavior.floating,
+                  margin: const EdgeInsets.only(top: 50, left: 16, right: 16),
+                  action: SnackBarAction(
+                    label: '✕',
+                    textColor: Colors.white,
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                    },
+                  ),
+                ),
               );
             }
           });

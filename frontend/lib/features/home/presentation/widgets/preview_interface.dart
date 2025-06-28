@@ -7,10 +7,46 @@ import '../../providers/newsletter_provider.dart';
 import '../../../ai_assistant/providers/adk_chat_provider.dart';
 import 'preview_mode_toolbar.dart';
 import '../../../../widgets/quill_editor_widget.dart';
+import '../../../../widgets/notification_widget.dart';
+import '../../../../widgets/unified_preview_widget.dart';
+import '../../../../widgets/accurate_print_preview_widget.dart';
+import '../../../../widgets/simple_html_editor_widget.dart';
+import '../../../../utils/html_processing_utils.dart';
+import '../../../../core/models/chat_message.dart';
 
 /// プレビューインターフェース（右側パネル）
-class PreviewInterface extends StatelessWidget {
+class PreviewInterface extends StatefulWidget {
   const PreviewInterface({super.key});
+
+  @override
+  State<PreviewInterface> createState() => _PreviewInterfaceState();
+}
+
+class _PreviewInterfaceState extends State<PreviewInterface> {
+  final List<NotificationData> _notifications = [];
+
+  void _addNotification(String message, SystemMessageType type) {
+    final notification = NotificationData(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      message: message,
+      type: type,
+    );
+
+    setState(() {
+      _notifications.add(notification);
+    });
+
+    // 自動削除タイマー
+    Future.delayed(const Duration(seconds: 5), () {
+      _removeNotification(notification.id);
+    });
+  }
+
+  void _removeNotification(String id) {
+    setState(() {
+      _notifications.removeWhere((notification) => notification.id == id);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +62,15 @@ class PreviewInterface extends StatelessWidget {
               onPrintPreview: () => _showPrintPreview(context),
               onRegenerate: () => _regenerateContent(context),
               canExecuteActions: previewProvider.htmlContent.isNotEmpty,
+              onNotification: _addNotification,
             ),
+
+            // 通知エリア
+            if (_notifications.isNotEmpty)
+              NotificationContainer(
+                notifications: _notifications,
+                onDismiss: _removeNotification,
+              ),
 
             // プレビューコンテンツ
             Expanded(
@@ -63,13 +107,13 @@ class PreviewInterface extends StatelessWidget {
     // プレビューモードに応じて表示
     switch (previewProvider.currentMode) {
       case PreviewMode.preview:
-        return _buildPreviewMode(context, previewProvider.htmlContent);
+        return _buildUnifiedPreviewMode(context, previewProvider.htmlContent);
 
       case PreviewMode.edit:
-        return _buildEditMode(context, previewProvider.htmlContent);
+        return _buildInlineEditMode(context, previewProvider);
 
       case PreviewMode.printView:
-        return _buildPrintViewMode(context, previewProvider.htmlContent);
+        return _buildAccuratePrintViewMode(context, previewProvider.htmlContent);
     }
   }
 
@@ -167,112 +211,113 @@ class PreviewInterface extends StatelessWidget {
     );
   }
 
-  Widget _buildEditMode(BuildContext context, String htmlContent) {
+  Widget _buildInlineEditMode(BuildContext context, PreviewProvider previewProvider) {
     return Container(
-      padding: const EdgeInsets.all(32),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.edit_note,
-              size: 64,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(height: 24),
-            Text(
-              '編集モード',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '高速で安定したQuillエディタを\n別ウィンドウで開きます',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton.icon(
-              onPressed: () => _openQuillEditor(context),
-              icon: const Icon(Icons.open_in_new, size: 20),
-              label: const Text('Quillエディタを開く'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                textStyle: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          // 編集モードのヘッダー
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(8),
+                topRight: Radius.circular(8),
+              ),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
               ),
             ),
-          ],
-        ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.edit,
+                  size: 18,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'インライン編集モード',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: () => _openQuillEditor(context),
+                  icon: const Icon(Icons.open_in_new, size: 14),
+                  label: const Text('Quill'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Theme.of(context).colorScheme.primary,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    textStyle: const TextStyle(fontSize: 11),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // インライン編集エリア
+          Expanded(
+            child: SimpleHtmlEditorWidget(
+              initialContent: previewProvider.htmlContent,
+              onContentChanged: (editedHtml) {
+                previewProvider.updateHtmlContent(editedHtml);
+                _addNotification('編集内容を更新しました', SystemMessageType.success);
+              },
+              height: double.infinity,
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildPreviewMode(BuildContext context, String htmlContent) {
+  Widget _buildUnifiedPreviewMode(BuildContext context, String htmlContent) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Container(
         constraints: const BoxConstraints(maxWidth: 800),
         margin: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Theme.of(context).colorScheme.shadow.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: HtmlWidget(
-            htmlContent,
-            textStyle: Theme.of(context).textTheme.bodyMedium,
-          ),
+        child: UnifiedPreviewWidget(
+          htmlContent: htmlContent,
+          height: 600,
+          onContentReady: () {
+            if (mounted) {
+              _addNotification('プレビューの準備が完了しました', SystemMessageType.success);
+            }
+          },
+          onError: (error) {
+            if (mounted) {
+              _addNotification('プレビューエラー: $error', SystemMessageType.error);
+            }
+          },
         ),
       ),
     );
   }
 
-  Widget _buildPrintViewMode(BuildContext context, String htmlContent) {
+  Widget _buildAccuratePrintViewMode(BuildContext context, String htmlContent) {
     return Container(
-      color: Colors.grey[300],
-      child: Center(
-        child: Container(
-          width: 595, // A4幅 (210mm * 2.83 ≈ 595px)
-          height: 842, // A4高さ (297mm * 2.83 ≈ 842px)
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(32),
-            child: HtmlWidget(
-              htmlContent,
-              textStyle: const TextStyle(
-                fontSize: 14,
-                height: 1.5,
-                color: Colors.black,
-              ),
-            ),
-          ),
+      color: Colors.grey[200],
+      child: SingleChildScrollView(
+        child: AccuratePrintPreviewWidget(
+          htmlContent: htmlContent,
+          scale: 0.8,
+          showPageBorder: true,
+          onContentReady: () {
+            if (mounted) {
+              _addNotification('印刷プレビューの準備が完了しました', SystemMessageType.success);
+            }
+          },
+          onError: (error) {
+            if (mounted) {
+              _addNotification('印刷プレビューエラー: $error', SystemMessageType.error);
+            }
+          },
         ),
       ),
     );
@@ -281,20 +326,55 @@ class PreviewInterface extends StatelessWidget {
   void _generatePdf(BuildContext context) async {
     try {
       await context.read<PreviewProvider>().generatePdf();
+      
+      // スナックバー表示（上部表示・×ボタン付き）
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✅ PDFを生成しました'),
-          duration: Duration(seconds: 2),
+        SnackBar(
+          content: const Text('✅ PDFを生成しました'),
+          duration: const Duration(seconds: 4),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.only(top: 50, left: 16, right: 16),
+          action: SnackBarAction(
+            label: '✕',
+            textColor: Colors.white,
+            onPressed: () {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            },
+          ),
         ),
       );
+      
+      // チャット内通知も追加
+      final adkChatProvider = context.read<AdkChatProvider>();
+      adkChatProvider.addPdfGeneratedMessage('📄 PDFの生成が完了しました！ダウンロードをご確認ください。');
+      
+      // プレビューエリアの通知も追加
+      _addNotification('PDFの生成が完了しました', SystemMessageType.pdfGenerated);
+      
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('❌ PDF生成に失敗しました: $e'),
           backgroundColor: Theme.of(context).colorScheme.error,
-          duration: const Duration(seconds: 3),
+          duration: const Duration(seconds: 5),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.only(top: 50, left: 16, right: 16),
+          action: SnackBarAction(
+            label: '✕',
+            textColor: Colors.white,
+            onPressed: () {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            },
+          ),
         ),
       );
+      
+      // エラーもチャット内に通知
+      final adkChatProvider = context.read<AdkChatProvider>();
+      adkChatProvider.addErrorMessage('❌ PDF生成に失敗しました: $e');
+      
+      // プレビューエリアのエラー通知も追加
+      _addNotification('PDF生成に失敗しました: $e', SystemMessageType.error);
     }
   }
 
@@ -306,7 +386,16 @@ class PreviewInterface extends StatelessWidget {
         SnackBar(
           content: Text('❌ 印刷プレビューの表示に失敗しました: $e'),
           backgroundColor: Theme.of(context).colorScheme.error,
-          duration: const Duration(seconds: 3),
+          duration: const Duration(seconds: 5),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.only(top: 50, left: 16, right: 16),
+          action: SnackBarAction(
+            label: '✕',
+            textColor: Colors.white,
+            onPressed: () {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            },
+          ),
         ),
       );
     }
@@ -318,7 +407,18 @@ class PreviewInterface extends StatelessWidget {
 
     if (previewProvider.htmlContent.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('再生成するコンテンツがありません')),
+        SnackBar(
+          content: const Text('再生成するコンテンツがありません'),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.only(top: 50, left: 16, right: 16),
+          action: SnackBarAction(
+            label: '✕',
+            textColor: Colors.white,
+            onPressed: () {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            },
+          ),
+        ),
       );
       return;
     }
@@ -351,13 +451,34 @@ $contentSummary
       adkChatProvider.sendMessage(regenerationPrompt);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('🔄 コンテンツの再生成を開始しました...')),
+        SnackBar(
+          content: const Text('🔄 コンテンツの再生成を開始しました...'),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.only(top: 50, left: 16, right: 16),
+          action: SnackBarAction(
+            label: '✕',
+            textColor: Colors.white,
+            onPressed: () {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            },
+          ),
+        ),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('❌ 再生成に失敗しました: $e'),
           backgroundColor: Theme.of(context).colorScheme.error,
+          duration: const Duration(seconds: 5),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.only(top: 50, left: 16, right: 16),
+          action: SnackBarAction(
+            label: '✕',
+            textColor: Colors.white,
+            onPressed: () {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            },
+          ),
         ),
       );
     }
@@ -366,9 +487,18 @@ $contentSummary
   void _openQuillEditor(BuildContext context) {
     html.window.open('/quill/', '_blank');
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('📝 Quillエディタを新しいタブで開きました'),
-        duration: Duration(seconds: 2),
+      SnackBar(
+        content: const Text('📝 Quillエディタを新しいタブで開きました'),
+        duration: const Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.only(top: 50, left: 16, right: 16),
+        action: SnackBarAction(
+          label: '✕',
+          textColor: Colors.white,
+          onPressed: () {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          },
+        ),
       ),
     );
   }

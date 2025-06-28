@@ -4,6 +4,8 @@ import 'dart:convert';
 import '../../../editor/providers/preview_provider.dart';
 import 'classroom_post_dialog.dart';
 import '../../../../services/pdf_api_service.dart';
+import '../../../ai_assistant/providers/adk_chat_provider.dart';
+import '../../../../core/models/chat_message.dart';
 
 /// プレビューモード切り替えツールバー
 class PreviewModeToolbar extends StatelessWidget {
@@ -13,6 +15,7 @@ class PreviewModeToolbar extends StatelessWidget {
   final VoidCallback onPrintPreview;
   final VoidCallback onRegenerate;
   final bool canExecuteActions;
+  final Function(String, SystemMessageType)? onNotification;
 
   const PreviewModeToolbar({
     super.key,
@@ -22,6 +25,7 @@ class PreviewModeToolbar extends StatelessWidget {
     required this.onPrintPreview,
     required this.onRegenerate,
     this.canExecuteActions = true,
+    this.onNotification,
   });
 
   @override
@@ -43,7 +47,7 @@ class PreviewModeToolbar extends StatelessWidget {
           _buildModeButton(
             context,
             icon: Icons.visibility,
-            label: '編集',
+            label: 'プレビュー',
             mode: PreviewMode.preview,
             isSelected: currentMode == PreviewMode.preview,
           ),
@@ -52,8 +56,18 @@ class PreviewModeToolbar extends StatelessWidget {
 
           _buildModeButton(
             context,
+            icon: Icons.edit,
+            label: '編集',
+            mode: PreviewMode.edit,
+            isSelected: currentMode == PreviewMode.edit,
+          ),
+
+          const SizedBox(width: 6),
+
+          _buildModeButton(
+            context,
             icon: Icons.print,
-            label: '印刷ビュー',
+            label: '印刷プレビュー',
             mode: PreviewMode.printView,
             isSelected: currentMode == PreviewMode.printView,
           ),
@@ -196,11 +210,23 @@ class PreviewModeToolbar extends StatelessWidget {
   void _loadSampleContent(BuildContext context) {
     context.read<PreviewProvider>().loadSampleContent();
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('📄 サンプル学級通信を読み込みました'),
-        duration: Duration(seconds: 2),
+      SnackBar(
+        content: const Text('📄 サンプル学級通信を読み込みました'),
+        duration: const Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.only(top: 50, left: 16, right: 16),
+        action: SnackBarAction(
+          label: '✕',
+          textColor: Colors.white,
+          onPressed: () {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          },
+        ),
       ),
     );
+    
+    // プレビューエリアの通知も追加
+    onNotification?.call('サンプル学級通信を読み込みました', SystemMessageType.success);
   }
 
   void _showClassroomDialog(BuildContext context) async {
@@ -208,9 +234,19 @@ class PreviewModeToolbar extends StatelessWidget {
 
     if (previewProvider.htmlContent.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('❌ 投稿するコンテンツがありません'),
+        SnackBar(
+          content: const Text('❌ 投稿するコンテンツがありません'),
           backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.only(top: 50, left: 16, right: 16),
+          action: SnackBarAction(
+            label: '✕',
+            textColor: Colors.white,
+            onPressed: () {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            },
+          ),
         ),
       );
       return;
@@ -239,11 +275,28 @@ class PreviewModeToolbar extends StatelessWidget {
 
         if (posted == true) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('✅ Classroomに投稿しました'),
+            SnackBar(
+              content: const Text('✅ Classroomに投稿しました'),
               backgroundColor: Colors.green,
+              duration: const Duration(seconds: 4),
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.only(top: 50, left: 16, right: 16),
+              action: SnackBarAction(
+                label: '✕',
+                textColor: Colors.white,
+                onPressed: () {
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                },
+              ),
             ),
           );
+          
+          // チャット内通知も追加
+          final adkChatProvider = context.read<AdkChatProvider>();
+          adkChatProvider.addClassroomPostedMessage('🎓 Google Classroomへの投稿が完了しました！生徒が確認できます。');
+          
+          // プレビューエリアの通知も追加
+          onNotification?.call('Classroom投稿が完了しました', SystemMessageType.classroomPosted);
         }
       } else {
         throw Exception(result['error'] ?? 'PDF生成に失敗しました');
@@ -253,8 +306,25 @@ class PreviewModeToolbar extends StatelessWidget {
         SnackBar(
           content: Text('❌ Classroom投稿の準備に失敗しました: $e'),
           backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.only(top: 50, left: 16, right: 16),
+          action: SnackBarAction(
+            label: '✕',
+            textColor: Colors.white,
+            onPressed: () {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            },
+          ),
         ),
       );
+      
+      // エラーもチャット内に通知
+      final adkChatProvider = context.read<AdkChatProvider>();
+      adkChatProvider.addErrorMessage('❌ Classroom投稿の準備に失敗しました: $e');
+      
+      // プレビューエリアのエラー通知も追加
+      onNotification?.call('Classroom投稿の準備に失敗しました: $e', SystemMessageType.error);
     }
   }
 }

@@ -131,7 +131,7 @@ class AppTheme {
         ),
       ),
 
-      // スナックバー
+      // スナックバー（上部表示・×ボタン対応）
       snackBarTheme: SnackBarThemeData(
         backgroundColor: colorScheme.inverseSurface,
         contentTextStyle: AppTextStyles.bodyMedium.copyWith(
@@ -142,6 +142,7 @@ class AppTheme {
           borderRadius: BorderRadius.circular(8),
         ),
         behavior: SnackBarBehavior.floating,
+        elevation: 6,
       ),
 
       // タブバー

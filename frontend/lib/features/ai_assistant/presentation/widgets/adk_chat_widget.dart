@@ -471,8 +471,14 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
 
   Widget _buildMessageBubble(MutableChatMessage message) {
     final isUser = message.role == 'user';
+    final isSystem = message.role == 'system' || message.role == 'error';
     final hasImages =
         message.content.contains('📷') && message.content.contains('画像を添付しました');
+
+    // システムメッセージの場合は特別なレイアウト
+    if (isSystem) {
+      return _buildSystemMessageBubble(message);
+    }
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
@@ -579,6 +585,100 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
     );
   }
 
+  /// システムメッセージ専用のバブル表示
+  Widget _buildSystemMessageBubble(MutableChatMessage message) {
+    final type = message.systemMessageType ?? SystemMessageType.info;
+    final isError = message.role == 'error' || type == SystemMessageType.error;
+    
+    // タイプに応じたアイコンと色を決定
+    IconData icon;
+    Color backgroundColor;
+    Color textColor;
+    Color iconColor;
+    
+    switch (type) {
+      case SystemMessageType.pdfGenerated:
+        icon = Icons.picture_as_pdf;
+        backgroundColor = Colors.purple.shade50;
+        textColor = Colors.purple.shade800;
+        iconColor = Colors.purple.shade600;
+        break;
+      case SystemMessageType.classroomPosted:
+        icon = Icons.school;
+        backgroundColor = Colors.green.shade50;
+        textColor = Colors.green.shade800;
+        iconColor = Colors.green.shade600;
+        break;
+      case SystemMessageType.error:
+        icon = Icons.error_outline;
+        backgroundColor = Colors.red.shade50;
+        textColor = Colors.red.shade800;
+        iconColor = Colors.red.shade600;
+        break;
+      case SystemMessageType.success:
+        icon = Icons.check_circle_outline;
+        backgroundColor = Colors.green.shade50;
+        textColor = Colors.green.shade800;
+        iconColor = Colors.green.shade600;
+        break;
+      case SystemMessageType.warning:
+        icon = Icons.warning_outlined;
+        backgroundColor = Colors.orange.shade50;
+        textColor = Colors.orange.shade800;
+        iconColor = Colors.orange.shade600;
+        break;
+      case SystemMessageType.info:
+      default:
+        icon = Icons.info_outline;
+        backgroundColor = Colors.blue.shade50;
+        textColor = Colors.blue.shade800;
+        iconColor = Colors.blue.shade600;
+        break;
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              size: 20,
+              color: iconColor,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: backgroundColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: iconColor.withOpacity(0.2),
+                  width: 1,
+                ),
+              ),
+              child: Text(
+                message.content,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildProcessingIndicator() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -663,9 +763,19 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
         debugPrint('❌ [AdkChatWidget] Voice recording failed to start');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('音声録音を開始できませんでした。マイクのアクセス許可を確認してください。'),
-              duration: Duration(seconds: 3),
+            SnackBar(
+              content: const Text('音声録音を開始できませんでした。マイクのアクセス許可を確認してください。'),
+              duration: const Duration(seconds: 5),
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.only(top: 50, left: 16, right: 16),
+              backgroundColor: Theme.of(context).colorScheme.error,
+              action: SnackBarAction(
+                label: '✕',
+                textColor: Colors.white,
+                onPressed: () {
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                },
+              ),
             ),
           );
         }
@@ -770,7 +880,16 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('📷 ${imageProvider.imageCount}枚の画像をチャットに追加しました'),
-        duration: const Duration(seconds: 2),
+        duration: const Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.only(top: 50, left: 16, right: 16),
+        action: SnackBarAction(
+          label: '✕',
+          textColor: Colors.white,
+          onPressed: () {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          },
+        ),
       ),
     );
   }

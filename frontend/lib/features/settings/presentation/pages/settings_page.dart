@@ -214,9 +214,18 @@ class _SettingsPageState extends State<SettingsPage> {
     );
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('✅ 設定を保存しました'),
-        duration: Duration(seconds: 2),
+      SnackBar(
+        content: const Text('✅ 設定を保存しました'),
+        duration: const Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.only(top: 50, left: 16, right: 16),
+        action: SnackBarAction(
+          label: '✕',
+          textColor: Colors.white,
+          onPressed: () {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          },
+        ),
       ),
     );
   }
@@ -229,9 +238,18 @@ class _SettingsPageState extends State<SettingsPage> {
           onDictionaryUpdated: () {
             // 辞書更新時の処理（必要に応じて）
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('ユーザー辞書が更新されました'),
-                duration: Duration(seconds: 2),
+              SnackBar(
+                content: const Text('ユーザー辞書が更新されました'),
+                duration: const Duration(seconds: 3),
+                behavior: SnackBarBehavior.floating,
+                margin: const EdgeInsets.only(top: 50, left: 16, right: 16),
+                action: SnackBarAction(
+                  label: '✕',
+                  textColor: Colors.white,
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  },
+                ),
               ),
             );
           },
