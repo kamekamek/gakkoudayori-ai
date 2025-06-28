@@ -23,9 +23,13 @@ class LayoutAgent(LlmAgent):
     """
 
     def __init__(self, output_key: str = "html"):
+        # 明示的にgemini-2.5-proを指定してモデル不整合を解決
+        model = Gemini(model_name="gemini-2.5-pro")
+        logger.info(f"LayoutAgent初期化: モデル=gemini-2.5-pro")
+        
         super().__init__(
             name="layout_agent",
-            model=Gemini(model_name="gemini-2.5-pro"),
+            model=model,
             instruction=INSTRUCTION,
             description="JSONデータから美しいHTMLレイアウトを生成します。",
             tools=[],
@@ -47,26 +51,31 @@ class LayoutAgent(LlmAgent):
                 content=Content(parts=[Part(text="学級通信のレイアウトを作成しています。少々お待ちください...")])
             )
             
-            # セッション状態からJSONデータを取得
+            # セッション状態からJSONデータを取得（優先）
             json_data = None
             if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
                 json_data = ctx.session.state.get("outline")
+                logger.info(f"セッション状態から取得: {bool(json_data)}")
+                if hasattr(ctx.session, "state"):
+                    logger.info(f"セッション状態のキー: {list(ctx.session.state.keys())}")
 
-            # セッション状態にない場合はファイルシステムからフォールバック
+            # セッション状態に無い場合は、ファイルシステムから強制読み込み
             if not json_data:
-                logger.warning(
-                    "セッション状態にoutlineが見つかりません。ファイルシステムからフォールバック..."
-                )
+                logger.warning("セッション状態にoutlineが見つかりません。ファイルシステムから読み込み...")
                 artifacts_dir = Path("/tmp/adk_artifacts")
                 outline_file = artifacts_dir / "outline.json"
 
                 if outline_file.exists():
                     with open(outline_file, "r", encoding="utf-8") as f:
                         json_data = f.read()
+                    logger.info(f"ファイルシステムから読み込み成功: {len(json_data)} 文字")
+                    
+                    # ファイルデータをセッション状態に即座に同期
+                    if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
+                        ctx.session.state["outline"] = json_data
+                        logger.info("ファイルデータをセッション状態に同期しました")
                 else:
-                    # AgentToolとして呼び出された場合、JSONデータがない場合はサンプルを生成
-                    logger.info("JSONデータが見つからないため、サンプルJSONでHTML生成を試行します")
-                    json_data = self._generate_sample_json()
+                    logger.error("outline.jsonファイルが存在しません")
 
             if not json_data:
                 error_msg = "申し訳ございません。学級通信の作成に必要な情報が見つかりませんでした。もう一度最初からお試しください。"
@@ -84,33 +93,62 @@ class LayoutAgent(LlmAgent):
                 content=Content(parts=[Part(text="美しいデザインで仕上げています...")])
             )
 
-            # JSONデータを含むプロンプトを作成
+            # JSON解析とバリデーション
+            try:
+                import json as json_module
+                json_obj = json_module.loads(json_data)
+                logger.info(f"JSON解析成功: {json_obj.get('school_name')} {json_obj.get('grade')}")
+            except Exception as e:
+                logger.error(f"JSON解析エラー: {e}")
+                json_obj = None
+
+            # 強化されたプロンプトを作成（JSON反映を強調）
             enhanced_prompt = f"""
-            以下のJSONデータを使用して、美しい学級通信のHTMLを生成してください。
+以下のJSONデータから学級通信のHTMLを生成してください。
 
-            JSONデータ:
-            ```json
-            {json_data}
-            ```
+🚨 重要指示: JSONデータの内容を100%正確に反映してください 🚨
 
-            上記のJSONデータのすべてのフィールドを適切に反映し、レスポンシブで印刷にも対応した美しいHTMLを生成してください。
-            HTMLのみを出力し、説明文は不要です。
+JSONデータ:
+```json
+{json_data}
+```
+
+必須反映事項:
+1. 学校名: {json_obj.get('school_name') if json_obj else 'JSONから取得'}
+2. 学年: {json_obj.get('grade') if json_obj else 'JSONから取得'}  
+3. 発行者: {json_obj.get('author', {}).get('name') if json_obj else 'JSONから取得'}
+4. 発行日: {json_obj.get('issue_date') if json_obj else 'JSONから取得'}
+5. タイトル: {json_obj.get('main_title') if json_obj else 'JSONから取得'}
+6. 主要色: {json_obj.get('color_scheme', {}).get('primary') if json_obj else 'JSONから取得'}
+
+絶対に守ること:
+- JSONのデータを変更・推測・追加しないこと
+- 上記の値を正確にHTMLに反映すること
+- 独自のデザインや色を使用しないこと
+
+HTMLのみを出力し、説明文は不要です。
             """
 
             # 一時的にプロンプトを更新してLLMを実行
             original_instruction = self.instruction
             self.instruction = enhanced_prompt
 
-            # LLM実行
+            # LLM実行（イベントを保存してHTMLを抽出）
+            llm_events = []
             async for event in super()._run_async_impl(ctx):
-                # LLMの生成イベントは内部処理として隠蔽
-                pass
+                # LLMの生成イベントは内部処理として隠蔽し、後でHTML抽出用に保存
+                llm_events.append(event)
+            
+            # 生成されたイベントからHTMLを抽出して保存
+            await self._save_html_from_llm_events(ctx, llm_events)
+            
+            # HTMLとJSONの一致検証
+            await self._validate_html_json_consistency(ctx, json_obj)
 
             # プロンプトを元に戻す
             self.instruction = original_instruction
 
-            # 生成されたHTMLを保存
-            await self._save_html_from_response(ctx)
+            # HTMLは既に上記で保存済み
             
             # ユーザーフレンドリーな完了メッセージ
             yield Event(
@@ -126,6 +164,75 @@ class LayoutAgent(LlmAgent):
                 author=self.name, 
                 content=Content(parts=[Part(text=user_friendly_msg)])
             )
+
+    async def _save_html_from_llm_events(self, ctx: InvocationContext, llm_events):
+        """LLMイベントからHTMLを抽出してセッション状態に保存"""
+        try:
+            # イベントからテキストを結合
+            llm_response_text = ""
+            for event in llm_events:
+                event_text = self._extract_text_from_event(event)
+                llm_response_text += event_text
+
+            if not llm_response_text.strip():
+                logger.warning("LLMイベントからテキストを抽出できません")
+                return
+
+            logger.info(f"LLMイベントから抽出したテキスト長: {len(llm_response_text)}")
+
+            # HTMLの抽出
+            html_content = self._extract_html_from_response(llm_response_text)
+
+            # セッション状態に保存（ADK標準）
+            if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
+                ctx.session.state["html"] = html_content
+                logger.info("HTMLをセッション状態に保存しました")
+
+            # ファイルシステムにもバックアップ保存
+            artifacts_dir = Path("/tmp/adk_artifacts")
+            newsletter_file = artifacts_dir / "newsletter.html"
+
+            with open(newsletter_file, "w", encoding="utf-8") as f:
+                f.write(html_content)
+
+            logger.info(f"HTMLをファイルにも保存しました: {newsletter_file}")
+
+        except Exception as e:
+            logger.error(f"LLMイベントからのHTML保存エラー: {e}")
+
+    async def _validate_html_json_consistency(self, ctx: InvocationContext, json_obj):
+        """HTMLとJSONデータの一致を検証"""
+        try:
+            if not json_obj:
+                logger.warning("JSON検証スキップ: JSONオブジェクトがありません")
+                return
+
+            # セッション状態からHTMLを取得
+            if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
+                html_content = ctx.session.state.get("html", "")
+                
+                if html_content:
+                    # 主要フィールドの一致確認
+                    validations = [
+                        ("学校名", json_obj.get('school_name'), html_content),
+                        ("学年", json_obj.get('grade'), html_content),
+                        ("発行者", json_obj.get('author', {}).get('name'), html_content),
+                        ("色scheme", json_obj.get('color_scheme', {}).get('primary'), html_content)
+                    ]
+                    
+                    inconsistencies = []
+                    for field, json_value, html_text in validations:
+                        if json_value and str(json_value) not in html_text:
+                            inconsistencies.append(f"{field}: JSON={json_value}")
+                    
+                    if inconsistencies:
+                        logger.warning(f"HTML-JSON不整合検出: {', '.join(inconsistencies)}")
+                    else:
+                        logger.info("HTML-JSON整合性検証: 正常")
+                else:
+                    logger.warning("HTML検証スキップ: HTMLコンテンツがありません")
+        except Exception as e:
+            logger.error(f"HTML-JSON検証エラー: {e}")
 
     async def _save_html_from_response(self, ctx: InvocationContext):
         """LLM応答からHTMLを抽出してセッション状態に保存"""

@@ -29,6 +29,27 @@ INSTRUCTION = """
 
 ---
 
+## ■ 【最重要】JSON反映の絶対ルール
+
+**🚨 重要: 提供されたJSONデータのすべてのフィールドを100%忠実に反映してください**
+
+### JSON反映の必須事項
+1. **school_name** → HTMLの学校名として正確に表示
+2. **grade** → HTMLの学年として正確に表示  
+3. **author.name + author.title** → HTMLの発行者として正確に表示
+4. **issue_date** → HTMLの発行日として正確に表示
+5. **main_title** → HTMLのメインタイトルとして正確に表示
+6. **color_scheme.primary** → CSSの主要色として正確に適用
+7. **color_scheme.secondary** → CSSの副次色として正確に適用
+8. **color_scheme.accent** → CSSのアクセント色として正確に適用
+9. **sections[].content** → HTMLの記事内容として正確に表示
+
+### 絶対禁止事項
+- JSONにないデータの推測や追加
+- JSONのデータを変更・修正すること
+- デフォルト値やサンプル値の使用
+- 独自の色彩設定やデザインの適用
+
 ## ■ HTML生成要件
 
 あなたは「学校だよりAI」のレイアウト生成専門エージェントです。以下の要件を**絶対に厳守**し、最高品質のHTMLを生成してください。

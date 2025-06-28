@@ -76,6 +76,9 @@ class MainConversationAgent(LlmAgent):
             
             # JSON構成案が生成された場合はセッション状態に保存
             await self._check_and_save_json_from_conversation(ctx)
+            
+            # ユーザー承認後のHTML生成準備
+            await self._prepare_html_generation_if_approved(ctx)
 
         except Exception as e:
             error_msg = f"対話中にエラーが発生しました: {str(e)}"
@@ -221,6 +224,27 @@ class MainConversationAgent(LlmAgent):
                 logger.info("ユーザー承認待ち状態に設定しました")
         except Exception as e:
             logger.error(f"承認状態設定エラー: {e}")
+
+    async def _prepare_html_generation_if_approved(self, ctx: InvocationContext):
+        """ユーザー承認後のHTML生成準備"""
+        try:
+            if not hasattr(ctx, "session") or not hasattr(ctx.session, "state"):
+                return
+
+            # セッション状態からファイルシステムのJSONを強制的にセッション状態に同期
+            artifacts_dir = Path("/tmp/adk_artifacts")
+            outline_file = artifacts_dir / "outline.json"
+            
+            if outline_file.exists():
+                with open(outline_file, "r", encoding="utf-8") as f:
+                    json_data = f.read()
+                    
+                # セッション状態に強制保存
+                ctx.session.state["outline"] = json_data
+                logger.info("ファイルシステムからセッション状態にJSONを同期しました")
+                
+        except Exception as e:
+            logger.error(f"HTML生成準備エラー: {e}")
 
 
 def create_main_conversation_agent() -> MainConversationAgent:
