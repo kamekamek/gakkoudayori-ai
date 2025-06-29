@@ -33,4 +33,4 @@ EXPOSE 8080
 
 # Command to run the application
 # The main app is located at app/main.py
-CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["sh", "-c", "uv run uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}"]
