@@ -180,6 +180,9 @@ class MainConversationAgent(LlmAgent):
             # 基本情報をセッション状態に保存
             await self._save_basic_info_to_session(ctx)
 
+            # プロンプトにセッション状態の情報を動的に追加
+            await self._enhance_prompt_with_session_context(ctx)
+
             # ADK標準の親エージェント実行（transfer_to_agentで自動委譲）
             async for event in super()._run_async_impl(ctx):
                 yield event
@@ -281,6 +284,56 @@ class MainConversationAgent(LlmAgent):
                 
         except Exception as e:
             logger.error(f"基本情報保存エラー: {e}")
+            import traceback
+            logger.error(f"詳細エラー: {traceback.format_exc()}")
+
+    async def _enhance_prompt_with_session_context(self, ctx: InvocationContext):
+        """セッション状態の情報をプロンプトに動的に追加"""
+        try:
+            logger.info("📝 プロンプトにセッション状態情報を追加中...")
+            
+            if not hasattr(ctx, "session") or not hasattr(ctx.session, "state"):
+                logger.error("セッション状態にアクセスできません")
+                return
+            
+            state = ctx.session.state
+            
+            # セッション状態から情報を取得
+            current_date = state.get("current_date", "2025-06-30")
+            school_name = state.get("school_name", "○○小学校")
+            class_name = state.get("class_name", "3年2組")
+            teacher_name = state.get("teacher_name", "田中先生")
+            settings_complete = state.get("settings_complete", False)
+            
+            # 動的なコンテキスト情報を作成
+            context_info = f"""
+
+=== 現在のセッション情報 ===
+📅 今日の日付: {current_date}
+🏫 学校名: {school_name}
+📚 クラス名: {class_name}
+👨‍🏫 担任の先生: {teacher_name}
+⚙️ 設定状況: {'完了' if settings_complete else '未完了'}
+
+**重要指示**: 
+- 上記の情報を必ず使用して応答してください
+- 「今日は何日でしょうか？」などの質問は不要です
+- 設定が完了している場合は具体的な情報を使用してください
+- 設定が未完了の場合のみ、設定画面での登録を案内してください
+
+"""
+            
+            # 既存のプロンプトに動的情報を追加
+            original_instruction = self.instruction
+            enhanced_instruction = original_instruction + context_info
+            
+            # プロンプトを一時的に更新
+            self.instruction = enhanced_instruction
+            
+            logger.info(f"✅ プロンプト拡張完了: 日付={current_date}, 学校={school_name}, クラス={class_name}, 先生={teacher_name}")
+            
+        except Exception as e:
+            logger.error(f"プロンプト拡張エラー: {e}")
             import traceback
             logger.error(f"詳細エラー: {traceback.format_exc()}")
 
