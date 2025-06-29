@@ -7,7 +7,7 @@ import logging
 import time
 from collections import defaultdict, deque
 from datetime import datetime
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from fastapi import HTTPException, Request
 
@@ -22,7 +22,7 @@ class InMemoryRateLimiter:
 
     def is_allowed(
         self, identifier: str, limit: int, window: int
-    ) -> tuple[bool, Dict[str, any]]:
+    ) -> tuple[bool, Dict[str, Any]]:
         """
         レート制限チェック
 
@@ -59,8 +59,11 @@ class InMemoryRateLimiter:
             # 連続違反の場合は一時ブロック
             if len(request_times) >= limit * 2:
                 self.blocked_ips[identifier] = current_time + 300  # 5分間ブロック
+                
+                # ログインジェクション対策としてIPをサニタイズ
+                safe_identifier = str(identifier).replace('\n', '').replace('\r', '')[:50]
                 self.logger.warning(
-                    f"IP {identifier} blocked for 5 minutes due to excessive requests"
+                    f"IP {safe_identifier} blocked for 5 minutes due to excessive requests"
                 )
 
             remaining_time = int(window - (current_time - request_times[0]))
@@ -130,7 +133,7 @@ class APISecurityMonitor:
         self.threat_history: Dict[str, List[Dict]] = defaultdict(list)
         self.logger = logging.getLogger(__name__)
 
-    def analyze_request(self, request: Request) -> Dict[str, any]:
+    def analyze_request(self, request: Request) -> Dict[str, Any]:
         """リクエストのセキュリティ分析"""
         client_ip = self._get_client_ip(request)
         threats_detected = []
@@ -197,18 +200,33 @@ class APISecurityMonitor:
         }
 
     def _get_client_ip(self, request: Request) -> str:
-        """クライアントIPアドレスを取得"""
-        # プロキシ経由の場合のヘッダーをチェック
-        forwarded_for = request.headers.get("x-forwarded-for")
-        if forwarded_for:
-            return forwarded_for.split(",")[0].strip()
-
-        real_ip = request.headers.get("x-real-ip")
-        if real_ip:
-            return real_ip
+        """
+        クライアントIPアドレスを安全に取得します。
+        X-Forwarded-Forヘッダーを信頼するかどうかを制御し、
+        信頼する場合は信頼できるプロキシからのリクエストか検証します。
+        """
+        # NOTE: 本番環境では、信頼するプロキシのIPアドレスを設定ファイルなどから読み込むことを推奨します。
+        trusted_proxies = {"127.0.0.1"}  # 例: ローカルホストを信頼
 
         # デフォルトのクライアントIP
-        return request.client.host if request.client else "unknown"
+        client_ip = request.client.host if request.client else "unknown"
+
+        # リクエストが信頼できるプロキシから来たか確認
+        if client_ip in trusted_proxies:
+            # X-Forwarded-For ヘッダーを処理
+            forwarded_for = request.headers.get("x-forwarded-for")
+            if forwarded_for:
+                # X-Forwarded-For の値は "client, proxy1, proxy2" の形式
+                # 最も左（最初）のIPが元のクライアントIP
+                client_ip = forwarded_for.split(",")[0].strip()
+                return client_ip
+
+            # X-Real-IP ヘッダーを処理 (フォールバック)
+            real_ip = request.headers.get("x-real-ip")
+            if real_ip:
+                return real_ip
+
+        return client_ip
 
     def _check_patterns(self, text: str, pattern_type: str) -> List[Dict]:
         """パターンマッチングによる脅威検出"""
@@ -372,7 +390,7 @@ class SecurityHeaders:
         return response
 
 
-def get_security_report() -> Dict[str, any]:
+def get_security_report() -> Dict[str, Any]:
     """セキュリティレポートを取得"""
     total_threats = sum(
         len(history) for history in security_monitor.threat_history.values()
