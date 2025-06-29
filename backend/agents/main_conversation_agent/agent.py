@@ -7,7 +7,7 @@ from google.adk.agents import LlmAgent
 from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events.event import Event
 from google.adk.models.google_llm import Gemini
-from google.adk.tools import FunctionTool
+from google.adk.tools import FunctionTool, ToolContext
 from google.genai.types import Content, Part
 
 from .prompt import MAIN_CONVERSATION_INSTRUCTION
@@ -15,14 +15,6 @@ from .prompt import MAIN_CONVERSATION_INSTRUCTION
 # ロガーの設定
 logger = logging.getLogger(__name__)
 
-# グローバル変数として現在のユーザーIDを保存（ADK制限の回避策）
-_current_user_id: str = "test_user"  # デフォルト値
-
-def set_current_user_id(user_id: str) -> None:
-    """現在のユーザーIDを設定（グローバル変数更新）"""
-    global _current_user_id
-    _current_user_id = user_id
-    logger.info(f"グローバルユーザーID更新: {user_id}")
 
 def get_current_date() -> str:
     """現在の日付を'YYYY-MM-DD'形式で返します。ユーザーには自然な形で表示されます。"""
@@ -31,17 +23,28 @@ def get_current_date() -> str:
     return current_date
 
 
-async def get_user_settings_context(user_id: str) -> str:
+async def get_user_settings_context(user_id: str, tool_context: ToolContext = None) -> str:
     """
-    ユーザー設定情報を取得してエージェントに提供します。
+    ADK ToolContext を使用してユーザー設定情報を取得します。
     学校名、クラス名、先生名、タイトルテンプレートなどの個人設定を返します。
     """
     try:
-        # グローバル変数から実際のユーザーIDを取得（ADK制限の回避策）
-        global _current_user_id
-        actual_user_id = _current_user_id if _current_user_id != "test_user" else user_id
+        # ADK ToolContext からユーザーIDを取得（優先）
+        actual_user_id = user_id
+        if tool_context and hasattr(tool_context, 'session'):
+            # セッションからユーザーIDを取得
+            if hasattr(tool_context.session, 'user_id') and tool_context.session.user_id:
+                actual_user_id = tool_context.session.user_id
+            elif hasattr(tool_context.session, 'state') and tool_context.session.state.get("user_id"):
+                actual_user_id = tool_context.session.state["user_id"]
+            
+            # セッション状態からキャッシュされたユーザー設定を確認
+            cached_settings = tool_context.session.state.get("user_settings_context")
+            if cached_settings:
+                logger.info(f"キャッシュされたユーザー設定を使用: user_id={actual_user_id}")
+                return cached_settings
         
-        logger.info(f"ユーザー設定を取得中: パラメータuser_id={user_id}, 実際のuser_id={actual_user_id}")
+        logger.info(f"ユーザー設定を取得中: user_id={actual_user_id}")
 
         # UserSettingsServiceを使用してユーザー設定を取得
         import os
@@ -65,8 +68,16 @@ async def get_user_settings_context(user_id: str) -> str:
                 "作成日": settings.created_at.isoformat() if settings.created_at else None,
             }
 
+            settings_json = json.dumps(context_info, ensure_ascii=False, indent=2)
+            
+            # セッション状態にキャッシュ保存
+            if tool_context and hasattr(tool_context, 'session') and hasattr(tool_context.session, 'state'):
+                tool_context.session.state["user_settings_context"] = settings_json
+                tool_context.session.state["user_id"] = actual_user_id
+                logger.info("ユーザー設定をセッション状態にキャッシュしました")
+
             logger.info(f"ユーザー設定取得成功: {settings.school_name} {settings.class_name}")
-            return json.dumps(context_info, ensure_ascii=False, indent=2)
+            return settings_json
         else:
             logger.warning(f"ユーザー設定が見つかりません: user_id={actual_user_id}")
             return json.dumps({
@@ -83,15 +94,37 @@ async def get_user_settings_context(user_id: str) -> str:
         }, ensure_ascii=False, indent=2)
 
 
-def save_json_to_session(json_data: str) -> str:
-    """JSONデータをセッション状態とファイルシステムに保存します。"""
+def save_json_to_session(json_data: str, tool_context: ToolContext = None) -> str:
+    """ADK ToolContext を使用してJSONデータをセッション状態に保存します。"""
     try:
-        # TODO: InvocationContextをツール関数で直接取得する方法を検討
-        # 現在はMainConversationAgentのメソッドで実装
-        return f"JSON構成案を準備しました: {len(json_data)} 文字"
+        if not json_data or not json_data.strip():
+            logger.warning("空のJSONデータは保存できません")
+            return "❌ 保存するデータがありません"
+        
+        # JSONの有効性を確認
+        try:
+            json.loads(json_data)
+            logger.info(f"JSON検証成功: {len(json_data)} 文字")
+        except json.JSONDecodeError as e:
+            logger.error(f"無効なJSONデータ: {e}")
+            return f"❌ 無効なJSONデータです: {str(e)}"
+        
+        # ADK ToolContext を使用してセッション状態に保存
+        if tool_context and hasattr(tool_context, 'session') and hasattr(tool_context.session, 'state'):
+            # ADK標準のoutput_keyを使用
+            tool_context.session.state["outline"] = json_data
+            tool_context.session.state["json_ready_for_layout"] = True
+            tool_context.session.state["json_timestamp"] = datetime.now().isoformat()
+            
+            logger.info(f"JSONデータをセッション状態に保存: outline キー使用")
+            return f"✅ JSON構成案をセッション状態に保存しました: {len(json_data)} 文字"
+        else:
+            logger.warning("ToolContextまたはセッション状態にアクセスできません")
+            return "⚠️ セッション状態への保存に失敗しました（ToolContextが無効）"
+            
     except Exception as e:
         logger.error(f"JSON保存エラー: {e}")
-        return f"保存中にエラーが発生しました: {str(e)}"
+        return f"❌ 保存中にエラーが発生しました: {str(e)}"
 
 
 class MainConversationAgent(LlmAgent):
@@ -164,21 +197,14 @@ class MainConversationAgent(LlmAgent):
                 return
 
             logger.info(f"ユーザーID取得: {user_id}")
-            
-            # グローバル変数にユーザーIDを設定（ツール関数で使用するため）
-            set_current_user_id(user_id)
 
-            # ユーザー設定を取得
-            user_settings_context = await get_user_settings_context(user_id)
-
-            # セッション状態にユーザー設定を保存
+            # セッション状態にユーザーIDを保存
             if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
-                ctx.session.state["user_settings_context"] = user_settings_context
                 ctx.session.state["user_context_initialized"] = True
                 ctx.session.state["user_id"] = user_id
 
                 logger.info("✅ ユーザーコンテキスト初期化完了")
-                logger.info(f"ユーザー設定プレビュー: {user_settings_context[:200]}...")
+                logger.info(f"ユーザーID: {user_id}")
             else:
                 logger.error("セッション状態にアクセスできません")
 

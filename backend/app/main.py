@@ -15,6 +15,7 @@ from agents.main_conversation_agent.agent import root_agent
 from app import classroom as classroom_api
 from app import pdf as pdf_api
 from app import stt as stt_api
+from app import upload as upload_api
 from app import user_dictionary as user_dictionary_api
 from app.api.v1.endpoints import documents as documents_api
 from app.auth import User, get_current_user, initialize_firebase_app
@@ -86,6 +87,7 @@ from app.api.v1.endpoints import user_settings as user_settings_api
 app.include_router(pdf_api.router, prefix="/api/v1")
 app.include_router(classroom_api.router, prefix="/api/v1")
 app.include_router(stt_api.router, prefix="/api/v1")
+app.include_router(upload_api.router, prefix="/api/v1")
 app.include_router(user_dictionary_api.router, prefix="/api/v1")
 app.include_router(documents_api.router, prefix="/api/v1")
 app.include_router(user_settings_api.router, prefix="/api/v1")

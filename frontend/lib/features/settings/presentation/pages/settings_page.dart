@@ -117,6 +117,28 @@ class _SettingsPageState extends State<SettingsPage> {
                 // 設定完了状況の表示
                 if (!_isSettingsComplete) _buildIncompleteSettingsWarning(),
                 
+                // ユーザー辞書セクション
+                _buildSectionCard(
+                  title: 'ユーザー辞書',
+                  icon: Icons.book,
+                  children: [
+                    Text(
+                      'よく使う言葉を登録して音声認識の精度を上げます',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: _openUserDictionary,
+                      icon: const Icon(Icons.edit),
+                      label: const Text('辞書管理を開く'),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: 24),
+                
                 // 基本設定セクション
                 _buildSectionCard(
                   title: '基本設定',
@@ -226,29 +248,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 
                 const SizedBox(height: 24),
 
-                // ユーザー辞書セクション
-            _buildSectionCard(
-              title: 'ユーザー辞書',
-              icon: Icons.book,
-              children: [
-                Text(
-                  'よく使う言葉を登録して音声認識の精度を上げます',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                ),
-                const SizedBox(height: 16),
-                OutlinedButton.icon(
-                  onPressed: _openUserDictionary,
-                  icon: const Icon(Icons.edit),
-                  label: const Text('辞書管理を開く'),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 24),
-
-            // ヘルプセクション
+                // ヘルプセクション
             _buildSectionCard(
               title: 'ヘルプ',
               icon: Icons.help,

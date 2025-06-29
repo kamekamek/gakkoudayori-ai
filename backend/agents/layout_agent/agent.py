@@ -59,57 +59,26 @@ class LayoutAgent(LlmAgent):
                 content=Content(parts=[Part(text="学級通信のレイアウトを作成しています。少々お待ちください...")])
             )
 
-            # ADK推奨パターン: transfer_to_agentでの堅牢なJSON取得
+            # ADK標準: セッション状態からoutlineキーでJSONデータを取得
             json_data = None
-            logger.info("=== LayoutAgent JSON取得開始 (ADK推奨パターン) ===")
+            logger.info("=== LayoutAgent JSON取得開始 (ADK標準) ===")
 
-            # セッション状態詳細確認
-            await self._log_session_state_details(ctx)
-
-            # ADK推奨: outline キーからの取得（第一優先）
-            json_data = await self._get_json_from_adk_output_key(ctx)
-
-            if json_data:
-                logger.info(f"✅ ADK output_key取得成功: {len(json_data)} 文字")
-
-                # JSON検証
-                if await self._validate_json_data(json_data):
-                    logger.info("✅ JSON検証成功: 有効なデータです")
-                else:
-                    logger.warning("❌ JSON検証失敗: フォールバック処理を実行")
-                    json_data = None
-            else:
-                logger.warning("❌ ADK output_key取得失敗: outline キーが見つかりません")
-
-                # セッション状態のデータ検証
+            # ADK標準のoutlineキーから取得
+            if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
+                json_data = ctx.session.state.get("outline")
                 if json_data:
-                    try:
-                        import json as json_module
-                        json_obj = json_module.loads(json_data)
-                        required_fields = ['school_name', 'grade', 'author', 'main_title']
-                        missing_fields = [field for field in required_fields if not json_obj.get(field)]
-
-                        if missing_fields:
-                            logger.warning(f"セッション状態のJSONに必須フィールドが不足: {missing_fields}")
-                            json_data = None  # 不完全なデータは使用しない
-                        else:
-                            logger.info(f"セッション状態のJSONデータ検証完了: {json_obj.get('school_name')} {json_obj.get('grade')}")
-                    except Exception as e:
-                        logger.error(f"セッション状態のJSON検証エラー: {e}")
+                    logger.info(f"✅ outline キーからJSON取得成功: {len(json_data)} 文字")
+                    
+                    # 基本的なJSON検証
+                    if await self._validate_json_data(json_data):
+                        logger.info("✅ JSON検証成功")
+                    else:
+                        logger.warning("❌ JSON検証失敗")
                         json_data = None
-
-            # フォールバック: MainConversationAgentから直接取得を試行
-            if not json_data:
-                logger.info("=== MainConversationAgentからの直接取得を試行 ===")
-                json_data = await self._retrieve_json_from_main_agent(ctx)
-                if json_data:
-                    logger.info(f"MainConversationAgentから取得成功: {len(json_data)} 文字")
                 else:
-                    logger.warning("MainConversationAgentからの取得に失敗")
-
-            # セッション状態にoutlineが見つからない場合の処理
-            if not json_data:
-                logger.warning("セッション状態にoutlineが見つかりません")
+                    logger.warning("❌ outline キーが見つかりません")
+            else:
+                logger.error("❌ セッション状態にアクセスできません")
 
             if not json_data:
                 logger.error("❌ JSON データが見つかりません。MainConversationAgentでの情報収集を確認してください")
@@ -642,112 +611,9 @@ HTMLのみを出力し、説明文は一切不要です。
         }
         return json.dumps(sample_json, ensure_ascii=False, indent=2)
 
-    async def _log_session_state_details(self, ctx: InvocationContext):
-        """セッション状態の詳細ログ出力"""
-        try:
-            logger.info("LayoutAgent InvocationContext詳細:")
-            logger.info(f"  - hasattr(ctx, 'session'): {hasattr(ctx, 'session')}")
-            if hasattr(ctx, "session"):
-                logger.info(f"  - session type: {type(ctx.session)}")
-                logger.info(f"  - hasattr(session, 'state'): {hasattr(ctx.session, 'state')}")
-                logger.info(f"  - hasattr(session, 'session_id'): {hasattr(ctx.session, 'session_id')}")
-                if hasattr(ctx.session, "session_id"):
-                    logger.info(f"  - session_id: {ctx.session.session_id}")
-                if hasattr(ctx.session, "state"):
-                    logger.info(f"  - state type: {type(ctx.session.state)}")
-                    logger.info(f"  - state keys: {list(ctx.session.state.keys()) if ctx.session.state else 'None'}")
-
-                    # 各キーの値も確認
-                    if ctx.session.state:
-                        for key, value in ctx.session.state.items():
-                            value_preview = str(value)[:100] + "..." if len(str(value)) > 100 else str(value)
-                            logger.info(f"  - {key}: {value_preview}")
-        except Exception as e:
-            logger.error(f"セッション状態詳細ログエラー: {e}")
-
-    async def _get_json_from_adk_output_key(self, ctx: InvocationContext) -> str:
-        """ADK output_keyから確実にJSONを取得（強化版・冗長化対応）"""
-        try:
-            if not hasattr(ctx, "session") or not hasattr(ctx.session, "state"):
-                logger.warning("セッション状態が利用できません")
-                return None
-
-            # セッション状態の詳細ログ出力
-            logger.info("=== セッション状態詳細確認（強化版） ===")
-            session_keys = list(ctx.session.state.keys()) if ctx.session.state else []
-            logger.info(f"セッション状態のキー一覧: {session_keys}")
-
-            # 複数のキーから順次取得を試行（優先順位順・拡張）
-            json_keys_priority = ["outline", "newsletter_json", "user_data_json", "json_data"]
-
-            for key in json_keys_priority:
-                json_data = ctx.session.state.get(key)
-                if json_data:
-                    logger.info(f"✅ {key} キーから取得成功: {len(str(json_data))} 文字")
-                    logger.info(f"取得データ(先頭200文字): {str(json_data)[:200]}...")
-
-                    # JSON形式として有効かチェック
-                    try:
-                        import json as json_module
-                        parsed = json_module.loads(str(json_data))
-                        school_name = parsed.get('school_name', 'UNKNOWN')
-                        grade = parsed.get('grade', 'UNKNOWN')
-                        author_name = parsed.get('author', {}).get('name', 'UNKNOWN')
-
-                        # サンプルデータ判定を強化
-                        if (school_name in ['○○小学校', 'ERROR', 'UNKNOWN', '学校名'] or
-                            grade in ['1年1組', 'ERROR', 'UNKNOWN', '学年'] or
-                            author_name in ['担任', 'ERROR', 'UNKNOWN']):
-                            logger.warning(f"⚠️ {key} キーにサンプルデータを検出: {school_name}/{grade}/{author_name}")
-                            continue  # サンプルデータの場合は次のキーを試す
-
-                        logger.info(f"✅ JSONデータ確認成功: {school_name} {grade} {author_name}")
-                        return str(json_data)
-
-                    except Exception as parse_error:
-                        logger.warning(f"❌ {key} キーのJSONが不正: {parse_error}")
-                        continue  # 次のキーを試す
-                else:
-                    logger.info(f"❌ {key} キーは存在しないか空です")
-
-            # 標準キーで失敗した場合、追加キーも確認
-            additional_keys = [k for k in session_keys if 'json' in k.lower() or 'outline' in k.lower()]
-            logger.info(f"追加JSON候補キー: {additional_keys}")
-
-            for key in additional_keys:
-                if key not in json_keys_priority:  # 既に確認済みのキーはスキップ
-                    json_data = ctx.session.state.get(key)
-                    if json_data and len(str(json_data)) > 50:  # 十分な長さがある場合のみ
-                        try:
-                            import json as json_module
-                            parsed = json_module.loads(str(json_data))
-                            if 'school_name' in parsed and 'grade' in parsed:
-                                logger.info(f"✅ 追加キー {key} からJSONを発見")
-                                return str(json_data)
-                        except:
-                            continue
-
-            # 全てのキーで取得に失敗
-            logger.error("❌ 全てのJSONキーから取得に失敗しました")
-
-            # デバッグ情報：セッション状態の全体を出力
-            logger.info("=== セッション状態デバッグ情報 ===")
-            for key, value in ctx.session.state.items():
-                value_type = type(value).__name__
-                value_length = len(str(value)) if value else 0
-                value_preview = str(value)[:100] + "..." if len(str(value)) > 100 else str(value)
-                logger.info(f"  {key} ({value_type}, {value_length}文字): {value_preview}")
-
-            return None
-
-        except Exception as e:
-            logger.error(f"ADK output_key取得エラー: {e}")
-            import traceback
-            logger.error(f"取得エラー詳細: {traceback.format_exc()}")
-            return None
 
     async def _validate_json_data(self, json_data: str) -> bool:
-        """JSONデータの有効性検証"""
+        """JSONデータの基本的な有効性検証"""
         try:
             if not json_data or not json_data.strip():
                 logger.warning("JSONデータが空です")
@@ -756,20 +622,14 @@ HTMLのみを出力し、説明文は一切不要です。
             # JSON形式として解析可能かチェック
             parsed = json.loads(json_data)
 
-            # 必須フィールドの存在確認
-            required_fields = ['school_name', 'grade', 'author']
+            # 基本的な必須フィールドの存在確認
+            required_fields = ['school_name', 'grade']
             for field in required_fields:
-                if field not in parsed:
+                if field not in parsed or not parsed[field]:
                     logger.warning(f"必須フィールド '{field}' が見つかりません")
                     return False
 
-            # サンプルデータでないことを確認
-            school_name = parsed.get('school_name', '')
-            if 'サンプル' in school_name or '○○' in school_name or 'ERROR' in school_name:
-                logger.warning(f"サンプルデータを検出: school_name={school_name}")
-                return False
-
-            logger.info(f"JSON検証成功: school_name={parsed.get('school_name')}")
+            logger.info(f"JSON検証成功: school_name={parsed.get('school_name')}, grade={parsed.get('grade')}")
             return True
 
         except json.JSONDecodeError as e:

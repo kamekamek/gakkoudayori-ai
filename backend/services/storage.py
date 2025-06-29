@@ -50,7 +50,7 @@ async def save_pdf_to_gcs(pdf_bytes: bytes, destination_blob_name: str) -> str:
 
 
 async def upload_image_to_gcs(
-    session_id: str, image_content: bytes, filename: str
+    session_id: str, image_content: bytes, filename: str, content_type: str = "image/jpeg"
 ) -> str:
     """
     ユーザーがアップロードした画像をGCSに保存し、公開URLを返します。
@@ -59,6 +59,7 @@ async def upload_image_to_gcs(
         session_id: 現在のセッションID。
         image_content: 画像ファイルのバイトデータ。
         filename: 元のファイル名。
+        content_type: MIMEタイプ（自動判定されたもの）
 
     Returns:
         画像の公開URL。
@@ -70,8 +71,12 @@ async def upload_image_to_gcs(
         f"user_images/{session_id}/{datetime.datetime.utcnow().isoformat()}_{filename}"
     )
 
-    # TODO: content_typeを動的に判定する
-    await blob.upload_from_string(image_content, content_type="image/jpeg")  # 仮
+    # 非同期アップロード処理を同期関数として実行
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(
+        None,  # デフォルトのThreadPoolExecutorを使用
+        lambda: blob.upload_from_string(image_content, content_type=content_type)
+    )
 
     # バケットが公開設定されていることを前提とします
     return blob.public_url

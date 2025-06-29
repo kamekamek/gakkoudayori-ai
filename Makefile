@@ -186,7 +186,7 @@ backend-dev:
 	@echo "🐍 バックエンド開発サーバー起動中 (ポート: 8081, ENVIRONMENT=development)..."
 	@cd backend && uv sync --extra dev && \
 	ENVIRONMENT=development \
-	GOOGLE_APPLICATION_CREDENTIALS="secrets/service-account-key.json" \
+	GOOGLE_APPLICATION_CREDENTIALS="$(PWD)/backend/secrets/service-account-key.json" \
 	GCS_BUCKET_NAME="gakkoudayori-ai.appspot.com" \
 	uv run uvicorn app.main:app --host 0.0.0.0 --port 8081 --reload
 
