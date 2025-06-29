@@ -61,24 +61,18 @@ class LayoutAgent(LlmAgent):
 
             # ADK標準: セッション状態からoutlineキーでJSONデータを取得
             json_data = None
-            logger.info("=== LayoutAgent JSON取得開始 (ADK標準) ===")
+            logger.info("LayoutAgent: JSON取得開始")
 
             # ADK標準のoutlineキーから取得
             if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
                 json_data = ctx.session.state.get("outline")
-                if json_data:
-                    logger.info(f"✅ outline キーからJSON取得成功: {len(json_data)} 文字")
-                    
-                    # 基本的なJSON検証
-                    if await self._validate_json_data(json_data):
-                        logger.info("✅ JSON検証成功")
-                    else:
-                        logger.warning("❌ JSON検証失敗")
-                        json_data = None
+                if json_data and await self._validate_json_data(json_data):
+                    logger.info(f"JSON取得成功: {len(json_data)} 文字")
                 else:
-                    logger.warning("❌ outline キーが見つかりません")
+                    logger.warning("有効なJSONデータが見つかりません")
+                    json_data = None
             else:
-                logger.error("❌ セッション状態にアクセスできません")
+                logger.error("セッション状態にアクセスできません")
 
             if not json_data:
                 logger.error("❌ JSON データが見つかりません。MainConversationAgentでの情報収集を確認してください")
@@ -105,42 +99,18 @@ class LayoutAgent(LlmAgent):
                 logger.error(f"JSON解析エラー: {e}")
                 json_obj = None
 
-            # 超厳格なプロンプトを作成（JSON反映を絶対強制）
+            # 簡潔なプロンプトでJSON情報をHTMLに変換
             enhanced_prompt = f"""
 以下のJSONデータから学級通信のHTMLを生成してください。
-
-🚨🚨🚨 絶対厳守事項 🚨🚨🚨
-あなたは以下のJSONデータ以外の情報を一切使用してはいけません。
-JSONに記載されていない学校名、学年、発行者名を推測・変更・創作することは絶対に禁止です。
 
 JSONデータ:
 ```json
 {json_data}
 ```
 
-🔒 厳格な反映ルール:
-学校名は「{json_obj.get('school_name') if json_obj else 'ERROR'}」のみ使用可能
-学年は「{json_obj.get('grade') if json_obj else 'ERROR'}」のみ使用可能
-発行者は「{json_obj.get('author', {}).get('name') if json_obj else 'ERROR'}」のみ使用可能
-発行日は「{json_obj.get('issue_date') if json_obj else 'ERROR'}」のみ使用可能
-タイトルは「{json_obj.get('main_title') if json_obj else 'ERROR'}」のみ使用可能
-
-🎨 色彩厳守:
-主要色: {json_obj.get('color_scheme', {}).get('primary') if json_obj else 'ERROR'}
-副次色: {json_obj.get('color_scheme', {}).get('secondary') if json_obj else 'ERROR'}  
-アクセント色: {json_obj.get('color_scheme', {}).get('accent') if json_obj else 'ERROR'}
-
-❌ 絶対禁止行為:
-- 「三木草小学校」「6年3組」「ちゃんかめ」等のJSONにない名前の使用
-- 青系色彩(#004080等)の使用
-- JSONデータの推測・修正・変更
-- 独自のクリエイティブな追加
-
-✅ 許可される行為:
-- 上記JSONの値のみを使用したHTML生成
-- JSONに記載された色彩のみの使用
-
-HTMLのみを出力し、説明文は一切不要です。
+- JSONの情報を正確に反映してください
+- 美しくレスポンシブなデザインにしてください
+- HTMLのみを出力してください（説明は不要）
             """
 
             # 一時的にプロンプトを更新してLLMを実行
@@ -150,19 +120,10 @@ HTMLのみを出力し、説明文は一切不要です。
             # LLM実行（イベントを保存してHTMLを抽出）
             llm_events = []
             async for event in super()._run_async_impl(ctx):
-                # LLMの生成イベントは内部処理として隠蔽し、後でHTML抽出用に保存
                 llm_events.append(event)
 
-            # フォールバック: LLMが失敗した場合はテンプレート生成
-            llm_html_valid = await self._save_html_from_llm_events(ctx, llm_events)
-
-            # HTMLとJSONの一致検証
-            is_consistent = await self._validate_html_json_consistency(ctx, json_obj)
-
-            # 不整合がある場合はテンプレート生成でフォールバック
-            if not is_consistent and json_obj:
-                logger.warning("LLM生成HTMLに不整合があります。テンプレート生成にフォールバック...")
-                await self._generate_html_from_template(ctx, json_obj)
+            # LLMイベントからHTMLを抽出してセッション状態に保存
+            await self._save_html_from_llm_events(ctx, llm_events)
 
             # プロンプトを元に戻す
             self.instruction = original_instruction
@@ -172,15 +133,8 @@ HTMLのみを出力し、説明文は一切不要です。
                 html_content = ctx.session.state["html"]
                 logger.info(f"HTML生成完了: {len(html_content)}文字")
 
-                # HTML生成完了フラグを設定
-                ctx.session.state["html_generated"] = True
-                from datetime import datetime
-                ctx.session.state["html_generation_timestamp"] = datetime.now().strftime("%Y-%m-%d")
-                logger.info("HTML生成完了フラグを設定しました")
-
                 # HTML配信ツールを自動実行
                 try:
-                    import json
                     metadata_json = json.dumps({"auto_generated": True, "agent": "layout_agent"})
                     delivery_result = await html_delivery_tool.deliver_html_to_frontend(
                         html_content=html_content,
@@ -188,21 +142,18 @@ HTMLのみを出力し、説明文は一切不要です。
                         metadata_json=metadata_json
                     )
 
-                    # 配信結果をユーザーに通知
                     yield Event(
                         author=self.name,
                         content=Content(parts=[Part(text=delivery_result)])
                     )
 
                 except Exception as tool_error:
-                    error_msg = f"❌ HTML配信中にエラーが発生しました: {str(tool_error)}"
-                    logger.error(f"HTML配信ツールエラー: {tool_error}")
+                    logger.error(f"HTML配信エラー: {tool_error}")
                     yield Event(
                         author=self.name,
-                        content=Content(parts=[Part(text=error_msg)])
+                        content=Content(parts=[Part(text=f"❌ HTML配信中にエラーが発生しました: {str(tool_error)}")])
                     )
             else:
-                # HTMLが生成されなかった場合
                 yield Event(
                     author=self.name,
                     content=Content(parts=[Part(text="❌ HTMLの生成に失敗しました。もう一度お試しください。")])
@@ -246,43 +197,6 @@ HTMLのみを出力し、説明文は一切不要です。
         except Exception as e:
             logger.error(f"LLMイベントからのHTML保存エラー: {e}")
 
-    async def _validate_html_json_consistency(self, ctx: InvocationContext, json_obj):
-        """HTMLとJSONデータの一致を検証"""
-        try:
-            if not json_obj:
-                logger.warning("JSON検証スキップ: JSONオブジェクトがありません")
-                return
-
-            # セッション状態からHTMLを取得
-            if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
-                html_content = ctx.session.state.get("html", "")
-
-                if html_content:
-                    # 主要フィールドの一致確認
-                    validations = [
-                        ("学校名", json_obj.get('school_name'), html_content),
-                        ("学年", json_obj.get('grade'), html_content),
-                        ("発行者", json_obj.get('author', {}).get('name'), html_content),
-                        ("色scheme", json_obj.get('color_scheme', {}).get('primary'), html_content)
-                    ]
-
-                    inconsistencies = []
-                    for field, json_value, html_text in validations:
-                        if json_value and str(json_value) not in html_text:
-                            inconsistencies.append(f"{field}: JSON={json_value}")
-
-                    if inconsistencies:
-                        logger.warning(f"HTML-JSON不整合検出: {', '.join(inconsistencies)}")
-                        return False
-                    else:
-                        logger.info("HTML-JSON整合性検証: 正常")
-                        return True
-                else:
-                    logger.warning("HTML検証スキップ: HTMLコンテンツがありません")
-                    return False
-        except Exception as e:
-            logger.error(f"HTML-JSON検証エラー: {e}")
-            return False
 
     async def _generate_html_from_template(self, ctx: InvocationContext, json_obj):
         """JSONデータからテンプレートベースでHTMLを確実に生成"""
@@ -398,37 +312,6 @@ HTMLのみを出力し、説明文は一切不要です。
         except Exception as e:
             logger.error(f"テンプレートHTML生成エラー: {e}")
 
-    async def _retrieve_json_from_main_agent(self, ctx: InvocationContext) -> str:
-        """MainConversationAgentのセッション状態から直接JSONを取得"""
-        try:
-            # セッションイベントからMainConversationAgentの最新の保存されたJSONを探す
-            if hasattr(ctx, "session") and hasattr(ctx.session, "events"):
-                session_events = ctx.session.events
-
-                # 最新のイベントから情報を抽出
-                for event in reversed(session_events):
-                    if hasattr(event, "author") and "main_conversation_agent" in str(event.author):
-                        event_text = self._extract_text_from_event(event)
-
-                        # 内部的に保存されたJSONがあるかチェック
-                        if hasattr(event, "metadata") and event.metadata:
-                            if "internal_json" in event.metadata:
-                                logger.info("MainConversationAgentの内部JSONを発見")
-                                return event.metadata["internal_json"]
-
-                # セッション状態の他のキーもチェック
-                state_keys = ['json_data', 'outline_data', 'conversation_json']
-                for key in state_keys:
-                    if key in ctx.session.state and ctx.session.state[key]:
-                        logger.info(f"セッション状態の{key}から取得")
-                        return ctx.session.state[key]
-
-            logger.warning("MainConversationAgentからのJSON取得に失敗")
-            return None
-
-        except Exception as e:
-            logger.error(f"MainConversationAgentからのJSON取得エラー: {e}")
-            return None
 
 
     def _extract_session_id(self, ctx: InvocationContext) -> Optional[str]:
@@ -455,50 +338,6 @@ HTMLのみを出力し、説明文は一切不要です。
             logger.error(f"セッションID抽出エラー: {e}")
             return None
 
-    async def _save_html_from_response(self, ctx: InvocationContext):
-        """LLM応答からHTMLを抽出してセッション状態に保存"""
-        try:
-            # セッションイベントから最後のエージェント応答を取得
-            if not hasattr(ctx, "session") or not hasattr(ctx.session, "events"):
-                logger.warning("セッション履歴にアクセスできません")
-                return
-
-            session_events = ctx.session.events
-            if not session_events:
-                logger.warning("セッションイベントが空です")
-                return
-
-            # レイアウトエージェントが作成した最後のイベントを探す
-            layout_event = None
-            for event in reversed(session_events):
-                if hasattr(event, "author") and event.author == self.name:
-                    layout_event = event
-                    break
-
-            if layout_event is None:
-                logger.warning(f"{self.name}による最後のイベントが見つかりません")
-                return
-
-            # イベントの内容からテキストを抽出
-            llm_response_text = self._extract_text_from_event(layout_event)
-
-            if not llm_response_text.strip():
-                logger.warning("コンテンツからテキストを抽出できません")
-                return
-
-            # HTMLの抽出
-            html_content = self._extract_html_from_response(llm_response_text)
-
-            # セッション状態に保存（ADK標準）
-            if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
-                ctx.session.state["html"] = html_content
-                logger.info("HTMLをセッション状態に保存しました")
-
-            # セッション状態のみでデータ保存
-            logger.info("HTMLをセッション状態に保存")
-
-        except Exception as e:
-            logger.error(f"HTML保存エラー: {e}")
 
     def _extract_text_from_event(self, event) -> str:
         """イベントからテキストを抽出"""
@@ -553,63 +392,6 @@ HTMLのみを出力し、説明文は一切不要です。
         )
         return response_text
 
-    def _generate_sample_json(self) -> str:
-        """AgentTool用のサンプルJSONを生成します。"""
-        from datetime import datetime
-        current_date = datetime.now().strftime("%Y-%m-%d")
-        sample_json = {
-            "schema_version": "2.4",
-            "school_name": "○○小学校",
-            "grade": "1年1組",
-            "issue": "12月号",
-            "issue_date": current_date,
-            "author": {"name": "担任", "title": "担任"},
-            "main_title": "1年1組だより12月号",
-            "sub_title": None,
-            "season": "冬",
-            "theme": "学級の様子",
-            "color_scheme": {
-                "primary": "#4A90E2",
-                "secondary": "#7ED321",
-                "accent": "#F5A623",
-                "background": "#ffffff",
-            },
-            "color_scheme_source": "冬の季節に合わせた爽やかな色合い",
-            "sections": [
-                {
-                    "type": "main_content",
-                    "title": "最近の学級の様子",
-                    "content": "みなさん、いつも元気に過ごしていますね。最近の学習や生活の様子をお伝えします。",
-                    "estimated_length": "medium",
-                    "section_visual_hint": "children_activities",
-                }
-            ],
-            "photo_placeholders": {
-                "count": 1,
-                "suggested_positions": [
-                    {
-                        "section_type": "main_content",
-                        "position": "top-right",
-                        "caption_suggestion": "学習の様子",
-                    }
-                ],
-            },
-            "enhancement_suggestions": [
-                "季節の行事について追加",
-                "お知らせやお願い事項の追加",
-            ],
-            "has_editor_note": False,
-            "editor_note": None,
-            "layout_suggestion": {
-                "page_count": 1,
-                "columns": 2,
-                "column_ratio": "1:1",
-                "blocks": ["header", "main_content", "photos", "footer"],
-            },
-            "force_single_page": True,
-            "max_pages": 1,
-        }
-        return json.dumps(sample_json, ensure_ascii=False, indent=2)
 
 
     async def _validate_json_data(self, json_data: str) -> bool:
