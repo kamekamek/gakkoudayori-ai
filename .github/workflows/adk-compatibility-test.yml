@@ -1,0 +1,61 @@
+name: 🤖 ADK互換性テスト
+
+on:
+  push:
+    branches: [ main, develop, feature/remake-agent ]
+    paths:
+      - 'backend/agents/**'
+      - 'backend/test_adk_compatibility.py'
+      - 'backend/pyproject.toml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'backend/agents/**'
+      - 'backend/test_adk_compatibility.py'
+      - 'backend/pyproject.toml'
+
+jobs:
+  adk-compatibility-test:
+    runs-on: ubuntu-latest
+    name: ADK v1.0.0 互換性テスト
+    
+    steps:
+    - name: 📥 リポジトリをチェックアウト
+      uses: actions/checkout@v4
+      
+    - name: 🐍 Python 3.11をセットアップ
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: 📦 uv をインストール
+      run: pip install uv
+        
+    - name: 🔧 uv依存関係をインストール
+      working-directory: ./backend
+      run: |
+        uv sync --extra dev
+        
+    - name: 🤖 ADK互換性テストを実行
+      working-directory: ./backend
+      run: |
+        uv run python test_uv_migration.py
+        
+    - name: 📋 テスト結果をアップロード
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: adk-test-results
+        path: |
+          /tmp/adk_artifacts/
+        retention-days: 5
+        
+    - name: 📊 テスト失敗時の詳細情報
+      if: failure()
+      run: |
+        echo "ADK互換性テストが失敗しました。以下を確認してください："
+        echo "1. エージェントの正しい初期化"
+        echo "2. root_agent変数の存在"  
+        echo "3. SequentialAgentのパラメータ仕様"
+        echo "4. InvocationContextのメソッド変更"
+        echo "5. アーティファクト管理の実装" 

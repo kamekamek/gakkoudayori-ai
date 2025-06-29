@@ -1,0 +1,15 @@
+fastapi>=0.110.0
+sse-starlette
+google-cloud-aiplatform>=1.47.0
+google-auth
+google-api-python-client
+google-cloud-speech
+pdfkit
+playwright
+reportlab
+html5lib
+google-adk>=1.4.2
+deprecated
+firebase-admin>=6.9.0
+gunicorn
+uvicorn[standard]>=0.29.0 

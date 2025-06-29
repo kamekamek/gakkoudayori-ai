@@ -10,8 +10,24 @@ dependencies:
   flutter:
     sdk: flutter
   
+  # 状態管理
+  provider: ^6.1.2
+  
+  # ルーティング
+  go_router: ^14.2.0
+  
   # API呼び出し（STT・Gemini）
   http: ^1.1.0
+  
+  # WebSocket通信
+  web_socket_channel: ^3.0.0
+  
+  # Riverpod
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+
+  # ID生成
+  uuid: ^4.4.0
   
   # Web Audio API, JavaScript Bridge
   web: ^1.1.0
@@ -19,12 +35,51 @@ dependencies:
   # HTML Widget for rendering HTML content
   flutter_widget_from_html: ^0.15.0
   flutter_widget_from_html_core: ^0.15.0
+  
+  # 画像アップロード・処理
+  file_picker: ^9.2.3
+  image_picker: ^1.0.7
+  image: ^4.1.7
+  flutter_image_compress: ^2.2.0
+  
+  # ドラッグ&ドロップ (Web)
+  flutter_dropzone: ^4.0.1
+  
+  # Firebase (Cloud Storage用)
+  firebase_core: ^3.14.0
+  firebase_storage: ^12.4.7
+  firebase_auth: ^5.6.0
+  
+  # フォント・デザイン
   google_fonts: ^6.2.1
+  
+  # PDF保存・ダウンロード機能
+  universal_html: ^2.2.4
+  path_provider: ^2.1.3
+  
+  # Google APIs (Classroom統合)
+  googleapis: ^13.1.0
+  googleapis_auth: ^1.6.0
+  google_sign_in: ^6.3.0
+  google_sign_in_web: ^0.12.4+2
+  
+  flutter_html: ^3.0.0-beta.2
+  html_editor_enhanced: ^2.5.1
+  
+  # JSON シリアライゼーション
+  json_annotation: ^4.9.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   
+  # Riverpod Generator
+  riverpod_generator: ^2.4.0
+  build_runner: ^2.4.10
+  
+  # JSON シリアライゼーション
+  json_serializable: ^6.7.1
+
   # コード品質
   flutter_lints: ^6.0.0
 

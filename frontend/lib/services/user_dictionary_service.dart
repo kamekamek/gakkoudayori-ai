@@ -31,10 +31,6 @@ class UserDictionaryEntry {
 }
 
 class UserDictionaryService {
-  static String get _baseUrl {
-    return AppConfig.apiBaseUrl.replaceAll('/api/v1/ai', '');
-  }
-
   /// 文字起こし結果をユーザー辞書で修正
   ///
   /// Args:
@@ -49,7 +45,7 @@ class UserDictionaryService {
   }) async {
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/api/v1/dictionary/$userId/correct'),
+        Uri.parse('${AppConfig.apiBaseUrl}/dictionary/$userId/correct'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -102,7 +98,7 @@ class UserDictionaryService {
   }) async {
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/api/v1/dictionary/$userId/learn'),
+        Uri.parse('${AppConfig.apiBaseUrl}/dictionary/$userId/learn'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -116,121 +112,85 @@ class UserDictionaryService {
       final data = jsonDecode(response.body);
       return response.statusCode == 200 && data['success'] == true;
     } catch (e) {
+      // エラー時のみログ出力
       if (kDebugMode) debugPrint('手動修正記録エラー: $e');
       return false;
     }
   }
 
-
   /// ユーザー辞書の用語一覧を取得
   Future<List<UserDictionaryEntry>> getTerms(String userId) async {
     try {
-      if (kDebugMode) {
-        debugPrint('UserDictionaryService: Fetching terms for user $userId');
-      }
-      
       final response = await http.get(
-        Uri.parse('$_baseUrl/api/v1/dictionary/$userId'),
+        Uri.parse('${AppConfig.apiBaseUrl}/dictionary/$userId'),
       );
-
-      if (kDebugMode) {
-        debugPrint('UserDictionaryService: Response status ${response.statusCode}');
-      }
 
       if (response.statusCode == 200) {
         final responseBody = jsonDecode(response.body);
         if (responseBody['success'] == true && responseBody['data'] is Map) {
           final apiData = responseBody['data'] as Map<String, dynamic>;
           if (apiData['dictionary'] is Map) {
-            final Map<String, dynamic> dictionaryMap = apiData['dictionary'] as Map<String, dynamic>;
+            final Map<String, dynamic> dictionaryMap =
+                apiData['dictionary'] as Map<String, dynamic>;
             final List<UserDictionaryEntry> terms = [];
-            
+
             // より安全なアプローチでエントリを処理
             for (final entry in dictionaryMap.entries) {
               try {
                 final key = entry.key;
                 final value = entry.value;
-                
-                if (kDebugMode) {
-                  debugPrint('Processing entry: key="$key" (${key.runtimeType}), value type=${value.runtimeType}');
-                }
-                
+
                 // キーがnullまたは空文字の場合はスキップ
                 if (key == null || key.toString().isEmpty) {
-                  if (kDebugMode) {
-                    debugPrint('Skipping invalid key: $key');
-                  }
                   continue;
                 }
-                
+
                 final termString = key.toString();
                 List<String> cleanVariations = [];
-                
+
                 if (value is Map<String, dynamic>) {
                   // カスタム用語の場合（辞書形式）
-                  if (kDebugMode) {
-                    debugPrint('Processing custom term: "$termString"');
-                  }
-                  
                   final variations = value['variations'];
                   if (variations is List) {
                     cleanVariations = _extractCleanStringList(variations);
                   }
-                  
                 } else if (value is List) {
                   // デフォルト用語の場合（配列形式）
-                  if (kDebugMode) {
-                    debugPrint('Processing default term: "$termString"');
-                  }
-                  
                   cleanVariations = _extractCleanStringList(value);
-                  
                 } else {
-                  if (kDebugMode) {
-                    debugPrint('Skipping unknown value type for "$termString": ${value.runtimeType}');
-                  }
                   continue;
                 }
-                
+
                 // 有効なバリエーションがある場合のみ追加
                 if (cleanVariations.isNotEmpty) {
                   final entry = UserDictionaryEntry(
                     term: termString,
                     variations: cleanVariations,
                   );
-                  
+
                   terms.add(entry);
-                  
-                  if (kDebugMode) {
-                    debugPrint('Successfully added term: "$termString" with ${cleanVariations.length} variations');
-                  }
-                } else {
-                  if (kDebugMode) {
-                    debugPrint('Skipping "$termString" - no valid variations');
-                  }
                 }
-                
-              } catch (e, stackTrace) {
+              } catch (e) {
+                // エラー時のみログ出力
                 if (kDebugMode) {
-                  debugPrint('Error processing entry: $e');
-                  debugPrint('Stack trace: $stackTrace');
+                  debugPrint('辞書エントリ処理エラー: $e');
                 }
               }
-            }
-            if (kDebugMode) {
-              debugPrint('UserDictionaryService: Successfully parsed ${terms.length} terms.');
             }
             return terms;
           }
         }
       }
+
+      // エラー時のみログ出力
       if (kDebugMode) {
-        debugPrint('UserDictionaryService: Failed to get terms. Status: ${response.statusCode}, Body: ${response.body}');
+        debugPrint('辞書取得失敗 - Status: ${response.statusCode}');
       }
       return [];
     } catch (e) {
+      // エラー時のみログ出力
       if (kDebugMode) {
-        debugPrint('Error getting terms: $e');
+        debugPrint('辞書取得エラー: $e');
       }
       return [];
     }
@@ -240,7 +200,7 @@ class UserDictionaryService {
   Future<bool> addTerm(String userId, UserDictionaryEntry entry) async {
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/api/v1/dictionary/$userId/terms'),
+        Uri.parse('${AppConfig.apiBaseUrl}/dictionary/$userId/terms'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(entry.toJson()),
       );
@@ -248,17 +208,19 @@ class UserDictionaryService {
       return response.statusCode == 200 && data['success'] == true;
     } catch (e) {
       if (kDebugMode) {
-        debugPrint('Error adding term: $e');
+        debugPrint('用語追加エラー: $e');
       }
       return false;
     }
   }
 
   /// ユーザー辞書の既存の用語を更新
-  Future<bool> updateTerm(String userId, String originalTerm, UserDictionaryEntry entry) async {
+  Future<bool> updateTerm(
+      String userId, String originalTerm, UserDictionaryEntry entry) async {
     try {
       final response = await http.put(
-        Uri.parse('$_baseUrl/api/v1/dictionary/$userId/terms/$originalTerm'),
+        Uri.parse(
+            '${AppConfig.apiBaseUrl}/dictionary/$userId/terms/$originalTerm'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(entry.toJson()),
       );
@@ -266,7 +228,7 @@ class UserDictionaryService {
       return response.statusCode == 200 && data['success'] == true;
     } catch (e) {
       if (kDebugMode) {
-        debugPrint('Error updating term: $e');
+        debugPrint('用語更新エラー: $e');
       }
       return false;
     }
@@ -276,13 +238,13 @@ class UserDictionaryService {
   Future<bool> deleteTerm(String userId, String term) async {
     try {
       final response = await http.delete(
-        Uri.parse('$_baseUrl/api/v1/dictionary/$userId/terms/$term'),
+        Uri.parse('${AppConfig.apiBaseUrl}/dictionary/$userId/terms/$term'),
       );
       final data = jsonDecode(response.body);
       return response.statusCode == 200 && data['success'] == true;
     } catch (e) {
       if (kDebugMode) {
-        debugPrint('Error deleting term: $e');
+        debugPrint('用語削除エラー: $e');
       }
       return false;
     }
@@ -291,7 +253,7 @@ class UserDictionaryService {
   /// Listからnull値を除外してString型のみを安全に抽出
   List<String> _extractCleanStringList(List list) {
     final cleanList = <String>[];
-    
+
     for (final item in list) {
       if (item != null) {
         try {
@@ -300,13 +262,14 @@ class UserDictionaryService {
             cleanList.add(stringItem);
           }
         } catch (e) {
+          // エラー時のみログ出力
           if (kDebugMode) {
-            debugPrint('Failed to convert item to string: $item ($e)');
+            debugPrint('文字列変換エラー: $item ($e)');
           }
         }
       }
     }
-    
+
     return cleanList;
   }
 }

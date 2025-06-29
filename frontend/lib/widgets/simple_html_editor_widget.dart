@@ -88,14 +88,24 @@ class _SimpleHtmlEditorWidgetState extends State<SimpleHtmlEditorWidget> {
         _isModified = false;
       });
 
-      if (kDebugMode) debugPrint('📝 [SimpleEditor] 編集内容保存: ${htmlContent.length}文字');
+      if (kDebugMode)
+        debugPrint('📝 [SimpleEditor] 編集内容保存: ${htmlContent.length}文字');
 
       // 保存完了のフィードバック
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('✅ 編集内容を保存しました'),
-          duration: Duration(seconds: 2),
+          content: const Text('✅ 編集内容を保存しました'),
+          duration: const Duration(seconds: 3),
           backgroundColor: Colors.green[600],
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.only(top: 50, left: 16, right: 16),
+          action: SnackBarAction(
+            label: '✕',
+            textColor: Colors.white,
+            onPressed: () {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            },
+          ),
         ),
       );
     }

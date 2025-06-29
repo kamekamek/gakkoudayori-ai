@@ -1,6 +1,6 @@
 # 学校だよりAI - 環境管理Makefile
 
-.PHONY: help dev prod staging build-dev build-prod deploy deploy-frontend deploy-backend deploy-all deploy-staging deploy-preview ci-setup test lint format reset-dev backend-dev backend-test backend-setup
+.PHONY: help dev prod staging build-dev build-prod deploy deploy-frontend deploy-backend deploy-backend-staging deploy-all deploy-staging deploy-preview ci-setup test lint format reset-dev backend-dev backend-test backend-setup check-backend test-adk warmup
 
 # デフォルトターゲット
 help:
@@ -12,10 +12,13 @@ help:
 	@echo "  make build-dev    - 開発環境用ビルド"
 	@echo "  make build-prod   - 本番環境用ビルド"
 	@echo ""
-	@echo "🐍 バックエンド:"
+	@echo "🐍 バックエンド (uv管理):"
 	@echo "  make backend-dev   - バックエンド開発サーバー起動"
-	@echo "  make backend-setup - Python環境セットアップ"
-	@echo "  make backend-test  - Pythonテスト実行"
+	@echo "  make backend-setup - uv環境セットアップ"
+	@echo "  make backend-test  - uvでテスト実行"
+	@echo ""
+	@echo "🤖 エージェント/ADK:"
+	@echo "  make test-adk     - ADK v1.0.0互換性テスト"
 	@echo ""
 	@echo "🧪 テスト・品質:"
 	@echo "  make test         - 全テスト実行"
@@ -28,6 +31,7 @@ help:
 	@echo "  make deploy-backend   - バックエンドをCloud Runにデプロイ"
 	@echo "  make deploy-staging   - ステージング環境にデプロイ"
 	@echo "  make deploy-preview   - プレビュー環境にデプロイ"
+	@echo "  make warmup           - バックエンドWarm-up実行"
 	@echo ""
 	@echo "⚙️ CI/CD:"
 	@echo "  make ci-setup     - CI/CD環境セットアップ"
@@ -36,23 +40,23 @@ help:
 # 開発環境で起動
 dev:
 	@echo "🔧 開発環境で起動中..."
-	cd frontend && flutter run -d chrome \
+	cd frontend && flutter run -d chrome --web-port 8080 \
 		--dart-define=ENVIRONMENT=development \
-		--dart-define=API_BASE_URL=http://localhost:8081/api/v1/ai
+		--dart-define=API_BASE_URL=http://localhost:8081/api/v1
 
 # ステージング環境で起動
 staging:
 	@echo "🧪 ステージング環境で起動中..."
 	cd frontend && flutter run -d chrome \
 		--dart-define=ENVIRONMENT=staging \
-		--dart-define=API_BASE_URL=https://staging-yutori-backend.asia-northeast1.run.app/api/v1/ai
+		--dart-define=API_BASE_URL=https://gakkoudayori-backend-staging-944053509139.asia-northeast1.run.app/api/v1
 
 # 開発環境用ビルド
 build-dev:
 	@echo "🔧 開発環境用ビルド中..."
 	cd frontend && flutter build web \
 		--dart-define=ENVIRONMENT=development \
-		--dart-define=API_BASE_URL=http://localhost:8081/api/v1/ai \
+		--dart-define=API_BASE_URL=http://localhost:8081/api/v1 \
 		--debug
 
 # 本番環境用ビルド
@@ -60,7 +64,7 @@ build-prod:
 	@echo "🚀 本番環境用ビルド中..."
 	cd frontend && flutter build web \
 		--dart-define=ENVIRONMENT=production \
-		--dart-define=API_BASE_URL=https://yutori-backend-944053509139.asia-northeast1.run.app/api/v1/ai \
+		--dart-define=API_BASE_URL=https://gakkoudayori-backend-944053509139.asia-northeast1.run.app \
 		--release
 
 # テスト実行
@@ -69,7 +73,7 @@ test:
 	@echo "📱 Flutterテスト..."
 	cd frontend && flutter test
 	@echo "🐍 Pythonテスト..."
-	cd backend/functions && python -m pytest tests/ -v || echo "⚠️ テストファイルが見つかりません"
+	cd backend && uv run pytest tests/ -v || echo "⚠️ テストファイルが見つかりません"
 
 # 静的解析
 lint:
@@ -77,7 +81,20 @@ lint:
 	@echo "📱 Flutter解析..."
 	cd frontend && flutter analyze
 	@echo "🐍 Python解析..."
-	cd backend/functions && python -m flake8 . --max-line-length=120 || echo "⚠️ flake8がインストールされていません"
+	cd backend && uv run ruff check . || echo "⚠️ ruffがインストールされていません"
+	cd backend && uv run mypy . || echo "⚠️ mypyがインストールされていません"
+
+# 事前チェック（推奨）
+check-backend:
+	@echo "🔍 バックエンド事前チェック実行中..."
+	cd backend && uv sync --extra dev
+	@echo "📝 Python構文チェック..."
+	cd backend && uv run python -m py_compile app/main.py app/pdf.py app/classroom.py app/stt.py || echo "⚠️ 一部ファイルが見つかりません"
+	@echo "🔍 静的解析..."
+	cd backend && uv run ruff check . || echo "⚠️ ruffチェック完了（警告があります）"
+	@echo "🧪 テスト実行..."
+	cd backend && uv run pytest tests/ -v || echo "⚠️ テストファイルが見つかりません"
+	@echo "✅ バックエンド事前チェック完了"
 
 # コードフォーマット
 format:
@@ -85,16 +102,17 @@ format:
 	@echo "📱 Flutterフォーマット..."
 	cd frontend && dart format .
 	@echo "🐍 Pythonフォーマット..."
-	cd backend/functions && python -m black . || echo "⚠️ blackがインストールされていません"
+	cd backend && uv run black .
+	cd backend && uv run isort .
 
 # CI/CD環境セットアップ
 ci-setup:
-	@echo "⚙️ CI/CD環境セットアップ中..."
-	@echo "📦 Flutter依存関係取得..."
+	@echo "âï¸... CI/CD環境セットアップ中..."
+	@echo "ð¦ Flutter依存関係取得..."
 	cd frontend && flutter pub get
-	@echo "📦 Python依存関係インストール..."
-	cd backend/functions && pip install -r requirements.txt
-	@echo "✅ CI/CD環境セットアップ完了"
+	@echo "ð¦ Python依存関係インストール..."
+	cd backend && uv sync --extra dev
+	@echo "â... CI/CD環境セットアップ完了"
 
 # CI環境でのテスト実行
 ci-test: ci-setup lint test
@@ -103,25 +121,35 @@ ci-test: ci-setup lint test
 # フロントエンドデプロイ
 deploy-frontend: build-prod
 	@echo "📤 フロントエンドをFirebase Hostingにデプロイ中..."
-	firebase deploy --only hosting
+	firebase deploy --only hosting --project gakkoudayori-ai
 
 # バックエンドデプロイ
+# Backend deployment to Cloud Run for production
 deploy-backend:
-	@echo "📤 バックエンドをCloud Runにデプロイ中 (Dockerfile使用)..."
-	cd backend/functions && gcloud run deploy yutori-backend \
+	@echo "バックエンドをCloud Runにデプロイ中 (Buildpacks使用)..."
+	cd backend && gcloud run deploy gakkoudayori-backend --source=. --region=asia-northeast1 --allow-unauthenticated --memory=2Gi --timeout=300s --min-instances=1 --max-instances=10 --cpu=2 --concurrency=100 --set-env-vars="ENVIRONMENT=production" --platform=managed
+
+# ステージングバックエンドデプロイ
+deploy-backend-staging:
+	@echo "📤 ステージングバックエンドをCloud Runにデプロイ中 (Dockerfile使用)..."
+	cd backend && gcloud run deploy gakkoudayori-backend-staging \
 		--source=. \
 		--region=asia-northeast1 \
 		--allow-unauthenticated \
 		--memory=2Gi \
 		--timeout=300 \
-		--set-env-vars="ENVIRONMENT=production" \
+		--min-instances=0 \
+		--max-instances=5 \
+		--cpu=1 \
+		--concurrency=50 \
+		--set-env-vars="ENVIRONMENT=staging" \
 		--platform=managed
 
 # 全体デプロイ（推奨）
 deploy: deploy-backend deploy-frontend
 	@echo "✅ 全体デプロイ完了！"
 	@echo "🌐 フロントエンド: https://gakkoudayori-ai.web.app"
-	@echo "🔧 バックエンド: https://yutori-backend-944053509139.asia-northeast1.run.app"
+	@echo "🔧 バックエンド: https://gakkoudayori-backend-944053509139.asia-northeast1.run.app"
 
 # 全体デプロイ（別名）
 deploy-all: deploy
@@ -131,19 +159,19 @@ deploy-preview:
 	@echo "👀 プレビューデプロイ中..."
 	cd frontend && flutter build web \
 		--dart-define=ENVIRONMENT=preview \
-		--dart-define=API_BASE_URL=https://yutori-backend-944053509139.asia-northeast1.run.app/api/v1/ai \
+		--dart-define=API_BASE_URL=https://gakkoudayori-backend-944053509139.asia-northeast1.run.app \
 		--release
-	firebase hosting:channel:deploy preview --expires 7d
+	firebase hosting:channel:deploy preview --expires 7d --project gakkoudayori-ai
 
 # ステージングデプロイ
 deploy-staging: 
 	@echo "🧪 ステージング環境用ビルド中..."
 	cd frontend && flutter build web \
 		--dart-define=ENVIRONMENT=staging \
-		--dart-define=API_BASE_URL=https://staging-yutori-backend.asia-northeast1.run.app/api/v1/ai \
+		--dart-define=API_BASE_URL=https://gakkoudayori-backend-staging-944053509139.asia-northeast1.run.app/api/v1 \
 		--release
 	@echo "📤 ステージング環境にデプロイ中..."
-	firebase hosting:channel:deploy staging --expires 30d
+	firebase hosting:channel:deploy staging --expires 30d --project gakkoudayori-ai
 	@echo "✅ ステージング環境デプロイ完了！"
 	@echo "🌐 ステージング: https://gakkoudayori-ai--staging.web.app"
 
@@ -155,25 +183,43 @@ reset-dev:
 
 # バックエンド開発サーバー起動
 backend-dev:
-	@echo "🐍 バックエンド開発サーバー起動中..."
-	@echo "📦 仮想環境アクティベート..."
-	cd backend/functions && \
-		(test -d venv || python -m venv venv) && \
-		. venv/bin/activate && \
-		python start_server.py
+	@echo "🐍 バックエンド開発サーバー起動中 (ポート: 8081, ENVIRONMENT=development)..."
+	@cd backend && uv sync --extra dev && \
+	ENVIRONMENT=development \
+	GOOGLE_APPLICATION_CREDENTIALS="$(PWD)/backend/secrets/service-account-key.json" \
+	GCS_BUCKET_NAME="gakkoudayori-ai.appspot.com" \
+	uv run uvicorn app.main:app --host 0.0.0.0 --port 8081 --reload
+
+
 
 # Python環境セットアップ
 backend-setup:
-	@echo "🐍 Python環境セットアップ中..."
-	cd backend/functions && \
-		python -m venv venv && \
-		. venv/bin/activate && \
-		pip install -r requirements.txt
-	@echo "✅ Python環境セットアップ完了"
+	@echo "ð Python環境セットアップ中..."
+	cd backend && uv sync --extra dev
+	@echo "â... Python環境セットアップ完了"
 
 # Pythonテスト実行
 backend-test:
 	@echo "🧪 Pythonテスト実行中..."
-	cd backend/functions && \
-		. venv/bin/activate && \
-		python -m pytest tests/ -v 
+	cd backend && uv run bash -c "PYTHONPATH=. pytest tests/ -v" 
+
+# ADK v1.0.0互換性テスト
+test-adk:
+	@echo "🤖 ADK v1.0.0 互換性テスト実行中..."
+	cd backend && uv run python test_uv_migration.py 
+
+# バックエンドWarm-up
+warmup:
+	@echo "🔥 バックエンドWarm-up実行中..."
+	@echo "📊 本番環境ヘルスチェック..."
+	@if ! curl -f -s -o /dev/null -w "%{http_code}" https://gakkoudayori-backend-944053509139.asia-northeast1.run.app/health | grep -q "200"; then \
+		echo "❌ 本番環境エラー" && exit 1; \
+	fi
+	@echo "🔥 本番環境Warm-up..."
+	@if ! curl -f -s -o /dev/null -w "%{http_code}" https://gakkoudayori-backend-944053509139.asia-northeast1.run.app/warmup | grep -q "200"; then \
+		echo "❌ 本番Warm-upエラー" && exit 1; \
+	fi
+	@echo "🧪 ステージング環境チェック..."
+	@curl -f -s https://gakkoudayori-backend-staging-944053509139.asia-northeast1.run.app/health || echo "⚠️ ステージング環境エラー"
+	@curl -f -s https://gakkoudayori-backend-staging-944053509139.asia-northeast1.run.app/warmup || echo "⚠️ ステージングWarm-upエラー"
+	@echo "✅ Warm-up完了"

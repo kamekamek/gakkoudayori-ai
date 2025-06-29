@@ -108,6 +108,7 @@ backend/temp/
 backend/uploads/
 backend/downloads/
 
+backend_old/
 # =============================================================================
 # Frontend (Flutter) - Webアプリケーション専用最適化
 # =============================================================================
@@ -233,3 +234,5 @@ tmux-*.log
 # - ドキュメント（docs/）
 # - テスト用モックデータ（test/fixtures/）
 .firebase/*
+claude-code.sh
+.dart_tool/

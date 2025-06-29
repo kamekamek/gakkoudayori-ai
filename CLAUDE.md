@@ -2,743 +2,372 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**重要**: 必ず日本語で応答すること
+
+## 🎯 プロジェクト概要
+
+**学校だよりAI** - Google Cloud Japan AI Hackathon Vol.2 提出プロジェクト
+音声入力 → AI文章生成 → WYSIWYG編集 → PDF出力による学級通信作成時間の大幅短縮システム
+
+### 🏗️ システムアーキテクチャ
+
+**2エージェント連携システム（Google ADK v1.4.2+）**
+```
+Flutter Web App (フロントエンド)
+    ↓ HTTP API (/api/v1/adk/chat/stream)
+FastAPI Backend (バックエンド - Cloud Run)
+    ↓ Google ADK Runner
+MainConversationAgent (root_agent)
+    ├─ ユーザー対話・音声認識
+    ├─ outline.json生成・保存
+    └─ LayoutAgent (sub_agent) 呼び出し
+            ↓
+        LayoutAgent
+            ├─ JSON読み込み (/tmp/adk_artifacts/)
+            ├─ HTML生成 (newsletter.html)
+            └─ セッション状態保存
+    ↓ 
+┌─ Vertex AI ────┬─ Firebase ──────┬─ その他 ─────────┐
+│  - Gemini Pro  │  - Auth         │  - Cloud Storage │
+│  - STT API     │  - Firestore    │  - PDF生成       │
+└────────────────┴─────────────────┴──────────────────┘
+```
+
+### 🤖 ADKエージェント構成
+
+- **MainConversationAgent** (root_agent): 
+  - LlmAgentベースでユーザーとの自然対話
+  - 音声入力対応・JSON構成案生成
+  - LayoutAgentをsub_agentとして管理
+  - セッション状態とファイルシステム両方でデータ永続化
+
+- **LayoutAgent** (sub_agent):
+  - LlmAgentでJSON → HTMLレイアウト変換
+  - テンプレートフォールバック機能
+  - 整合性検証・品質保証
+  
+- **データフロー**: 
+  - セッション状態: `ctx.session.state["outline"]` → `ctx.session.state["html"]`
+  - ファイルシステム: `/tmp/adk_artifacts/outline.json` → `/tmp/adk_artifacts/newsletter.html`
+  - 2重保存によるデータ損失防止
+
+## 📦 パッケージ管理 (uv)
+
+このプロジェクトは **uv** で依存関係を管理しています。uvはRustで作られた高速なPythonパッケージマネージャーです。
+
+### uv基本コマンド
+```bash
+# 依存関係をインストール
+uv sync
+
+# 開発依存関係も含めてインストール
+uv sync --extra dev
+
+# 新しいパッケージを追加
+uv add package-name
+
+# 開発依存関係を追加
+uv add --dev package-name
+
+# Python実行
+uv run python script.py
+
+# 仮想環境をアクティベート
+source .venv/bin/activate
+```
+---
+
+## 🔍 Python動作確認・デバッグ方法
+
+### python -c を使った動作確認
+```bash
+# クラスの初期化方法を確認
+python -c "from google.adk.agents import SequentialAgent; help(SequentialAgent.__init__)"
+
+# メソッド一覧を確認
+python -c "from google.adk.agents import SequentialAgent; print(dir(SequentialAgent))"
+
+# モジュールが正しくインポートできるか確認
+python -c "import google.adk.agents; print('ADK agents imported successfully')"
+
+# 現在のPythonパスを確認
+python -c "import sys; print('\n'.join(sys.path))"
+
+# インストールされているパッケージのバージョン確認
+python -c "import google.adk; print(f'ADK version: {google.adk.__version__}')"
+```
+
+### python -m を使ったモジュール実行
+```bash
+# ADKサーバーをモジュールとして起動 (main_conversation_agentがroot_agent)
+python -m google.adk.cli.main web --agent-path ./agents --port 8080
+
+# 特定のエージェントが存在するか確認
+python -m agents.main_conversation_agent.agent
+python -m agents.layout_agent.agent
+
+# pipでパッケージ管理
+python -m pip list | grep google
+python -m pip install --upgrade google-adk
+```
+
+### エラー診断用ワンライナー
+```bash
+# モジュールのインポートエラーを詳細表示
+python -c "
+try:
+    from agents.generator_agent.agent import create_generator_agent
+    print('Import successful')
+except ImportError as e:
+    print(f'Import error: {e}')
+    import sys
+    print(f'Python path: {sys.path}')
+"
+
+# 現在のワーキングディレクトリとPythonパスの確認
+python -c "import os, sys; print(f'CWD: {os.getcwd()}'); print(f'Python path: {sys.path}')"
+```
+
 ## 🏃‍♂️ Quick Start Commands
 
-For immediate productivity, use these essential commands:
+### 重要：Claude Codeからのタスク実行時の注意点
+- Bashツールを使用する際は、必ず実行前にコマンドの説明を行うこと
+- テストやリントを実行する前に、事前チェックとして `make check-backend` を実行すること
+- エラーが発生した場合は、詳細なエラーメッセージと解決方法を日本語で説明すること
 
-### Most Common Commands
+### Most Common Development Commands
 ```bash
-# Start development with proper environment
-make dev
+# Start development environment
+make dev                          # Flutter Web with proper env vars
 
-# Run all tests and checks (before committing)
-make test && make lint
+# Quality checks before committing
+make test && make lint            # Run all tests and linting
+make ci-test                      # Full CI pipeline locally
 
-# Deploy everything (backend + frontend)
-make deploy
+# Deployment
+make deploy                       # Deploy both frontend and backend
 
-# Reset development environment when things break
-make reset-dev
+# Reset when things break
+make reset-dev                    # Clean rebuild of dev environment
+```
 
-# Full CI pipeline locally (before commits)
-make ci-test
+### ADK Agent Development (NEW - uv管理)
+```bash
+# Start ADK development server with uv
+cd backend
+uv run python -m google.adk.cli.main web --agent-path ./agents --port 8080
+
+# Test ADK agents with uv
+uv run pytest tests/test_adk_agent.py -v
+
+# Test individual agents
+uv run python test_uv_migration.py
+
+# Access ADK debug UI
+# http://localhost:8080/adk/ui
 ```
 
 ### Flutter Web Development
 ```bash
 cd frontend
-flutter pub get                    # Install dependencies
-flutter run -d chrome             # Start dev server
-flutter test                      # Run tests
-flutter analyze                   # Static analysis
+flutter pub get                   # Install dependencies
+flutter run -d chrome            # Start dev server
+flutter test                     # Run tests
+flutter analyze                  # Static analysis
 ```
 
-### Backend Python Development
+### Backend Python Development (uv管理)
 ```bash
-cd backend/functions
-source venv/bin/activate          # Activate virtual environment
-python start_server.py           # Start local server
-pytest                           # Run tests
-flake8 . && black .              # Lint and format
+cd backend                       # uvで管理されたbackendディレクトリ
+uv run uvicorn app.main:app --reload  # Start FastAPI server with uv
+uv run pytest                   # Run tests with uv
+uv run black . && uv run isort . # Format code with uv
+uv add package-name             # Add new dependency
+uv sync                         # Sync dependencies
 ```
 
-# 学校だよりAI - Claude Code Action ガイドライン
+## 🎨 フロントエンド構成 (Flutter Web)
 
-## 🎯 プロジェクト概要
-
-**学校だよりAI**は、HTMLベースのグラフィックレコーディング風学級通信作成システムです。教師が音声入力とAIを活用して、効率的に魅力的な学級通信を作成できるWebアプリケーションです。
-
-### 主要技術スタック
-- **フロントエンド**: Flutter Web
-- **バックエンド**: FastAPI (Python)
-- **AI**: Google Vertex AI (Gemini 1.5 Pro, Speech-to-Text)
-- **インフラ**: Google Cloud Platform (Cloud Run, Cloud Storage, Firestore)
-- **認証**: Firebase Authentication
-
-## 📋 開発ルール・方針
-
-### 🧪 TDD (テスト駆動開発) 必須
-すべての重要機能は **Red → Green → Refactor** サイクルで実装：
-
-1. **🔴 Red**: 失敗するテストを先に作成
-2. **🟢 Green**: テストが通る最小限のコードを実装
-3. **🔵 Refactor**: コード品質向上・リファクタリング
-
-**TDD必須対象**:
-- 音声認識・Geminiリライト・PDF生成のコアロジック
-- API エンドポイント・データベース操作
-- 重要な UI コンポーネント
-
-### 📁 プロジェクト構造
-**実際のプロジェクト構造 (Clean Architecture + Feature-First)**
+### Feature-based Clean Architecture
 ```
-gakkoudayori-ai/
-├── frontend/                    # Flutter Web アプリ
-│   ├── lib/
-│   │   ├── app/                # アプリケーション層
-│   │   │   └── app.dart       # アプリ設定・ルーティング
-│   │   ├── core/              # 共通機能・インフラ層
-│   │   │   ├── models/        # ドメインモデル
-│   │   │   ├── services/      # API・外部サービス
-│   │   │   ├── theme/         # デザインシステム
-│   │   │   ├── router/        # ルーティング
-│   │   │   └── utils/         # ユーティリティ
-│   │   ├── features/          # 機能別実装 (Feature-First)
-│   │   │   ├── ai_assistant/  # AI機能
-│   │   │   │   └── presentation/ # UI層 (Pages/Widgets)
-│   │   │   ├── editor/        # エディタ機能
-│   │   │   │   ├── presentation/
-│   │   │   │   ├── providers/ # 状態管理
-│   │   │   │   └── services/  # エディタ固有サービス
-│   │   │   ├── home/          # ホーム画面
-│   │   │   ├── layout/        # レイアウト
-│   │   │   ├── settings/      # 設定
-│   │   │   └── splash/        # スプラッシュ
-│   │   ├── firebase_options.dart     # Firebase設定
-│   │   └── main.dart          # エントリーポイント
-│   ├── test/                  # テストコード
-│   ├── web/                   # Web固有ファイル
-│   │   ├── quill/index.html   # Quill.js統合
-│   │   └── firebase-config.js # Firebase Web設定
-│   └── pubspec.yaml           # Flutter依存関係
-├── backend/functions/         # Firebase Functions (Python)
-│   ├── main.py               # メインAPI
-│   ├── firebase_service.py   # Firebase統合
-│   ├── speech_recognition_service.py # 音声認識
-│   ├── gemini_api_service.py # Gemini API
-│   ├── html_constraint_service.py # HTML処理
-│   ├── newsletter_generator.py # 通信生成
-│   ├── requirements.txt      # Python依存関係
-│   └── test_*.py            # テストファイル
-└── docs/                    # ドキュメント
-    ├── tasks.md            # 実装タスク管理 (58タスク)
-    ├── 01_REQUIREMENT_overview.md # 要件定義
-    ├── 11_DESIGN_database_schema.md # DB設計
-    └── 30_API_endpoints.md  # API仕様
+/frontend/lib/features/
+├── ai_assistant/     # ADK チャットインターフェース
+├── editor/          # 画像アップロード・プレビュー  
+├── home/            # メイン画面・レスポンシブレイアウト
+├── newsletter/      # 学級通信管理
+└── settings/        # 設定画面
 ```
 
-## 🎨 コーディング規約
+### 主要Provider
+- `AdkChatProvider`: ADKエージェントとの通信状態管理・HTML受信処理
+- `PreviewProvider`: HTMLプレビュー表示管理・編集履歴機能
+- `NewsletterProvider`: 学級通信データ管理・基本情報保存
+- `ImageProvider`: 画像アップロード・Grid表示管理
 
-### Dart/Flutter
-- **命名規則**: lowerCamelCase (変数・関数), UpperCamelCase (クラス)
-- **ファイル名**: snake_case.dart
-- **行長**: 100文字以内
-- **状態管理**: Provider パターンを使用
-- **非同期処理**: async/await を適切に使用
-- **エラーハンドリング**: try-catch で適切な例外処理
+### 🔄 フロントエンド・バックエンド連携フロー
+1. **ユーザー入力** → `AdkChatProvider.sendMessage()`
+2. **ADKストリーミング** → `/api/v1/adk/chat/stream` (FastAPI)
+3. **エージェント処理** → MainConversationAgent → LayoutAgent
+4. **HTML受信** → `AdkChatProvider._generatedHtml`
+5. **プレビュー表示** → `PreviewProvider.updateHtmlContent()`
 
-```dart
-// ✅ 良い例
-class DocumentProvider extends ChangeNotifier {
-  Future<void> saveDocument(Document document) async {
-    try {
-      await _documentService.save(document);
-      notifyListeners();
-    } catch (e) {
-      _handleError('ドキュメント保存に失敗しました: $e');
-    }
-  }
-}
-```
+### レスポンシブ対応
+- **デスクトップ(>768px)**: 左右分割レイアウト（チャット｜プレビュー）
+- **モバイル(≤768px)**: タブ切り替えレイアウト
 
-### Python/FastAPI
-- **命名規則**: snake_case (変数・関数), PascalCase (クラス)
-- **行長**: 100文字以内
-- **型ヒント**: 必須 (Python 3.9+ 記法使用)
-- **docstring**: 重要な関数・クラスには必須
-- **エラーハンドリング**: HTTPException で適切なステータスコード
+## 🔧 開発・デバッグのベストプラクティス
 
-```python
-# ✅ 良い例
-async def generate_pdf(
-    document_id: str,
-    user_id: str
-) -> PDFResponse:
-    """HTMLドキュメントをPDFに変換して返す"""
-    try:
-        document = await get_document(document_id, user_id)
-        pdf_bytes = await pdf_service.convert_html_to_pdf(document.html)
-        return PDFResponse(content=pdf_bytes, filename=f"{document.title}.pdf")
-    except DocumentNotFoundError:
-        raise HTTPException(status_code=404, detail="ドキュメントが見つかりません")
-```
-
-## 🔍 コードレビュー基準
-
-### 必須チェック項目
-- [ ] **機能要件**: 仕様通りに動作するか
-- [ ] **テストカバレッジ**: 重要機能は80%以上
-- [ ] **エラーハンドリング**: 適切な例外処理とユーザーフレンドリーなメッセージ
-- [ ] **パフォーマンス**: UI応答<100ms、API応答<500ms
-- [ ] **セキュリティ**: 入力値検証、認証・認可チェック
-- [ ] **アクセシビリティ**: WCAG 2.1 AA準拠
-- [ ] **コード品質**: 可読性、保守性、再利用性
-
-### レビュー観点
-1. **アーキテクチャ**: 設計原則に従っているか
-2. **命名**: 意図が明確に伝わるか
-3. **重複**: DRY原則に従っているか
-4. **依存関係**: 適切な抽象化・依存注入
-5. **ドキュメント**: 複雑なロジックにコメント
-
-## 🚀 PR作成・マージルール
-
-### PR作成時
-- **タイトル**: `[カテゴリ] 簡潔な変更内容`
-- **説明**: 変更理由・影響範囲・テスト方法を記載
-- **ベースブランチ**: `develop` ブランチに対してPR作成
-- **サイズ**: 1PR = 1機能、大きすぎる場合は分割
-
-### マージ前チェック
-- [ ] すべてのテストが通過
-- [ ] `flutter analyze` エラー0件
-- [ ] `flake8` エラー0件
-- [ ] 動作確認完了
-- [ ] ドキュメント更新済み
-
-## 🎯 AI活用ガイドライン
-
-### 音声認識 (Speech-to-Text)
-- **ノイズ抑制**: 教室環境での認識精度向上
-- **ユーザー辞書**: 学校特有の用語・固有名詞対応
-- **リアルタイム処理**: ストリーミング認識でUX向上
-
-### Gemini活用
-- **リライト機能**: 教師らしい語り口調への変換
-- **見出し生成**: コンテンツに適した見出し自動生成
-- **レイアウト最適化**: グラレコ風デザインの自動提案
-
-### HTMLエディタ
-- **WYSIWYG**: リアルタイムプレビュー機能
-- **テンプレート**: 季節・行事に応じたデザインテンプレート
-- **アクセシビリティ**: 印刷・PDF出力最適化
-
-## 📊 品質メトリクス目標
-
-### テストカバレッジ
-- **全体**: 80%以上
-- **重要機能**: 90%以上
-- **API**: 95%以上
-
-### パフォーマンス
-- **UI応答時間**: <100ms
-- **API応答時間**: <500ms
-- **PDF生成時間**: <3秒
-- **音声認識精度**: >95%
-
-### ユーザビリティ
-- **通信作成時間**: <20分 (従来の90%短縮)
-- **エラー発生率**: <1%
-- **SUSスコア**: >4.0/5.0
-
-## 🔧 開発環境・ツール
-
-### 必須ツール
-- **Flutter**: SDK 3.4.0+ (現在の環境設定)
-- **Python**: 3.9+
-- **Node.js**: 18+ (開発ツール用)
-- **Google Cloud CLI**: 最新版
-- **Firebase CLI**: 最新版 (`firebase --version` で確認)
-
-### 推奨VS Code拡張
-- Dart/Flutter
-- Python
-- GitLens
-- Error Lens
-- Thunder Client (API テスト)
-
-## 🛠️ 開発コマンド
-
-### Flutter Web開発
+### ADKエージェント開発時の注意点
 ```bash
-# プロジェクトディレクトリ移動
-cd frontend
+# ADKサーバー起動（デバッグUI付き）
+cd backend
+uv run python -m google.adk.cli.main web --agent-path ./agents --port 8080
+# → http://localhost:8080/adk/ui でデバッグ可能
 
-# 依存関係インストール
-flutter pub get
+# エージェント個別テスト
+uv run python -c "from agents.main_conversation_agent.agent import create_main_conversation_agent; agent = create_main_conversation_agent(); print('MainConversationAgent created successfully')"
+uv run python -c "from agents.layout_agent.agent import create_layout_agent; agent = create_layout_agent(); print('LayoutAgent created successfully')"
 
-# 開発サーバー起動 (Chrome)
-flutter run -d chrome
-
-# Web特有の開発サーバー (Firebase機能込み)
-flutter run -d chrome --web-port=5000
-
-# ビルド (本番用)
-flutter build web --release
-
-# テスト実行
-flutter test
-
-# 静的解析
-flutter analyze
-
-# パッケージ更新確認
-flutter pub outdated
-
-# Widget/Integration テスト
-flutter test integration_test/
+# プロンプトファイル変更後の反映確認
+# agents/*/prompts/*.md を編集後、ADKサーバー再起動が必要
 ```
 
-### Backend Python開発
+### データフロー確認
 ```bash
-# バックエンドディレクトリ移動
-cd backend/functions
+# ADK artifacts確認
+ls -la /tmp/adk_artifacts/
+# outline.json (MainConversationAgent出力)
+# newsletter.html (LayoutAgent出力) 
 
-# 仮想環境がない場合は作成
-python -m venv venv
-source venv/bin/activate  # macOS/Linux
-# または venv\Scripts\activate  # Windows
+# ファイルベース連携のデバッグ
+tail -f /tmp/adk_artifacts/outline.json
+tail -f /tmp/adk_artifacts/newsletter.html
 
-# 依存関係インストール
-pip install -r requirements.txt
-
-# 開発サーバー起動
-python start_server.py
-
-# または Firebase Functions Emulator
-firebase emulators:start --only functions
-
-# テスト実行
-pytest
-
-# 特定テスト実行
-pytest test_firebase_service.py -v
-
-# カバレッジ付きテスト
-pytest --cov=. --cov-report=html
-
-# 型チェック (mypyが設定済みの場合)
-mypy .
-
-# コードフォーマット
-black .
-flake8 .
+# セッション状態確認（実装時）
+# ADK Web UI: http://localhost:8080/adk/ui でセッション状態を確認可能
 ```
 
-### Firebase運用
+### Firebase・GCP認証設定
 ```bash
-# Firebase ログイン
-firebase login
+# サービスアカウントキー配置確認
+ls backend/secrets/service-account-key.json
 
-# プロジェクト設定
-firebase use yutori-kyoshitu
-
-# Functions デプロイ
-firebase deploy --only functions
-
-# Hosting デプロイ
-firebase deploy --only hosting
-
-# Emulator起動 (全サービス)
-firebase emulators:start
-
-# Firestore ルール更新
-firebase deploy --only firestore:rules
+# 環境変数設定確認
+echo $GOOGLE_APPLICATION_CREDENTIALS
+echo $GOOGLE_CLOUD_PROJECT
 ```
 
-### E2E テスト実行
+## 🧪 テスト戦略
+
+### ADK互換性テスト
 ```bash
-# E2Eテストディレクトリ移動
-cd frontend/e2e
-
-# 依存関係インストール
-npm install
-
-# Playwright テスト実行
-npm run test
-
-# または直接実行
-px playwright test
-
-# ヘッドレスモードでテスト
-px playwright test --headed
+make test-adk                    # ADK v1.4.2互換性テスト
+uv run python test_uv_migration.py  # uv移行確認テスト
 ```
 
-### 品質チェック統合
+### 品質チェックフロー
 ```bash
-# Frontend品質チェック (必須実行コマンド)
-cd frontend && flutter analyze && flutter test
-
-# Backend品質チェック  
-cd backend/functions && pytest && flake8 .
-
-# コードフォーマット確認
-cd frontend && dart format --set-exit-if-changed .
-cd backend/functions && black --check .
-
-# テストカバレッジ
-cd frontend && flutter test --coverage
-cd backend/functions && pytest --cov=.
-
-# 全体品質チェック (CI/CD前の最終確認)
-cd frontend && flutter analyze && flutter test && cd ../backend/functions && pytest && flake8 .
+make lint                        # 静的解析（Flutter + Python）
+make test                        # 全テスト実行
+make ci-test                     # CI環境模擬テスト
 ```
 
-### プロジェクト管理
+## 📋 重要なファイルパス
+
+### エージェント関連
+- `backend/agents/main_conversation_agent/agent.py` - メインエージェント (root_agent)
+- `backend/agents/layout_agent/agent.py` - HTMLレイアウト生成エージェント (sub_agent)
+- `backend/agents/*/prompt*.py` - エージェントプロンプト定義
+- `/tmp/adk_artifacts/` - エージェント間データ交換
+  - `outline.json` - MainConversationAgentが生成するJSON構成案
+  - `newsletter.html` - LayoutAgentが生成するHTMLファイル
+
+### フロントエンド主要ファイル
+- `frontend/lib/services/adk_agent_service.dart` - ADK通信サービス
+- `frontend/lib/features/home/presentation/pages/home_page.dart` - メイン画面
+- `frontend/lib/features/ai_assistant/providers/adk_chat_provider.dart` - チャット状態管理
+
+### 設定・環境
+- `backend/pyproject.toml` - Python依存関係（uv管理）
+- `frontend/pubspec.yaml` - Flutter依存関係
+- `Makefile` - 開発コマンド集約
+- `firebase.json` - Firebase設定
+
+## 🎯 プロジェクト固有の重要事項
+
+### ハッカソン要件対応状況
+- ✅ **必須**: Google Cloud (Cloud Run + Vertex AI + Speech-to-Text)
+- ✅ **特別賞**: Flutter + Firebase + Deep Dive (ADK・2エージェント連携)
+- ✅ **完成度**: 目標達成（2-3時間→15分短縮）・全機能実装済み
+- ✅ **技術特徴**: MainConversationAgent + LayoutAgentのシンプルな2段階構成
+
+### ADK v1.4.2+ 使用時の注意
+- `Gemini(model_name="gemini-2.5-pro")` - 最新Geminiモデル使用
+- `google.adk.agents` - **LlmAgentのみ使用** (MainConversationAgent・LayoutAgent)
+- sub_agents機能でエージェント間連携を実現
+- プロンプトファイル変更時はADKサーバー再起動必須
+- セッション状態とファイルシステム両方でデータ永続化
+
+### Poetry→uv移行完了
+- ✅ `pyproject.toml`でuv管理設定済み
+- ✅ 全コマンドで`uv run`使用
+- ✅ CI/CDパイプライン対応済み
+
+### レスポンシブ対応済み
+- デスクトップ: 左右分割レイアウト (768px+)
+- モバイル: タブ切り替えレイアウト (768px-)
+- Flutter Webで完全対応
+
+## 🎯 Claude Code使用時の重要なルール
+
+### タスク管理
+- 複数ステップの作業では、必ずTodoWriteツールを使用してタスクを管理すること
+- タスク完了時は即座にTodoWriteツールで状況を更新すること
+- テストやビルドが失敗した場合、該当タスクは完了マークしないこと
+
+### コード品質
+- コード変更前に必ず既存のコードスタイルを確認し、それに従うこと
+- 新しいライブラリを使用する前に、既存のプロジェクトで使用されているかを確認すること
+- セキュリティベストプラクティスに従い、秘密情報をコードに含めないこと
+
+### Cursor Rulesとの統合
+このプロジェクトは以下のCursor Rulesに従います：
+- [task_management_tdd.mdc](.cursor/rules/task_management_tdd.mdc): TDD実装フローとタスク管理の統合
+- [document_management.mdc](.cursor/rules/document_management.mdc): ドキュメント管理ルール
+
+## 🚀 Claude Code活用のベストプラクティス
+
+### 開発前の準備
+1. **要件定義を先に行う** - すぐに開発を始めず、まず要件を明確にする
+2. **ブラウザ操作環境の準備** - Claude Codeがブラウザを操作できる環境を整える
+3. **適切なログ設定** - 詳細なログを出力し、Claude Codeに解析させる
+4. **コマンド名称の共有** - プロジェクト固有のコマンドをClaude Codeに伝える
+
+### 効率的な作業フロー
+5. **音声による完了報告** - 作業完了時は`afplay`で音声報告を行う
+6. **git worktreeの活用** - `.git/`配下にワークツリーを作成し、並行開発を支援
+7. **権限管理** - `/permissions`コマンドでツール許可を適切に管理
+8. **こまめなコミット** - 作業の節目でこまめにコミットを行う
+
+### Claude Code環境設定チェックリスト
+- [ ] 権限設定: `/permissions`でツール許可を確認
+- [ ] git worktree準備: 並行開発用ワークツリー作成
+- [ ] ログ設定: 詳細なエラーログとデバッグ情報の出力設定
+- [ ] 音声設定: `afplay`による完了報告の準備
+- [ ] 環境変数: 必要な環境変数の設定確認
+
+### 作業効率化コマンド
 ```bash
-# タスク進捗確認
-cat docs/tasks.md
+# 完了報告用音声再生（macOS）
+afplay /System/Library/Sounds/Glass.aiff
 
-# ドキュメント一覧
-ls docs/
+# git worktreeの活用
+git worktree add .git/feature-branch feature-branch
+git worktree list
 
-# 設定ファイル確認
-cat frontend/pubspec.yaml
-cat backend/functions/requirements.txt
+# Claude Code権限確認
+/permissions
 
-# Git状況確認
-git status
-git log --oneline -10
+# 詳細ログ出力設定の確認
+echo "DEBUG=true" >> .env
 ```
-
-## 📝 コミットメッセージ規約
-
-```
-[カテゴリ] 簡潔な変更内容
-
-詳細な説明（必要に応じて）
-
-- 変更点1
-- 変更点2
-
-関連: #issue番号
-```
-
-**カテゴリ例**:
-- `feat` 新機能追加
-- `fix` バグ修正
-- `docs` ドキュメント更新
-- `refactor` リファクタリング
-- `test` テスト追加・修正
-- `style` コードスタイル調整
-
-## 🎨 UI/UXガイドライン
-
-### デザインシステム
-- **カラーパレット**: 季節感のある温かみのある色調
-- **フォント**: 手書き風・親しみやすいフォント
-- **アイコン**: 学校・教育関連のアイコンセット
-- **レスポンシブ**: スマートフォン・タブレット対応
-
-### アクセシビリティ
-- **色コントラスト**: WCAG 2.1 AA準拠
-- **キーボード操作**: 全機能をキーボードで操作可能
-- **スクリーンリーダー**: 適切なセマンティクス
-- **フォントサイズ**: 拡大縮小対応
-
-## 🔒 セキュリティガイドライン
-
-### 認証・認可
-- **Firebase Auth**: Google ログイン必須
-- **JWT検証**: すべてのAPIエンドポイントで実装
-- **権限チェック**: ユーザー自身のデータのみアクセス可能
-
-### データ保護
-- **個人情報**: 最小限の収集・適切な暗号化
-- **ファイル管理**: Cloud Storage署名付きURL使用
-- **ログ**: 個人情報を含まないログ設計
-
-## 📚 参考ドキュメント
-
-- [タスク管理](docs/tasks.md) - 実装進捗管理 (58タスク、現在4/58完了)
-- [要件定義](docs/01_REQUIREMENT_overview.md) - 機能要件・非機能要件
-- [システム設計](docs/archive/11_DESIGN_database_schema.md) - データベース・アーキテクチャ詳細
-- [API仕様](docs/archive/30_API_endpoints.md) - エンドポイント設計
-
----
-
-## 🎯 現在のプロジェクト状況
-
-### 進捗サマリー
-- **全体進捗**: 4/58タスク完了 (6.9%)
-- **Phase 1進捗**: Google Cloud基盤・Firebase基盤・Flutter基盤の環境構築中
-- **次のマイルストーン**: T1-FL-002-A Flutter Webプロジェクト初期化
-
-### 重要な実装方針
-1. **TDD必須**: すべてのコーディングタスクで Red→Green→Refactor サイクル
-2. **並行開発**: 依存関係のないタスクは同時実行で効率化
-3. **教育現場重視**: 教師の使いやすさを最優先に設計
-4. **ハッカソン制約**: Google Cloud サービス使用が必須要件
-
-### アーキテクチャの理解
-- **Quill.js統合**: `web/quill/index.html` で Flutter Web と Quill.js を連携
-- **Feature-First構造**: 機能別ディレクトリで横断的関心事を分離
-- **Clean Architecture**: core層（共通）とfeatures層（機能固有）の分離
-- **Firebase Functions**: Python FastAPIをFirebase Functionsで実行
-- **音声-AI-HTML-PDF**: Speech-to-Text → Gemini → Quill.js → PDF の処理パイプライン
-- **Provider状態管理**: 特にエディタの複雑な状態を `QuillEditorProvider` で管理
-- **Web特化**: PWAとして動作、ネイティブアプリ非対応
-- **Firebase認証**: 匿名認証とGoogle認証の併用
-- **Cloud Storage**: 生成されたファイルの保存・共有
-
-### 重要な技術的制約
-- **Webオンリー**: モバイルアプリ非対応のWeb専用設計
-- **Quill.js依存**: リッチテキストエディタはQuill.jsに完全依存
-- **Firebase Ecosystem**: 認証・データベース・ストレージすべてFirebase
-- **Google Cloud中心**: Speech-to-Text、Vertex AI Geminiがコア機能
-- **ハッカソン制約**: Google Cloudサービス使用が必須要件
-
----
-
-**🤖 Claude Code Action へのメッセージ**
-
-このプロジェクトは教育現場の効率化を目指すWebアプリケーションです。コード品質・ユーザビリティ・アクセシビリティを重視し、教師が直感的に使える設計を心がけてください。TDD原則に従い、テストファーストで安全な実装をお願いします。
-
-**開始時の必須チェック項目**:
-1. `docs/tasks.md` で現在の進捗と次のタスクを確認
-2. 実装前に必ずテストコードを作成 (TDD)
-3. `flutter analyze && flutter test` で品質確認
-4. 教育現場での使いやすさを常に意識
-
-質問や不明点があれば、遠慮なく確認してください！
-
-## 🤖 AIレビュー依頼テンプレート
-
-PRを作成する際は、以下のテンプレートを使用してClaudeにレビューを依頼してください：
-
-```markdown
-## 🤖 AIレビュー依頼
-
-@claude このPRをレビューしてください。以下の観点で確認をお願いします：
-
-- **機能要件**: 仕様通りに動作しているか
-- **コード品質**: 可読性、保守性、再利用性
-- **セキュリティ**: 認証・認可、入力値検証、データ保護
-- **パフォーマンス**: UI応答時間、API応答時間の最適化
-- **テスト**: カバレッジ、エッジケースの考慮
-- **アクセシビリティ**: WCAG 2.1 AA準拠、ユーザビリティ
-- **教育現場での使いやすさ**: 教師目線での直感的な操作性
-
-改善提案や潜在的な問題があれば、具体的な修正案と合わせて教えてください。
-
-## 🔧 重要な開発注意事項
-
-### Firebase設定管理
-- `firebase_options.dart` は `.gitignore` 対象（機密情報含有）
-- 初回は `firebase_options.dart.template` からコピーして実際の値を設定
-- Web用Firebase設定は `web/firebase-config.js.sample` も参照
-
-### Document Management Rules
-Based on `.cursor/rules/document_management.mdc`, follow these conventions:
-- File naming: `{Number}_{CATEGORY}_{title}.md` (e.g., `01_REQUIREMENT_overview.md`)
-- Categories: REQUIREMENT (01-09), DESIGN (10-19), SPEC (20-29), API (30-39), etc.
-- Include TL;DR section for 30-second understanding
-- Keep documents under 10KB, split if larger
-- Always include metadata: complexity, reading time, dependencies
-
-### Architecture-Specific Notes
-- **Web-only**: No mobile app support, Flutter Web PWA only
-- **Quill.js Bridge**: JavaScript ↔ Flutter communication via `web/quill/index.html`
-- **Audio Pipeline**: MediaRecorder API → Cloud Speech-to-Text → Gemini → Quill Delta
-- **Firebase Functions**: Python FastAPI deployed as Firebase Functions
-- **State Management**: Provider pattern, especially `QuillEditorProvider` for editor state
-
-### Quill.js統合の理解
-- `web/quill/index.html` が Quill.js の実装本体
-- `lib/features/editor/services/javascript_bridge.dart` で Flutter ↔ JavaScript 通信
-- `lib/features/editor/presentation/widgets/quill_editor_web.dart` でWebView制御
-
-### 音声入力フロー
-- `services/audio_service.dart`: ブラウザのMediaRecorder API使用
-- `widgets/*_widget.dart`: UI制御とファイルアップロード
-- Backend `speech_recognition_service.py`: Google Speech-to-Text処理
-- Backend `gemini_api_service.py`: AIによるテキストリライト
-
-### 現在の実装状況（プロジェクト完了）
-このプロジェクトは**Google Cloud Japan AI Hackathon Vol.2**向けに完成しており、全62タスクが完了済みです。主要機能は全て実装されています。
-
-### テスト戦略
-- Unit Tests: `flutter test` (Dart/Flutter用)
-- Integration Tests: `flutter test integration_test/` (Flutter統合)
-- E2E Tests: `cd frontend/e2e && npm run test` (Playwright)
-- Backend Tests: `cd backend/functions && pytest`
-
-### デプロイメント
-- Frontend: Firebase Hosting (`firebase deploy --only hosting`)
-- Backend: Firebase Functions (`firebase deploy --only functions`)
-- 開発環境: Firebase Emulators (`firebase emulators:start`)
-
-### パフォーマンス注意点
-- Quill.js の大きなドキュメントでのメモリ使用量
-- Gemini API のレスポンス時間（ストリーミング対応推奨）
-- 音声ファイルのサイズ制限（Cloud Speech-to-Text上限）
-- PDF生成処理のタイムアウト
-
-## 📋 Task Management & TDD Integration
-
-### Required Task Management Flow
-This project enforces strict task management based on `.cursor/rules/task_management_tdd.mdc`:
-
-1. **Task Start**: Mark in progress in `docs/tasks.md` with timestamp
-2. **TDD Implementation**: Follow Red → Green → Blue cycle for AI/HYBRID tasks
-3. **Task Complete**: Update all completion conditions and record artifacts
-4. **Dependency Check**: Verify and unlock dependent tasks
-
-### TDD Phase Tracking
-For any coding task, track TDD phases in task updates:
-```markdown
-#### T1-XX-001-A: Example Task
-- **TDD Phase**: 🔴 RED - Test creation
-- **TDD Phase**: 🟢 GREEN - Minimum implementation  
-- **TDD Phase**: 🔵 BLUE - Refactoring
-- **TDD Phase**: ✅ Complete
-```
-
-### Task Completion Requirements
-Every task must satisfy ALL completion conditions before marking complete:
-- All checkboxes marked [x]
-- Test coverage recorded (for code tasks)
-- Artifacts documented with file paths
-- Dependencies verified and updated
-
-## 🛠️ Critical Development Commands
-
-### Makefile Integration
-This project uses a comprehensive Makefile. Always prefer Makefile commands:
-
-```bash
-# Essential development workflow
-make help           # Show all available commands
-make dev            # Start development (Chrome with proper env vars)
-make staging        # Test with staging environment
-make test           # Run all tests (Flutter + Python)
-make lint           # Run all static analysis
-make format         # Format all code
-make ci-test        # Full CI pipeline locally
-
-# Deployment workflow
-make build-prod     # Production build
-make deploy         # Deploy everything (RECOMMENDED)
-make deploy-frontend # Firebase Hosting only
-make deploy-backend  # Cloud Run only
-```
-
-### Environment Variables (Critical)
-The application uses dart-define for configuration:
-- Development: `API_BASE_URL=http://localhost:8081/api/v1/ai`
-- Staging: `API_BASE_URL=https://staging-yutori-backend.asia-northeast1.run.app/api/v1/ai`
-- Production: `API_BASE_URL=https://yutori-backend-944053509139.asia-northeast1.run.app/api/v1/ai`
-- Always use `make dev` or `make staging` to ensure proper environment setup
-
-### Key Project Context
-- **Project Status**: Completed for Google Cloud Japan AI Hackathon Vol.2
-- **Architecture**: Web-only Flutter app with Python FastAPI backend
-- **Main Flow**: Voice → Speech-to-Text → Gemini AI → Quill.js Editor → PDF
-- **Target Users**: Teachers creating school newsletters efficiently
-- **Goal**: Reduce newsletter creation time from 2-3 hours to under 20 minutes
-
-### Testing Strategy
-```bash
-# Frontend testing
-cd frontend
-flutter test                    # Unit tests
-flutter test integration_test/  # Integration tests
-
-# Backend testing  
-cd backend/functions
-pytest                         # All tests
-pytest test_firebase_service.py -v  # Specific test file
-pytest --cov=. --cov-report=html    # With coverage
-
-# E2E testing
-cd frontend/e2e
-npm run test                   # Playwright E2E tests
-```
-
----
-
-# 🤖 ClaudeCode組織システム
-
-## システム概要
-
-このプロジェクトでは複数のClaudeエージェントが協力して働く組織システムを活用できます。
-
-## エージェント構成
-- **PRESIDENT**: プロジェクト統括責任者
-- **boss1**: チームリーダー・ファシリテーター  
-- **worker1**: フロントエンド/UI専門
-- **worker2**: バックエンド/データ専門
-- **worker3**: インフラ/テスト専門
-
-## 基本フロー
-PRESIDENT → boss1 → workers → boss1 → PRESIDENT
-
-## 組織システム使用方法
-
-### 1. 環境構築
-```bash
-cd claude_org
-./setup.sh
-```
-
-### 2. エージェント起動
-```bash
-# PRESIDENTセッション
-tmux attach-session -t president
-
-# 他のエージェント
-tmux attach-session -t multiagent
-```
-
-### 3. Claude起動（各ペインで）
-```bash
-claude --dangerously-skip-permissions
-```
-
-### 4. コミュニケーション
-```bash
-cd claude_org
-./agent-send.sh [相手] "[メッセージ]"
-```
-
-### 5. 実践例
-PRESIDENT画面で以下のような指示を送信：
-
-```
-あなたはpresidentです。
-
-学校だよりAIプロジェクトの新機能として、音声入力の精度向上システムを開発してください。
-- iOS Safari での録音品質向上
-- ノイズキャンセリング機能
-- リアルタイム音声レベル表示
-
-@claude_org/instructions/president.md の指示書に従って実行してください。
-```
-
-## 指示書参照
-各エージェントは以下を参照：
-- `@claude_org/instructions/president.md` (PRESIDENT用)
-- `@claude_org/instructions/boss.md` (boss1用)  
-- `@claude_org/instructions/worker.md` (worker用)
-- `@CLAUDE.md` (このファイル)
-
-## 組織システムの活用場面
-
-### 1. 複雑な機能開発
-- 音声認識システムの改良
-- AI機能の統合
-- エディタコンポーネントの開発
-
-### 2. 品質向上プロジェクト
-- パフォーマンス最適化
-- セキュリティ強化
-- アクセシビリティ改善
-
-### 3. 新機能の検討・実装
-- 革新的アイデアの創出
-- 技術的な実現可能性検証
-- ユーザビリティテスト
-
-## 重要なポイント
-- 各エージェントの専門性を活用（worker1: UI/UX, worker2: バックエンド/AI, worker3: インフラ/テスト）
-- 革新的アイデア3つ以上の創出を必須要求
-- 構造化されたコミュニケーション
-- ユーザーニーズ100%充足まで継続
-
-## 学校だよりAIプロジェクトとの統合
-組織システムは以下の場面で特に有効：
-- 音声入力機能の改良（現在のiOS対応強化など）
-- Gemini AI活用の最適化
-- Quill.jsエディタの機能拡張
-- PDF生成パフォーマンス向上
-- 教育現場での使いやすさ改善
