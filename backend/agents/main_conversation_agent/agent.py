@@ -49,7 +49,7 @@ async def get_user_settings_context(user_id: str) -> str:
                 "自動ナンバリング": settings.title_templates.auto_numbering,
                 "季節テンプレート": settings.title_templates.seasonal,
                 "カスタムテンプレート": [{"名前": t.name, "パターン": t.pattern} for t in settings.title_templates.custom],
-                "設定完了": settings.is_complete,
+                "設定完了": bool(settings.school_name and settings.class_name and settings.teacher_name),
                 "作成日": settings.created_at.isoformat() if settings.created_at else None,
             }
 

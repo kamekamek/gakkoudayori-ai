@@ -118,17 +118,25 @@ class UserSettingsService {
         debugPrint('🔐 UserSettingsService (save): 認証済み');
       }
       
-      // まず既存設定を確認（nullの場合は新規作成として扱う）
+      // まず既存設定を確認（例外やnullの場合は新規作成として扱う）
       UserSettingsResponse? existingSettings;
+      bool hasExistingSettings = false;
+      
       try {
         existingSettings = await getUserSettings();
+        hasExistingSettings = existingSettings?.settings != null;
+        if (kDebugMode) {
+          debugPrint('✅ 既存設定確認結果: hasExisting=$hasExistingSettings');
+        }
       } catch (e) {
         if (kDebugMode) {
           debugPrint('⚠️ 既存設定の確認でエラー。新規作成として処理: $e');
         }
+        hasExistingSettings = false;
         existingSettings = null;
       }
-      final isUpdate = existingSettings?.settings != null;
+      
+      final isUpdate = hasExistingSettings;
       
       final requestData = {
         'school_name': schoolName,
@@ -144,17 +152,35 @@ class UserSettingsService {
         debugPrint('📝 UserSettingsService: ${isUpdate ? 'UPDATE' : 'CREATE'}を実行');
       }
 
-      final response = isUpdate 
-        ? await _client.put(
-            Uri.parse('$baseUrl/users/settings'),
-            headers: _headers,
-            body: json.encode(requestData),
-          )
-        : await _client.post(
+      http.Response response;
+      
+      if (isUpdate) {
+        // 更新を試行
+        response = await _client.put(
+          Uri.parse('$baseUrl/users/settings'),
+          headers: _headers,
+          body: json.encode(requestData),
+        );
+      } else {
+        // 新規作成を試行
+        response = await _client.post(
+          Uri.parse('$baseUrl/users/settings'),
+          headers: _headers,
+          body: json.encode(requestData),
+        );
+        
+        // 409エラー（既に存在）の場合は更新で再試行
+        if (response.statusCode == 409) {
+          if (kDebugMode) {
+            debugPrint('🔄 409エラー発生。UPDATEで再試行');
+          }
+          response = await _client.put(
             Uri.parse('$baseUrl/users/settings'),
             headers: _headers,
             body: json.encode(requestData),
           );
+        }
+      }
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final jsonData = json.decode(response.body);
