@@ -70,8 +70,15 @@ class AdkAgentService {
         throw Exception('ユーザーIDが空です。');
       }
       
-      final url = Uri.parse('${AppConfig.apiV1BaseUrl}/adk/chat/stream');
+      final url = Uri.parse('${AppConfig.currentApiBaseUrl}/api/v1/adk/chat/stream');
       final headers = await _createHeaders();
+      
+      if (kDebugMode) {
+        debugPrint('🚀 [AdkAgentService] sendChatMessage開始');
+        debugPrint('🔗 AppConfig.currentApiBaseUrl: ${AppConfig.currentApiBaseUrl}');
+        debugPrint('🔗 構築されたURL: $url');
+        debugPrint('📨 送信データ: {"message":"$message","session_id":"$sessionId"}');
+      }
       
       final response = await _httpClient
           .post(
@@ -255,7 +262,7 @@ class AdkAgentService {
         return;
       }
 
-      final url = Uri.parse('$_baseUrl/adk/chat/stream');
+      final url = Uri.parse('$_baseUrl/api/v1/adk/chat/stream');
       final cleanSessionId = sessionId?.trim().isNotEmpty == true 
           ? sessionId!.trim() 
           : '${userId.trim()}:default';
@@ -264,6 +271,9 @@ class AdkAgentService {
         'session_id': cleanSessionId,
       };
 
+      debugPrint('🚀 [AdkAgentService] streamChatSSE開始');
+      debugPrint('🔗 _baseUrl: $_baseUrl');
+      debugPrint('🔗 構築されたURL: $url');
       debugPrint(
           '[AdkAgentService] Sending POST request to $url with body: ${jsonEncode(body)}');
 

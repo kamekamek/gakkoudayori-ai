@@ -8,7 +8,6 @@ from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events.event import Event
 from google.adk.models.google_llm import Gemini
 from google.adk.tools import FunctionTool
-from google.adk.tools.tool_context import ToolContext
 from google.genai.types import Content, Part
 
 from .prompt import MAIN_CONVERSATION_INSTRUCTION
@@ -16,6 +15,14 @@ from .prompt import MAIN_CONVERSATION_INSTRUCTION
 # ロガーの設定
 logger = logging.getLogger(__name__)
 
+# グローバル変数として現在のユーザーIDを保存（ADK制限の回避策）
+_current_user_id: str = "test_user"  # デフォルト値
+
+def set_current_user_id(user_id: str) -> None:
+    """現在のユーザーIDを設定（グローバル変数更新）"""
+    global _current_user_id
+    _current_user_id = user_id
+    logger.info(f"グローバルユーザーID更新: {user_id}")
 
 def get_current_date() -> str:
     """現在の日付を'YYYY-MM-DD'形式で返します。ユーザーには自然な形で表示されます。"""
@@ -24,14 +31,16 @@ def get_current_date() -> str:
     return current_date
 
 
-async def get_user_settings_context(user_id: str, ctx: ToolContext) -> str:
+async def get_user_settings_context(user_id: str) -> str:
     """
     ユーザー設定情報を取得してエージェントに提供します。
     学校名、クラス名、先生名、タイトルテンプレートなどの個人設定を返します。
     """
     try:
-        # セッション状態から実際のユーザーIDを取得（ADKのデフォルトuser_idを上書き）
-        actual_user_id = ctx.session.state.get("user_id", user_id)
+        # グローバル変数から実際のユーザーIDを取得（ADK制限の回避策）
+        global _current_user_id
+        actual_user_id = _current_user_id if _current_user_id != "test_user" else user_id
+        
         logger.info(f"ユーザー設定を取得中: パラメータuser_id={user_id}, 実際のuser_id={actual_user_id}")
 
         # UserSettingsServiceを使用してユーザー設定を取得
@@ -205,6 +214,9 @@ class MainConversationAgent(LlmAgent):
                 return
 
             logger.info(f"ユーザーID取得: {user_id}")
+            
+            # グローバル変数にユーザーIDを設定（ツール関数で使用するため）
+            set_current_user_id(user_id)
 
             # ユーザー設定を取得
             user_settings_context = await get_user_settings_context(user_id)
