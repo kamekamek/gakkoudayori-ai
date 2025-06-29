@@ -239,6 +239,26 @@ class MainConversationAgent(LlmAgent):
             logger.error(f"対話情報抽出エラー: {e}")
             return None
 
+    async def _check_and_save_json_from_conversation(self, ctx: InvocationContext):
+        """対話から学級通信情報を抽出してセッション状態に保存"""
+        try:
+            logger.info("🔍 対話からJSON情報を抽出中")
+            
+            # 対話履歴から情報を抽出
+            extracted_info = await self._extract_conversation_info(ctx)
+            
+            if extracted_info:
+                # セッション状態に保存
+                save_result = save_json_to_session(extracted_info, ctx)
+                logger.info(f"JSON保存結果: {save_result}")
+            else:
+                logger.info("抽出可能な情報がありませんでした")
+                
+        except Exception as e:
+            logger.error(f"JSON抽出・保存エラー: {e}")
+            import traceback
+            logger.error(f"詳細エラー: {traceback.format_exc()}")
+
 
 def create_main_conversation_agent() -> MainConversationAgent:
     """MainConversationAgentのインスタンスを生成するファクトリ関数。"""

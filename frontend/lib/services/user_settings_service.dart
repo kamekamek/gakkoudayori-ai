@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user_settings.dart';
 import '../config/app_config.dart';
 
@@ -26,6 +27,12 @@ class UserSettingsService {
     if (token != null && token.isNotEmpty) {
       headers['Authorization'] = 'Bearer $token';
     }
+    
+    // Firebase AuthのUIDをX-User-IDヘッダーに追加
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final uid = currentUser?.uid ?? 'user_12345'; // デフォルト値
+    headers['X-User-ID'] = uid;
+    
     return headers;
   }
 

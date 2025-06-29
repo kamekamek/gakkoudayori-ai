@@ -1,7 +1,7 @@
 import logging
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from fastapi.responses import JSONResponse
 
 from app.auth import User, get_current_user
@@ -75,15 +75,14 @@ async def create_user_settings(
 
 @router.get("/users/settings", response_model=UserSettingsResponse)
 async def get_user_settings_endpoint(
-    # current_user: User = Depends(get_current_user) # 一時的に認証を無効化
+    x_user_id: str = Header(None, alias="X-User-ID")
 ):
     """
     現在のユーザーの設定を取得または作成するエンドポイント。
-    （注：現在、デバッグのため認証は一時的に無効化されています）
+    X-User-IDヘッダーからユーザーIDを取得します。
     """
-    # 認証を無効化しているため、一時的に固定のユーザーIDを使用
-    user_id = "temp-fixed-user-id-for-debug"
-    # user_id = current_user.uid
+    # ヘッダーからユーザーIDを取得、なければデフォルト値を使用
+    user_id = x_user_id or "temp-fixed-user-id-for-debug"
     
     print(f"⚙️ Getting settings for user: {user_id}")
     try:
