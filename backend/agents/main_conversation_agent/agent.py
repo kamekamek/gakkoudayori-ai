@@ -226,6 +226,9 @@ class MainConversationAgent(LlmAgent):
                     logger.info("✅ セッション状態保存確認: 成功")
                 else:
                     logger.error(f"❌ セッション状態保存確認: 失敗 (保存: {len(saved_content)}, 元: {len(conversation_text)})")
+                
+                # 外部ファイルへのバックアップ保存（セッション状態に依存しない）
+                await self._save_to_external_storage(ctx, conversation_text, json_outline)
                     
             except Exception as save_error:
                 logger.error(f"❌ セッション状態保存エラー: {save_error}")
@@ -657,6 +660,57 @@ class MainConversationAgent(LlmAgent):
             
         except Exception:
             return False
+
+    async def _save_to_external_storage(self, ctx: InvocationContext, conversation_text: str, json_outline: str = ""):
+        """外部ファイルシステムに永続化（セッション状態に依存しない）"""
+        try:
+            import os
+            import tempfile
+            
+            # セッションIDを取得
+            session_id = self._get_session_id(ctx)
+            if not session_id:
+                logger.warning("⚠️  セッションIDが取得できないため外部保存をスキップ")
+                return
+            
+            # 一時ディレクトリに保存
+            storage_dir = "/tmp/gakkoudayori_sessions"
+            os.makedirs(storage_dir, exist_ok=True)
+            
+            # ファイルパス
+            conversation_file = f"{storage_dir}/{session_id}_conversation.txt"
+            json_file = f"{storage_dir}/{session_id}_outline.json"
+            
+            # 会話内容を保存
+            with open(conversation_file, 'w', encoding='utf-8') as f:
+                f.write(conversation_text)
+                
+            # JSON構成案を保存（存在する場合）
+            if json_outline:
+                with open(json_file, 'w', encoding='utf-8') as f:
+                    f.write(json_outline)
+            
+            logger.info(f"✅ 外部ストレージに保存完了: {conversation_file}")
+            logger.info(f"📊 会話内容: {len(conversation_text)} 文字")
+            if json_outline:
+                logger.info(f"📊 JSON構成案: {len(json_outline)} 文字")
+                
+        except Exception as e:
+            logger.error(f"❌ 外部ストレージ保存エラー: {e}")
+            import traceback
+            logger.error(f"詳細エラー: {traceback.format_exc()}")
+
+    def _get_session_id(self, ctx: InvocationContext) -> str:
+        """セッションIDを取得"""
+        try:
+            if hasattr(ctx, "session") and hasattr(ctx.session, "session_id"):
+                return ctx.session.session_id
+            elif hasattr(ctx, "session") and hasattr(ctx.session, "user_id"):
+                return f"{ctx.session.user_id}_default"
+            else:
+                return "fallback_session"
+        except Exception:
+            return "fallback_session"
 
     async def _build_json_from_conversation_analysis(self, conversation_text: str) -> Optional[str]:
         """会話テキストの分析からJSON構成案を手動構築"""

@@ -35,18 +35,31 @@ class _UnifiedPreviewWidgetState extends State<UnifiedPreviewWidget> {
   bool _hasError = false;
   String _errorMessage = '';
 
+  /// 安全なsetState実行
+  void _safeSetState(VoidCallback fn) {
+    if (mounted) {
+      setState(fn);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    _initializePreview();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _initializePreview();
+      }
+    });
   }
 
   void _initializePreview() {
+    if (!mounted) return;
+    
     if (_viewId != null && _cachedContent == widget.htmlContent) {
       return;
     }
 
-    setState(() {
+    _safeSetState(() {
       _isLoading = true;
       _hasError = false;
       _errorMessage = '';
@@ -99,28 +112,24 @@ class _UnifiedPreviewWidgetState extends State<UnifiedPreviewWidget> {
 
       // iframe読み込み完了イベント
       _iframe!.onLoad.listen((_) {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-          widget.onContentReady?.call();
-          
-          if (kDebugMode) {
-            debugPrint('📄 [UnifiedPreview] プレビュー読み込み完了');
-          }
+        _safeSetState(() {
+          _isLoading = false;
+        });
+        widget.onContentReady?.call();
+        
+        if (kDebugMode) {
+          debugPrint('📄 [UnifiedPreview] プレビュー読み込み完了');
         }
       });
 
       // エラーハンドリング
       _iframe!.onError.listen((event) {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-            _hasError = true;
-            _errorMessage = 'プレビューの読み込みに失敗しました';
-          });
-          widget.onError?.call(_errorMessage);
-        }
+        _safeSetState(() {
+          _isLoading = false;
+          _hasError = true;
+          _errorMessage = 'プレビューの読み込みに失敗しました';
+        });
+        widget.onError?.call(_errorMessage);
       });
 
       // プラットフォームビューとして登録
@@ -130,7 +139,7 @@ class _UnifiedPreviewWidgetState extends State<UnifiedPreviewWidget> {
       );
 
     } catch (e) {
-      setState(() {
+      _safeSetState(() {
         _isLoading = false;
         _hasError = true;
         _errorMessage = 'プレビューの初期化に失敗しました: $e';
@@ -180,12 +189,16 @@ class _UnifiedPreviewWidgetState extends State<UnifiedPreviewWidget> {
   @override
   void didUpdateWidget(UnifiedPreviewWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.htmlContent != widget.htmlContent) {
-      if (_iframe != null && _viewId != null) {
-        _updateContent(widget.htmlContent);
-      } else {
-        _initializePreview();
-      }
+    if (mounted && oldWidget.htmlContent != widget.htmlContent) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          if (_iframe != null && _viewId != null) {
+            _updateContent(widget.htmlContent);
+          } else {
+            _initializePreview();
+          }
+        }
+      });
     }
   }
 

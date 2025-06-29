@@ -51,6 +51,13 @@ class SimpleLayoutAgent(LlmAgent):
                 if json_outline:
                     logger.info(f"📄 JSON構成案プレビュー: {json_outline[:300]}...")
             
+            # セッション状態が空の場合、外部ストレージから復旧を試行
+            if not json_outline:
+                logger.info("🔄 セッション状態が空のため、外部ストレージから復旧を試行")
+                json_outline = await self._load_from_external_storage(ctx, "outline")
+                if json_outline:
+                    logger.info(f"✅ 外部ストレージからJSON構成案を復旧: {len(json_outline)} 文字")
+            
             # JSON構成案が存在する場合は優先的に使用
             if json_outline:
                 logger.info("✅ JSON構成案を使用してHTML生成")
@@ -76,10 +83,17 @@ class SimpleLayoutAgent(LlmAgent):
                         logger.info(f"📄 バックアップから会話内容を復旧: {len(backup_content)} 文字")
                         conversation_content = backup_content
                 
+                # 外部ストレージからも復旧を試行
+                if not conversation_content:
+                    logger.info("🔄 セッション状態とバックアップが空のため、外部ストレージから復旧を試行")
+                    conversation_content = await self._load_from_external_storage(ctx, "conversation")
+                    if conversation_content:
+                        logger.info(f"✅ 外部ストレージから会話内容を復旧: {len(conversation_content)} 文字")
+                
                 if conversation_content:
                     logger.info(f"📄 会話内容プレビュー: {conversation_content[:200]}...")
                 else:
-                    logger.warning(f"⚠️  会話内容が両方から取得できません。利用可能キー: {list(ctx.session.state.keys())}")
+                    logger.warning(f"⚠️  すべての場所から会話内容取得失敗。利用可能キー: {list(ctx.session.state.keys())}")
             
             # 方法2: セッション状態から取得できない場合、セッションイベントから直接抽出
             if not conversation_content:
@@ -449,6 +463,52 @@ class SimpleLayoutAgent(LlmAgent):
         except Exception as e:
             logger.error(f"❌ 代替手段での取得エラー: {e}")
             return ""
+
+    async def _load_from_external_storage(self, ctx: InvocationContext, data_type: str) -> str:
+        """外部ストレージからデータを読み込み"""
+        try:
+            import os
+            
+            # セッションIDを取得
+            session_id = self._get_session_id(ctx)
+            if not session_id:
+                logger.warning("⚠️  セッションIDが取得できないため外部読み込みをスキップ")
+                return ""
+            
+            storage_dir = "/tmp/gakkoudayori_sessions"
+            
+            if data_type == "outline":
+                file_path = f"{storage_dir}/{session_id}_outline.json"
+            elif data_type == "conversation":
+                file_path = f"{storage_dir}/{session_id}_conversation.txt"
+            else:
+                logger.error(f"❌ 不明なデータタイプ: {data_type}")
+                return ""
+            
+            if os.path.exists(file_path):
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                logger.info(f"✅ 外部ストレージ読み込み成功: {file_path} ({len(content)} 文字)")
+                return content
+            else:
+                logger.info(f"📋 外部ストレージファイルが存在しません: {file_path}")
+                return ""
+                
+        except Exception as e:
+            logger.error(f"❌ 外部ストレージ読み込みエラー: {e}")
+            return ""
+
+    def _get_session_id(self, ctx: InvocationContext) -> str:
+        """セッションIDを取得"""
+        try:
+            if hasattr(ctx, "session") and hasattr(ctx.session, "session_id"):
+                return ctx.session.session_id
+            elif hasattr(ctx, "session") and hasattr(ctx.session, "user_id"):
+                return f"{ctx.session.user_id}_default"
+            else:
+                return "fallback_session"
+        except Exception:
+            return "fallback_session"
 
     async def _generate_html_from_json_outline(self, json_outline: str) -> str:
         """JSON構成案からHTMLを生成"""

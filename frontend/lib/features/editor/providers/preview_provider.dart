@@ -26,9 +26,23 @@ class PreviewProvider extends ChangeNotifier {
   int _historyIndex = -1;
   bool _isRichEditorMode = true;
   Map<String, dynamic>? _lastHtmlAnalysis;
+  bool _disposed = false;
 
   PreviewProvider({required ErrorProvider errorProvider})
       : _errorProvider = errorProvider;
+
+  /// 安全なnotifyListeners実行
+  void _safeNotifyListeners() {
+    if (!_disposed) {
+      notifyListeners();
+    }
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
 
   // Getters
   PreviewMode get currentMode => _currentMode;
@@ -45,7 +59,7 @@ class PreviewProvider extends ChangeNotifier {
   void switchMode(PreviewMode mode) {
     _currentMode = mode;
     _isEditing = mode == PreviewMode.edit;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   // HTMLコンテンツの更新（強化版：構造保持・履歴機能付き）
@@ -75,7 +89,7 @@ class PreviewProvider extends ChangeNotifier {
       
       debugPrint('📝 [PreviewProvider] HTML更新: ${_htmlContent.length}文字 (履歴: ${_htmlHistory.length}件)');
       
-      notifyListeners();
+      _safeNotifyListeners();
     } catch (error) {
       _errorProvider.setError('Failed to update HTML content: $error');
       debugPrint('HTML content update error: $error');
