@@ -8,7 +8,9 @@ class TitleTemplate {
   final String name;
   final String pattern;
   final String category;
+  @JsonKey(name: 'usage_count')
   final int usageCount;
+  @JsonKey(name: 'last_used')
   final DateTime? lastUsed;
 
   TitleTemplate({
@@ -48,8 +50,11 @@ class TitleTemplates {
   final String primary;
   final List<String> seasonal;
   final List<TitleTemplate> custom;
+  @JsonKey(name: 'default_pattern')
   final String defaultPattern;
+  @JsonKey(name: 'auto_numbering')
   final bool autoNumbering;
+  @JsonKey(name: 'current_number')
   final int currentNumber;
 
   TitleTemplates({
@@ -86,8 +91,11 @@ class TitleTemplates {
 
 @JsonSerializable()
 class UIPreferences {
+  @JsonKey(name: 'show_title_field')
   final bool showTitleField;
+  @JsonKey(name: 'auto_generate_title')
   final bool autoGenerateTitle;
+  @JsonKey(name: 'image_upload_location')
   final String imageUploadLocation;
   final String theme;
   final String language;
@@ -123,10 +131,15 @@ class UIPreferences {
 
 @JsonSerializable()
 class NotificationSettings {
+  @JsonKey(name: 'email_notifications')
   final bool emailNotifications;
+  @JsonKey(name: 'browser_notifications')
   final bool browserNotifications;
+  @JsonKey(name: 'reminder_frequency')
   final String reminderFrequency;
+  @JsonKey(name: 'quiet_hours_start')
   final String? quietHoursStart;
+  @JsonKey(name: 'quiet_hours_end')
   final String? quietHoursEnd;
 
   NotificationSettings({
@@ -144,9 +157,13 @@ class NotificationSettings {
 
 @JsonSerializable()
 class WorkflowSettings {
+  @JsonKey(name: 'auto_save_interval')
   final int autoSaveInterval;
+  @JsonKey(name: 'draft_retention_days')
   final int draftRetentionDays;
+  @JsonKey(name: 'backup_enabled')
   final bool backupEnabled;
+  @JsonKey(name: 'collaboration_mode')
   final bool collaborationMode;
 
   WorkflowSettings({
@@ -163,15 +180,24 @@ class WorkflowSettings {
 
 @JsonSerializable()
 class UserSettings {
+  @JsonKey(name: 'school_name')
   final String schoolName;
+  @JsonKey(name: 'class_name')
   final String className;
+  @JsonKey(name: 'teacher_name')
   final String teacherName;
+  @JsonKey(name: 'title_templates')
   final TitleTemplates titleTemplates;
+  @JsonKey(name: 'ui_preferences')
   final UIPreferences uiPreferences;
+  @JsonKey(name: 'notification_settings')
   final NotificationSettings notificationSettings;
+  @JsonKey(name: 'workflow_settings')
   final WorkflowSettings workflowSettings;
   final String version;
+  @JsonKey(name: 'created_at')
   final DateTime? createdAt;
+  @JsonKey(name: 'updated_at')
   final DateTime? updatedAt;
 
   UserSettings({
@@ -237,7 +263,9 @@ class UserSettings {
 @JsonSerializable()
 class UserSettingsResponse {
   final UserSettings? settings;
+  @JsonKey(name: 'is_complete')
   final bool isComplete;
+  @JsonKey(name: 'missing_fields')
   final List<String> missingFields;
   final List<String> suggestions;
 
@@ -258,6 +286,7 @@ class TitleSuggestion {
   final String title;
   final double confidence;
   final String source;
+  @JsonKey(name: 'template_used')
   final String? templateUsed;
 
   TitleSuggestion({
@@ -274,7 +303,9 @@ class TitleSuggestion {
 
 @JsonSerializable()
 class TitleSuggestionRequest {
+  @JsonKey(name: 'content_hint')
   final String? contentHint;
+  @JsonKey(name: 'event_type')
   final String? eventType;
   final String? season;
   final String urgency;

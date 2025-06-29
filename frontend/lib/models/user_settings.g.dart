@@ -12,10 +12,10 @@ TitleTemplate _$TitleTemplateFromJson(Map<String, dynamic> json) =>
       name: json['name'] as String,
       pattern: json['pattern'] as String,
       category: json['category'] as String? ?? 'custom',
-      usageCount: (json['usageCount'] as num?)?.toInt() ?? 0,
-      lastUsed: json['lastUsed'] == null
+      usageCount: (json['usage_count'] as num?)?.toInt() ?? 0,
+      lastUsed: json['last_used'] == null
           ? null
-          : DateTime.parse(json['lastUsed'] as String),
+          : DateTime.parse(json['last_used'] as String),
     );
 
 Map<String, dynamic> _$TitleTemplateToJson(TitleTemplate instance) =>
@@ -24,8 +24,8 @@ Map<String, dynamic> _$TitleTemplateToJson(TitleTemplate instance) =>
       'name': instance.name,
       'pattern': instance.pattern,
       'category': instance.category,
-      'usageCount': instance.usageCount,
-      'lastUsed': instance.lastUsed?.toIso8601String(),
+      'usage_count': instance.usageCount,
+      'last_used': instance.lastUsed?.toIso8601String(),
     };
 
 TitleTemplates _$TitleTemplatesFromJson(Map<String, dynamic> json) =>
@@ -39,9 +39,9 @@ TitleTemplates _$TitleTemplatesFromJson(Map<String, dynamic> json) =>
               ?.map((e) => TitleTemplate.fromJson(e as Map<String, dynamic>))
               .toList() ??
           const [],
-      defaultPattern: json['defaultPattern'] as String? ?? '○年○組 学級通信',
-      autoNumbering: json['autoNumbering'] as bool? ?? true,
-      currentNumber: (json['currentNumber'] as num?)?.toInt() ?? 1,
+      defaultPattern: json['default_pattern'] as String? ?? '○年○組 学級通信',
+      autoNumbering: json['auto_numbering'] as bool? ?? true,
+      currentNumber: (json['current_number'] as num?)?.toInt() ?? 1,
     );
 
 Map<String, dynamic> _$TitleTemplatesToJson(TitleTemplates instance) =>
@@ -49,25 +49,25 @@ Map<String, dynamic> _$TitleTemplatesToJson(TitleTemplates instance) =>
       'primary': instance.primary,
       'seasonal': instance.seasonal,
       'custom': instance.custom,
-      'defaultPattern': instance.defaultPattern,
-      'autoNumbering': instance.autoNumbering,
-      'currentNumber': instance.currentNumber,
+      'default_pattern': instance.defaultPattern,
+      'auto_numbering': instance.autoNumbering,
+      'current_number': instance.currentNumber,
     };
 
 UIPreferences _$UIPreferencesFromJson(Map<String, dynamic> json) =>
     UIPreferences(
-      showTitleField: json['showTitleField'] as bool? ?? false,
-      autoGenerateTitle: json['autoGenerateTitle'] as bool? ?? true,
-      imageUploadLocation: json['imageUploadLocation'] as String? ?? 'chat',
+      showTitleField: json['show_title_field'] as bool? ?? false,
+      autoGenerateTitle: json['auto_generate_title'] as bool? ?? true,
+      imageUploadLocation: json['image_upload_location'] as String? ?? 'chat',
       theme: json['theme'] as String? ?? 'default',
       language: json['language'] as String? ?? 'ja',
     );
 
 Map<String, dynamic> _$UIPreferencesToJson(UIPreferences instance) =>
     <String, dynamic>{
-      'showTitleField': instance.showTitleField,
-      'autoGenerateTitle': instance.autoGenerateTitle,
-      'imageUploadLocation': instance.imageUploadLocation,
+      'show_title_field': instance.showTitleField,
+      'auto_generate_title': instance.autoGenerateTitle,
+      'image_upload_location': instance.imageUploadLocation,
       'theme': instance.theme,
       'language': instance.language,
     };
@@ -75,72 +75,72 @@ Map<String, dynamic> _$UIPreferencesToJson(UIPreferences instance) =>
 NotificationSettings _$NotificationSettingsFromJson(
         Map<String, dynamic> json) =>
     NotificationSettings(
-      emailNotifications: json['emailNotifications'] as bool? ?? true,
-      browserNotifications: json['browserNotifications'] as bool? ?? false,
-      reminderFrequency: json['reminderFrequency'] as String? ?? 'weekly',
-      quietHoursStart: json['quietHoursStart'] as String? ?? '22:00',
-      quietHoursEnd: json['quietHoursEnd'] as String? ?? '08:00',
+      emailNotifications: json['email_notifications'] as bool? ?? true,
+      browserNotifications: json['browser_notifications'] as bool? ?? false,
+      reminderFrequency: json['reminder_frequency'] as String? ?? 'weekly',
+      quietHoursStart: json['quiet_hours_start'] as String? ?? '22:00',
+      quietHoursEnd: json['quiet_hours_end'] as String? ?? '08:00',
     );
 
 Map<String, dynamic> _$NotificationSettingsToJson(
         NotificationSettings instance) =>
     <String, dynamic>{
-      'emailNotifications': instance.emailNotifications,
-      'browserNotifications': instance.browserNotifications,
-      'reminderFrequency': instance.reminderFrequency,
-      'quietHoursStart': instance.quietHoursStart,
-      'quietHoursEnd': instance.quietHoursEnd,
+      'email_notifications': instance.emailNotifications,
+      'browser_notifications': instance.browserNotifications,
+      'reminder_frequency': instance.reminderFrequency,
+      'quiet_hours_start': instance.quietHoursStart,
+      'quiet_hours_end': instance.quietHoursEnd,
     };
 
 WorkflowSettings _$WorkflowSettingsFromJson(Map<String, dynamic> json) =>
     WorkflowSettings(
-      autoSaveInterval: (json['autoSaveInterval'] as num?)?.toInt() ?? 30,
-      draftRetentionDays: (json['draftRetentionDays'] as num?)?.toInt() ?? 30,
-      backupEnabled: json['backupEnabled'] as bool? ?? true,
-      collaborationMode: json['collaborationMode'] as bool? ?? false,
+      autoSaveInterval: (json['auto_save_interval'] as num?)?.toInt() ?? 30,
+      draftRetentionDays: (json['draft_retention_days'] as num?)?.toInt() ?? 30,
+      backupEnabled: json['backup_enabled'] as bool? ?? true,
+      collaborationMode: json['collaboration_mode'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$WorkflowSettingsToJson(WorkflowSettings instance) =>
     <String, dynamic>{
-      'autoSaveInterval': instance.autoSaveInterval,
-      'draftRetentionDays': instance.draftRetentionDays,
-      'backupEnabled': instance.backupEnabled,
-      'collaborationMode': instance.collaborationMode,
+      'auto_save_interval': instance.autoSaveInterval,
+      'draft_retention_days': instance.draftRetentionDays,
+      'backup_enabled': instance.backupEnabled,
+      'collaboration_mode': instance.collaborationMode,
     };
 
 UserSettings _$UserSettingsFromJson(Map<String, dynamic> json) => UserSettings(
-      schoolName: json['schoolName'] as String,
-      className: json['className'] as String,
-      teacherName: json['teacherName'] as String,
+      schoolName: json['school_name'] as String,
+      className: json['class_name'] as String,
+      teacherName: json['teacher_name'] as String,
       titleTemplates: TitleTemplates.fromJson(
-          json['titleTemplates'] as Map<String, dynamic>),
-      uiPreferences:
-          UIPreferences.fromJson(json['uiPreferences'] as Map<String, dynamic>),
+          json['title_templates'] as Map<String, dynamic>),
+      uiPreferences: UIPreferences.fromJson(
+          json['ui_preferences'] as Map<String, dynamic>),
       notificationSettings: NotificationSettings.fromJson(
-          json['notificationSettings'] as Map<String, dynamic>),
+          json['notification_settings'] as Map<String, dynamic>),
       workflowSettings: WorkflowSettings.fromJson(
-          json['workflowSettings'] as Map<String, dynamic>),
+          json['workflow_settings'] as Map<String, dynamic>),
       version: json['version'] as String? ?? '2.0',
-      createdAt: json['createdAt'] == null
+      createdAt: json['created_at'] == null
           ? null
-          : DateTime.parse(json['createdAt'] as String),
-      updatedAt: json['updatedAt'] == null
+          : DateTime.parse(json['created_at'] as String),
+      updatedAt: json['updated_at'] == null
           ? null
-          : DateTime.parse(json['updatedAt'] as String),
+          : DateTime.parse(json['updated_at'] as String),
     );
 
 Map<String, dynamic> _$UserSettingsToJson(UserSettings instance) =>
     <String, dynamic>{
-      'schoolName': instance.schoolName,
-      'className': instance.className,
-      'teacherName': instance.teacherName,
-      'titleTemplates': instance.titleTemplates,
-      'uiPreferences': instance.uiPreferences,
-      'notificationSettings': instance.notificationSettings,
-      'workflowSettings': instance.workflowSettings,
+      'school_name': instance.schoolName,
+      'class_name': instance.className,
+      'teacher_name': instance.teacherName,
+      'title_templates': instance.titleTemplates,
+      'ui_preferences': instance.uiPreferences,
+      'notification_settings': instance.notificationSettings,
+      'workflow_settings': instance.workflowSettings,
       'version': instance.version,
-      'createdAt': instance.createdAt?.toIso8601String(),
-      'updatedAt': instance.updatedAt?.toIso8601String(),
+      'created_at': instance.createdAt?.toIso8601String(),
+      'updated_at': instance.updatedAt?.toIso8601String(),
     };
 
 UserSettingsResponse _$UserSettingsResponseFromJson(
@@ -149,8 +149,8 @@ UserSettingsResponse _$UserSettingsResponseFromJson(
       settings: json['settings'] == null
           ? null
           : UserSettings.fromJson(json['settings'] as Map<String, dynamic>),
-      isComplete: json['isComplete'] as bool,
-      missingFields: (json['missingFields'] as List<dynamic>?)
+      isComplete: json['is_complete'] as bool,
+      missingFields: (json['missing_fields'] as List<dynamic>?)
               ?.map((e) => e as String)
               .toList() ??
           const [],
@@ -164,8 +164,8 @@ Map<String, dynamic> _$UserSettingsResponseToJson(
         UserSettingsResponse instance) =>
     <String, dynamic>{
       'settings': instance.settings,
-      'isComplete': instance.isComplete,
-      'missingFields': instance.missingFields,
+      'is_complete': instance.isComplete,
+      'missing_fields': instance.missingFields,
       'suggestions': instance.suggestions,
     };
 
@@ -174,7 +174,7 @@ TitleSuggestion _$TitleSuggestionFromJson(Map<String, dynamic> json) =>
       title: json['title'] as String,
       confidence: (json['confidence'] as num).toDouble(),
       source: json['source'] as String,
-      templateUsed: json['templateUsed'] as String?,
+      templateUsed: json['template_used'] as String?,
     );
 
 Map<String, dynamic> _$TitleSuggestionToJson(TitleSuggestion instance) =>
@@ -182,14 +182,14 @@ Map<String, dynamic> _$TitleSuggestionToJson(TitleSuggestion instance) =>
       'title': instance.title,
       'confidence': instance.confidence,
       'source': instance.source,
-      'templateUsed': instance.templateUsed,
+      'template_used': instance.templateUsed,
     };
 
 TitleSuggestionRequest _$TitleSuggestionRequestFromJson(
         Map<String, dynamic> json) =>
     TitleSuggestionRequest(
-      contentHint: json['contentHint'] as String?,
-      eventType: json['eventType'] as String?,
+      contentHint: json['content_hint'] as String?,
+      eventType: json['event_type'] as String?,
       season: json['season'] as String?,
       urgency: json['urgency'] as String? ?? 'normal',
     );
@@ -197,8 +197,8 @@ TitleSuggestionRequest _$TitleSuggestionRequestFromJson(
 Map<String, dynamic> _$TitleSuggestionRequestToJson(
         TitleSuggestionRequest instance) =>
     <String, dynamic>{
-      'contentHint': instance.contentHint,
-      'eventType': instance.eventType,
+      'content_hint': instance.contentHint,
+      'event_type': instance.eventType,
       'season': instance.season,
       'urgency': instance.urgency,
     };
