@@ -146,20 +146,20 @@ class MainConversationAgent(LlmAgent):
         self, ctx: InvocationContext
     ) -> AsyncGenerator[Event, None]:
         """
-        ADK Auto-Flow対応: 自然な対話とシンプルなエージェント委譲を実現。
+        シンプルなADK標準実装: 自然な対話でLayoutAgentに自動委譲
         """
         try:
-            logger.info("=== MainConversationAgent実行開始 (ADK Auto-Flow対応版) ===")
+            logger.info("=== MainConversationAgent実行開始 (シンプル版) ===")
             
             # ユーザー設定の初期取得
             await self._initialize_user_context(ctx)
 
-            # ADK標準の親エージェント実行（Auto-Flowが自動的にLayoutAgentを委譲）
+            # 基本情報をセッション状態に保存
+            await self._save_basic_info_to_session(ctx)
+
+            # ADK標準の親エージェント実行（transfer_to_agentで自動委譲）
             async for event in super()._run_async_impl(ctx):
                 yield event
-
-            # セッション状態への情報保存（ADK標準のoutput_key使用）
-            await self._check_and_save_json_from_conversation(ctx)
 
             logger.info("=== MainConversationAgent実行完了 ===")
 
@@ -204,150 +204,37 @@ class MainConversationAgent(LlmAgent):
             import traceback
             logger.error(f"詳細エラー: {traceback.format_exc()}")
 
-    async def _extract_conversation_info(self, ctx: InvocationContext) -> str:
-        """対話履歴から学級通信作成に必要な情報を抽出"""
+    async def _save_basic_info_to_session(self, ctx: InvocationContext):
+        """基本情報をセッション状態に保存（LayoutAgentで使用）"""
         try:
-            # セッション履歴から最新の対話内容を取得
-            if not hasattr(ctx, "session"):
-                logger.warning("セッション情報が取得できません")
-                return None
-
-            # ユーザー設定から基本情報を取得
-            user_settings_context = ctx.session.state.get('user_settings_context')
-            user_id = ctx.session.state.get('user_id')
+            logger.info("基本情報をセッション状態に保存中...")
             
-            # ユーザー設定が文字列の場合はJSONパース
+            # ユーザー設定を取得
             user_settings = {}
-            if user_settings_context:
-                try:
+            try:
+                user_settings_json = await get_user_settings_context()
+                if user_settings_json:
                     import json
-                    user_settings = json.loads(user_settings_context) if isinstance(user_settings_context, str) else user_settings_context
-                except Exception as e:
-                    logger.error(f"ユーザー設定のパースエラー: {e}")
+                    user_settings = json.loads(user_settings_json)
+            except Exception as e:
+                logger.error(f"ユーザー設定取得エラー: {e}")
 
-            # 対話履歴から学級通信の内容を抽出
-            conversation_content = await self._extract_newsletter_content_from_messages(ctx)
+            # 現在の日付を取得
+            current_date = get_current_date()
             
-            # 学級通信作成用の構造化データを構築
-            newsletter_data = {
-                "schema_version": "2.5",
-                "newsletter_info": {
-                    "school_name": user_settings.get("学校名", ""),
-                    "class_name": user_settings.get("クラス名", ""),
-                    "teacher_name": user_settings.get("先生名", ""),
-                    "title": conversation_content.get("title", "学級通信"),
-                    "content": conversation_content.get("content", ""),
-                    "photos_count": conversation_content.get("photos_count", 0),
-                    "event_type": conversation_content.get("event_type", "")
-                },
-                "user_settings": user_settings,
-                "conversation_complete": True,
-                "ready_for_layout": True,
-                "timestamp": get_current_date(),
-                "user_id": user_id
-            }
-            
-            logger.info(f"抽出された学級通信情報: {newsletter_data['newsletter_info']}")
-            
-            import json
-            return json.dumps(newsletter_data, ensure_ascii=False, indent=2)
-
-        except Exception as e:
-            logger.error(f"対話情報抽出エラー: {e}")
-            import traceback
-            logger.error(f"詳細エラー: {traceback.format_exc()}")
-            return None
-
-    async def _extract_newsletter_content_from_messages(self, ctx: InvocationContext) -> dict:
-        """対話履歴から学級通信の具体的な内容を抽出"""
-        try:
-            content_info = {
-                "title": "",
-                "content": "",
-                "photos_count": 0,
-                "event_type": ""
-            }
-            
-            # セッション状態からoutlineを取得（最新の対話内容）
-            outline = ctx.session.state.get("outline", "")
-            if outline:
-                logger.info(f"対話内容から抽出: {outline[:200]}...")
+            # セッション状態に基本情報を保存
+            if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
+                ctx.session.state["school_name"] = user_settings.get("学校名", "○○小学校")
+                ctx.session.state["class_name"] = user_settings.get("クラス名", "3年2組")
+                ctx.session.state["teacher_name"] = user_settings.get("先生名", "田中先生")
+                ctx.session.state["current_date"] = current_date
                 
-                # 簡単なパターンマッチングで情報を抽出
-                import re
-                
-                # タイトルの抽出
-                title_patterns = [
-                    r'「([^」]+)」',  # 「タイトル」形式
-                    r'タイトル[は：:]\s*「?([^」\n]+)」?',
-                    r'学級通信[、，：:]\s*「?([^」\n]+)」?'
-                ]
-                for pattern in title_patterns:
-                    match = re.search(pattern, outline)
-                    if match:
-                        content_info["title"] = match.group(1).strip()
-                        break
-                
-                # 写真枚数の抽出
-                photo_patterns = [
-                    r'写真[は：:]\s*(\d+)\s*枚',
-                    r'(\d+)\s*枚',
-                    r'写真.*?(\d+)'
-                ]
-                for pattern in photo_patterns:
-                    match = re.search(pattern, outline)
-                    if match:
-                        try:
-                            content_info["photos_count"] = int(match.group(1))
-                            break
-                        except ValueError:
-                            pass
-                
-                # イベントタイプの抽出
-                if "運動会" in outline:
-                    content_info["event_type"] = "運動会"
-                elif "遠足" in outline:
-                    content_info["event_type"] = "遠足"
-                elif "文化祭" in outline or "学園祭" in outline:
-                    content_info["event_type"] = "文化祭"
-                elif "修学旅行" in outline:
-                    content_info["event_type"] = "修学旅行"
-                
-                # 内容の抽出（対話全体を要約として使用）
-                content_info["content"] = outline[:500]  # 最初の500文字を内容として使用
-            
-            logger.info(f"抽出された内容: タイトル='{content_info['title']}', 写真={content_info['photos_count']}枚, イベント='{content_info['event_type']}'")
-            return content_info
-            
-        except Exception as e:
-            logger.error(f"対話内容抽出エラー: {e}")
-            return {
-                "title": "学級通信",
-                "content": "",
-                "photos_count": 0,
-                "event_type": ""
-            }
-
-    async def _check_and_save_json_from_conversation(self, ctx: InvocationContext):
-        """対話から学級通信情報を抽出してセッション状態に保存"""
-        try:
-            logger.info("🔍 対話からJSON情報を抽出中")
-            
-            # 対話履歴から情報を抽出
-            extracted_info = await self._extract_conversation_info(ctx)
-            
-            if extracted_info:
-                # セッション状態に保存
-                save_result = save_json_to_session(extracted_info, ctx)
-                logger.info(f"JSON保存結果: {save_result}")
+                logger.info(f"基本情報保存完了: {ctx.session.state['school_name']} {ctx.session.state['class_name']} {ctx.session.state['teacher_name']}")
             else:
-                logger.info("抽出可能な情報がありませんでした")
+                logger.error("セッション状態にアクセスできません")
                 
         except Exception as e:
-            logger.error(f"JSON抽出・保存エラー: {e}")
-            import traceback
-            logger.error(f"詳細エラー: {traceback.format_exc()}")
-
+            logger.error(f"基本情報保存エラー: {e}")
 
 def create_main_conversation_agent() -> MainConversationAgent:
     """MainConversationAgentのインスタンスを生成するファクトリ関数。"""

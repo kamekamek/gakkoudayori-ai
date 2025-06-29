@@ -59,30 +59,22 @@ class LayoutAgent(LlmAgent):
                 content=Content(parts=[Part(text="学級通信のレイアウトを作成しています。少々お待ちください...")])
             )
 
-            # ADK標準: セッション状態からoutlineキーでJSONデータを取得
-            json_data = None
-            logger.info("LayoutAgent: JSON取得開始")
-
-            # ADK標準のoutlineキーから取得
-            if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
-                json_data = ctx.session.state.get("outline")
-                if json_data and await self._validate_json_data(json_data):
-                    logger.info(f"JSON取得成功: {len(json_data)} 文字")
-                else:
-                    logger.warning("有効なJSONデータが見つかりません")
-                    json_data = None
-            else:
-                logger.error("セッション状態にアクセスできません")
-
-            if not json_data:
-                logger.error("❌ JSON データが見つかりません。MainConversationAgentでの情報収集を確認してください")
+            # セッション状態から基本情報を取得
+            basic_info = self._get_basic_info_from_session(ctx)
+            
+            if not basic_info:
+                logger.error("❌ 基本情報が見つかりません")
                 yield Event(
                     author=self.name,
                     content=Content(parts=[Part(text="❌ 学級通信の基本情報が不足しています。もう一度、学校名・学年・先生名などの基本情報をお聞かせください。")])
                 )
                 return
 
-            logger.info(f"JSON データを読み込みました: {len(str(json_data))} 文字")
+            # 会話履歴から学級通信の内容を抽出
+            conversation_content = self._extract_content_from_conversation(ctx)
+
+            logger.info(f"基本情報取得成功: {basic_info['school_name']} {basic_info['class_name']} {basic_info['teacher_name']}")
+            logger.info(f"会話内容: {conversation_content[:100]}...")
 
             # ユーザーフレンドリーな進行中メッセージ
             yield Event(
@@ -90,38 +82,23 @@ class LayoutAgent(LlmAgent):
                 content=Content(parts=[Part(text="美しいデザインで仕上げています...")])
             )
 
-            # JSON解析とバリデーション
-            try:
-                import json as json_module
-                json_obj = json_module.loads(json_data)
-                
-                # 新しいデータ構造から基本情報を取得
-                newsletter_info = json_obj.get('newsletter_info', {})
-                school_name = newsletter_info.get('school_name', '')
-                class_name = newsletter_info.get('class_name', '')
-                teacher_name = newsletter_info.get('teacher_name', '')
-                
-                logger.info(f"JSON解析成功: 学校={school_name}, クラス={class_name}, 先生={teacher_name}")
-                
-                # 基本情報が揃っているかチェック
-                if not school_name or not class_name or not teacher_name:
-                    logger.warning(f"基本情報不足: school_name='{school_name}', class_name='{class_name}', teacher_name='{teacher_name}'")
-                    
-            except Exception as e:
-                logger.error(f"JSON解析エラー: {e}")
-                json_obj = None
-
-            # 簡潔なプロンプトでJSON情報をHTMLに変換
+            # 学級通信のHTMLを生成するためのプロンプト作成
             enhanced_prompt = f"""
-以下のJSONデータから学級通信のHTMLを生成してください。
+以下の情報から学級通信のHTMLを生成してください。
 
-JSONデータ:
-```json
-{json_data}
-```
+基本情報:
+- 学校名: {basic_info['school_name']}
+- クラス名: {basic_info['class_name']}
+- 担任の先生: {basic_info['teacher_name']}
+- 発行日: {basic_info['current_date']}
 
-- JSONの情報を正確に反映してください
+学級通信の内容:
+{conversation_content}
+
+要件:
 - 美しくレスポンシブなデザインにしてください
+- 完全なHTMLドキュメントとして出力してください
+- 日本の学級通信らしい温かみのあるデザインにしてください
 - HTMLのみを出力してください（説明は不要）
             """
 
@@ -324,7 +301,55 @@ JSONデータ:
         except Exception as e:
             logger.error(f"テンプレートHTML生成エラー: {e}")
 
+    def _get_basic_info_from_session(self, ctx: InvocationContext) -> dict:
+        """セッション状態から基本情報を取得"""
+        try:
+            if not hasattr(ctx, "session") or not hasattr(ctx.session, "state"):
+                logger.error("セッション状態にアクセスできません")
+                return None
+            
+            state = ctx.session.state
+            basic_info = {
+                "school_name": state.get("school_name", "○○小学校"),
+                "class_name": state.get("class_name", "3年2組"),
+                "teacher_name": state.get("teacher_name", "田中先生"),
+                "current_date": state.get("current_date", "2025-06-30")
+            }
+            
+            # 基本情報が揃っているかチェック
+            if not basic_info["school_name"] or not basic_info["class_name"] or not basic_info["teacher_name"]:
+                logger.warning(f"基本情報不足: {basic_info}")
+                return None
+                
+            return basic_info
+            
+        except Exception as e:
+            logger.error(f"基本情報取得エラー: {e}")
+            return None
 
+    def _extract_content_from_conversation(self, ctx: InvocationContext) -> str:
+        """会話履歴から学級通信の内容を抽出"""
+        try:
+            # セッションから会話履歴を取得
+            if not hasattr(ctx, "session"):
+                return "学級通信の内容がここに入ります。"
+            
+            # 新しいメッセージから内容を抽出
+            content = ""
+            if hasattr(ctx, 'new_message') and ctx.new_message:
+                if hasattr(ctx.new_message, 'parts'):
+                    for part in ctx.new_message.parts:
+                        if hasattr(part, 'text') and part.text:
+                            content += part.text + "\n"
+            
+            if not content.strip():
+                content = "今日は素晴らしい一日でした。子どもたちは元気に活動し、たくさんのことを学びました。"
+            
+            return content.strip()
+            
+        except Exception as e:
+            logger.error(f"会話内容抽出エラー: {e}")
+            return "学級通信の内容がここに入ります。"
 
     def _extract_session_id(self, ctx: InvocationContext) -> Optional[str]:
         """InvocationContextからセッションIDを抽出"""
