@@ -34,7 +34,7 @@ class PreviewProvider extends ChangeNotifier {
   /// 安全なnotifyListeners実行
   void _safeNotifyListeners() {
     if (!_disposed) {
-      notifyListeners();
+      _safeNotifyListeners();
     }
   }
 
@@ -148,13 +148,13 @@ class PreviewProvider extends ChangeNotifier {
   // コンテンツをクリア
   void clearContent() {
     _htmlContent = '';
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   // スタイルの選択
   void selectStyle(String style) {
     _selectedStyle = style;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   // 編集状態の設定
@@ -165,13 +165,13 @@ class PreviewProvider extends ChangeNotifier {
     } else {
       _currentMode = PreviewMode.preview;
     }
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   // PDF生成状態の管理
   void setPdfGenerating(bool isGenerating) {
     _isGeneratingPdf = isGenerating;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   // PDF生成
@@ -324,7 +324,7 @@ class PreviewProvider extends ChangeNotifier {
 
     // 再生成中状態に設定
     _isGeneratingPdf = true; // 生成中フラグを再利用
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
       // 既存のHTMLコンテンツから要素を抽出して再生成のヒントとする
@@ -337,7 +337,7 @@ class PreviewProvider extends ChangeNotifier {
       debugPrint('コンテンツ再生成エラー: $e');
     } finally {
       _isGeneratingPdf = false;
-      notifyListeners();
+      _safeNotifyListeners();
     }
   }
 
@@ -366,7 +366,7 @@ class PreviewProvider extends ChangeNotifier {
     _isEditing = false;
     _isGeneratingPdf = false;
     _selectedStyle = 'classic';
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   // 編集内容の保存
@@ -456,7 +456,7 @@ class PreviewProvider extends ChangeNotifier {
     if (_isRichEditorMode != isRichMode) {
       _isRichEditorMode = isRichMode;
       debugPrint('🔄 [PreviewProvider] エディターモード変更: ${isRichMode ? "リッチ" : "テキスト"}');
-      notifyListeners();
+      _safeNotifyListeners();
     }
   }
 
@@ -511,6 +511,6 @@ class PreviewProvider extends ChangeNotifier {
     _lastHtmlAnalysis = null;
     clearHistory();
     debugPrint('🔄 [PreviewProvider] 完全リセット実行');
-    notifyListeners();
+    _safeNotifyListeners();
   }
 }

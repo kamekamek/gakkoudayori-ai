@@ -31,6 +31,17 @@ class AdkChatProvider extends ChangeNotifier {
   // プロバイダーの生存状態を追跡
   bool _disposed = false;
 
+  /// 安全なnotifyListeners実行
+  void _safeNotifyListeners() {
+    if (!_disposed && hasListeners) {
+      try {
+        notifyListeners();
+      } catch (e) {
+        debugPrint('[AdkChatProvider] Error in notifyListeners: $e');
+      }
+    }
+  }
+
   // 学級通信生成ボタン関連状態
   bool _showGenerateButton = false;
   bool _readyToGenerate = false;
@@ -63,16 +74,6 @@ class AdkChatProvider extends ChangeNotifier {
     debugPrint('[AdkChatProvider] PreviewProvider設定完了: ${previewProvider.runtimeType}');
   }
 
-  /// 安全なnotifyListeners呼び出し
-  void _safeNotifyListeners() {
-    if (!_disposed && hasListeners) {
-      try {
-        notifyListeners();
-      } catch (e) {
-        debugPrint('[AdkChatProvider] Error in notifyListeners: $e');
-      }
-    }
-  }
 
   void _initializeAudioService() {
     debugPrint('[AdkChatProvider] Initializing audio service...');
