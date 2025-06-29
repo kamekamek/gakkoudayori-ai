@@ -9,7 +9,7 @@ import '../core/exceptions/app_exceptions.dart';
 
 /// ADKエージェントとの通信を管理するサービス
 class AdkAgentService {
-  final String _baseUrl = AppConfig.apiBaseUrl;
+  String get _baseUrl => AppConfig.currentApiBaseUrl;
   final http.Client _httpClient = http.Client();
 
   /// Firebase認証トークンを安全に取得

@@ -2,11 +2,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import '../models/user_settings.dart';
+import '../config/app_config.dart';
 
 class UserSettingsService {
-  static const String baseUrl = kDebugMode 
-      ? 'http://localhost:8081/api/v1' 
-      : 'https://your-production-url.com/api/v1';
+  static String get baseUrl => AppConfig.apiV1BaseUrl;
 
   final http.Client _client;
   String? _authToken;

@@ -8,6 +8,7 @@ from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events.event import Event
 from google.adk.models.google_llm import Gemini
 from google.adk.tools import FunctionTool
+from google.adk.tools.tool_context import ToolContext
 from google.genai.types import Content, Part
 
 from .prompt import MAIN_CONVERSATION_INSTRUCTION
@@ -23,13 +24,15 @@ def get_current_date() -> str:
     return current_date
 
 
-async def get_user_settings_context(user_id: str) -> str:
+async def get_user_settings_context(user_id: str, ctx: ToolContext) -> str:
     """
     ユーザー設定情報を取得してエージェントに提供します。
     学校名、クラス名、先生名、タイトルテンプレートなどの個人設定を返します。
     """
     try:
-        logger.info(f"ユーザー設定を取得中: user_id={user_id}")
+        # セッション状態から実際のユーザーIDを取得（ADKのデフォルトuser_idを上書き）
+        actual_user_id = ctx.session.state.get("user_id", user_id)
+        logger.info(f"ユーザー設定を取得中: パラメータuser_id={user_id}, 実際のuser_id={actual_user_id}")
 
         # UserSettingsServiceを使用してユーザー設定を取得
         import os
@@ -37,7 +40,7 @@ async def get_user_settings_context(user_id: str) -> str:
         sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
         from services.user_settings_service import UserSettingsService
         service = UserSettingsService()
-        settings = await service.get_user_settings(user_id)
+        settings = await service.get_user_settings(actual_user_id)
 
         if settings:
             context_info = {
@@ -56,7 +59,7 @@ async def get_user_settings_context(user_id: str) -> str:
             logger.info(f"ユーザー設定取得成功: {settings.school_name} {settings.class_name}")
             return json.dumps(context_info, ensure_ascii=False, indent=2)
         else:
-            logger.warning(f"ユーザー設定が見つかりません: user_id={user_id}")
+            logger.warning(f"ユーザー設定が見つかりません: user_id={actual_user_id}")
             return json.dumps({
                 "status": "設定なし",
                 "message": "ユーザー設定が未作成です。設定画面から基本情報を入力してください。",
