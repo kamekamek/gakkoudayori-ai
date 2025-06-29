@@ -318,6 +318,99 @@ make ci-test                     # CI環境模擬テスト
 - モバイル: タブ切り替えレイアウト (768px-)
 - Flutter Webで完全対応
 
+## 🚀 Claude Code上手な使い方・ベストプラクティス
+
+### 🎯 開発フロー（必須手順）
+1. **要件定義を最初に行う**
+   ```bash
+   # ✅ 良い例: 要件を明確化してから開発開始
+   「○○機能を実装したいのですが、まず要件を整理させてください」
+   
+   # ❌ 悪い例: いきなりコード作成依頼
+   「○○のコードを書いて」
+   ```
+
+2. **ブラウザ操作環境の準備**
+   ```bash
+   # 開発サーバー起動後、URLを明確に伝える
+   make dev  # http://localhost:8081 でアクセス可能
+   ```
+
+3. **適切なログ出力の準備**
+   ```bash
+   # ログレベル設定
+   export LOG_LEVEL=DEBUG
+   
+   # ログをファイルに出力
+   tail -f backend/logs/app.log | tee debug.log
+   ```
+
+### 🛠️ コマンド連携の最適化
+
+4. **Claudeに事前にコマンド名称を伝える**
+   ```bash
+   # プロジェクト固有コマンドをClaude Codeに明示
+   make dev          # 開発環境起動
+   make test         # テスト実行  
+   make lint         # コード品質チェック
+   make deploy       # デプロイ実行
+   make reset-dev    # 環境リセット
+   
+   # ADK関連コマンド
+   uv run python -m google.adk.cli.main web --agent-path ./agents --port 8080
+   ```
+
+5. **完了報告の音声化**
+   ```bash
+   # macOS環境での音声完了報告
+   afplay /System/Library/Sounds/Glass.aiff
+   say "タスクが完了しました"
+   
+   # プロジェクト用カスタム完了音声
+   say "学校だよりAIの修正が完了しました。テストを実行してください。"
+   ```
+
+### 📁 Git管理の効率化
+
+6. **Git Worktreeの活用**
+   ```bash
+   # メインブランチを保護しながら作業
+   git worktree add .git/worktrees/feature-branch feature-branch
+   cd .git/worktrees/feature-branch
+   
+   # 複数機能並行開発
+   git worktree add .git/worktrees/ui-improvements ui-improvements
+   git worktree add .git/worktrees/backend-api backend-api
+   
+   # worktree一覧確認
+   git worktree list
+   ```
+
+7. **ツール許可の適切な管理**
+   ```bash
+   # Claude Codeのツール許可確認・設定
+   /permissions
+   
+   # 推奨設定:
+   # ✅ Bash: 必須（開発コマンド実行）
+   # ✅ Read/Write/Edit: 必須（ファイル操作）
+   # ✅ TodoWrite: 推奨（タスク管理）
+   # ⚠️ WebSearch: 必要時のみ
+   ```
+
+8. **こまめなコミット戦略**
+   ```bash
+   # 機能単位での細かいコミット
+   git add -A && git commit -m "✨ MainConversationAgentのJSON処理を簡素化
+   
+   🤖 Generated with Claude Code
+   
+   Co-Authored-By: Claude <noreply@anthropic.com>"
+   
+   # 作業ブランチでの中間コミット
+   git commit -m "🚧 WIP: LayoutAgent HTML生成ロジック修正中"
+   ```
+
 ## 🎯 Claude Code使用時の重要なルール
 
 ### タスク管理
@@ -329,6 +422,17 @@ make ci-test                     # CI環境模擬テスト
 - コード変更前に必ず既存のコードスタイルを確認し、それに従うこと
 - 新しいライブラリを使用する前に、既存のプロジェクトで使用されているかを確認すること
 - セキュリティベストプラクティスに従い、秘密情報をコードに含めないこと
+
+### 効率的なコミュニケーション
+```bash
+# ✅ 効果的なClaude Code使用例
+「ADKエージェントのセッション管理でエラーが発生しています。
+ログを確認してから、適切な修正方法を提案してください。
+完了したら音声で報告してください。」
+
+# ❌ 非効率な使用例  
+「エラーを直して」
+```
 
 ### Cursor Rulesとの統合
 このプロジェクトは以下のCursor Rulesに従います：
