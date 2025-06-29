@@ -6,7 +6,6 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 # サービスとツールを相対パスでインポート
-from services import firestore_service, storage
 
 # PDF変換のためのライブラリ
 try:

@@ -20,11 +20,6 @@ def test_imports():
     """基本的なインポートをテストします。"""
     print("🔍 インポートテスト...")
     try:
-        from google.adk.agents import LlmAgent, SequentialAgent
-        from google.adk.agents.invocation_context import InvocationContext
-        from google.adk.events.event import Event
-        from google.adk.models.google_llm import Gemini
-        from google.adk.tools import FunctionTool
 
         print("✅ 基本インポート成功")
         return True

@@ -1,9 +1,11 @@
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
 from functools import lru_cache
+from typing import Any, Dict, List, Optional
+
+from google.cloud import firestore
 
 from app.auth import User
-from google.cloud import firestore
+
 
 @lru_cache()
 def get_db_client() -> firestore.AsyncClient:
@@ -77,7 +79,7 @@ async def get_documents_by_user(user_id: str) -> List[Dict[str, Any]]:
         .order_by("updatedAt", direction=firestore.Query.DESCENDING)
     )
     docs_stream = docs_query.stream()
-    
+
     documents = []
     async for doc in docs_stream:
         doc_data = doc.to_dict()

@@ -20,16 +20,32 @@ class AdkAgentService {
     Map<String, dynamic>? metadata,
   }) async {
     try {
+      // Firebase認証トークンを取得
+      String? authToken;
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        authToken = await user.getIdToken();
+      }
+      
       final url = Uri.parse('$_baseUrl/chat');
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+      };
+      
+      // 認証トークンがある場合は追加
+      if (authToken != null) {
+        headers['Authorization'] = 'Bearer $authToken';
+      }
+      
       final response = await _httpClient
           .post(
             url,
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            headers: headers,
             body: jsonEncode({
               'session': sessionId,
               'message': message,
+              'user_id': userId,  // ユーザーIDを明示的に送信
+              'metadata': metadata ?? {},
             }),
           )
           .timeout(const Duration(seconds: 30));

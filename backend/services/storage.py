@@ -5,6 +5,7 @@ from functools import lru_cache
 
 from google.cloud import storage
 
+
 @lru_cache()
 def get_storage_client() -> storage.Client:
     """Cloud Storageクライアントのシングルトンインスタンスを返す"""

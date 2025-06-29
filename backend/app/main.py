@@ -3,15 +3,12 @@ import os
 from contextlib import asynccontextmanager
 
 import google.genai.types as genai_types
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends
+from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from google.adk.runners import Runner
 from google.adk.sessions.in_memory_session_service import InMemorySessionService
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
-
-# HTML Artifact 管理
-from app.core.artifact_manager import artifact_manager
 
 # 実行対象のエージェントを直接インポート
 from agents.main_conversation_agent.agent import root_agent
@@ -21,6 +18,9 @@ from app import stt as stt_api
 from app import user_dictionary as user_dictionary_api
 from app.api.v1.endpoints import documents as documents_api
 from app.auth import User, get_current_user, initialize_firebase_app
+
+# HTML Artifact 管理
+from app.core.artifact_manager import artifact_manager
 
 # --- 環境設定 ---
 ENVIRONMENT = os.getenv("ENVIRONMENT", "production")
@@ -80,7 +80,7 @@ runner = Runner(
 )
 print("✅ ADK Runner initialized manually for v1.0.0")
 
-from app.api.v1.endpoints import documents as documents_api
+from app.api.v1.endpoints import user_settings as user_settings_api
 
 # --- APIルーターの組み込み ---
 app.include_router(pdf_api.router, prefix="/api/v1")
@@ -88,6 +88,7 @@ app.include_router(classroom_api.router, prefix="/api/v1")
 app.include_router(stt_api.router, prefix="/api/v1")
 app.include_router(user_dictionary_api.router, prefix="/api/v1")
 app.include_router(documents_api.router, prefix="/api/v1")
+app.include_router(user_settings_api.router, prefix="/api/v1")
 
 
 # --- モデル定義 ---
@@ -136,11 +137,20 @@ async def adk_chat_stream(
                 print(
                     f"📝 Creating new session for user: {user_id}, session: {session_id}"
                 )
-                await session_service.create_session(
+                new_session = await session_service.create_session(
                     app_name="gakkoudayori-agent",
                     user_id=user_id,
                     session_id=session_id,
                 )
+                # セッション状態にユーザーIDを保存
+                if new_session and hasattr(new_session, 'state'):
+                    new_session.state["user_id"] = user_id
+                    print(f"✅ User ID saved to session state: {user_id}")
+            else:
+                # 既存セッションにもユーザーIDを保存
+                if hasattr(existing_session, 'state'):
+                    existing_session.state["user_id"] = user_id
+                    print(f"✅ User ID updated in existing session: {user_id}")
 
             # ADKのrun_asyncを呼び出してイベントストリームを取得
             async for event in runner.run_async(
@@ -175,7 +185,7 @@ def warmup():
         # ADKランナーの状態確認
         runner_status = "ready" if runner else "not_ready"
         return {
-            "status": "warm", 
+            "status": "warm",
             "environment": ENVIRONMENT,
             "adk_runner": runner_status,
             "message": "Backend is warmed up and ready"
@@ -195,7 +205,7 @@ async def receive_html_artifact(request: HtmlArtifactRequest):
             artifact_type=request.artifact_type,
             metadata=request.metadata or {}
         )
-        
+
         return {
             "status": "success",
             "artifact_id": request.session_id,
@@ -233,13 +243,13 @@ async def artifact_websocket(websocket: WebSocket, session_id: str):
     try:
         await artifact_manager.websocket_manager.connect(session_id, websocket)
         print(f"🔌 WebSocket connected for session: {session_id}")
-        
+
         # 既存のArtifactがあれば即座に送信
         existing_artifact = artifact_manager.get_artifact(session_id)
         if existing_artifact:
             await artifact_manager.websocket_manager.send_artifact(session_id, existing_artifact)
             print(f"📤 Existing artifact sent to session: {session_id}")
-        
+
         # 接続を維持（クライアントからの切断またはエラーまで）
         try:
             while True:
@@ -247,7 +257,7 @@ async def artifact_websocket(websocket: WebSocket, session_id: str):
                 await websocket.receive_text()
         except WebSocketDisconnect:
             print(f"🔌 WebSocket disconnected for session: {session_id}")
-        
+
     except Exception as e:
         print(f"❌ WebSocket error for session {session_id}: {e}")
     finally:

@@ -3,17 +3,13 @@ FastAPI Rate Limiting & API Security
 レート制限とAPIセキュリティ機能
 """
 
-import asyncio
-import hashlib
 import logging
 import time
 from collections import defaultdict, deque
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from datetime import datetime
+from typing import Dict, List
 
-import redis
-from fastapi import Depends, HTTPException, Request
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi import HTTPException, Request
 
 
 class InMemoryRateLimiter:

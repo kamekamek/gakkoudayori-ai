@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gakkoudayori_ai/features/auth/auth_provider.dart';
 import 'package:gakkoudayori_ai/services/google_auth_service.dart';
-import '../../providers/newsletter_provider.dart';
 import '../../../ai_assistant/presentation/widgets/adk_chat_widget.dart';
 import '../../../editor/providers/preview_provider.dart';
 import '../widgets/preview_interface.dart';
@@ -33,14 +32,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   void _initializeProviders() {
-    // デフォルトの学校情報を設定（後で設定画面から変更可能）
-    final newsletterProvider =
-        legacy_provider.Provider.of<NewsletterProvider>(context, listen: false);
-    newsletterProvider.updateSchoolInfo(
-      schoolName: '〇〇小学校',
-      className: '1年1組',
-      teacherName: '担任の先生',
-    );
+    // NewsletterProviderV2は自動的にユーザー設定を読み込むため、手動初期化は不要
 
     // ADKチャットプロバイダーにプレビュープロバイダーを設定
     final adkChatProvider = context.read<AdkChatProvider>();
@@ -200,66 +192,25 @@ class DesktopLayout extends StatefulWidget {
 }
 
 class _DesktopLayoutState extends State<DesktopLayout> {
-  late final TextEditingController titleController;
-
-  @override
-  void initState() {
-    super.initState();
-    titleController = TextEditingController();
-  }
-
-  @override
-  void dispose() {
-    titleController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        // 左側：チャットインターフェース
+        // 左側：チャットインターフェース（冗長UI削除済み）
         Expanded(
           flex: 1,
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: TextField(
-                  controller: titleController,
-                  decoration: const InputDecoration(
-                    labelText: '記事のタイトル',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.image_outlined),
-                    tooltip: '画像を追加',
-                    onPressed: () async {
-                      // (画像アップロードのロジックは省略)
-                    },
-                  ),
-                ],
-              ),
-              Expanded(
-                child: Consumer(
-                  builder: (context, ref, child) {
-                    final authState = ref.watch(authStateChangesProvider);
-                    return authState.when(
-                      data: (user) => user != null
-                          ? AdkChatWidget(userId: user.uid)
-                          : const Center(child: Text("ログインしてください")),
-                      loading: () => const Center(child: CircularProgressIndicator()),
-                      error: (error, stack) => Center(child: Text("エラー: $error")),
-                    );
-                  },
-                ),
-              ),
-            ],
+          child: Consumer(
+            builder: (context, ref, child) {
+              final authState = ref.watch(authStateChangesProvider);
+              return authState.when(
+                data: (user) => user != null
+                    ? AdkChatWidget(userId: user.uid)
+                    : const Center(child: Text("ログインしてください")),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (error, stack) => Center(child: Text("エラー: $error")),
+              );
+            },
           ),
         ),
         const VerticalDivider(width: 1),

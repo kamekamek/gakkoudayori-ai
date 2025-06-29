@@ -2,12 +2,12 @@
 HTML Artifact 管理サービス
 LayoutAgentからのHTML成果物を管理し、WebSocket経由でフロントエンドに配信
 """
-import asyncio
 import json
 import logging
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Dict, Optional, Set
-from dataclasses import dataclass, asdict
+
 from fastapi import WebSocket
 
 logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ class HtmlArtifact:
 
 class WebSocketManager:
     """WebSocket接続管理"""
-    
+
     def __init__(self):
         # セッションID -> WebSocketのマッピング
         self._connections: Dict[str, WebSocket] = {}
@@ -82,7 +82,7 @@ class WebSocketManager:
 
 class ArtifactManager:
     """HTML Artifact 管理サービス"""
-    
+
     def __init__(self):
         # セッションID -> 最新のArtifactのマッピング
         self._artifacts: Dict[str, HtmlArtifact] = {}
@@ -93,14 +93,14 @@ class ArtifactManager:
         return self._websocket_manager
 
     async def store_html_artifact(
-        self, 
-        session_id: str, 
-        html_content: str, 
+        self,
+        session_id: str,
+        html_content: str,
         artifact_type: str = "newsletter",
         metadata: Optional[Dict] = None
     ) -> HtmlArtifact:
         """HTML Artifactを保存し、WebSocket経由で配信"""
-        
+
         # Artifactオブジェクト作成
         artifact = HtmlArtifact(
             session_id=session_id,
@@ -108,11 +108,11 @@ class ArtifactManager:
             artifact_type=artifact_type,
             metadata=metadata or {}
         )
-        
+
         # 内部ストレージに保存
         self._artifacts[session_id] = artifact
         logger.info(f"HTML artifact stored for session: {session_id}, size: {len(html_content)} chars")
-        
+
         # WebSocket経由で即座に配信
         if self._websocket_manager.is_connected(session_id):
             success = await self._websocket_manager.send_artifact(session_id, artifact)
@@ -122,7 +122,7 @@ class ArtifactManager:
                 logger.warning(f"Failed to deliver artifact via WebSocket to: {session_id}")
         else:
             logger.info(f"WebSocket not connected for session: {session_id}, artifact stored for polling")
-        
+
         return artifact
 
     def get_artifact(self, session_id: str) -> Optional[HtmlArtifact]:

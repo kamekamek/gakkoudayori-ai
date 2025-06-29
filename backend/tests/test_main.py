@@ -1,11 +1,11 @@
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 # --- テスト対象のルーターをインポート ---
 # Note: このインポートが成功するためには、モジュールの依存関係が解決される必要がある
 from app.api.v1.endpoints import documents as documents_api
-from app.main import health_check, adk_chat_stream # エンドポイント関数を直接インポート
+from app.main import health_check  # エンドポイント関数を直接インポート
+
 
 # --- テスト用のFastAPIアプリをセットアップ ---
 # テスト時には、main.pyのグローバルな`app`インスタンスは使わない

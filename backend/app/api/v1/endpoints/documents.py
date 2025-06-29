@@ -1,4 +1,5 @@
-from typing import List, Dict, Any
+from typing import Any, Dict, List
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
@@ -43,7 +44,7 @@ async def create_document(
     doc = await firestore_service.get_document(doc_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found after creation")
-    
+
     return DocumentResponse(
         id=doc_id,
         userId=doc.get("userId"),
@@ -76,7 +77,7 @@ async def get_document(doc_id: str, current_user: User = Depends(get_current_use
     doc = await firestore_service.get_document(doc_id)
     if not doc or doc.get("userId") != current_user.uid:
         raise HTTPException(status_code=404, detail="Document not found or access denied")
-    
+
     return DocumentResponse(
         id=doc_id,
         userId=doc.get("userId"),
@@ -97,7 +98,7 @@ async def update_document(
     doc = await firestore_service.get_document(doc_id)
     if not doc or doc.get("userId") != current_user.uid:
         raise HTTPException(status_code=404, detail="Document not found or access denied")
-    
+
     await firestore_service.update_document(doc_id, doc_in.model_dump())
 
 @router.delete("/documents/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -106,5 +107,5 @@ async def delete_document(doc_id: str, current_user: User = Depends(get_current_
     doc = await firestore_service.get_document(doc_id)
     if not doc or doc.get("userId") != current_user.uid:
         raise HTTPException(status_code=404, detail="Document not found or access denied")
-        
+
     await firestore_service.delete_document(doc_id)

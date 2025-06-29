@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:html' as html;
 import '../../../editor/providers/preview_provider.dart';
-import '../../providers/newsletter_provider.dart';
+import '../../providers/newsletter_provider_v2.dart';
 import '../../../ai_assistant/providers/adk_chat_provider.dart';
 import 'preview_mode_toolbar.dart';
 import '../../../../widgets/quill_editor_widget.dart';
@@ -50,7 +50,7 @@ class _PreviewInterfaceState extends State<PreviewInterface> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<PreviewProvider, NewsletterProvider>(
+    return Consumer2<PreviewProvider, NewsletterProviderV2>(
       builder: (context, previewProvider, newsletterProvider, child) {
         return Column(
           children: [
@@ -92,7 +92,7 @@ class _PreviewInterfaceState extends State<PreviewInterface> {
   Widget _buildPreviewContent(
     BuildContext context,
     PreviewProvider previewProvider,
-    NewsletterProvider newsletterProvider,
+    NewsletterProviderV2 newsletterProvider,
   ) {
     // 生成中の場合
     if (previewProvider.isGeneratingPdf) {

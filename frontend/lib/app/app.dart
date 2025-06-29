@@ -9,7 +9,8 @@ import '../features/ai_assistant/providers/adk_chat_provider.dart';
 import '../features/auth/auth_provider.dart';
 import '../features/editor/providers/image_provider.dart';
 import '../features/editor/providers/preview_provider.dart';
-import '../features/home/providers/newsletter_provider.dart';
+import '../features/home/providers/newsletter_provider_v2.dart';
+import '../services/user_settings_service.dart';
 import '../services/adk_agent_service.dart';
 
 class GakkouDayoriAiApp extends ConsumerWidget {
@@ -24,6 +25,7 @@ class GakkouDayoriAiApp extends ConsumerWidget {
       providers: [
         // Services
         legacy.Provider(create: (_) => AdkAgentService()),
+        legacy.Provider(create: (_) => userSettingsService),
 
         // Error handling
         legacy.ChangeNotifierProvider(create: (_) => ErrorProvider()),
@@ -37,9 +39,10 @@ class GakkouDayoriAiApp extends ConsumerWidget {
           ),
         ),
         legacy.ChangeNotifierProvider(
-          create: (context) => NewsletterProvider(
+          create: (context) => NewsletterProviderV2(
             adkAgentService: legacy.Provider.of<AdkAgentService>(context, listen: false),
             adkChatProvider: legacy.Provider.of<AdkChatProvider>(context, listen: false),
+            userSettingsService: legacy.Provider.of<UserSettingsService>(context, listen: false),
           ),
         ),
         legacy.ChangeNotifierProvider(create: (_) => ImageManagementProvider()),

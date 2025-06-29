@@ -5,6 +5,7 @@ import '../../../home/presentation/widgets/audio_waveform_widget.dart';
 import '../../../home/presentation/widgets/advanced_audio_waveform_widget.dart';
 import '../../../editor/presentation/widgets/image_upload_widget.dart';
 import '../../../editor/providers/image_provider.dart';
+import '../../../home/providers/newsletter_provider_v2.dart';
 import '../../../../core/models/chat_message.dart';
 
 /// ADKエージェントとのチャットウィジェット
@@ -470,33 +471,47 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
 
                     const SizedBox(width: 12),
 
-                    // 画像アップロードボタン
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2c5aa0),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF2c5aa0).withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: IconButton(
-                        onPressed: () => _showImageUploadDialog(context),
-                        icon: const Icon(
-                          Icons.image,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                        tooltip: '画像アップロード',
-                      ),
+                    // 画像アップロードボタン（UI設定に基づいて表示制御）
+                    Consumer<NewsletterProviderV2>(
+                      builder: (context, newsletterProvider, child) {
+                        final uiPrefs = newsletterProvider.uiPreferences;
+                        final showImageUpload = uiPrefs.imageUploadLocation == 'chat';
+                        
+                        if (!showImageUpload) {
+                          return const SizedBox.shrink();
+                        }
+                        
+                        return Row(
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2c5aa0),
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF2c5aa0).withOpacity(0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: IconButton(
+                                onPressed: () => _showImageUploadDialog(context),
+                                icon: const Icon(
+                                  Icons.image,
+                                  color: Colors.white,
+                                  size: 24,
+                                ),
+                                tooltip: '画像アップロード',
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                        );
+                      },
                     ),
-
-                    const SizedBox(width: 8),
 
                     // 音声入力ボタン
                     Container(

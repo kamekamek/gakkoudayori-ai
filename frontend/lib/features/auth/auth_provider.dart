@@ -101,7 +101,7 @@ class AuthService {
     try {
       final response = await http.get(
         // TODO: 環境変数からAPIベースURLを取得する
-        Uri.parse('http://localhost:8082/api/v1/users/me'),
+        Uri.parse('http://localhost:8081/api/v1/users/me'),
         headers: {
           'Authorization': 'Bearer $token',
         },

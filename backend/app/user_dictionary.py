@@ -1,8 +1,8 @@
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel
 
 # Firestoreサービスをインポート
@@ -122,7 +122,7 @@ async def get_user_custom_dictionary(user_id: str) -> Dict[str, Any]:
             data = doc.to_dict()
             return data.get("custom_terms", {})
         return {}
-    except Exception as e:
+    except Exception:
         # ログを控えめに
         return {}
 
@@ -154,7 +154,7 @@ async def save_user_custom_term(user_id: str, term: str, variations: List[str]) 
         await doc_ref.set(data)
         return True
 
-    except Exception as e:
+    except Exception:
         # エラーログは最小限に
         return False
 
@@ -185,7 +185,7 @@ async def update_user_custom_term(
         await doc_ref.set(data)
         return True
 
-    except Exception as e:
+    except Exception:
         return False
 
 
@@ -212,7 +212,7 @@ async def delete_user_custom_term(user_id: str, term: str) -> bool:
         await doc_ref.set(data)
         return True
 
-    except Exception as e:
+    except Exception:
         return False
 
 
@@ -252,7 +252,7 @@ async def record_correction_learning(
         await doc_ref.set(data)
         return True
 
-    except Exception as e:
+    except Exception:
         return False
 
 

@@ -1,6 +1,6 @@
 import json
 import logging
-import os
+
 # from pathlib import Path  # 本番環境対応: ファイルシステム使用無効化
 from typing import AsyncGenerator, Optional
 
@@ -10,8 +10,8 @@ from google.adk.events.event import Event
 from google.adk.models.google_llm import Gemini
 from google.genai.types import Content, Part
 
-from .prompt import INSTRUCTION
 from .deliver_html_tool import html_delivery_tool
+from .prompt import INSTRUCTION
 
 # ロガーの設定
 logger = logging.getLogger(__name__)
@@ -26,8 +26,8 @@ class LayoutAgent(LlmAgent):
     def __init__(self, output_key: str = "html"):
         # 明示的にgemini-2.5-proを指定してモデル不整合を解決
         model = Gemini(model_name="gemini-2.5-pro")
-        logger.info(f"LayoutAgent初期化: モデル=gemini-2.5-pro")
-        
+        logger.info("LayoutAgent初期化: モデル=gemini-2.5-pro")
+
         super().__init__(
             name="layout_agent",
             model=model,
@@ -53,26 +53,26 @@ class LayoutAgent(LlmAgent):
                 logger.info(f"LayoutAgent: セッションID設定完了 - {session_id}")
             else:
                 logger.warning("LayoutAgent: セッションIDの取得に失敗しました")
-            
+
             # ユーザーフレンドリーな開始メッセージ
             yield Event(
                 author=self.name,
                 content=Content(parts=[Part(text="学級通信のレイアウトを作成しています。少々お待ちください...")])
             )
-            
+
             # ADK推奨パターン: transfer_to_agentでの堅牢なJSON取得
             json_data = None
             logger.info("=== LayoutAgent JSON取得開始 (ADK推奨パターン) ===")
-            
+
             # セッション状態詳細確認
             await self._log_session_state_details(ctx)
-            
+
             # ADK推奨: outline キーからの取得（第一優先）
             json_data = await self._get_json_from_adk_output_key(ctx)
-            
+
             if json_data:
                 logger.info(f"✅ ADK output_key取得成功: {len(json_data)} 文字")
-                
+
                 # JSON検証
                 if await self._validate_json_data(json_data):
                     logger.info("✅ JSON検証成功: 有効なデータです")
@@ -81,7 +81,7 @@ class LayoutAgent(LlmAgent):
                     json_data = None
             else:
                 logger.warning("❌ ADK output_key取得失敗: outline キーが見つかりません")
-                
+
                 # セッション状態のデータ検証
                 if json_data:
                     try:
@@ -89,7 +89,7 @@ class LayoutAgent(LlmAgent):
                         json_obj = json_module.loads(json_data)
                         required_fields = ['school_name', 'grade', 'author', 'main_title']
                         missing_fields = [field for field in required_fields if not json_obj.get(field)]
-                        
+
                         if missing_fields:
                             logger.warning(f"セッション状態のJSONに必須フィールドが不足: {missing_fields}")
                             json_data = None  # 不完全なデータは使用しない
@@ -184,13 +184,13 @@ HTMLのみを出力し、説明文は一切不要です。
             async for event in super()._run_async_impl(ctx):
                 # LLMの生成イベントは内部処理として隠蔽し、後でHTML抽出用に保存
                 llm_events.append(event)
-            
+
             # フォールバック: LLMが失敗した場合はテンプレート生成
             llm_html_valid = await self._save_html_from_llm_events(ctx, llm_events)
-            
+
             # HTMLとJSONの一致検証
             is_consistent = await self._validate_html_json_consistency(ctx, json_obj)
-            
+
             # 不整合がある場合はテンプレート生成でフォールバック
             if not is_consistent and json_obj:
                 logger.warning("LLM生成HTMLに不整合があります。テンプレート生成にフォールバック...")
@@ -203,13 +203,13 @@ HTMLのみを出力し、説明文は一切不要です。
             if hasattr(ctx, "session") and hasattr(ctx.session, "state") and ctx.session.state.get("html"):
                 html_content = ctx.session.state["html"]
                 logger.info(f"HTML生成完了: {len(html_content)}文字")
-                
+
                 # HTML生成完了フラグを設定
                 ctx.session.state["html_generated"] = True
                 from datetime import datetime
                 ctx.session.state["html_generation_timestamp"] = datetime.now().strftime("%Y-%m-%d")
                 logger.info("HTML生成完了フラグを設定しました")
-                
+
                 # HTML配信ツールを自動実行
                 try:
                     import json
@@ -219,13 +219,13 @@ HTMLのみを出力し、説明文は一切不要です。
                         artifact_type="newsletter",
                         metadata_json=metadata_json
                     )
-                    
+
                     # 配信結果をユーザーに通知
                     yield Event(
                         author=self.name,
                         content=Content(parts=[Part(text=delivery_result)])
                     )
-                    
+
                 except Exception as tool_error:
                     error_msg = f"❌ HTML配信中にエラーが発生しました: {str(tool_error)}"
                     logger.error(f"HTML配信ツールエラー: {tool_error}")
@@ -245,7 +245,7 @@ HTMLのみを出力し、説明文は一切不要です。
             user_friendly_msg = "申し訳ございません。レイアウト作成中に問題が発生しました。もう一度お試しください。"
             logger.error(f"レイアウト生成中にエラーが発生しました: {str(e)}")
             yield Event(
-                author=self.name, 
+                author=self.name,
                 content=Content(parts=[Part(text=user_friendly_msg)])
             )
 
@@ -289,7 +289,7 @@ HTMLのみを出力し、説明文は一切不要です。
             # セッション状態からHTMLを取得
             if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
                 html_content = ctx.session.state.get("html", "")
-                
+
                 if html_content:
                     # 主要フィールドの一致確認
                     validations = [
@@ -298,12 +298,12 @@ HTMLのみを出力し、説明文は一切不要です。
                         ("発行者", json_obj.get('author', {}).get('name'), html_content),
                         ("色scheme", json_obj.get('color_scheme', {}).get('primary'), html_content)
                     ]
-                    
+
                     inconsistencies = []
                     for field, json_value, html_text in validations:
                         if json_value and str(json_value) not in html_text:
                             inconsistencies.append(f"{field}: JSON={json_value}")
-                    
+
                     if inconsistencies:
                         logger.warning(f"HTML-JSON不整合検出: {', '.join(inconsistencies)}")
                         return False
@@ -316,7 +316,7 @@ HTMLのみを出力し、説明文は一切不要です。
         except Exception as e:
             logger.error(f"HTML-JSON検証エラー: {e}")
             return False
-    
+
     async def _generate_html_from_template(self, ctx: InvocationContext, json_obj):
         """JSONデータからテンプレートベースでHTMLを確実に生成"""
         try:
@@ -326,12 +326,12 @@ HTMLのみを出力し、説明文は一切不要です。
             author_title = json_obj.get('author', {}).get('title', 'ERROR')
             issue_date = json_obj.get('issue_date', 'ERROR')
             main_title = json_obj.get('main_title', 'ERROR')
-            
+
             color_scheme = json_obj.get('color_scheme', {})
             primary_color = color_scheme.get('primary', '#FFFF99')
             secondary_color = color_scheme.get('secondary', '#FFCC99')
             accent_color = color_scheme.get('accent', '#FF9966')
-            
+
             sections = json_obj.get('sections', [])
             main_content = ""
             for section in sections:
@@ -341,7 +341,7 @@ HTMLのみを出力し、説明文は一切不要です。
                 for paragraph in paragraphs:
                     if paragraph.strip():
                         main_content += f"    <p>{paragraph.strip()}</p>\n"
-            
+
             # 確実なHTMLテンプレート生成
             template_html = f'''<!DOCTYPE html>
 <html lang="ja">
@@ -425,10 +425,10 @@ HTMLのみを出力し、説明文は一切不要です。
                 ctx.session.state["html"] = template_html
                 logger.info("テンプレートHTMLをセッション状態に保存しました")
 
-            # 🚨 本番環境対応: ファイルシステム保存を無効化  
+            # 🚨 本番環境対応: ファイルシステム保存を無効化
             # Cloud Runでは/tmpが一時的なため、セッション状態のみに依存
             logger.info("テンプレートHTMLをセッション状態に保存（本番環境ではファイル保存無効）")
-            
+
         except Exception as e:
             logger.error(f"テンプレートHTML生成エラー: {e}")
 
@@ -438,28 +438,28 @@ HTMLのみを出力し、説明文は一切不要です。
             # セッションイベントからMainConversationAgentの最新の保存されたJSONを探す
             if hasattr(ctx, "session") and hasattr(ctx.session, "events"):
                 session_events = ctx.session.events
-                
+
                 # 最新のイベントから情報を抽出
                 for event in reversed(session_events):
                     if hasattr(event, "author") and "main_conversation_agent" in str(event.author):
                         event_text = self._extract_text_from_event(event)
-                        
+
                         # 内部的に保存されたJSONがあるかチェック
                         if hasattr(event, "metadata") and event.metadata:
                             if "internal_json" in event.metadata:
                                 logger.info("MainConversationAgentの内部JSONを発見")
                                 return event.metadata["internal_json"]
-                
+
                 # セッション状態の他のキーもチェック
                 state_keys = ['json_data', 'outline_data', 'conversation_json']
                 for key in state_keys:
                     if key in ctx.session.state and ctx.session.state[key]:
                         logger.info(f"セッション状態の{key}から取得")
                         return ctx.session.state[key]
-                        
+
             logger.warning("MainConversationAgentからのJSON取得に失敗")
             return None
-            
+
         except Exception as e:
             logger.error(f"MainConversationAgentからのJSON取得エラー: {e}")
             return None
@@ -479,7 +479,7 @@ HTMLのみを出力し、説明文は一切不要です。
                 session_id = ctx.session.session_id
                 logger.info(f"セッションID抽出成功: {session_id}")
                 return session_id
-            
+
             # 代替手段: セッション情報から推測
             if hasattr(ctx, "session") and hasattr(ctx.session, "user_id"):
                 # user_id から session_id を推測（フォールバック）
@@ -487,10 +487,10 @@ HTMLのみを出力し、説明文は一切不要です。
                 session_id = f"{user_id}:default"
                 logger.warning(f"セッションIDをuser_idから推測: {session_id}")
                 return session_id
-                
+
             logger.error("セッションIDの抽出に失敗: sessionオブジェクトが見つかりません")
             return None
-            
+
         except Exception as e:
             logger.error(f"セッションID抽出エラー: {e}")
             return None
@@ -611,7 +611,7 @@ HTMLのみを出力し、説明文は一切不要です。
             "theme": "学級の様子",
             "color_scheme": {
                 "primary": "#4A90E2",
-                "secondary": "#7ED321", 
+                "secondary": "#7ED321",
                 "accent": "#F5A623",
                 "background": "#ffffff",
             },
@@ -655,7 +655,7 @@ HTMLのみを出力し、説明文は一切不要です。
     async def _log_session_state_details(self, ctx: InvocationContext):
         """セッション状態の詳細ログ出力"""
         try:
-            logger.info(f"LayoutAgent InvocationContext詳細:")
+            logger.info("LayoutAgent InvocationContext詳細:")
             logger.info(f"  - hasattr(ctx, 'session'): {hasattr(ctx, 'session')}")
             if hasattr(ctx, "session"):
                 logger.info(f"  - session type: {type(ctx.session)}")
@@ -666,7 +666,7 @@ HTMLのみを出力し、説明文は一切不要です。
                 if hasattr(ctx.session, "state"):
                     logger.info(f"  - state type: {type(ctx.session.state)}")
                     logger.info(f"  - state keys: {list(ctx.session.state.keys()) if ctx.session.state else 'None'}")
-                    
+
                     # 各キーの値も確認
                     if ctx.session.state:
                         for key, value in ctx.session.state.items():
@@ -681,21 +681,21 @@ HTMLのみを出力し、説明文は一切不要です。
             if not hasattr(ctx, "session") or not hasattr(ctx.session, "state"):
                 logger.warning("セッション状態が利用できません")
                 return None
-            
+
             # セッション状態の詳細ログ出力
-            logger.info(f"=== セッション状態詳細確認（強化版） ===")
+            logger.info("=== セッション状態詳細確認（強化版） ===")
             session_keys = list(ctx.session.state.keys()) if ctx.session.state else []
             logger.info(f"セッション状態のキー一覧: {session_keys}")
-            
+
             # 複数のキーから順次取得を試行（優先順位順・拡張）
             json_keys_priority = ["outline", "newsletter_json", "user_data_json", "json_data"]
-            
+
             for key in json_keys_priority:
                 json_data = ctx.session.state.get(key)
                 if json_data:
                     logger.info(f"✅ {key} キーから取得成功: {len(str(json_data))} 文字")
                     logger.info(f"取得データ(先頭200文字): {str(json_data)[:200]}...")
-                    
+
                     # JSON形式として有効かチェック
                     try:
                         import json as json_module
@@ -703,27 +703,27 @@ HTMLのみを出力し、説明文は一切不要です。
                         school_name = parsed.get('school_name', 'UNKNOWN')
                         grade = parsed.get('grade', 'UNKNOWN')
                         author_name = parsed.get('author', {}).get('name', 'UNKNOWN')
-                        
+
                         # サンプルデータ判定を強化
                         if (school_name in ['○○小学校', 'ERROR', 'UNKNOWN', '学校名'] or
-                            grade in ['1年1組', 'ERROR', 'UNKNOWN', '学年'] or  
+                            grade in ['1年1組', 'ERROR', 'UNKNOWN', '学年'] or
                             author_name in ['担任', 'ERROR', 'UNKNOWN']):
                             logger.warning(f"⚠️ {key} キーにサンプルデータを検出: {school_name}/{grade}/{author_name}")
                             continue  # サンプルデータの場合は次のキーを試す
-                        
+
                         logger.info(f"✅ JSONデータ確認成功: {school_name} {grade} {author_name}")
                         return str(json_data)
-                        
+
                     except Exception as parse_error:
                         logger.warning(f"❌ {key} キーのJSONが不正: {parse_error}")
                         continue  # 次のキーを試す
                 else:
                     logger.info(f"❌ {key} キーは存在しないか空です")
-            
+
             # 標準キーで失敗した場合、追加キーも確認
             additional_keys = [k for k in session_keys if 'json' in k.lower() or 'outline' in k.lower()]
             logger.info(f"追加JSON候補キー: {additional_keys}")
-            
+
             for key in additional_keys:
                 if key not in json_keys_priority:  # 既に確認済みのキーはスキップ
                     json_data = ctx.session.state.get(key)
@@ -736,10 +736,10 @@ HTMLのみを出力し、説明文は一切不要です。
                                 return str(json_data)
                         except:
                             continue
-            
+
             # 全てのキーで取得に失敗
             logger.error("❌ 全てのJSONキーから取得に失敗しました")
-            
+
             # デバッグ情報：セッション状態の全体を出力
             logger.info("=== セッション状態デバッグ情報 ===")
             for key, value in ctx.session.state.items():
@@ -747,9 +747,9 @@ HTMLのみを出力し、説明文は一切不要です。
                 value_length = len(str(value)) if value else 0
                 value_preview = str(value)[:100] + "..." if len(str(value)) > 100 else str(value)
                 logger.info(f"  {key} ({value_type}, {value_length}文字): {value_preview}")
-            
+
             return None
-                
+
         except Exception as e:
             logger.error(f"ADK output_key取得エラー: {e}")
             import traceback
@@ -762,26 +762,26 @@ HTMLのみを出力し、説明文は一切不要です。
             if not json_data or not json_data.strip():
                 logger.warning("JSONデータが空です")
                 return False
-                
+
             # JSON形式として解析可能かチェック
             parsed = json.loads(json_data)
-            
+
             # 必須フィールドの存在確認
             required_fields = ['school_name', 'grade', 'author']
             for field in required_fields:
                 if field not in parsed:
                     logger.warning(f"必須フィールド '{field}' が見つかりません")
                     return False
-                    
+
             # サンプルデータでないことを確認
             school_name = parsed.get('school_name', '')
             if 'サンプル' in school_name or '○○' in school_name or 'ERROR' in school_name:
                 logger.warning(f"サンプルデータを検出: school_name={school_name}")
                 return False
-                
+
             logger.info(f"JSON検証成功: school_name={parsed.get('school_name')}")
             return True
-            
+
         except json.JSONDecodeError as e:
             logger.error(f"JSON解析エラー: {e}")
             return False
