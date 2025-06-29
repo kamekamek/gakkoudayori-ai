@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gakkoudayori_ai/features/auth/login_screen.dart';
@@ -39,11 +40,17 @@ class AppRouter {
       final loggedIn = FirebaseAuth.instance.currentUser != null;
       final loggingIn = state.matchedLocation == '/login';
 
+      if (kDebugMode) {
+        debugPrint('🔍 ルーター: ログイン状態=$loggedIn, 現在のパス=${state.matchedLocation}');
+      }
+
       if (!loggedIn) {
+        if (kDebugMode) debugPrint('🔀 ログインページにリダイレクト');
         return loggingIn ? null : '/login';
       }
 
       if (loggingIn) {
+        if (kDebugMode) debugPrint('🔀 ホームページにリダイレクト');
         return '/';
       }
 

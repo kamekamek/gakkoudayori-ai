@@ -44,7 +44,7 @@ class GoogleAuthService {
         debugPrint('🔑 GoogleSignInインスタンス作成完了');
       }
       
-      _listenToAuthChanges();
+      _listenToAuthChanges(); // 認証監視を有効化
       _isInitialized = true;
       
       if (kDebugMode) {
@@ -63,8 +63,8 @@ class GoogleAuthService {
   /// Googleの認証状態の変更を監視し、Firebaseの認証状態を同期させます。
   static void _listenToAuthChanges() {
     try {
-      googleSignIn.onCurrentUserChanged
-          .listen((GoogleSignInAccount? account) async {
+      _googleSignIn?.onCurrentUserChanged
+          ?.listen((GoogleSignInAccount? account) async {
       _currentUser = account;
 
       if (account != null) {
@@ -114,16 +114,11 @@ class GoogleAuthService {
 
   /// 現在のGoogle Sign-Inクライアントを取得
   static GoogleSignIn get googleSignIn {
-    if (_googleSignIn == null || !_isInitialized) {
-      initialize();
+    if (_googleSignIn == null) {
+      // 直接インスタンスを作成（無限ループ回避）
+      _googleSignIn = GoogleSignIn(scopes: _scopes);
     }
-    final signIn = _googleSignIn;
-    if (signIn == null) {
-      // 緩やかなフォールバック：デフォルトのGoogleSignInを返す
-      debugPrint('⚠️ GoogleSignIn初期化に失敗したため、デフォルトを作成');
-      return GoogleSignIn(scopes: _scopes);
-    }
-    return signIn;
+    return _googleSignIn!;
   }
 
   /// 現在のログインユーザー
