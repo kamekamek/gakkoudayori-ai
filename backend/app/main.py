@@ -3,7 +3,7 @@ import os
 from contextlib import asynccontextmanager
 
 import google.genai.types as genai_types
-from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Header
 from fastapi.middleware.cors import CORSMiddleware
 from google.adk.runners import Runner
 from google.adk.sessions.in_memory_session_service import InMemorySessionService
@@ -112,16 +112,17 @@ class HtmlArtifactRequest(BaseModel):
 @app.post("/api/v1/adk/chat/stream")
 async def adk_chat_stream(
     req: AdkChatRequest,
-    # current_user: User = Depends(get_current_user) # 一時的に認証を無効化
+    x_user_id: str = Header(None, alias="X-User-ID")
+    # current_user: User = Depends(get_current_user) # 将来の認証完全実装用
 ):
     """
     ADK v1.0.0互換のチャットストリーミングエンドポイント
-    （注：現在、デバッグのため認証は一時的に無効化されています）
+    X-User-IDヘッダーからユーザーIDを取得します。
     """
 
-    # 認証を無効化しているため、一時的に固定のユーザーIDを使用
-    user_id = "temp-fixed-user-id-for-debug"
-    # user_id = current_user.uid
+    # X-User-IDヘッダーからユーザーIDを取得、なければデフォルト値を使用
+    user_id = x_user_id or "temp-fixed-user-id-for-debug"
+    print(f"🔍 ADK Chat - User ID: {user_id} (from X-User-ID header)")
     
     # フロントエンドは "user_id:session_id" 形式で送ってくるため分割
     try:

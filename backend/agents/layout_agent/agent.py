@@ -94,7 +94,19 @@ class LayoutAgent(LlmAgent):
             try:
                 import json as json_module
                 json_obj = json_module.loads(json_data)
-                logger.info(f"JSON解析成功: {json_obj.get('school_name')} {json_obj.get('grade')}")
+                
+                # 新しいデータ構造から基本情報を取得
+                newsletter_info = json_obj.get('newsletter_info', {})
+                school_name = newsletter_info.get('school_name', '')
+                class_name = newsletter_info.get('class_name', '')
+                teacher_name = newsletter_info.get('teacher_name', '')
+                
+                logger.info(f"JSON解析成功: 学校={school_name}, クラス={class_name}, 先生={teacher_name}")
+                
+                # 基本情報が揃っているかチェック
+                if not school_name or not class_name or not teacher_name:
+                    logger.warning(f"基本情報不足: school_name='{school_name}', class_name='{class_name}', teacher_name='{teacher_name}'")
+                    
             except Exception as e:
                 logger.error(f"JSON解析エラー: {e}")
                 json_obj = None
@@ -395,7 +407,7 @@ JSONデータ:
 
 
     async def _validate_json_data(self, json_data: str) -> bool:
-        """JSONデータの基本的な有効性検証"""
+        """JSONデータの基本的な有効性検証（新しいデータ構造に対応）"""
         try:
             if not json_data or not json_data.strip():
                 logger.warning("JSONデータが空です")
@@ -403,15 +415,25 @@ JSONデータ:
 
             # JSON形式として解析可能かチェック
             parsed = json.loads(json_data)
+            
+            # 新しいデータ構造対応: newsletter_infoフィールドをチェック
+            newsletter_info = parsed.get('newsletter_info', {})
+            if not newsletter_info:
+                logger.warning("newsletter_infoフィールドが見つかりません")
+                return False
 
-            # 基本的な必須フィールドの存在確認
-            required_fields = ['school_name', 'grade']
+            # 基本的な必須フィールドの存在確認（新しい構造）
+            required_fields = ['school_name', 'class_name', 'teacher_name']
             for field in required_fields:
-                if field not in parsed or not parsed[field]:
-                    logger.warning(f"必須フィールド '{field}' が見つかりません")
+                if field not in newsletter_info or not newsletter_info[field]:
+                    logger.warning(f"newsletter_info内の必須フィールド '{field}' が見つかりません")
                     return False
 
-            logger.info(f"JSON検証成功: school_name={parsed.get('school_name')}, grade={parsed.get('grade')}")
+            school_name = newsletter_info.get('school_name', '')
+            class_name = newsletter_info.get('class_name', '')
+            teacher_name = newsletter_info.get('teacher_name', '')
+            
+            logger.info(f"JSON検証成功: 学校={school_name}, クラス={class_name}, 先生={teacher_name}")
             return True
 
         except json.JSONDecodeError as e:

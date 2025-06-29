@@ -235,3 +235,4 @@ tmux-*.log
 # - テスト用モックデータ（test/fixtures/）
 .firebase/*
 claude-code.sh
+.dart_tool/
