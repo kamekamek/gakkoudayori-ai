@@ -235,32 +235,54 @@ class MainConversationAgent(LlmAgent):
         try:
             logger.info("基本情報をセッション状態に保存中...")
             
-            # ユーザー設定を取得
+            # ツールを手動実行してデータを取得
+            logger.info("🔧 手動でツールを実行してデータを取得中...")
+            
+            # 1. 現在の日付を取得
+            current_date = get_current_date()
+            logger.info(f"📅 現在の日付取得: {current_date}")
+            
+            # 2. ユーザー設定を取得
             user_settings = {}
             try:
                 user_settings_json = await get_user_settings_context()
                 if user_settings_json:
                     import json
                     user_settings = json.loads(user_settings_json)
+                    logger.info(f"👤 ユーザー設定取得: {user_settings.get('学校名', '未設定')} {user_settings.get('クラス名', '未設定')}")
             except Exception as e:
                 logger.error(f"ユーザー設定取得エラー: {e}")
-
-            # 現在の日付を取得
-            current_date = get_current_date()
             
             # セッション状態に基本情報を保存
             if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
-                ctx.session.state["school_name"] = user_settings.get("学校名", "○○小学校")
-                ctx.session.state["class_name"] = user_settings.get("クラス名", "3年2組")
-                ctx.session.state["teacher_name"] = user_settings.get("先生名", "田中先生")
+                # 日付情報を保存
                 ctx.session.state["current_date"] = current_date
+                ctx.session.state["tool_date_retrieved"] = current_date
                 
-                logger.info(f"基本情報保存完了: {ctx.session.state['school_name']} {ctx.session.state['class_name']} {ctx.session.state['teacher_name']}")
+                # ユーザー設定を保存
+                ctx.session.state["school_name"] = user_settings.get("学校名", "○○小学校")
+                ctx.session.state["class_name"] = user_settings.get("クラス名", "3年2組") 
+                ctx.session.state["teacher_name"] = user_settings.get("先生名", "田中先生")
+                ctx.session.state["settings_complete"] = user_settings.get("設定完了", False)
+                
+                # エージェントの応答用コンテキストを保存
+                response_context = f"""
+今日の日付: {current_date}
+学校名: {ctx.session.state['school_name']}
+クラス名: {ctx.session.state['class_name']}
+担任の先生: {ctx.session.state['teacher_name']}
+設定状況: {'完了' if ctx.session.state['settings_complete'] else '未完了'}
+"""
+                ctx.session.state["response_context"] = response_context
+                
+                logger.info(f"✅ 基本情報保存完了: {ctx.session.state['school_name']} {ctx.session.state['class_name']} {ctx.session.state['teacher_name']} (日付: {current_date})")
             else:
                 logger.error("セッション状態にアクセスできません")
                 
         except Exception as e:
             logger.error(f"基本情報保存エラー: {e}")
+            import traceback
+            logger.error(f"詳細エラー: {traceback.format_exc()}")
 
 def create_main_conversation_agent() -> MainConversationAgent:
     """MainConversationAgentのインスタンスを生成するファクトリ関数。"""
