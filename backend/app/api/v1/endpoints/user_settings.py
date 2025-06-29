@@ -87,7 +87,7 @@ async def get_user_settings_endpoint(
     
     print(f"⚙️ Getting settings for user: {user_id}")
     try:
-        settings_service = UserSettingsService(user_id=user_id)
+        # UserSettingsServiceはシングルトンインスタンスを使用
         logger.info(f"ユーザー設定取得リクエスト: user_id={user_id}")
         settings = await user_settings_service.get_user_settings(user_id)
 
