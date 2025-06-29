@@ -120,8 +120,11 @@ async def adk_chat_stream(
     X-User-IDヘッダーからユーザーIDを取得します。
     """
 
-    # X-User-IDヘッダーからユーザーIDを取得、なければデフォルト値を使用
-    user_id = x_user_id or "temp-fixed-user-id-for-debug"
+    # X-User-IDヘッダーからユーザーIDを取得
+    if not x_user_id:
+        raise HTTPException(status_code=400, detail="X-User-ID header is required")
+    
+    user_id = x_user_id
     print(f"🔍 ADK Chat - User ID: {user_id} (from X-User-ID header)")
     
     # フロントエンドは "user_id:session_id" 形式で送ってくるため分割

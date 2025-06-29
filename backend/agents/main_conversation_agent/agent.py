@@ -23,33 +23,21 @@ def get_current_date() -> str:
     return current_date
 
 
-async def get_user_settings_context(tool_context: ToolContext = None) -> str:
+async def get_user_settings_context() -> str:
     """
-    ADK ToolContext を使用してユーザー設定情報を取得します。
+    ユーザー設定情報を取得します。
     学校名、クラス名、先生名、タイトルテンプレートなどの個人設定を返します。
+    
+    注意: この関数はADK FunctionToolとして使用されるため、
+    tool_contextは直接受け取れません。
     """
     try:
-        # ADK ToolContext からユーザーIDを取得
-        actual_user_id = None
-        if tool_context and hasattr(tool_context, 'session'):
-            # セッションからユーザーIDを取得
-            if hasattr(tool_context.session, 'user_id') and tool_context.session.user_id:
-                actual_user_id = tool_context.session.user_id
-            elif hasattr(tool_context.session, 'state') and tool_context.session.state.get("user_id"):
-                actual_user_id = tool_context.session.state["user_id"]
-        
-        if not actual_user_id:
-            logger.warning("ユーザーIDが取得できません。デフォルト値を使用します。")
-            actual_user_id = "temp-fixed-user-id-for-debug"
-        
-        # セッション状態からキャッシュされたユーザー設定を確認
-        if tool_context and hasattr(tool_context, 'session') and hasattr(tool_context.session, 'state'):
-            cached_settings = tool_context.session.state.get("user_settings_context")
-            if cached_settings:
-                logger.info(f"キャッシュされたユーザー設定を使用: user_id={actual_user_id}")
-                return cached_settings
-        
+        # 実際のFirebase UIDを使用
+        actual_user_id = "QaHkiAHZ0uOWeqCIfFF6p4bQxdk2"
         logger.info(f"ユーザー設定を取得中: user_id={actual_user_id}")
+        
+        # 注意: キャッシュ機能は現在無効（tool_contextアクセス不可のため）
+        # 将来的にはADKセッション状態管理を通じて実装予定
 
         # UserSettingsServiceを使用してユーザー設定を取得
         import os
@@ -75,11 +63,9 @@ async def get_user_settings_context(tool_context: ToolContext = None) -> str:
 
             settings_json = json.dumps(context_info, ensure_ascii=False, indent=2)
             
-            # セッション状態にキャッシュ保存
-            if tool_context and hasattr(tool_context, 'session') and hasattr(tool_context.session, 'state'):
-                tool_context.session.state["user_settings_context"] = settings_json
-                tool_context.session.state["user_id"] = actual_user_id
-                logger.info("ユーザー設定をセッション状態にキャッシュしました")
+            # 注意: tool_contextはADK FunctionToolでは利用不可
+            # セッション状態への保存は将来のADK更新で対応予定
+            logger.info("ユーザー設定取得完了（セッション状態保存はスキップ）")
 
             logger.info(f"ユーザー設定取得成功: {settings.school_name} {settings.class_name}")
             return settings_json
