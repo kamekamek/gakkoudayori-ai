@@ -1,7 +1,6 @@
 import json
 import logging
 
-# from pathlib import Path  # 本番環境対応: ファイルシステム使用無効化
 from typing import AsyncGenerator, Optional
 
 from google.adk.agents import LlmAgent
@@ -108,17 +107,17 @@ class LayoutAgent(LlmAgent):
                 else:
                     logger.warning("MainConversationAgentからの取得に失敗")
 
-            # 🚨 本番環境対応: ファイルシステムフォールバック無効化
+            # セッション状態にoutlineが見つからない場合の処理
             if not json_data:
-                logger.warning("セッション状態にoutlineが見つかりません。本番環境ではファイルシステム使用不可")
-                # json_data = await self._load_json_from_filesystem(ctx)  # 無効化
+                logger.warning("セッション状態にoutlineが見つかりません")
 
             if not json_data:
-                logger.error("❌ JSON データが見つかりません。これはMainConversationAgentの情報収集が不完全であることを示します")
-                logger.error("❌ サンプルJSONでフォールバック実行 - ユーザーの実際の情報は反映されません")
-                # サンプルJSONでフォールバック実行
-                json_data = self._generate_sample_json()
-                logger.warning(f"⚠️ サンプルJSON生成完了: {len(json_data)} 文字（実際のユーザーデータではありません）")
+                logger.error("❌ JSON データが見つかりません。MainConversationAgentでの情報収集を確認してください")
+                yield Event(
+                    author=self.name,
+                    content=Content(parts=[Part(text="❌ 学級通信の基本情報が不足しています。もう一度、学校名・学年・先生名などの基本情報をお聞かせください。")])
+                )
+                return
 
             logger.info(f"JSON データを読み込みました: {len(str(json_data))} 文字")
 
@@ -272,9 +271,8 @@ HTMLのみを出力し、説明文は一切不要です。
                 ctx.session.state["html"] = html_content
                 logger.info("HTMLをセッション状態に保存しました")
 
-            # 🚨 本番環境対応: ファイルシステム保存を無効化
-            # Cloud Runでは/tmpが一時的なため、セッション状態のみに依存
-            logger.info("HTMLをセッション状態に保存（本番環境ではファイル保存無効）")
+            # セッション状態のみでデータ保存
+            logger.info("HTMLをセッション状態に保存")
 
         except Exception as e:
             logger.error(f"LLMイベントからのHTML保存エラー: {e}")
@@ -425,9 +423,8 @@ HTMLのみを出力し、説明文は一切不要です。
                 ctx.session.state["html"] = template_html
                 logger.info("テンプレートHTMLをセッション状態に保存しました")
 
-            # 🚨 本番環境対応: ファイルシステム保存を無効化
-            # Cloud Runでは/tmpが一時的なため、セッション状態のみに依存
-            logger.info("テンプレートHTMLをセッション状態に保存（本番環境ではファイル保存無効）")
+            # セッション状態のみでデータ保存
+            logger.info("テンプレートHTMLをセッション状態に保存")
 
         except Exception as e:
             logger.error(f"テンプレートHTML生成エラー: {e}")
@@ -464,12 +461,6 @@ HTMLのみを出力し、説明文は一切不要です。
             logger.error(f"MainConversationAgentからのJSON取得エラー: {e}")
             return None
 
-    async def _load_json_from_filesystem(self, ctx: InvocationContext) -> str:
-        """ファイルシステムからJSONを読み込み（レガシー・本番環境では無効）"""
-        # 🚨 本番環境（Cloud Run）ではファイルシステム使用不可
-        # セッション状態のみに依存する設計に変更
-        logger.warning("ファイルシステムフォールバックは本番環境で利用不可 - セッション状態のみ使用")
-        return None
 
     def _extract_session_id(self, ctx: InvocationContext) -> Optional[str]:
         """InvocationContextからセッションIDを抽出"""
@@ -534,9 +525,8 @@ HTMLのみを出力し、説明文は一切不要です。
                 ctx.session.state["html"] = html_content
                 logger.info("HTMLをセッション状態に保存しました")
 
-            # 🚨 本番環境対応: ファイルシステム保存を無効化
-            # Cloud Runでは/tmpが一時的なため、セッション状態のみに依存
-            logger.info("HTMLをセッション状態に保存（本番環境ではファイル保存無効）")
+            # セッション状態のみでデータ保存
+            logger.info("HTMLをセッション状態に保存")
 
         except Exception as e:
             logger.error(f"HTML保存エラー: {e}")

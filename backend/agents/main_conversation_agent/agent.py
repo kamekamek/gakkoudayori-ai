@@ -3,7 +3,6 @@ import logging
 from datetime import datetime
 from typing import AsyncGenerator, Optional
 
-# from pathlib import Path  # 本番環境対応: ファイルシステム使用無効化
 from google.adk.agents import LlmAgent
 from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events.event import Event

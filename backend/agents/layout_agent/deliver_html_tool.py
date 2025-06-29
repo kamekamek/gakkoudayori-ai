@@ -84,7 +84,7 @@ class DeliverHtmlTool:
                 if response.status_code == 200:
                     result = response.json()
                     success_msg = f"✅ 学級通信をプレビューに送信しました！({result.get('content_length', 0)}文字)"
-                    logger.info(f"DeliverHtmlTool: HTML配信成功 - {result}")
+                    logger.info(f"DeliverHtmlTool: HTML配信成功 - セッション:{self._current_session_id}, サイズ:{result.get('content_length', 0)}文字")
                     return success_msg
                 else:
                     error_msg = f"❌ プレビュー送信でエラーが発生しました。(HTTP {response.status_code})"

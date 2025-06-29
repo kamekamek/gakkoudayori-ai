@@ -32,9 +32,18 @@ class GoogleAuthService {
     }
     
     try {
+      if (kDebugMode) {
+        debugPrint('🔑 GoogleSignIn初期化開始...');
+      }
+      
       _googleSignIn = GoogleSignIn(
         scopes: _scopes,
       );
+      
+      if (kDebugMode) {
+        debugPrint('🔑 GoogleSignInインスタンス作成完了');
+      }
+      
       _listenToAuthChanges();
       _isInitialized = true;
       
@@ -44,15 +53,18 @@ class GoogleAuthService {
     } catch (e) {
       if (kDebugMode) {
         debugPrint('❌ GoogleAuthService: 初期化エラー: $e');
+        debugPrint('❌ 一時的にGoogle Sign-Inなしで続行します');
       }
       _isInitialized = false;
+      // エラーが発生してもアプリの起動は続行
     }
   }
 
   /// Googleの認証状態の変更を監視し、Firebaseの認証状態を同期させます。
   static void _listenToAuthChanges() {
-    googleSignIn.onCurrentUserChanged
-        .listen((GoogleSignInAccount? account) async {
+    try {
+      googleSignIn.onCurrentUserChanged
+          .listen((GoogleSignInAccount? account) async {
       _currentUser = account;
 
       if (account != null) {
@@ -93,6 +105,11 @@ class GoogleAuthService {
         _authClient = null;
       }
     });
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ 認証状態監視の設定でエラー: $e');
+      }
+    }
   }
 
   /// 現在のGoogle Sign-Inクライアントを取得
@@ -102,7 +119,9 @@ class GoogleAuthService {
     }
     final signIn = _googleSignIn;
     if (signIn == null) {
-      throw Exception('GoogleSignInの初期化に失敗しました。');
+      // 緩やかなフォールバック：デフォルトのGoogleSignInを返す
+      debugPrint('⚠️ GoogleSignIn初期化に失敗したため、デフォルトを作成');
+      return GoogleSignIn(scopes: _scopes);
     }
     return signIn;
   }
