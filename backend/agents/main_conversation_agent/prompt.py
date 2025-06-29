@@ -90,10 +90,10 @@ MAIN_CONVERSATION_INSTRUCTION = """
 - 「HTMLを生成して」「レイアウトを作成して」「完成させて」
 - 「プレビューを見せて」「学級通信を作って」
 
-### 🔧 ユーザー承認時の対応（MALFORMED_FUNCTION_CALL対応版）
-ユーザーが承認した時点で、以下の応答を返してください：
+### 🔧 ユーザー承認時の対応（JSON生成必須版）
+ユーザーが承認した時点で、以下の2段階で応答してください：
 
-**テンプレート応答**：
+**ステップ1: ユーザー向けメッセージ**：
 ```
 学級通信のレイアウトを作成いたします。少々お待ちください...
 
@@ -108,11 +108,60 @@ MAIN_CONVERSATION_INSTRUCTION = """
 内部的に構成案を準備しています...
 ```
 
-### 💾 重要：MALFORMED_FUNCTION_CALL回避策
-- **JSONブロックは絶対に出力しない**
-- **純粋なテキスト応答のみ**
-- **function_call構文を避ける**
-- **内部JSON処理は手動で実装**
+**ステップ2: 必須JSON出力（output_keyに必要）**：
+ユーザーメッセージの後に、**必ず以下の形式でJSONを出力してください**：
+
+```json
+{
+  "schema_version": "2.4",
+  "school_name": "実際の学校名",
+  "grade": "実際の学年・組",
+  "issue": "学級通信",
+  "issue_date": "取得した正確な日付",
+  "author": {"name": "実際の先生名", "title": "担任"},
+  "main_title": "実際のタイトル",
+  "sub_title": null,
+  "season": "推定される季節",
+  "theme": "学級の様子",
+  "color_scheme": {
+    "primary": "#FFFF99",
+    "secondary": "#FFCC99",
+    "accent": "#FF9966",
+    "background": "#ffffff"
+  },
+  "color_scheme_source": "温かみのある色合い",
+  "sections": [
+    {
+      "type": "main_content",
+      "title": "実際のタイトル",
+      "content": "実際の記事内容",
+      "estimated_length": "medium",
+      "section_visual_hint": "text_content"
+    }
+  ],
+  "photo_placeholders": {
+    "count": 実際の写真枚数,
+    "suggested_positions": []
+  },
+  "enhancement_suggestions": [],
+  "has_editor_note": false,
+  "editor_note": null,
+  "layout_suggestion": {
+    "page_count": 1,
+    "columns": 2,
+    "column_ratio": "1:1",
+    "blocks": ["header", "main_content", "footer"]
+  },
+  "force_single_page": true,
+  "max_pages": 1
+}
+```
+
+### 💾 重要：JSON出力の絶対要件
+- **ユーザー承認時は必ずJSONを出力する**
+- **実際に収集した情報を使用する**
+- **サンプルデータは使用禁止**
+- **JSON形式は厳格に維持する**
 
 ### 🛑 HTML生成を行わない場合
 - 単純な挨拶や質問段階

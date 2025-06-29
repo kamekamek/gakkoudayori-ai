@@ -95,7 +95,9 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
           });
         }
 
-        return Column(
+        return Semantics(
+          identifier: 'adk-chat-widget',
+          child: Column(
             children: [
               // ヘッダー（デザインモックアップ準拠）
               Container(
@@ -426,11 +428,13 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
                             width: 1,
                           ),
                         ),
-                        child: TextField(
-                          controller: _textController,
-                          focusNode: _focusNode,
-                          maxLines: null,
-                          decoration: const InputDecoration(
+                        child: Semantics(
+                          identifier: 'chat-input',
+                          child: TextField(
+                            controller: _textController,
+                            focusNode: _focusNode,
+                            maxLines: null,
+                            decoration: const InputDecoration(
                             hintText: 'メッセージを入力...',
                             hintStyle: TextStyle(
                               color: Color(0xFF9E9E9E),
@@ -451,6 +455,7 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
                                 '[AdkChatWidget] onSubmitted triggered!');
                             _sendMessage(provider);
                           },
+                          ),
                         ),
                       ),
                     ),
@@ -535,23 +540,27 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
                           ),
                         ],
                       ),
-                      child: IconButton(
-                        icon: const Icon(
-                          Icons.send,
-                          color: Colors.white,
-                          size: 20,
+                      child: Semantics(
+                        identifier: 'send-button',
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.send,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          onPressed: () {
+                            debugPrint('[AdkChatWidget] Send button PRESSED!');
+                            _sendMessage(provider);
+                          },
+                          tooltip: '送信',
                         ),
-                        onPressed: () {
-                          debugPrint('[AdkChatWidget] Send button PRESSED!');
-                          _sendMessage(provider);
-                        },
-                        tooltip: '送信',
                       ),
                     ),
                   ],
                 ),
               ),
             ],
+          ),
         );
       },
     );

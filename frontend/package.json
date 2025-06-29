@@ -11,7 +11,12 @@
     "test:e2e:report": "playwright show-report",
     "record:test": "playwright codegen http://localhost:8080",
     "record:mobile": "playwright codegen --viewport-size=375,667 http://localhost:8080",
-    "record:tablet": "playwright codegen --viewport-size=768,1024 http://localhost:8080"
+    "record:tablet": "playwright codegen --viewport-size=768,1024 http://localhost:8080",
+    "playground": "./scripts/ui-playground.sh",
+    "playground:basic": "playwright test e2e/tests/ui-automation-playground.spec.js -g '基本フロー' --headed",
+    "playground:voice": "playwright test e2e/tests/ui-automation-playground.spec.js -g '音声入力' --headed",
+    "playground:responsive": "playwright test e2e/tests/ui-automation-playground.spec.js -g 'レスポンシブ' --headed",
+    "playground:all": "playwright test e2e/tests/ui-automation-playground.spec.js --headed"
   },
   "devDependencies": {
     "@playwright/test": "^1.40.0"

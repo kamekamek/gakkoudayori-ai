@@ -55,7 +55,7 @@ class MainConversationAgent(LlmAgent):
                 FunctionTool(get_current_date)
             ],
             sub_agents=[layout_agent],  # 手動呼び出し用
-            # output_key="outline",  # MALFORMED_FUNCTION_CALL対応: 無効化
+            output_key="outline",  # JSON自動保存を有効化
         )
 
     async def _run_async_impl(
