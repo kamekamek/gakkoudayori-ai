@@ -19,14 +19,34 @@ class GoogleAuthService {
   static GoogleSignIn? _googleSignIn;
   static GoogleSignInAccount? _currentUser;
   static auth.AuthClient? _authClient;
+  static bool _isInitialized = false;
 
   /// Google Sign-Inクライアントを初期化し、認証状態の監視を開始します。
   /// このメソッドはアプリの起動時に一度だけ呼び出してください。
   static void initialize() {
-    _googleSignIn = GoogleSignIn(
-      scopes: _scopes,
-    );
-    _listenToAuthChanges();
+    if (_isInitialized) {
+      if (kDebugMode) {
+        debugPrint('⚠️ GoogleAuthService: 既に初期化済みです');
+      }
+      return;
+    }
+    
+    try {
+      _googleSignIn = GoogleSignIn(
+        scopes: _scopes,
+      );
+      _listenToAuthChanges();
+      _isInitialized = true;
+      
+      if (kDebugMode) {
+        debugPrint('✅ GoogleAuthService: 初期化完了');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ GoogleAuthService: 初期化エラー: $e');
+      }
+      _isInitialized = false;
+    }
   }
 
   /// Googleの認証状態の変更を監視し、Firebaseの認証状態を同期させます。
@@ -77,10 +97,14 @@ class GoogleAuthService {
 
   /// 現在のGoogle Sign-Inクライアントを取得
   static GoogleSignIn get googleSignIn {
-    if (_googleSignIn == null) {
+    if (_googleSignIn == null || !_isInitialized) {
       initialize();
     }
-    return _googleSignIn!;
+    final signIn = _googleSignIn;
+    if (signIn == null) {
+      throw Exception('GoogleSignInの初期化に失敗しました。');
+    }
+    return signIn;
   }
 
   /// 現在のログインユーザー
@@ -144,11 +168,26 @@ class GoogleAuthService {
     }
 
     try {
-      final authHeaders = await _currentUser!.authHeaders;
-      final accessToken =
-          authHeaders['Authorization']?.replaceFirst('Bearer ', '');
+      final user = _currentUser;
+      if (user == null) {
+        throw Exception('現在のユーザーが取得できません');
+      }
+      
+      final authHeaders = await user.authHeaders;
+      if (authHeaders.isEmpty) {
+        throw Exception('認証ヘッダーが取得できません');
+      }
+      
+      final authHeader = authHeaders['Authorization'];
+      if (authHeader == null || authHeader.isEmpty) {
+        throw Exception('Authorizationヘッダーが見つかりません');
+      }
+      
+      final accessToken = authHeader.startsWith('Bearer ') 
+          ? authHeader.replaceFirst('Bearer ', '').trim()
+          : authHeader.trim();
 
-      if (accessToken != null) {
+      if (accessToken.isNotEmpty) {
         final credentials = auth.AccessCredentials(
           auth.AccessToken('Bearer', accessToken,
               DateTime.now().toUtc().add(const Duration(hours: 1))),
@@ -160,7 +199,7 @@ class GoogleAuthService {
           credentials,
         );
       } else {
-        throw Exception('アクセストークンの取得に失敗しました');
+        throw Exception('アクセストークンが空です');
       }
     } catch (e) {
       if (kDebugMode) {

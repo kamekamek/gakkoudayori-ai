@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../../home/providers/newsletter_provider_v2.dart';
@@ -39,26 +40,51 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   void _loadCurrentSettings() {
-    final provider = context.read<NewsletterProviderV2>();
-    final settings = provider.userSettings;
-    
-    if (settings != null) {
-      _schoolNameController.text = settings.schoolName;
-      _classNameController.text = settings.className;
-      _teacherNameController.text = settings.teacherName;
+    try {
+      final provider = context.read<NewsletterProviderV2>();
+      final settings = provider.userSettings;
       
-      // タイトルテンプレート設定
-      _primaryTitleController.text = settings.titleTemplates.primary;
-      _defaultPatternController.text = settings.titleTemplates.defaultPattern;
-      _seasonalTemplates = List.from(settings.titleTemplates.seasonal);
-      _customTemplates = List.from(settings.titleTemplates.custom);
-      _autoNumbering = settings.titleTemplates.autoNumbering;
-      _currentNumber = settings.titleTemplates.currentNumber;
+      if (settings != null) {
+        // 基本情報の設定（nullチェック付き）
+        _schoolNameController.text = settings.schoolName.trim();
+        _classNameController.text = settings.className.trim();
+        _teacherNameController.text = settings.teacherName.trim();
+        
+        // タイトルテンプレート設定（nullチェック付き）
+        final titleTemplates = settings.titleTemplates;
+        _primaryTitleController.text = titleTemplates.primary.trim();
+        _defaultPatternController.text = titleTemplates.defaultPattern.trim();
+        
+        // リストのnull安全性を確保
+        _seasonalTemplates = titleTemplates.seasonal.where((item) => item.trim().isNotEmpty).toList();
+        _customTemplates = titleTemplates.custom.where((template) => 
+            template.name.trim().isNotEmpty && template.pattern.trim().isNotEmpty).toList();
+        
+        _autoNumbering = titleTemplates.autoNumbering;
+        _currentNumber = titleTemplates.currentNumber > 0 ? titleTemplates.currentNumber : 1;
+        
+        _isSettingsComplete = settings.isComplete;
+      } else {
+        // 設定がない場合はデフォルト値を設定
+        _schoolNameController.clear();
+        _classNameController.clear();
+        _teacherNameController.clear();
+        _primaryTitleController.text = '学級だより○号';
+        _defaultPatternController.text = '○年○組 学級通信';
+        _seasonalTemplates = ['夏休み号', '冬休み号', '運動会号'];
+        _customTemplates = [];
+        _autoNumbering = true;
+        _currentNumber = 1;
+        _isSettingsComplete = false;
+      }
       
-      _isSettingsComplete = settings.isComplete;
+      setState(() {});
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ SettingsPage: 設定読み込みエラー: $e');
+      }
+      // エラー時はデフォルト状態を維持
     }
-    
-    setState(() {});
   }
 
   @override
@@ -479,16 +505,27 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _saveSettings() async {
-    // バリデーション
-    if (_schoolNameController.text.trim().isEmpty ||
-        _classNameController.text.trim().isEmpty ||
-        _teacherNameController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('❌ 学校名、クラス名、先生名は必須項目です'),
-          backgroundColor: Colors.red,
-        ),
-      );
+    // 入力値の清澄化とバリデーション
+    final schoolName = _schoolNameController.text.trim();
+    final className = _classNameController.text.trim();
+    final teacherName = _teacherNameController.text.trim();
+    
+    if (schoolName.isEmpty || className.isEmpty || teacherName.isEmpty) {
+      _showErrorSnackBar('学校名、クラス名、先生名は必須項目です');
+      return;
+    }
+    
+    // タイトルテンプレートのバリデーション
+    final primaryTitle = _primaryTitleController.text.trim();
+    final defaultPattern = _defaultPatternController.text.trim();
+    
+    if (primaryTitle.isEmpty) {
+      _showErrorSnackBar('メインタイトルパターンを入力してください');
+      return;
+    }
+    
+    if (defaultPattern.isEmpty) {
+      _showErrorSnackBar('デフォルトパターンを入力してください');
       return;
     }
 
@@ -499,64 +536,42 @@ class _SettingsPageState extends State<SettingsPage> {
     try {
       final provider = context.read<NewsletterProviderV2>();
       
-      // タイトルテンプレート設定を構築
+      // タイトルテンプレート設定を構築（清漄化済みの値を使用）
       final titleTemplates = TitleTemplates(
-        primary: _primaryTitleController.text.trim().isNotEmpty 
-          ? _primaryTitleController.text.trim() 
-          : '学級だより○号',
-        seasonal: _seasonalTemplates,
-        custom: _customTemplates,
-        defaultPattern: _defaultPatternController.text.trim().isNotEmpty 
-          ? _defaultPatternController.text.trim() 
-          : '○年○組 学級通信',
+        primary: primaryTitle,
+        seasonal: _seasonalTemplates.where((item) => item.trim().isNotEmpty).toList(),
+        custom: _customTemplates.where((template) => 
+            template.name.trim().isNotEmpty && template.pattern.trim().isNotEmpty).toList(),
+        defaultPattern: defaultPattern,
         autoNumbering: _autoNumbering,
-        currentNumber: _currentNumber,
+        currentNumber: _currentNumber > 0 ? _currentNumber : 1,
       );
 
-      // saveUserSettingsが自動的にCREATE/UPDATEを判定
+      // saveUserSettingsが自動的にCREATE/UPDATEを判定（清澄化済みの値を使用）
       final success = await provider.saveUserSettings(
-        schoolName: _schoolNameController.text.trim(),
-        className: _classNameController.text.trim(),
-        teacherName: _teacherNameController.text.trim(),
+        schoolName: schoolName,
+        className: className,
+        teacherName: teacherName,
         titleTemplates: titleTemplates,
       );
 
       if (success) {
         _loadCurrentSettings(); // 設定を再読み込み
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('✅ 設定を保存しました'),
-            duration: const Duration(seconds: 3),
-            behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.only(top: 50, left: 16, right: 16),
-            action: SnackBarAction(
-              label: '✕',
-              textColor: Colors.white,
-              onPressed: () {
-                ScaffoldMessenger.of(context).hideCurrentSnackBar();
-              },
-            ),
-          ),
-        );
+        _showSuccessSnackBar('設定を保存しました');
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('❌ 設定の保存に失敗しました'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showErrorSnackBar('設定の保存に失敗しました');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ エラーが発生しました: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (kDebugMode) {
+        debugPrint('❌ SettingsPage: 設定保存エラー: $e');
+      }
+      _showErrorSnackBar('エラーが発生しました: ${e.toString().length > 50 ? e.toString().substring(0, 50) + "..." : e.toString()}');
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
   
@@ -947,5 +962,42 @@ class _SettingsPageState extends State<SettingsPage> {
         ],
       ],
     );
+  }
+
+  /// エラーメッセージを表示するSnackBarを表示
+  void _showErrorSnackBar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ $message'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.only(bottom: 20, left: 16, right: 16),
+        ),
+      );
+    }
+  }
+
+  /// 成功メッセージを表示するSnackBarを表示
+  void _showSuccessSnackBar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✅ $message'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.only(bottom: 20, left: 16, right: 16),
+          action: SnackBarAction(
+            label: '✕',
+            textColor: Colors.white,
+            onPressed: () {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            },
+          ),
+        ),
+      );
+    }
   }
 }

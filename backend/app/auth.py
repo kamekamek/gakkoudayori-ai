@@ -25,40 +25,44 @@ def initialize_firebase_app():
     環境変数に応じて認証情報を設定する。
     lru_cacheデコレータにより、この関数は一度しか実行されない。
     """
-    # 環境変数からGCPプロジェクトIDを取得
-    project_id = os.getenv("GCP_PROJECT")
-    if not project_id:
-        # ローカル開発環境などで環境変数が設定されていない場合
-        # ADC (Application Default Credentials) から推測する
-        try:
-            from google.auth import default
-            _, project_id = default()
-        except Exception:
-            # それ���も取得できない場合はエラー
-            raise RuntimeError(
-                "GCP_PROJECT environment variable is not set and "
-                "Application Default Credentials are not available."
-            )
+    try:
+        # 環境変数からGCPプロジェクトIDを取得
+        project_id = os.getenv("GCP_PROJECT")
+        if not project_id:
+            # ローカル開発環境などで環境変数が設定されていない場合
+            # ADC (Application Default Credentials) から推測する
+            try:
+                from google.auth import default
+                _, project_id = default()
+            except Exception as e:
+                # 認証情報が取得できない場合は警告を出すが、アプリケーションは継続
+                print(f"⚠️ WARNING: Firebase初期化をスキップします: {e}")
+                print("⚠️ Firebase認証機能は利用できません。")
+                return None
 
-    # サービスアカウントキーのJSON文字列を環境変数から取得
-    # Cloud Runなどの本番環境では、サービスアカウントキーファイルではなく
-    # 環境変数にJSONを直接設定することが推奨される
-    service_account_json = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
+        # サービスアカウントキーのJSON文字列を環境変数から取得
+        # Cloud Runなどの本番環境では、サービスアカウントキーファイルではなく
+        # 環境変数にJSONを直接設定することが推奨される
+        service_account_json = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
 
-    cred_options = {
-        "project_id": project_id,
-    }
-    if service_account_json:
-        # 環境変数から認証情報を読み込む
-        cred = credentials.Certificate(service_account_json)
-    else:
-        # 環境変数がない場合 (ローカル開発など) は、ADCを使用
-        cred = credentials.ApplicationDefault()
-        print("⚠️ WARNING: FIREBASE_SERVICE_ACCOUNT_JSON not found. Using Application Default Credentials.")
+        cred_options = {
+            "project_id": project_id,
+        }
+        if service_account_json:
+            # 環境変数から認証情報を読み込む
+            cred = credentials.Certificate(service_account_json)
+        else:
+            # 環境変数がない場合 (ローカル開発など) は、ADCを使用
+            cred = credentials.ApplicationDefault()
+            print("⚠️ WARNING: FIREBASE_SERVICE_ACCOUNT_JSON not found. Using Application Default Credentials.")
 
-    print(f"🔥 Initializing Firebase Admin SDK for project: {project_id}...")
-    firebase_admin.initialize_app(credential=cred, options=cred_options)
-    print("✅ Firebase Admin SDK initialized successfully.")
+        print(f"🔥 Initializing Firebase Admin SDK for project: {project_id}...")
+        firebase_admin.initialize_app(credential=cred, options=cred_options)
+        print("✅ Firebase Admin SDK initialized successfully.")
+    except Exception as e:
+        print(f"⚠️ WARNING: Firebase初期化に失敗しました: {e}")
+        print("⚠️ Firebase認証機能は利用できません。")
+        return None
 
 # アプリケーションの起動時に一度だけ初期化処理を呼び出す
 # initialize_firebase_app()

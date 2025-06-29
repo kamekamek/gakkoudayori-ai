@@ -14,8 +14,8 @@ class UserSettingsService {
   UserSettingsService({http.Client? client}) : _client = client ?? http.Client();
 
   /// 認証トークンを設定
-  void setAuthToken(String token) {
-    _authToken = token;
+  void setAuthToken(String? token) {
+    _authToken = token?.trim().isNotEmpty == true ? token : null;
   }
 
   /// 認証ヘッダーを取得
@@ -23,11 +23,15 @@ class UserSettingsService {
     final headers = <String, String>{
       'Content-Type': 'application/json',
     };
-    if (_authToken != null) {
-      headers['Authorization'] = 'Bearer $_authToken';
+    final token = _authToken;
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
     }
     return headers;
   }
+
+  /// 認証状態を確認
+  bool get isAuthenticated => _authToken != null && _authToken!.isNotEmpty;
 
   /// エラーハンドリング用のヘルパー
   Exception _handleError(String operation, http.Response response) {
@@ -42,10 +46,19 @@ class UserSettingsService {
   /// ユーザー設定を取得
   Future<UserSettingsResponse?> getUserSettings() async {
     try {
+      // 認証状態を事前チェック
+      if (!isAuthenticated) {
+        if (kDebugMode) {
+          debugPrint('❌ UserSettingsService: 認証トークンが設定されていません');
+        }
+        throw Exception('認証が必要です。ログインしてください。');
+      }
+
       if (kDebugMode) {
-        debugPrint('🔐 UserSettingsService: 認証ヘッダー = ${_headers.containsKey('Authorization') ? 'あり' : 'なし'}');
-        if (_headers.containsKey('Authorization')) {
-          debugPrint('🔐 Authorization header: ${_headers['Authorization']?.substring(0, 20)}...');
+        debugPrint('🔐 UserSettingsService: 認証済みでユーザー設定を取得中');
+        final authHeader = _headers['Authorization'];
+        if (authHeader != null && authHeader.length > 20) {
+          debugPrint('🔐 Authorization header: ${authHeader.substring(0, 20)}...');
         }
       }
       
@@ -56,16 +69,25 @@ class UserSettingsService {
 
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
+        if (jsonData == null) {
+          if (kDebugMode) {
+            debugPrint('⚠️ UserSettingsService: レスポンスが空です');
+          }
+          return null;
+        }
         return UserSettingsResponse.fromJson(jsonData);
       } else if (response.statusCode == 404) {
-        // 設定が存在しない場合
+        // 設定が存在しない場合は正常な状態として扱う
+        if (kDebugMode) {
+          debugPrint('📋 UserSettingsService: ユーザー設定が見つかりません（初回利用）');
+        }
         return null;
       } else {
         throw _handleError('get user settings', response);
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error getting user settings: $e');
+        debugPrint('❌ Error getting user settings: $e');
       }
       rethrow;
     }
@@ -82,12 +104,30 @@ class UserSettingsService {
     WorkflowSettings? workflowSettings,
   }) async {
     try {
+      // 認証状態を事前チェック
+      if (!isAuthenticated) {
+        throw Exception('認証が必要です。ログインしてください。');
+      }
+
+      // 必須パラメータの検証
+      if (schoolName.trim().isEmpty || className.trim().isEmpty || teacherName.trim().isEmpty) {
+        throw Exception('学校名、クラス名、先生名は必須です。');
+      }
+
       if (kDebugMode) {
-        debugPrint('🔐 UserSettingsService (save): 認証ヘッダー = ${_headers.containsKey('Authorization') ? 'あり' : 'なし'}');
+        debugPrint('🔐 UserSettingsService (save): 認証済み');
       }
       
-      // まず既存設定を確認
-      final existingSettings = await getUserSettings();
+      // まず既存設定を確認（nullの場合は新規作成として扱う）
+      UserSettingsResponse? existingSettings;
+      try {
+        existingSettings = await getUserSettings();
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('⚠️ 既存設定の確認でエラー。新規作成として処理: $e');
+        }
+        existingSettings = null;
+      }
       final isUpdate = existingSettings?.settings != null;
       
       final requestData = {
@@ -118,6 +158,9 @@ class UserSettingsService {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final jsonData = json.decode(response.body);
+        if (jsonData == null) {
+          throw Exception('サーバーから空のレスポンスが返されました');
+        }
         return UserSettingsResponse.fromJson(jsonData);
       } else {
         throw _handleError('save user settings', response);
@@ -162,15 +205,26 @@ class UserSettingsService {
     WorkflowSettings? workflowSettings,
   }) async {
     try {
+      // 認証状態を事前チェック
+      if (!isAuthenticated) {
+        throw Exception('認証が必要です。ログインしてください。');
+      }
+
       final requestData = <String, dynamic>{};
       
-      if (schoolName != null) requestData['school_name'] = schoolName;
-      if (className != null) requestData['class_name'] = className;
-      if (teacherName != null) requestData['teacher_name'] = teacherName;
+      // nullでないかつ空文字でない値のみを追加
+      if (schoolName?.trim().isNotEmpty == true) requestData['school_name'] = schoolName!.trim();
+      if (className?.trim().isNotEmpty == true) requestData['class_name'] = className!.trim();
+      if (teacherName?.trim().isNotEmpty == true) requestData['teacher_name'] = teacherName!.trim();
       if (titleTemplates != null) requestData['title_templates'] = titleTemplates.toJson();
       if (uiPreferences != null) requestData['ui_preferences'] = uiPreferences.toJson();
       if (notificationSettings != null) requestData['notification_settings'] = notificationSettings.toJson();
       if (workflowSettings != null) requestData['workflow_settings'] = workflowSettings.toJson();
+
+      // 更新するデータがない場合はエラー
+      if (requestData.isEmpty) {
+        throw Exception('更新するデータがありません。');
+      }
 
       final response = await _client.put(
         Uri.parse('$baseUrl/users/settings'),
@@ -180,13 +234,16 @@ class UserSettingsService {
 
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
+        if (jsonData == null) {
+          throw Exception('サーバーから空のレスポンスが返されました');
+        }
         return UserSettingsResponse.fromJson(jsonData);
       } else {
         throw _handleError('update user settings', response);
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error updating user settings: $e');
+        debugPrint('❌ Error updating user settings: $e');
       }
       rethrow;
     }
@@ -195,6 +252,11 @@ class UserSettingsService {
   /// ユーザー設定を削除
   Future<void> deleteUserSettings() async {
     try {
+      // 認証状態を事前チェック
+      if (!isAuthenticated) {
+        throw Exception('認証が必要です。ログインしてください。');
+      }
+
       final response = await _client.delete(
         Uri.parse('$baseUrl/users/settings'),
         headers: _headers,
@@ -205,7 +267,7 @@ class UserSettingsService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error deleting user settings: $e');
+        debugPrint('❌ Error deleting user settings: $e');
       }
       rethrow;
     }
@@ -214,6 +276,11 @@ class UserSettingsService {
   /// タイトルテンプレートを追加
   Future<void> addTitleTemplate(TitleTemplate template) async {
     try {
+      // 認証状態を事前チェック
+      if (!isAuthenticated) {
+        throw Exception('認証が必要です。ログインしてください。');
+      }
+
       final response = await _client.post(
         Uri.parse('$baseUrl/users/settings/title-templates'),
         headers: _headers,
@@ -225,7 +292,7 @@ class UserSettingsService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error adding title template: $e');
+        debugPrint('❌ Error adding title template: $e');
       }
       rethrow;
     }
@@ -234,8 +301,17 @@ class UserSettingsService {
   /// タイトルテンプレートを削除
   Future<void> removeTitleTemplate(String templateId) async {
     try {
+      // 認証状態を事前チェック
+      if (!isAuthenticated) {
+        throw Exception('認証が必要です。ログインしてください。');
+      }
+
+      if (templateId.trim().isEmpty) {
+        throw Exception('テンプレートIDが指定されていません。');
+      }
+
       final response = await _client.delete(
-        Uri.parse('$baseUrl/users/settings/title-templates/$templateId'),
+        Uri.parse('$baseUrl/users/settings/title-templates/${templateId.trim()}'),
         headers: _headers,
       );
 
@@ -244,7 +320,7 @@ class UserSettingsService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error removing title template: $e');
+        debugPrint('❌ Error removing title template: $e');
       }
       rethrow;
     }
@@ -258,11 +334,16 @@ class UserSettingsService {
     String urgency = 'normal',
   }) async {
     try {
+      // 認証状態を事前チェック
+      if (!isAuthenticated) {
+        throw Exception('認証が必要です。ログインしてください。');
+      }
+
       final requestData = {
-        if (contentHint != null) 'content_hint': contentHint,
-        if (eventType != null) 'event_type': eventType,
-        if (season != null) 'season': season,
-        'urgency': urgency,
+        if (contentHint?.trim().isNotEmpty == true) 'content_hint': contentHint!.trim(),
+        if (eventType?.trim().isNotEmpty == true) 'event_type': eventType!.trim(),
+        if (season?.trim().isNotEmpty == true) 'season': season!.trim(),
+        'urgency': urgency.trim().isNotEmpty ? urgency.trim() : 'normal',
       };
 
       final response = await _client.post(
@@ -272,14 +353,36 @@ class UserSettingsService {
       );
 
       if (response.statusCode == 200) {
-        final List<dynamic> jsonData = json.decode(response.body);
-        return jsonData.map((item) => TitleSuggestion.fromJson(item)).toList();
+        final responseBody = response.body;
+        if (responseBody.isEmpty) {
+          if (kDebugMode) {
+            debugPrint('⚠️ タイトル提案のレスポンスが空です');
+          }
+          return [];
+        }
+        final dynamic jsonData = json.decode(responseBody);
+        if (jsonData is! List) {
+          if (kDebugMode) {
+            debugPrint('⚠️ タイトル提案のレスポンスが期待した形式ではありません');
+          }
+          return [];
+        }
+        return jsonData.map((item) {
+          try {
+            return TitleSuggestion.fromJson(item);
+          } catch (e) {
+            if (kDebugMode) {
+              debugPrint('⚠️ タイトル提案のパースエラー: $e');
+            }
+            return null;
+          }
+        }).where((item) => item != null).cast<TitleSuggestion>().toList();
       } else {
         throw _handleError('get title suggestions', response);
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error getting title suggestions: $e');
+        debugPrint('❌ Error getting title suggestions: $e');
       }
       rethrow;
     }

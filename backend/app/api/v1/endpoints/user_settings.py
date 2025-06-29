@@ -18,6 +18,18 @@ from services.user_settings_service import user_settings_service
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# テスト用の認証回避エンドポイント（Firebase無効時のテスト用）
+@router.get("/users/settings/test", response_model=UserSettingsResponse)
+async def get_user_settings_test():
+    """ユーザー設定を取得（テスト用・認証不要）"""
+    # Firestoreが利用できない場合は固定レスポンスを返す
+    return UserSettingsResponse(
+        settings=None,
+        is_complete=False,
+        missing_fields=["school_name", "class_name", "teacher_name"],
+        suggestions=["初期設定を完了してください"]
+    )
+
 
 @router.post("/users/settings", response_model=UserSettingsResponse, status_code=status.HTTP_201_CREATED)
 async def create_user_settings(

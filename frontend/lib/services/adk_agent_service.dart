@@ -12,6 +12,48 @@ class AdkAgentService {
   final String _baseUrl = AppConfig.apiBaseUrl;
   final http.Client _httpClient = http.Client();
 
+  /// Firebase認証トークンを安全に取得
+  Future<String?> _getAuthToken() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        if (kDebugMode) {
+          debugPrint('⚠️ AdkAgentService: Firebaseユーザーがログインしていません');
+        }
+        return null;
+      }
+      
+      final token = await user.getIdToken();
+      if (token == null || token.trim().isEmpty) {
+        if (kDebugMode) {
+          debugPrint('⚠️ AdkAgentService: 空の認証トークンが返されました');
+        }
+        return null;
+      }
+      
+      return token;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ AdkAgentService: 認証トークン取得エラー: $e');
+      }
+      return null;
+    }
+  }
+
+  /// 認証ヘッダーを安全に作成
+  Future<Map<String, String>> _createHeaders({String? authToken}) async {
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+    };
+    
+    final token = authToken ?? await _getAuthToken();
+    if (token != null && token.trim().isNotEmpty) {
+      headers['Authorization'] = 'Bearer ${token.trim()}';
+    }
+    
+    return headers;
+  }
+
   /// チャットメッセージをエージェントに送信
   Future<AdkChatResponse> sendChatMessage({
     required String message,
@@ -20,38 +62,41 @@ class AdkAgentService {
     Map<String, dynamic>? metadata,
   }) async {
     try {
-      // Firebase認証トークンを取得
-      String? authToken;
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        authToken = await user.getIdToken();
+      // 入力検証
+      if (message.trim().isEmpty) {
+        throw Exception('メッセージが空です。');
+      }
+      if (userId.trim().isEmpty) {
+        throw Exception('ユーザーIDが空です。');
       }
       
       final url = Uri.parse('$_baseUrl/chat');
-      final headers = <String, String>{
-        'Content-Type': 'application/json',
-      };
-      
-      // 認証トークンがある場合は追加
-      if (authToken != null) {
-        headers['Authorization'] = 'Bearer $authToken';
-      }
+      final headers = await _createHeaders();
       
       final response = await _httpClient
           .post(
             url,
             headers: headers,
             body: jsonEncode({
-              'session': sessionId,
-              'message': message,
-              'user_id': userId,  // ユーザーIDを明示的に送信
+              'session': sessionId?.trim(),
+              'message': message.trim(),
+              'user_id': userId.trim(),
               'metadata': metadata ?? {},
             }),
           )
           .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        final responseBody = response.body;
+        if (responseBody.isEmpty) {
+          throw Exception('サーバーから空のレスポンスが返されました。');
+        }
+        
+        final dynamic data = jsonDecode(responseBody);
+        if (data == null) {
+          throw Exception('サーバーからnullレスポンスが返されました。');
+        }
+        
         return AdkChatResponse.fromJson(data);
       } else {
         throw _createApiException(response);
@@ -182,15 +227,41 @@ class AdkAgentService {
     String? sessionId,
   }) async* {
     try {
-      final token = await FirebaseAuth.instance.currentUser?.getIdToken();
+      // 入力検証
+      if (message.trim().isEmpty) {
+        yield AdkStreamEvent(
+          sessionId: sessionId ?? '',
+          type: 'error',
+          data: 'メッセージが空です。',
+        );
+        return;
+      }
+      if (userId.trim().isEmpty) {
+        yield AdkStreamEvent(
+          sessionId: sessionId ?? '',
+          type: 'error',
+          data: 'ユーザーIDが空です。',
+        );
+        return;
+      }
+
+      final token = await _getAuthToken();
       if (token == null) {
-        throw Exception('Not authenticated');
+        yield AdkStreamEvent(
+          sessionId: sessionId ?? '',
+          type: 'error',
+          data: '認証が必要です。ログインしてください。',
+        );
+        return;
       }
 
       final url = Uri.parse('$_baseUrl/adk/chat/stream');
+      final cleanSessionId = sessionId?.trim().isNotEmpty == true 
+          ? sessionId!.trim() 
+          : '${userId.trim()}:default';
       final body = {
-        'message': message,
-        'session_id': sessionId ?? '${userId}:default',
+        'message': message.trim(),
+        'session_id': cleanSessionId,
       };
 
       debugPrint(
@@ -218,18 +289,36 @@ class AdkAgentService {
                     final decodedData = jsonDecode(data);
                     // バックエンドから返される形式に対応
                     if (decodedData is Map<String, dynamic>) {
+                      final eventSessionId = decodedData['session_id'];
+                      final eventType = decodedData['type'];
+                      final eventData = decodedData['data'];
+                      
                       return AdkStreamEvent(
-                        sessionId: decodedData['session_id'] ?? sessionId ?? '',
-                        type: decodedData['type'] ?? 'message',
-                        data: decodedData['data'] ?? data,
+                        sessionId: (eventSessionId is String && eventSessionId.isNotEmpty) 
+                            ? eventSessionId 
+                            : cleanSessionId,
+                        type: (eventType is String && eventType.isNotEmpty) 
+                            ? eventType 
+                            : 'message',
+                        data: (eventData is String && eventData.isNotEmpty) 
+                            ? eventData 
+                            : data,
                       );
                     } else {
                       // フォールバック処理
-                      return AdkStreamEvent.fromJson(decodedData);
+                      try {
+                        return AdkStreamEvent.fromJson(decodedData);
+                      } catch (e) {
+                        return AdkStreamEvent(
+                          sessionId: cleanSessionId,
+                          type: 'error',
+                          data: 'Invalid event format: $e',
+                        );
+                      }
                     }
                   } catch (e) {
                     return AdkStreamEvent(
-                      sessionId: sessionId ?? '',
+                      sessionId: cleanSessionId,
                       type: 'error',
                       data: 'Error parsing SSE data: $e',
                     );
@@ -243,13 +332,16 @@ class AdkAgentService {
       } else {
         final decodedBody = await response.stream.bytesToString();
         debugPrint('[AdkAgentService] Error response body: $decodedBody');
-        throw Exception(
-            'Failed to stream chat: ${response.statusCode}, Body: $decodedBody');
+        yield AdkStreamEvent(
+          sessionId: cleanSessionId,
+          type: 'error',
+          data: 'Failed to stream chat: ${response.statusCode}, Body: $decodedBody',
+        );
       }
     } catch (e) {
       debugPrint('[AdkAgentService] Exception caught: $e');
       yield AdkStreamEvent(
-        sessionId: sessionId ?? '',
+        sessionId: sessionId?.trim() ?? '',
         type: 'error',
         data: 'Error streaming chat: $e',
       );
@@ -261,24 +353,47 @@ class AdkAgentService {
     required String userId,
     required String sessionId,
   }) async {
-    final url = Uri.parse('$_baseUrl/adk/newsletter/generate');
-    final body = jsonEncode({
-      'user_id': userId,
-      'session_id': sessionId,
-    });
-    debugPrint('[AdkAgentService] Generating newsletter with body: $body');
-
     try {
+      // 入力検証
+      if (userId.trim().isEmpty) {
+        throw Exception('ユーザーIDが空です。');
+      }
+      if (sessionId.trim().isEmpty) {
+        throw Exception('セッションIDが空です。');
+      }
+
+      final url = Uri.parse('$_baseUrl/adk/newsletter/generate');
+      final headers = await _createHeaders();
+      final body = jsonEncode({
+        'user_id': userId.trim(),
+        'session_id': sessionId.trim(),
+      });
+      debugPrint('[AdkAgentService] Generating newsletter with body: $body');
+
       final response = await _httpClient.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: headers,
         body: body,
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        final responseBody = response.body;
+        if (responseBody.isEmpty) {
+          throw Exception('サーバーから空のレスポンスが返されました。');
+        }
+        
+        final dynamic data = jsonDecode(responseBody);
+        if (data == null) {
+          throw Exception('サーバーからnullレスポンスが返されました。');
+        }
+        
+        final htmlContent = data['html_content'];
+        if (htmlContent is! String || htmlContent.trim().isEmpty) {
+          throw Exception('HTMLコンテンツが空または無効です。');
+        }
+        
         debugPrint('[AdkAgentService] Newsletter generated successfully.');
-        return data['html_content'] as String;
+        return htmlContent;
       } else {
         debugPrint(
             '[AdkAgentService] Failed to generate newsletter. Status: ${response.statusCode}, Body: ${response.body}');
@@ -286,7 +401,7 @@ class AdkAgentService {
       }
     } catch (e) {
       debugPrint('[AdkAgentService] Error generating newsletter: $e');
-      throw Exception('Error generating newsletter: $e');
+      rethrow;
     }
   }
 

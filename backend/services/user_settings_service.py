@@ -22,9 +22,13 @@ logger = logging.getLogger(__name__)
 
 
 @lru_cache()
-def get_db_client() -> firestore.AsyncClient:
+def get_db_client() -> Optional[firestore.AsyncClient]:
     """Firestoreクライアントのシングルトンインスタンスを返す"""
-    return firestore.AsyncClient()
+    try:
+        return firestore.AsyncClient()
+    except Exception as e:
+        logger.warning(f"Firestore初期化に失敗しました: {e}")
+        return None
 
 
 class UserSettingsService:
@@ -32,9 +36,15 @@ class UserSettingsService:
 
     def __init__(self):
         self.db = get_db_client()
+        if self.db is None:
+            logger.warning("Firestore接続に失敗しました。一部の機能が制限されます。")
 
     async def get_user_settings(self, user_id: str) -> Optional[UserSettings]:
         """ユーザー設定を取得"""
+        if self.db is None:
+            logger.warning("Firestoreが利用できません。設定を取得できません。")
+            return None
+            
         try:
             doc_ref = self.db.collection("users").document(user_id).collection("settings").document("main")
             doc = await doc_ref.get()

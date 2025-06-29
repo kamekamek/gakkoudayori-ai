@@ -40,9 +40,20 @@ class NewsletterProviderV2 extends ChangeNotifier {
   bool get isSettingsLoading => _isSettingsLoading;
   
   // 基本情報（設定から取得、フォールバック付き）
-  String get schoolName => _userSettings?.schoolName ?? '';
-  String get className => _userSettings?.className ?? '';
-  String get teacherName => _userSettings?.teacherName ?? '';
+  String get schoolName {
+    final settings = _userSettings;
+    return settings?.schoolName.trim().isNotEmpty == true ? settings!.schoolName : '';
+  }
+  
+  String get className {
+    final settings = _userSettings;
+    return settings?.className.trim().isNotEmpty == true ? settings!.className : '';
+  }
+  
+  String get teacherName {
+    final settings = _userSettings;
+    return settings?.teacherName.trim().isNotEmpty == true ? settings!.teacherName : '';
+  }
   
   String get title => _title;
   String get content => _content;
@@ -176,16 +187,20 @@ class NewsletterProviderV2 extends ChangeNotifier {
       await _ensureAuthTokenSet();
 
       final response = await userSettingsService.saveUserSettings(
-        schoolName: schoolName,
-        className: className,
-        teacherName: teacherName,
+        schoolName: schoolName.trim(),
+        className: className.trim(),
+        teacherName: teacherName.trim(),
         titleTemplates: titleTemplates,
         uiPreferences: uiPreferences,
       );
 
+      if (response.settings == null) {
+        throw Exception('ユーザー設定の保存に失敗しました。サーバーから空のレスポンスが返されました。');
+      }
+
       _userSettings = response.settings;
       _isSettingsLoaded = true;
-      _statusMessage = '${teacherName}先生、設定が完了しました！学級通信を作成しましょう';
+      _statusMessage = '${teacherName.trim()}先生、設定が完了しました！学級通信を作成しましょう';
 
       if (kDebugMode) {
         print('ユーザー設定作成完了: $schoolName $className');
@@ -241,14 +256,18 @@ class NewsletterProviderV2 extends ChangeNotifier {
       await _ensureAuthTokenSet();
 
       final response = await userSettingsService.updateUserSettings(
-        schoolName: schoolName,
-        className: className,
-        teacherName: teacherName,
+        schoolName: schoolName?.trim(),
+        className: className?.trim(),
+        teacherName: teacherName?.trim(),
         titleTemplates: titleTemplates,
         uiPreferences: uiPreferences,
         notificationSettings: notificationSettings,
         workflowSettings: workflowSettings,
       );
+
+      if (response.settings == null) {
+        throw Exception('ユーザー設定の更新に失敗しました。サーバーから空のレスポンスが返されました。');
+      }
 
       _userSettings = response.settings;
       _hasUnsavedChanges = true;
@@ -390,7 +409,14 @@ class NewsletterProviderV2 extends ChangeNotifier {
     final userId = adkChatProvider.userId;
     final sessionId = adkChatProvider.sessionId;
 
-    if (sessionId == null) {
+    // 入力検証
+    if (userId.trim().isEmpty) {
+      _error = 'ユーザーIDが設定されていません。';
+      notifyListeners();
+      return null;
+    }
+    
+    if (sessionId == null || sessionId.trim().isEmpty) {
       _error = 'チャットセッションが開始されていません。';
       notifyListeners();
       return null;
@@ -402,16 +428,26 @@ class NewsletterProviderV2 extends ChangeNotifier {
 
     try {
       final htmlContent = await adkAgentService.generateNewsletter(
-        userId: userId,
-        sessionId: sessionId,
+        userId: userId.trim(),
+        sessionId: sessionId.trim(),
       );
       
-      if (htmlContent != null) {
-        updateGeneratedHtml(htmlContent);
-        
-        // タイトル使用統計を更新
-        if (_title.isNotEmpty) {
-          recordTitleUsage(_title);
+      if (htmlContent.trim().isEmpty) {
+        throw Exception('生成されたHTMLコンテンツが空です。');
+      }
+      
+      updateGeneratedHtml(htmlContent);
+      
+      // タイトル使用統計を更新
+      final currentTitle = _title.trim();
+      if (currentTitle.isNotEmpty) {
+        try {
+          await recordTitleUsage(currentTitle);
+        } catch (e) {
+          // 統計更新の失敗は致命的ではないため、ログのみ
+          if (kDebugMode) {
+            debugPrint('⚠️ タイトル使用統計更新でエラー: $e');
+          }
         }
       }
       
@@ -427,27 +463,36 @@ class NewsletterProviderV2 extends ChangeNotifier {
 
   /// 設定の完了状況を取得
   bool get isUserSettingsComplete {
-    return _userSettings?.isComplete ?? false;
+    final settings = _userSettings;
+    return settings?.isComplete ?? false;
   }
 
   /// 設定の不足フィールドを取得
   List<String> get missingSettingsFields {
-    return _userSettings?.missingFields ?? ['all'];
+    final settings = _userSettings;
+    if (settings == null) {
+      return ['schoolName', 'className', 'teacherName'];
+    }
+    return settings.missingFields;
   }
 
   /// 次回の号数を取得
   int get nextIssueNumber {
-    return _userSettings?.titleTemplates.currentNumber ?? 1;
+    final settings = _userSettings;
+    return settings?.titleTemplates.currentNumber ?? 1;
   }
 
   /// デフォルトタイトルパターンを取得
   String get defaultTitlePattern {
-    return _userSettings?.titleTemplates.primary ?? '学級だより○号';
+    final settings = _userSettings;
+    final pattern = settings?.titleTemplates.primary;
+    return (pattern?.trim().isNotEmpty == true) ? pattern! : '学級だより○号';
   }
 
   /// UI設定を取得
   UIPreferences get uiPreferences {
-    return _userSettings?.uiPreferences ?? UIPreferences();
+    final settings = _userSettings;
+    return settings?.uiPreferences ?? UIPreferences();
   }
 
   /// UI設定を更新する専用メソッド
@@ -468,13 +513,22 @@ class NewsletterProviderV2 extends ChangeNotifier {
 }
 
 /// Riverpod Provider
+/// 注意: このプロバイダーはapp.dartで実際の依存関係と置き換える必要があります
 final newsletterProviderV2 = ChangeNotifierProvider<NewsletterProviderV2>((ref) {
+  // 各サービスのインスタンスを作成
   final adkAgentService = AdkAgentService();
-  // 一時的にダミーのAdkChatProviderを作成（後でapp.dartで統合）
+  
+  // FirebaseAuth経由でユーザーIDを取得
+  final currentUser = FirebaseAuth.instance.currentUser;
+  final userId = currentUser?.uid ?? 'anonymous_user';
+  
+  // ErrorProviderは実際の実装で置き換える
+  final errorProvider = ErrorProvider();
+  
   final adkChatProvider = AdkChatProvider(
     adkService: adkAgentService,
-    errorProvider: ErrorProvider(),
-    userId: 'temp_user', // 後で実際のユーザーIDに置き換え
+    errorProvider: errorProvider,
+    userId: userId,
   );
   
   return NewsletterProviderV2(

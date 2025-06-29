@@ -131,7 +131,7 @@ class TitleSuggestionRequest(BaseModel):
 
 class UserSettingsResponse(BaseModel):
     """ユーザー設定レスポンス用モデル"""
-    settings: UserSettings
+    settings: Optional[UserSettings]
     is_complete: bool = Field(..., description="設定完了フラグ")
     missing_fields: List[str] = Field(default_factory=list, description="未設定フィールド")
     suggestions: List[str] = Field(default_factory=list, description="設定改善提案")
