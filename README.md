@@ -40,39 +40,60 @@
 - **リアルタイム編集**: 対話形式での差分表示・即座反映
 
 ### 🎨 WYSIWYG編集
-- **Quill.jsエディタ**: プロ仕様のリッチテキスト編集
+- **リッチテキスト編集**: 直感的なビジュアル編集
 - **季節テンプレート**: 春夏秋冬の色彩・アイコンセット
 - **インライン編集**: クリックで直接編集可能
-- **Delta/HTML変換**: 高品質なレイアウト保持
+- **リアルタイムプレビュー**: 編集内容を即座に反映
 
 ### 📄 PDF出力・配信
-- **高品質PDF**: WeasyPrintによるA4最適化レイアウト
-- **日本語フォント**: NotoSansCJK完全対応
+- **高品質PDF**: A4最適化レイアウト
+- **日本語フォント**: 完全対応
 - **自動レイアウト**: 季節テーマ色彩・装飾自動反映
 - **ワンクリック配信**: PDF生成・ダウンロード・共有
+
+### 🎭 デモモード
+- **Firebase不要**: アカウント登録なしで即座に体験
+- **全機能利用可能**: 音声入力からPDF出力まで
+- **サンプルデータ**: 実際の学級通信例を確認可能
 
 ---
 
 ## 🏗️ 技術スタック
 
 ### **ハッカソン必須要件対応**
-- ✅ **Google Cloud Platform**: Vertex AI + Speech-to-Text
-- ✅ **Vertex AI Gemini 1.5 Pro**: テキスト生成・リライト
+- ✅ **Google Cloud Platform**: Vertex AI + Speech-to-Text + Cloud Run
+- ✅ **Vertex AI Gemini 2.0 Pro**: テキスト生成・リライト
 - ✅ **Flutter Web**: 特別賞対象フロントエンド
 - ✅ **Firebase**: 特別賞対象（Authentication・Firestore・Storage）
+- ✅ **Google ADK v1.4.2+**: エージェント開発基盤
 
-### **アーキテクチャ**
+### **システムアーキテクチャ**
+
+**2エージェント連携システム（Google ADK）**
 ```
 Flutter Web App (フロントエンド)
-    ↓ HTTPS API
-FastAPI Backend (バックエンド on Cloud Run)
+    ↓ HTTP API (/api/v1/adk/chat/stream)
+FastAPI Backend (バックエンド - Cloud Run)
+    ↓ Google ADK Runner
+MainConversationAgent (root_agent)
+    ├─ ユーザー対話・音声認識
+    ├─ outline.json生成・保存
+    └─ LayoutAgent (sub_agent) 呼び出し
+            ↓
+        LayoutAgent
+            ├─ JSON読み込み
+            ├─ HTML生成 (newsletter.html)
+            └─ セッション状態保存
     ↓ 
-┌─ Vertex AI ────┬─ Firebase ──────┬─ WeasyPrint ─┐
-│  - Gemini Pro  │  - Auth         │  - PDF生成    │
-│  - STT API     │  - Firestore    │  - 日本語対応  │
-│                │  - Storage      │              │
-└────────────────┴─────────────────┴──────────────┘
+┌─ Vertex AI ────┬─ Firebase ──────┬─ その他 ─────────┐
+│  - Gemini Pro  │  - Auth         │  - Cloud Storage │
+│  - STT API     │  - Firestore    │  - PDF生成       │
+└────────────────┴─────────────────┴──────────────────┘
 ```
+
+### **ADKエージェント構成**
+- **MainConversationAgent**: ユーザーとの自然対話・JSON構成案生成
+- **LayoutAgent**: JSON → HTMLレイアウト変換・品質保証
 
 ---
 

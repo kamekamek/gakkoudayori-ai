@@ -68,8 +68,8 @@ else:
         allow_origins=origins,
         allow_origin_regex=r"https://gakkoudayori-ai--.*\.web\.app",  # ステージング・プレビュー環境を許可
         allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["Content-Type", "Authorization", "Accept", "Origin", "X-Requested-With"],
+        allow_methods=["*"],  # 全てのHTTPメソッドを許可
+        allow_headers=["*"],  # 全てのヘッダーを許可（ファイルアップロード対応）
     )
     print("✅ CORS: Production mode enabled with staging support")
 
