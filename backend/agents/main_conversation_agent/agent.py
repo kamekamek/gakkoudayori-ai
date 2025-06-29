@@ -126,19 +126,12 @@ class MainConversationAgent(LlmAgent):
             # 段階1: LLM実行とJSON保存
             logger.info("📝 段階1: LLM実行とユーザー情報収集")
             event_count = 0
-            transfer_to_agent_requested = False
 
             async for event in super()._run_async_impl(ctx):
                 event_count += 1
                 logger.info(f"LLMイベント #{event_count}: author={getattr(event, 'author', 'unknown')}")
 
-                # transfer_to_agentの要求を検出（但し、まだ実行しない）
-                if hasattr(event, 'actions') and event.actions and event.actions.transfer_to_agent:
-                    logger.info(f"⏸️ transfer_to_agent要求を検出（保留中）: {event.actions.transfer_to_agent}")
-                    transfer_to_agent_requested = True
-                    # transfer_to_agentアクションを一時的に無効化
-                    event.actions.transfer_to_agent = None
-
+                # transfer_to_agent関連の処理は完全に削除（ADK v1.5.0では不要）
                 yield event
 
             logger.info(f"=== LLM実行完了: {event_count}個のイベント ===")
@@ -157,27 +150,8 @@ class MainConversationAgent(LlmAgent):
                 else:
                     logger.warning("❌ JSON保存が不完全です")
 
-            # 段階3: transfer_to_agentが要求されていた場合、LayoutAgentを実行
-            if transfer_to_agent_requested:
-                logger.info("🔄 段階3: LayoutAgent実行開始（JSON保存後）")
-
-                layout_agent = None
-                for agent in self.sub_agents:
-                    if agent.name == "layout_agent":
-                        layout_agent = agent
-                        break
-
-                if layout_agent:
-                    logger.info("LayoutAgentを実行します（JSON保存完了後）")
-                    async for layout_event in layout_agent._run_async_impl(ctx):
-                        logger.info(f"LayoutAgentイベント: {getattr(layout_event, 'author', 'unknown')}")
-                        yield layout_event
-                    logger.info("LayoutAgent実行完了")
-                else:
-                    logger.error("LayoutAgentが見つかりません")
-
-            # 追加: 明示的な生成リクエストの場合の処理
-            elif hasattr(ctx, "session") and hasattr(ctx.session, "state"):
+            # 段階3: 明示的な生成リクエストの場合のLayoutAgent実行
+            if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
                 if ctx.session.state.get("html_generation_requested", False):
                     logger.info("=== 明示的HTML生成要求を検出 - LayoutAgent実行開始 ===")
 
@@ -204,8 +178,8 @@ class MainConversationAgent(LlmAgent):
             await self._log_session_state_for_debug(ctx)
 
         except Exception as e:
-            error_msg = f"対話中にエラーが発生しました: {str(e)}"
-            logger.error(error_msg)
+            error_msg = f"申し訳ございません。処理中に問題が発生しました。もう一度お試しください。"
+            logger.error(f"MainConversationAgent実行エラー: {str(e)}")
             yield Event(
                 author=self.name,
                 content=Content(parts=[Part(text=error_msg)])
