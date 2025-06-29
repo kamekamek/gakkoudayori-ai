@@ -70,7 +70,7 @@ class AdkAgentService {
         throw Exception('ユーザーIDが空です。');
       }
       
-      final url = Uri.parse('$_baseUrl/chat');
+      final url = Uri.parse('${AppConfig.apiV1BaseUrl}/adk/chat/stream');
       final headers = await _createHeaders();
       
       final response = await _httpClient

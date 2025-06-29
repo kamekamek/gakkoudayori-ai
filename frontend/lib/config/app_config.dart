@@ -35,7 +35,7 @@ class AppConfig {
   static bool get isProduction => environment == 'production';
   static bool get isStaging => environment == 'staging';
 
-  // 環境に応じたURL取得
+  // 環境に応じたURL取得（ベースURLのみ、/api/v1は含まない）
   static String get currentApiBaseUrl {
     switch (environment) {
       case 'production':
@@ -44,7 +44,12 @@ class AppConfig {
         return prodApiBaseUrl; // staging環境も本番URLを使用
       case 'development':
       default:
-        return apiBaseUrl;
+        // 環境変数に/api/v1が含まれている場合は除去
+        final url = apiBaseUrl;
+        if (url.endsWith('/api/v1')) {
+          return url.substring(0, url.length - 7);
+        }
+        return url;
     }
   }
 
