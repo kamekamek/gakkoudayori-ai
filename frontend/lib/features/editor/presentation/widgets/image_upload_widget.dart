@@ -38,12 +38,11 @@ class ImageUploadWidget extends StatelessWidget {
             if (imageProvider.lastError != null)
               _buildErrorCard(context, imageProvider),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 8), // 高さを削減
 
-            // 画像グリッド
+            // 画像グリッド - レスポンシブ対応
             if (imageProvider.hasImages)
-              SizedBox(
-                height: 300, // 固定高さを設定
+              Expanded( // 固定高さではなく利用可能スペースを使用
                 child: ImageGridWidget(
                   images: imageProvider.uploadedImages,
                   onImageRemoved: (imageId) {
@@ -61,7 +60,9 @@ class ImageUploadWidget extends StatelessWidget {
                 ),
               )
             else
-              _buildEmptyState(context),
+              Expanded( // 空の状態もExpandedで包む
+                child: _buildEmptyState(context),
+              ),
           ],
         );
       },
@@ -284,8 +285,8 @@ class ImageUploadWidget extends StatelessWidget {
 
   Widget _buildEmptyState(BuildContext context) {
     return Container(
-      height: 200,
       margin: const EdgeInsets.symmetric(horizontal: 16),
+      constraints: const BoxConstraints(minHeight: 150), // 最小高さを設定
       decoration: BoxDecoration(
         border: Border.all(
           color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
@@ -296,6 +297,7 @@ class ImageUploadWidget extends StatelessWidget {
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min, // 必要最小限のサイズに
           children: [
             Icon(
               Icons.photo_library_outlined,

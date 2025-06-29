@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:provider/provider.dart' as legacy;
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../core/router/app_router.dart';
 import '../core/router/demo_router.dart';
@@ -49,7 +50,7 @@ class GakkouDayoriAiApp extends ConsumerWidget {
           create: (context) => AdkChatProvider(
             adkService: legacy.Provider.of<AdkAgentService>(context, listen: false),
             errorProvider: legacy.Provider.of<ErrorProvider>(context, listen: false),
-            userId: 'user_12345', // This will be replaced with the actual user ID
+            userId: FirebaseAuth.instance.currentUser?.uid ?? 'user_12345', // Firebase UIDを使用、フォールバック付き
           ),
         ),
         legacy.ChangeNotifierProvider(

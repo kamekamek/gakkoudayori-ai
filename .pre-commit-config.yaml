@@ -5,20 +5,20 @@ repos:
     hooks:
       - id: black
         files: ^backend/
-        
+
   - repo: https://github.com/pycqa/isort
     rev: 5.12.0
     hooks:
       - id: isort
         files: ^backend/
-        
+
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.1.3
     hooks:
       - id: ruff
         files: ^backend/
         args: [--fix, --exit-non-zero-on-fix]
-        
+
   # ADK互換性テスト
   - repo: local
     hooks:
@@ -28,7 +28,7 @@ repos:
         language: system
         files: ^backend/agents/.*\.py$
         pass_filenames: false
-        
+
   # 一般的な品質管理
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.4.0
@@ -42,4 +42,11 @@ repos:
       - id: check-json
         exclude: ^frontend/
       - id: check-merge-conflict
-      - id: check-case-conflict 
+      - id: check-case-conflict
+
+
+
+
+
+
+

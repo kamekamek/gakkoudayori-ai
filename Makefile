@@ -212,9 +212,13 @@ test-adk:
 warmup:
 	@echo "🔥 バックエンドWarm-up実行中..."
 	@echo "📊 本番環境ヘルスチェック..."
-	@curl -f -s https://gakkoudayori-backend-944053509139.asia-northeast1.run.app/health || echo "❌ 本番環境エラー"
+	@if ! curl -f -s -o /dev/null -w "%{http_code}" https://gakkoudayori-backend-944053509139.asia-northeast1.run.app/health | grep -q "200"; then \
+		echo "❌ 本番環境エラー" && exit 1; \
+	fi
 	@echo "🔥 本番環境Warm-up..."
-	@curl -f -s https://gakkoudayori-backend-944053509139.asia-northeast1.run.app/warmup || echo "❌ 本番Warm-upエラー"
+	@if ! curl -f -s -o /dev/null -w "%{http_code}" https://gakkoudayori-backend-944053509139.asia-northeast1.run.app/warmup | grep -q "200"; then \
+		echo "❌ 本番Warm-upエラー" && exit 1; \
+	fi
 	@echo "🧪 ステージング環境チェック..."
 	@curl -f -s https://gakkoudayori-backend-staging-944053509139.asia-northeast1.run.app/health || echo "⚠️ ステージング環境エラー"
 	@curl -f -s https://gakkoudayori-backend-staging-944053509139.asia-northeast1.run.app/warmup || echo "⚠️ ステージングWarm-upエラー"

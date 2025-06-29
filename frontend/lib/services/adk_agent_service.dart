@@ -40,6 +40,34 @@ class AdkAgentService {
     }
   }
 
+  /// Firebase UIDを安全に取得
+  String? _getCurrentUserUid() {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        if (kDebugMode) {
+          debugPrint('⚠️ AdkAgentService: Firebaseユーザーがログインしていません');
+        }
+        return null;
+      }
+      
+      final uid = user.uid;
+      if (uid.trim().isEmpty) {
+        if (kDebugMode) {
+          debugPrint('⚠️ AdkAgentService: 空のUIDが返されました');
+        }
+        return null;
+      }
+      
+      return uid;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ AdkAgentService: UID取得エラー: $e');
+      }
+      return null;
+    }
+  }
+
   /// 認証ヘッダーを安全に作成
   Future<Map<String, String>> _createHeaders({String? authToken}) async {
     final headers = <String, String>{
@@ -49,6 +77,21 @@ class AdkAgentService {
     final token = authToken ?? await _getAuthToken();
     if (token != null && token.trim().isNotEmpty) {
       headers['Authorization'] = 'Bearer ${token.trim()}';
+    }
+    
+    // Firebase UIDをX-User-IDヘッダーに追加
+    final uid = _getCurrentUserUid();
+    if (uid != null && uid.trim().isNotEmpty) {
+      headers['X-User-ID'] = uid.trim();
+      if (kDebugMode) {
+        debugPrint('🔍 AdkAgentService: X-User-ID header set to: ${uid.trim()}');
+      }
+    } else {
+      // Firebase UIDが取得できない場合はエラー
+      if (kDebugMode) {
+        debugPrint('❌ AdkAgentService: Firebase UID not available, request will fail');
+      }
+      throw Exception('Firebase authentication required: UID not available');
     }
     
     return headers;
@@ -85,7 +128,7 @@ class AdkAgentService {
             url,
             headers: headers,
             body: jsonEncode({
-              'session': sessionId?.trim(),
+              'session_id': sessionId?.trim(),
               'message': message.trim(),
               'user_id': userId.trim(),
               'metadata': metadata ?? {},
@@ -263,9 +306,18 @@ class AdkAgentService {
       }
 
       final url = Uri.parse('$_baseUrl/api/v1/adk/chat/stream');
+      
+      // Firebase UIDを使用してセッションIDを生成
+      final currentUid = _getCurrentUserUid();
+      final actualUserId = currentUid ?? userId.trim();
       final cleanSessionId = sessionId?.trim().isNotEmpty == true 
           ? sessionId!.trim() 
-          : '${userId.trim()}:default';
+          : '${actualUserId}:default';
+          
+      if (kDebugMode) {
+        debugPrint('🔍 AdkAgentService: Using session ID: $cleanSessionId');
+        debugPrint('🔍 AdkAgentService: Firebase UID: $currentUid');
+      }
       final body = {
         'message': message.trim(),
         'session_id': cleanSessionId,
@@ -279,8 +331,20 @@ class AdkAgentService {
 
       final request = http.Request('POST', url)
         ..headers['Content-Type'] = 'application/json'
-        ..headers['Authorization'] = 'Bearer $token'
-        ..body = jsonEncode(body);
+        ..headers['Authorization'] = 'Bearer $token';
+        
+      // X-User-IDヘッダーを追加
+      if (currentUid != null && currentUid.trim().isNotEmpty) {
+        request.headers['X-User-ID'] = currentUid.trim();
+        if (kDebugMode) {
+          debugPrint('🔍 AdkAgentService: Sending X-User-ID: ${currentUid.trim()}');
+        }
+      } else {
+        // Firebase UIDが取得できない場合はエラー
+        throw Exception('Firebase authentication required: UID not available for streaming');
+      }
+      
+      request.body = jsonEncode(body);
 
       final response = await _httpClient.send(request);
 
