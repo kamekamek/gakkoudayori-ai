@@ -761,7 +761,7 @@ class _DemoPreviewInterfaceState extends State<DemoPreviewInterface> {
                   if (mounted) {
                     _showSuccessDialog(
                       '✅ Classroom投稿完了',
-                      '${selectedClassroom!.name}に投稿されました。\n\nデモURL: $postUrl',
+                      '${selectedClassroom!.name}に投稿されました。\n\nURL: $postUrl',
                       actions: [
                         TextButton(
                           onPressed: () {
