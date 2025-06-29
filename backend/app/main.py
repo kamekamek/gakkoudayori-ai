@@ -59,18 +59,19 @@ if ENVIRONMENT == "development":
     )
     print("✅ CORS: Development mode enabled")
 else:
-    # 本番環境では、正規表現で許可するオリジンを厳密に指定
-    # プライマリドメイン、Firebaseのデフォルトドメイン、およびステージング用のプレビュードメインを許可
-    allowed_origin_regex = r"https://gakkoudayori-ai(-.*)?\.web\.app"
+    # 本番環境で許可するオリジンを明示的に指定
+    origins = [
+        "https://gakkoudayori-ai.web.app",
+    ]
     
     app.add_middleware(
         CORSMiddleware,
-        allow_origin_regex=allowed_origin_regex,
+        allow_origins=origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    print(f"✅ CORS: Production mode enabled. Allowing origins matching: {allowed_origin_regex}")
+    print(f"✅ CORS: Production mode enabled. Allowing origins: {origins}")
 
 # --- ADK v1.0.0手動セットアップ ---
 session_service = InMemorySessionService()

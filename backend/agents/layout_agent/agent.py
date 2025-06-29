@@ -31,7 +31,7 @@ class LayoutAgent(LlmAgent):
             name="layout_agent",
             model=model,
             instruction=INSTRUCTION,
-            description="JSONデータから美しいHTMLレイアウトを生成し、フロントエンドに配信します。",
+            description="学級通信の情報が揃い、ユーザーが「作成してください」「お願いします」「完成させて」等の要求をした際に、美しいHTMLレイアウトを生成してフロントエンドに配信する専門エージェントです。",
             tools=[html_delivery_tool.create_adk_function_tool()],
             output_key=output_key,
         )
