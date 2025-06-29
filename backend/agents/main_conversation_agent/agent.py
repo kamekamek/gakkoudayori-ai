@@ -15,6 +15,20 @@ from .prompt import MAIN_CONVERSATION_INSTRUCTION
 # ロガーの設定
 logger = logging.getLogger(__name__)
 
+# モジュールレベルのユーザーID管理（ADK FunctionTool制限の回避）
+_current_user_id = None
+
+def set_current_user_id(user_id: str):
+    """現在のユーザーIDを設定（MainConversationAgentが呼び出し）"""
+    global _current_user_id
+    _current_user_id = user_id
+    logger.info(f"現在のユーザーIDを設定: {user_id}")
+
+def get_current_user_id() -> Optional[str]:
+    """現在のユーザーIDを取得（get_user_settings_context関数が使用）"""
+    global _current_user_id
+    return _current_user_id
+
 
 def get_current_date() -> str:
     """現在の日付を'YYYY-MM-DD'形式で返します。ユーザーには自然な形で表示されます。"""
@@ -29,15 +43,24 @@ async def get_user_settings_context() -> str:
     学校名、クラス名、先生名、タイトルテンプレートなどの個人設定を返します。
     
     注意: この関数はADK FunctionToolとして使用されるため、
-    tool_contextは直接受け取れません。
+    tool_contextは直接受け取れません。グローバル変数でユーザーIDを管理します。
     """
     try:
-        # 実際のFirebase UIDを使用
-        actual_user_id = "QaHkiAHZ0uOWeqCIfFF6p4bQxdk2"
-        logger.info(f"ユーザー設定を取得中: user_id={actual_user_id}")
+        # グローバル変数から現在のユーザーIDを取得
+        actual_user_id = get_current_user_id()
         
-        # 注意: キャッシュ機能は現在無効（tool_contextアクセス不可のため）
-        # 将来的にはADKセッション状態管理を通じて実装予定
+        if not actual_user_id:
+            logger.warning("ユーザーIDが設定されていません。デフォルト設定を使用します。")
+            return json.dumps({
+                "status": "設定なし",
+                "message": "ユーザーIDが設定されていません。",
+                "学校名": "○○小学校",
+                "クラス名": "3年2組", 
+                "先生名": "田中先生",
+                "設定完了": False
+            }, ensure_ascii=False, indent=2)
+        
+        logger.info(f"ユーザー設定を取得中: user_id={actual_user_id}")
 
         # UserSettingsServiceを使用してユーザー設定を取得
         import os
@@ -188,6 +211,9 @@ class MainConversationAgent(LlmAgent):
                 return
 
             logger.info(f"ユーザーID取得: {user_id}")
+
+            # グローバル変数にユーザーIDを設定（get_user_settings_context関数で使用）
+            set_current_user_id(user_id)
 
             # セッション状態にユーザーIDを保存
             if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
