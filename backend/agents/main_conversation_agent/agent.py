@@ -201,16 +201,36 @@ class MainConversationAgent(LlmAgent):
                     ctx.session.state["outline_extracted"] = True
                 else:
                     logger.error("❌ JSON構成案の生成に完全に失敗")
+                    # それでも会話内容は保存しておく
+                    logger.info("🔄 JSONは失敗したが会話内容は保存継続")
             
-            # セッション状態にシンプルに保存
-            ctx.session.state["conversation_content"] = conversation_text
-            ctx.session.state["info_extracted"] = True
-            ctx.session.state["extraction_timestamp"] = get_current_date()
-            
-            logger.info("✅ 会話情報をセッション状態に保存しました")
-            logger.info(f"📊 保存後のセッション状態キー: {list(ctx.session.state.keys())}")
-            logger.info(f"📊 保存された会話内容長: {len(ctx.session.state.get('conversation_content', ''))} 文字")
-            logger.info(f"📊 保存されたJSON構成案長: {len(ctx.session.state.get('outline', ''))} 文字")
+            # セッション状態にシンプルに保存（強制的に保存）
+            try:
+                ctx.session.state["conversation_content"] = conversation_text
+                ctx.session.state["info_extracted"] = True
+                ctx.session.state["extraction_timestamp"] = get_current_date()
+                ctx.session.state["session_active"] = True  # セッション有効フラグ
+                
+                # 二重保存：重要な情報は複数のキーで保存
+                ctx.session.state["backup_conversation"] = conversation_text
+                ctx.session.state["last_update"] = get_current_date()
+                
+                logger.info("✅ 会話情報をセッション状態に保存しました")
+                logger.info(f"📊 保存後のセッション状態キー: {list(ctx.session.state.keys())}")
+                logger.info(f"📊 保存された会話内容長: {len(ctx.session.state.get('conversation_content', ''))} 文字")
+                logger.info(f"📊 保存されたJSON構成案長: {len(ctx.session.state.get('outline', ''))} 文字")
+                
+                # 保存確認テスト
+                saved_content = ctx.session.state.get("conversation_content", "")
+                if saved_content == conversation_text:
+                    logger.info("✅ セッション状態保存確認: 成功")
+                else:
+                    logger.error(f"❌ セッション状態保存確認: 失敗 (保存: {len(saved_content)}, 元: {len(conversation_text)})")
+                    
+            except Exception as save_error:
+                logger.error(f"❌ セッション状態保存エラー: {save_error}")
+                import traceback
+                logger.error(f"保存エラー詳細: {traceback.format_exc()}")
 
         except Exception as e:
             logger.error(f"❌ 会話情報抽出エラー: {e}")
@@ -516,25 +536,127 @@ class MainConversationAgent(LlmAgent):
         """会話テキストからJSON構成案を抽出"""
         try:
             logger.info("🔍 会話テキストからJSON抽出を開始")
+            logger.info(f"📄 対象テキスト長: {len(conversation_text)} 文字")
+            
+            # 抽出対象がない場合は早期リターン
+            if not conversation_text or len(conversation_text) < 10:
+                logger.warning("⚠️  会話テキストが短すぎるためJSON抽出をスキップ")
+                return None
             
             # 方法1: Markdownコードブロックから抽出
-            json_from_markdown = self._extract_json_from_response(conversation_text)
-            if json_from_markdown:
-                logger.info("✅ MarkdownコードブロックからJSON抽出成功")
-                return json_from_markdown
+            logger.info("🔍 方法1: Markdownコードブロック検索")
+            if "```json" in conversation_text:
+                json_from_markdown = self._extract_json_from_response(conversation_text)
+                if json_from_markdown:
+                    logger.info("✅ MarkdownコードブロックからJSON抽出成功")
+                    return json_from_markdown
+                else:
+                    logger.warning("⚠️  Markdownコードブロックは見つかったが抽出失敗")
+            else:
+                logger.info("📋 Markdownコードブロック(```json)が見つかりません")
             
-            # 方法2: 直接JSONオブジェクトを検索
-            json_from_direct = self._extract_direct_json_from_response(conversation_text)
-            if json_from_direct:
-                logger.info("✅ 直接JSONオブジェクト検索成功")
-                return json_from_direct
+            # 方法2: 直接JSONオブジェクトを検索（安全性を強化）
+            logger.info("🔍 方法2: 直接JSONオブジェクト検索")
+            if "{" in conversation_text and "}" in conversation_text:
+                json_from_direct = self._extract_direct_json_from_response_safe(conversation_text)
+                if json_from_direct:
+                    logger.info("✅ 直接JSONオブジェクト検索成功")
+                    return json_from_direct
+                else:
+                    logger.warning("⚠️  JSON構造は見つかったが抽出失敗")
+            else:
+                logger.info("📋 JSON構造({})が見つかりません")
             
-            logger.warning("⚠️  会話テキストからJSON抽出失敗")
+            logger.warning("⚠️  すべての方法でJSON抽出失敗")
             return None
             
         except Exception as e:
             logger.error(f"❌ JSON抽出エラー: {e}")
+            import traceback
+            logger.error(f"詳細エラー: {traceback.format_exc()}")
             return None
+
+    def _extract_direct_json_from_response_safe(self, response_text: str) -> Optional[str]:
+        """安全性を強化した直接JSON抽出"""
+        try:
+            # 複数のJSONオブジェクトが存在する可能性を考慮
+            start_positions = []
+            for i, char in enumerate(response_text):
+                if char == "{":
+                    start_positions.append(i)
+            
+            if not start_positions:
+                logger.info("📋 JSON開始記号({)が見つかりません")
+                return None
+            
+            logger.info(f"📋 {len(start_positions)}個のJSON候補を発見")
+            
+            # 各候補を検証
+            for i, start_idx in enumerate(start_positions):
+                try:
+                    brace_count = 0
+                    end_idx = start_idx
+                    
+                    for j, char in enumerate(response_text[start_idx:], start_idx):
+                        if char == "{":
+                            brace_count += 1
+                        elif char == "}":
+                            brace_count -= 1
+                            if brace_count == 0:
+                                end_idx = j + 1
+                                break
+                    
+                    if brace_count == 0:
+                        json_candidate = response_text[start_idx:end_idx]
+                        
+                        # 長さチェック（あまりに短いJSONは無視）
+                        if len(json_candidate) < 50:
+                            logger.info(f"📋 候補 #{i}: 短すぎるためスキップ ({len(json_candidate)} 文字)")
+                            continue
+                        
+                        # JSON妥当性チェック
+                        parsed = json.loads(json_candidate)
+                        
+                        # 学級通信らしいJSONかチェック
+                        if self._is_newsletter_json(parsed):
+                            logger.info(f"✅ 候補 #{i}: 学級通信JSON として妥当")
+                            return json_candidate
+                        else:
+                            logger.info(f"📋 候補 #{i}: 学級通信JSONではない")
+                            
+                except json.JSONDecodeError as e:
+                    logger.info(f"📋 候補 #{i}: JSON解析エラー - {str(e)[:100]}")
+                except Exception as e:
+                    logger.info(f"📋 候補 #{i}: その他エラー - {str(e)[:100]}")
+            
+            logger.warning("⚠️  妥当なJSON候補が見つかりませんでした")
+            return None
+                    
+        except Exception as e:
+            logger.error(f"❌ 安全JSON抽出エラー: {e}")
+            return None
+
+    def _is_newsletter_json(self, parsed_json: dict) -> bool:
+        """学級通信JSONとして妥当かチェック"""
+        try:
+            # 必須フィールドをチェック
+            required_fields = ['school_name', 'grade', 'author']
+            for field in required_fields:
+                if field not in parsed_json:
+                    return False
+            
+            # 学校らしい情報が含まれているかチェック
+            school_keywords = ['小学校', '中学校', '高校', '学園', '学校']
+            school_name = str(parsed_json.get('school_name', ''))
+            if not any(keyword in school_name for keyword in school_keywords):
+                # 学校名が空でない場合のみチェック
+                if school_name and school_name != '学校名':
+                    return False
+            
+            return True
+            
+        except Exception:
+            return False
 
     async def _build_json_from_conversation_analysis(self, conversation_text: str) -> Optional[str]:
         """会話テキストの分析からJSON構成案を手動構築"""

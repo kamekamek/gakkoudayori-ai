@@ -61,14 +61,25 @@ class SimpleLayoutAgent(LlmAgent):
                 else:
                     logger.warning("⚠️  JSON構成案からのHTML生成に失敗 - 会話内容にフォールバック")
             
-            # フォールバック: 会話内容を取得
+            # フォールバック: 会話内容を取得（複数の場所から試行）
             logger.info("🔄 JSON構成案が使用できないため、会話内容にフォールバック")
             conversation_content = ""
             if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
+                # メインの会話内容を確認
                 conversation_content = ctx.session.state.get("conversation_content", "")
                 logger.info(f"📄 セッション状態から取得した会話内容: {len(conversation_content)} 文字")
+                
+                # バックアップからも確認
+                if not conversation_content:
+                    backup_content = ctx.session.state.get("backup_conversation", "")
+                    if backup_content:
+                        logger.info(f"📄 バックアップから会話内容を復旧: {len(backup_content)} 文字")
+                        conversation_content = backup_content
+                
                 if conversation_content:
                     logger.info(f"📄 会話内容プレビュー: {conversation_content[:200]}...")
+                else:
+                    logger.warning(f"⚠️  会話内容が両方から取得できません。利用可能キー: {list(ctx.session.state.keys())}")
             
             # 方法2: セッション状態から取得できない場合、セッションイベントから直接抽出
             if not conversation_content:
