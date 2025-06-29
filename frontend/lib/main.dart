@@ -1,14 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'dart:html' as html;
 import 'app/app.dart';
 import 'config/app_config.dart';
 import 'firebase_options.dart';
 import 'services/google_auth_service.dart';
 
+/// デモモードの状態を管理するプロバイダー
+final demoModeProvider = StateProvider<bool>((ref) {
+  // URLパラメータから demo=true を検出
+  final currentUrl = html.window.location.href;
+  final uri = Uri.parse(currentUrl);
+  return uri.queryParameters['demo'] == 'true';
+});
+
 /// 学校だよりAI - エントリーポイント
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // デモモードかどうかをチェック
+  final currentUrl = html.window.location.href;
+  final uri = Uri.parse(currentUrl);
+  final isDemoMode = uri.queryParameters['demo'] == 'true';
+
+  if (isDemoMode) {
+    debugPrint('🎬 デモモードで起動中...');
+    runApp(
+      const ProviderScope(
+        child: GakkouDayoriAiApp(),
+      ),
+    );
+    return;
+  }
 
   try {
     // Firebase初期化
