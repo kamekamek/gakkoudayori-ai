@@ -30,23 +30,23 @@ class GoogleAuthService {
       }
       return;
     }
-    
+
     try {
       if (kDebugMode) {
         debugPrint('🔑 GoogleSignIn初期化開始...');
       }
-      
+
       _googleSignIn = GoogleSignIn(
         scopes: _scopes,
       );
-      
+
       if (kDebugMode) {
         debugPrint('🔑 GoogleSignInインスタンス作成完了');
       }
-      
+
       _listenToAuthChanges(); // 認証監視を有効化
       _isInitialized = true;
-      
+
       if (kDebugMode) {
         debugPrint('✅ GoogleAuthService: 初期化完了');
       }
@@ -65,46 +65,47 @@ class GoogleAuthService {
     try {
       _googleSignIn?.onCurrentUserChanged
           ?.listen((GoogleSignInAccount? account) async {
-      _currentUser = account;
+        _currentUser = account;
 
-      if (account != null) {
-        // Googleアカウントでサインインした場合の処理
-        try {
-          final GoogleSignInAuthentication googleAuth =
-              await account.authentication;
-          final fb_auth.AuthCredential credential =
-              fb_auth.GoogleAuthProvider.credential(
-            accessToken: googleAuth.accessToken,
-            idToken: googleAuth.idToken,
-          );
-          // Firebaseにサインイン
-          await fb_auth.FirebaseAuth.instance
-              .signInWithCredential(credential);
-          // 認証済みHTTPクライアントを作成
-          await _createAuthClient();
-          if (kDebugMode) {
-            print('Firebase Sign-In successful via listener: ${account.email}');
+        if (account != null) {
+          // Googleアカウントでサインインした場合の処理
+          try {
+            final GoogleSignInAuthentication googleAuth =
+                await account.authentication;
+            final fb_auth.AuthCredential credential =
+                fb_auth.GoogleAuthProvider.credential(
+              accessToken: googleAuth.accessToken,
+              idToken: googleAuth.idToken,
+            );
+            // Firebaseにサインイン
+            await fb_auth.FirebaseAuth.instance
+                .signInWithCredential(credential);
+            // 認証済みHTTPクライアントを作成
+            await _createAuthClient();
+            if (kDebugMode) {
+              print(
+                  'Firebase Sign-In successful via listener: ${account.email}');
+            }
+          } catch (e) {
+            if (kDebugMode) {
+              print('Error during Firebase sign-in via listener: $e');
+            }
+            // エラーが発生した場合は、認証クライアントをクリアして状態をリセット
+            _authClient = null;
+            _currentUser = null;
           }
-        } catch (e) {
-          if (kDebugMode) {
-            print('Error during Firebase sign-in via listener: $e');
+        } else {
+          // Googleアカウントからサイン��ウトした場合の処理
+          // Firebaseからもサインアウトする
+          if (fb_auth.FirebaseAuth.instance.currentUser != null) {
+            await fb_auth.FirebaseAuth.instance.signOut();
+            if (kDebugMode) {
+              print('Firebase Sign-Out successful via listener.');
+            }
           }
-          // エラーが発生した場合は、認証クライアントをクリアして状態をリセット
           _authClient = null;
-          _currentUser = null;
         }
-      } else {
-        // Googleアカウントからサイン��ウトした場合の処理
-        // Firebaseからもサインアウトする
-        if (fb_auth.FirebaseAuth.instance.currentUser != null) {
-          await fb_auth.FirebaseAuth.instance.signOut();
-          if (kDebugMode) {
-            print('Firebase Sign-Out successful via listener.');
-          }
-        }
-        _authClient = null;
-      }
-    });
+      });
     } catch (e) {
       if (kDebugMode) {
         debugPrint('❌ 認証状態監視の設定でエラー: $e');
@@ -153,14 +154,14 @@ class GoogleAuthService {
           print('Firebase からサインアウトしました');
         }
       }
-      
+
       // Google からサインアウト
       await googleSignIn.signOut();
-      
+
       // 認証クライアントをクリア
       _authClient = null;
       _currentUser = null;
-      
+
       if (kDebugMode) {
         print('Google からサインアウトしました');
       }
@@ -186,18 +187,18 @@ class GoogleAuthService {
       if (user == null) {
         throw Exception('現在のユーザーが取得できません');
       }
-      
+
       final authHeaders = await user.authHeaders;
       if (authHeaders.isEmpty) {
         throw Exception('認証ヘッダーが取得できません');
       }
-      
+
       final authHeader = authHeaders['Authorization'];
       if (authHeader == null || authHeader.isEmpty) {
         throw Exception('Authorizationヘッダーが見つかりません');
       }
-      
-      final accessToken = authHeader.startsWith('Bearer ') 
+
+      final accessToken = authHeader.startsWith('Bearer ')
           ? authHeader.replaceFirst('Bearer ', '').trim()
           : authHeader.trim();
 
@@ -247,34 +248,34 @@ class GoogleAuthService {
     // ユーザーがログインしており、認証クライアントが利用可能であるかチェック
     return _currentUser != null && _authClient != null;
   }
-  
+
   static DateTime? _lastPermissionCheck;
   static bool _lastPermissionResult = false;
-  
+
   /// Classroom権限を非同期で確認（キャッシュ付き）
   static Future<bool> verifyClassroomPermissions() async {
     if (!hasClassroomPermissions()) {
       return false;
     }
-    
+
     // 5分以内の結果はキャッシュを使用
     final now = DateTime.now();
-    if (_lastPermissionCheck != null && 
+    if (_lastPermissionCheck != null &&
         now.difference(_lastPermissionCheck!).inMinutes < 5 &&
         _lastPermissionResult) {
       return _lastPermissionResult;
     }
-    
+
     try {
       // 実際にClassroom APIにアクセスしてテスト
       final auth.AuthClient? client = _authClient;
       if (client == null) return false;
-      
+
       final response = await http.get(
         Uri.parse('https://classroom.googleapis.com/v1/courses?pageSize=1'),
         headers: await _currentUser!.authHeaders,
       );
-      
+
       _lastPermissionResult = response.statusCode == 200;
       _lastPermissionCheck = now;
       return _lastPermissionResult;

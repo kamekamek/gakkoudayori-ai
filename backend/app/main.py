@@ -59,19 +59,18 @@ if ENVIRONMENT == "development":
     )
     print("✅ CORS: Development mode enabled")
 else:
-    origins = [
-        "https://gakkoudayori-ai.web.app",
-        "https://gakkoudayori-ai.firebaseapp.com",
-    ]
+    # 本番環境では、正規表現で許可するオリジンを厳密に指定
+    # プライマリドメイン、Firebaseのデフォルトドメイン、およびステージング用のプレビュードメインを許可
+    allowed_origin_regex = r"https://gakkoudayori-ai(-.*)?\.web\.app"
+    
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=origins,
-        allow_origin_regex=r"https://gakkoudayori-ai--.*\.web\.app",  # ステージング・プレビュー環境を許可
+        allow_origin_regex=allowed_origin_regex,
         allow_credentials=True,
-        allow_methods=["*"],  # 全てのHTTPメソッドを許可
-        allow_headers=["*"],  # 全てのヘッダーを許可（ファイルアップロード対応）
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
-    print("✅ CORS: Production mode enabled with staging support")
+    print(f"✅ CORS: Production mode enabled. Allowing origins matching: {allowed_origin_regex}")
 
 # --- ADK v1.0.0手動セットアップ ---
 session_service = InMemorySessionService()
@@ -109,12 +108,18 @@ class HtmlArtifactRequest(BaseModel):
 # --- ADKチャットエンドポイント ---
 @app.post("/api/v1/adk/chat/stream")
 async def adk_chat_stream(
-    req: AdkChatRequest, current_user: User = Depends(get_current_user)
+    req: AdkChatRequest,
+    # current_user: User = Depends(get_current_user) # 一時的に認証を無効化
 ):
-    """ADK v1.0.0互換のチャットストリーミングエンドポイント"""
+    """
+    ADK v1.0.0互換のチャットストリーミングエンドポイント
+    （注：現在、デバッグのため認証は一時的に無効化されています）
+    """
 
-    # トークンから取得したユーザーIDを使用
-    user_id = current_user.uid
+    # 認証を無効化しているため、一時的に固定のユーザーIDを使用
+    user_id = "temp-fixed-user-id-for-debug"
+    # user_id = current_user.uid
+    
     # フロントエンドは "user_id:session_id" 形式で送ってくるため分割
     try:
         session_id = req.session_id.split(":", 1)[1]

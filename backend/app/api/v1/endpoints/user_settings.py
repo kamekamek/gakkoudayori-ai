@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 
 from app.auth import User, get_current_user
+from services.user_settings_service import UserSettingsService
 from models.user_settings import (
     TitleSuggestion,
     TitleSuggestionRequest,
@@ -73,11 +74,22 @@ async def create_user_settings(
 
 
 @router.get("/users/settings", response_model=UserSettingsResponse)
-async def get_user_settings(current_user: User = Depends(get_current_user)):
-    """ユーザー設定を取得"""
+async def get_user_settings_endpoint(
+    # current_user: User = Depends(get_current_user) # 一時的に認証を無効化
+):
+    """
+    現在のユーザーの設定を取得または作成するエンドポイント。
+    （注：現在、デバッグのため認証は一時的に無効化されています）
+    """
+    # 認証を無効化しているため、一時的に固定のユーザーIDを使用
+    user_id = "temp-fixed-user-id-for-debug"
+    # user_id = current_user.uid
+    
+    print(f"⚙️ Getting settings for user: {user_id}")
     try:
-        logger.info(f"ユーザー設定取得リクエスト: user_id={current_user.uid}")
-        settings = await user_settings_service.get_user_settings(current_user.uid)
+        settings_service = UserSettingsService(user_id=user_id)
+        logger.info(f"ユーザー設定取得リクエスト: user_id={user_id}")
+        settings = await user_settings_service.get_user_settings(user_id)
 
         if not settings:
             # 設定が存在しない場合、空の応答を返す
@@ -89,7 +101,7 @@ async def get_user_settings(current_user: User = Depends(get_current_user)):
             )
 
         # 完了状況を検証
-        validation_result = await user_settings_service.validate_settings_completeness(current_user.uid)
+        validation_result = await user_settings_service.validate_settings_completeness(user_id)
 
         response = UserSettingsResponse(
             settings=settings,

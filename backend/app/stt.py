@@ -1,6 +1,7 @@
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from google.cloud import speech
 
 router = APIRouter(
@@ -29,7 +30,8 @@ async def transcribe_audio(
         )
 
     try:
-        client = speech.SpeechAsyncClient()
+        # 同期クライアントを使用
+        client = speech.SpeechClient()
         audio_content = await audio_file.read()
 
         if not audio_content:
@@ -49,7 +51,10 @@ async def transcribe_audio(
 
         config = speech.RecognitionConfig(**config_dict)
 
-        response = await client.recognize(config=config, audio=recognition_audio)
+        # 同期的な（ブロッキングする）処理をスレッドプールで実行
+        response = await run_in_threadpool(
+            client.recognize, config=config, audio=recognition_audio
+        )
 
         transcripts = [result.alternatives[0].transcript for result in response.results]
         full_transcript = " ".join(transcripts)
@@ -62,7 +67,7 @@ async def transcribe_audio(
             }
 
         # フロントエンドの期待する形式に合わせる
-        confidence = 0.95 if transcripts else 0.0
+        confidence = response.results[0].alternatives[0].confidence if response.results else 0.0
         return {
             "success": True,
             "data": {"transcript": full_transcript, "confidence": confidence},

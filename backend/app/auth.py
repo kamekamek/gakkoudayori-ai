@@ -3,7 +3,7 @@ import os
 from functools import lru_cache
 
 import firebase_admin
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from firebase_admin import auth, credentials
 from pydantic import BaseModel
@@ -64,13 +64,21 @@ def initialize_firebase_app():
         print("⚠️ Firebase認証機能は利用できません。")
         return None
 
-# アプリケーションの起動時に一度だけ初期化処理を呼び出す
-# initialize_firebase_app()
-
-
 # --- FastAPIの依存性注入 ---
+
+class OAuth2PasswordBearerWithOptions(OAuth2PasswordBearer):
+    """
+    OPTIONSリクエストを自動的に無視するOAuth2PasswordBearerのカスタムクラス。
+    CORSのPreflight���クエストが認証エラーで失敗するのを防ぐ。
+    """
+    async def __call__(self, request: Request) -> str | None:
+        if request.method == "OPTIONS":
+            return None
+        return await super().__call__(request)
+
 # "token"という名前で、AuthorizationヘッダーからBearerトークンを抽出する
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+# OPTIONSリクエストを無視するカスタムクラスを使用
+oauth2_scheme = OAuth2PasswordBearerWithOptions(tokenUrl="token")
 
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     """
@@ -86,6 +94,10 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     Raises:
         HTTPException: トークンが無効、または検証に失敗した場合。
     """
+    # OPTIONSリクエストの場合はtokenがNoneになるため、認証をスキップ
+    if token is None:
+        return None
+
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",

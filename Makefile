@@ -124,20 +124,10 @@ deploy-frontend: build-prod
 	firebase deploy --only hosting --project gakkoudayori-ai
 
 # バックエンドデプロイ
+# Backend deployment to Cloud Run for production
 deploy-backend:
-	@echo "📤 バックエンドをCloud Runにデプロイ中 (Dockerfile使用)..."
-	cd backend/app && gcloud run deploy gakkoudayori-backend \
-		--source=. \
-		--region=asia-northeast1 \
-		--allow-unauthenticated \
-		--memory=2Gi \
-		--timeout=300 \
-		--min-instances=1 \
-		--max-instances=10 \
-		--cpu=2 \
-		--concurrency=100 \
-		--set-env-vars="ENVIRONMENT=production" \
-		--platform=managed
+	@echo "バックエンドをCloud Runにデプロイ中 (Buildpacks使用)..."
+	cd backend && gcloud run deploy gakkoudayori-backend --source=. --region=asia-northeast1 --allow-unauthenticated --memory=2Gi --timeout=300s --min-instances=1 --max-instances=10 --cpu=2 --concurrency=100 --set-env-vars="ENVIRONMENT=production" --platform=managed
 
 # ステージングバックエンドデプロイ
 deploy-backend-staging:
