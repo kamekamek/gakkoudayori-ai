@@ -43,36 +43,26 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# --- CORS設定 ---
-if ENVIRONMENT == "development":
-    origins = [
-        "http://localhost",
-        "http://localhost:8000",  # poetry run server
-        "http://localhost:8080",  # uvicorn app.main:app
-        "http://localhost:8081",  # Flutter Web
-    ]
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origin_regex="http://localhost:.*",
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-    print("✅ CORS: Development mode enabled")
-else:
-    # 本番環境で許可するオリジンを明示的に指定
-    origins = [
-        "https://gakkoudayori-ai.web.app",
-    ]
-    
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-    print(f"✅ CORS: Production mode enabled. Allowing origins: {origins}")
+# --- CORS設定 (最優先で処理) ---
+# 認証ミドルウェアより先にCORSを処理するため、アプリ初期化直後に設定
+origins = [
+    "https://gakkoudayori-ai.web.app",
+    # 開発用オリジン
+    "http://localhost",
+    "http://localhost:8000",
+    "http://localhost:8080",
+    "http://localhost:8081",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_origin_regex=r"https://(.*\.)?gakkoudayori-ai\.web\.app", # Firebaseプレビュー等に対応
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+print(f"✅ CORS settings applied for origins: {origins} and regex.")
 
 # --- ADK v1.0.0手動セットアップ ---
 session_service = InMemorySessionService()
