@@ -61,9 +61,29 @@ async def convert_html_to_pdf_pdfkit(
     if not shutil.which("wkhtmltopdf"):
         return None
 
+    # 日本語フォント対応のためのカスタムCSS
+    font_css = """
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+        
+        body, * {
+            font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif !important;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif !important;
+            font-weight: 500;
+        }
+    </style>
+    """
+    
     # カスタムCSSがある場合はHTMLに追加
     if custom_css:
-        html_content = f"<style>{custom_css}</style>\n{html_content}"
+        html_content = f"{font_css}<style>{custom_css}</style>\n{html_content}"
+    else:
+        html_content = f"{font_css}\n{html_content}"
 
     options = {
         "page-size": page_size,
@@ -77,6 +97,9 @@ async def convert_html_to_pdf_pdfkit(
         "title": title,
         "disable-smart-shrinking": "",
         "print-media-type": "",
+        "javascript-delay": 1000,  # JavaScript実行待機時間
+        "load-error-handling": "ignore",  # エラー無視
+        "load-media-error-handling": "ignore",  # メディアエラー無視
     }
 
     # ヘッダー・フッターオプション
@@ -126,11 +149,28 @@ async def convert_html_to_pdf_playwright(
                 size: {page_size};
                 margin: {margin};
             }}
+            @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+            
             body {{
-                font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif;
+                font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
                 line-height: 1.6;
                 margin: 0;
                 padding: 20px;
+                color: #333;
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+            }}
+            
+            h1, h2, h3, h4, h5, h6 {{
+                font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
+                font-weight: 500;
+            }}
+            
+            /* PDF印刷用のスタイル調整 */
+            * {{
+                -webkit-print-color-adjust: exact !important;
+                color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }}
             {custom_css}
         </style>
@@ -147,6 +187,9 @@ async def convert_html_to_pdf_playwright(
             page = await browser.new_page()
             await page.set_content(full_html)
 
+            # フォント読み込み待機
+            await page.wait_for_timeout(2000)
+            
             pdf_bytes = await page.pdf(
                 format=page_size,
                 margin={
@@ -156,6 +199,7 @@ async def convert_html_to_pdf_playwright(
                     "left": margin,
                 },
                 print_background=True,
+                prefer_css_page_size=True,
             )
             await browser.close()
             return pdf_bytes
