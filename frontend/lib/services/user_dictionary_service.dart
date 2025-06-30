@@ -45,7 +45,7 @@ class UserDictionaryService {
   }) async {
     try {
       final response = await http.post(
-        Uri.parse('${AppConfig.apiBaseUrl}/dictionary/$userId/correct'),
+        Uri.parse('${AppConfig.apiV1BaseUrl}/dictionary/$userId/correct'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -98,7 +98,7 @@ class UserDictionaryService {
   }) async {
     try {
       final response = await http.post(
-        Uri.parse('${AppConfig.apiBaseUrl}/dictionary/$userId/learn'),
+        Uri.parse('${AppConfig.apiV1BaseUrl}/dictionary/$userId/learn'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -122,7 +122,7 @@ class UserDictionaryService {
   Future<List<UserDictionaryEntry>> getTerms(String userId) async {
     try {
       final response = await http.get(
-        Uri.parse('${AppConfig.apiBaseUrl}/dictionary/$userId'),
+        Uri.parse('${AppConfig.apiV1BaseUrl}/dictionary/$userId'),
       );
 
       if (response.statusCode == 200) {
@@ -200,7 +200,7 @@ class UserDictionaryService {
   Future<bool> addTerm(String userId, UserDictionaryEntry entry) async {
     try {
       final response = await http.post(
-        Uri.parse('${AppConfig.apiBaseUrl}/dictionary/$userId/terms'),
+        Uri.parse('${AppConfig.apiV1BaseUrl}/dictionary/$userId/terms'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(entry.toJson()),
       );
@@ -220,7 +220,7 @@ class UserDictionaryService {
     try {
       final response = await http.put(
         Uri.parse(
-            '${AppConfig.apiBaseUrl}/dictionary/$userId/terms/$originalTerm'),
+            '${AppConfig.apiV1BaseUrl}/dictionary/$userId/terms/$originalTerm'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(entry.toJson()),
       );
@@ -238,7 +238,7 @@ class UserDictionaryService {
   Future<bool> deleteTerm(String userId, String term) async {
     try {
       final response = await http.delete(
-        Uri.parse('${AppConfig.apiBaseUrl}/dictionary/$userId/terms/$term'),
+        Uri.parse('${AppConfig.apiV1BaseUrl}/dictionary/$userId/terms/$term'),
       );
       final data = jsonDecode(response.body);
       return response.statusCode == 200 && data['success'] == true;

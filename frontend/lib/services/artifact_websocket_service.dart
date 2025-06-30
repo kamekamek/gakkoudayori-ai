@@ -2,39 +2,49 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+import '../config/app_config.dart';
 
 /// HTML Artifact WebSocket サービス
 /// LayoutAgentからのHTML成果物をリアルタイムで受信
 class ArtifactWebSocketService {
   WebSocketChannel? _channel;
-  final StreamController<HtmlArtifact> _artifactController = StreamController.broadcast();
-  final StreamController<WebSocketConnectionState> _connectionController = StreamController.broadcast();
-  
+  final StreamController<HtmlArtifact> _artifactController =
+      StreamController.broadcast();
+  final StreamController<WebSocketConnectionState> _connectionController =
+      StreamController.broadcast();
+
   String? _currentSessionId;
   bool _disposed = false;
   Timer? _reconnectTimer;
   int _reconnectAttempts = 0;
   static const int maxReconnectAttempts = 5;
   static const Duration reconnectDelay = Duration(seconds: 3);
-  
+
   // Base URL設定（環境に応じて変更）
-  static const String _baseUrl = kDebugMode 
-    ? 'ws://localhost:8081' 
-    : 'wss://gakkoudayori-backend-url'; // 本番環境のURL
+  String get _baseUrl {
+    if (kDebugMode) {
+      return AppConfig.wsBaseUrl;
+    } else {
+      // 本番環境ではhttp/httpsをws/wssに置換
+      return AppConfig.apiBaseUrl.replaceFirst(RegExp(r'^http'), 'ws');
+    }
+  }
 
   // ストリーム
   Stream<HtmlArtifact> get artifactStream => _artifactController.stream;
-  Stream<WebSocketConnectionState> get connectionStateStream => _connectionController.stream;
+  Stream<WebSocketConnectionState> get connectionStateStream =>
+      _connectionController.stream;
 
   /// WebSocket接続を確立
   void connect(String sessionId) {
     if (_disposed) return;
-    
+
     if (sessionId.isEmpty) {
-      debugPrint('[ArtifactWebSocket] ERROR: Empty session ID provided, aborting connection');
+      debugPrint(
+          '[ArtifactWebSocket] ERROR: Empty session ID provided, aborting connection');
       return;
     }
-    
+
     _currentSessionId = sessionId;
     debugPrint('[ArtifactWebSocket] Session ID set to: $_currentSessionId');
     _connectWebSocket();
@@ -44,11 +54,11 @@ class ArtifactWebSocketService {
     if (_disposed || _currentSessionId == null) return;
 
     try {
-      debugPrint('[ArtifactWebSocket] Connecting to: $_baseUrl/ws/artifacts/$_currentSessionId');
-      
+      debugPrint(
+          '[ArtifactWebSocket] Connecting to: $_baseUrl/ws/artifacts/$_currentSessionId');
+
       _channel = WebSocketChannel.connect(
-        Uri.parse('$_baseUrl/ws/artifacts/$_currentSessionId')
-      );
+          Uri.parse('$_baseUrl/ws/artifacts/$_currentSessionId'));
 
       _connectionController.add(WebSocketConnectionState.connecting);
 
@@ -76,7 +86,6 @@ class ArtifactWebSocketService {
 
       // 定期的なping送信でコネクション維持
       _startPingTimer();
-
     } catch (e) {
       debugPrint('[ArtifactWebSocket] Connection failed: $e');
       _connectionController.add(WebSocketConnectionState.error);
@@ -87,12 +96,13 @@ class ArtifactWebSocketService {
   void _handleWebSocketMessage(dynamic data) {
     try {
       final Map<String, dynamic> message = jsonDecode(data);
-      
+
       if (message['type'] == 'html_artifact') {
         final artifactData = message['data'] as Map<String, dynamic>;
         final artifact = HtmlArtifact.fromJson(artifactData);
-        
-        debugPrint('[ArtifactWebSocket] Received HTML artifact: ${artifact.content.length} chars');
+
+        debugPrint(
+            '[ArtifactWebSocket] Received HTML artifact: ${artifact.content.length} chars');
         _artifactController.add(artifact);
       }
     } catch (e) {
@@ -106,7 +116,7 @@ class ArtifactWebSocketService {
         timer.cancel();
         return;
       }
-      
+
       try {
         _channel!.sink.add('ping');
       } catch (e) {
@@ -134,21 +144,21 @@ class ArtifactWebSocketService {
   /// WebSocket接続を切断
   void disconnect() {
     _reconnectTimer?.cancel();
-    
+
     try {
       _channel?.sink.close();
     } catch (e) {
       debugPrint('[ArtifactWebSocket] Error closing channel: $e');
     }
-    
+
     _channel = null;
     _currentSessionId = null;
     _reconnectAttempts = 0;
-    
+
     if (!_disposed) {
       _connectionController.add(WebSocketConnectionState.disconnected);
     }
-    
+
     debugPrint('[ArtifactWebSocket] Disconnected');
   }
 

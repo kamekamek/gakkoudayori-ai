@@ -15,19 +15,21 @@ class AppConfig {
   // 本番環境URL（Cloud Run等）
   static const String prodApiBaseUrl = String.fromEnvironment(
     'PROD_API_BASE_URL',
-    defaultValue: 'https://gakkoudayori-backend-xxxxxxxxxxxx-xx.a.run.app',
+    defaultValue:
+        'https://gakkoudayori-backend-944053509139.asia-northeast1.run.app',
   );
 
   // WebSocket URL（開発用）
   static const String wsBaseUrl = String.fromEnvironment(
-    'WS_BASE_URL', 
+    'WS_BASE_URL',
     defaultValue: 'ws://localhost:8081',
   );
 
   // WebSocket URL（本番用）
   static const String prodWsBaseUrl = String.fromEnvironment(
     'PROD_WS_BASE_URL',
-    defaultValue: 'wss://gakkoudayori-backend-xxxxxxxxxxxx-xx.a.run.app',
+    defaultValue:
+        'wss://gakkoudayori-backend-944053509139.asia-northeast1.run.app',
   );
 
   // 環境判定

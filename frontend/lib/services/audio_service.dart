@@ -94,25 +94,18 @@ class AudioService {
       if (kDebugMode) debugPrint('🎤 [AudioService] 録音開始要求');
 
       // JavaScript環境チェック
-      if (js.context['startRecording'] == null) {
-        if (kDebugMode)
-          debugPrint('❌ [AudioService] startRecording関数がJavaScriptで利用できません');
-        return false;
-      }
-
       if (js.context['audioRecorder'] == null) {
         if (kDebugMode)
           debugPrint('❌ [AudioService] audioRecorderインスタンスがJavaScriptで利用できません');
         return false;
       }
 
-      // JavaScript側の録音開始関数を呼び出し（戻り値は無視し、コールバックに依存）
-      if (kDebugMode) debugPrint('🔗 [AudioService] JavaScript関数呼び出し開始');
+      // JavaScript側の録音開始関数を呼び出し
+      if (kDebugMode)
+        debugPrint('🔗 [AudioService] audioRecorder.startRecording() 呼び出し');
       try {
-        js.context.callMethod('startRecording');
-        if (kDebugMode)
-          debugPrint('✅ [AudioService] JavaScript関数呼び出し成功（Promise処理をスキップ）');
-        // コールバックで実際の録音状態が管理されるため、ここでは成功と判定
+        // audioRecorderインスタンスのメソッドを呼び出す
+        js.context['audioRecorder'].callMethod('startRecording');
         return true;
       } catch (jsError) {
         if (kDebugMode)
@@ -130,16 +123,15 @@ class AudioService {
     try {
       if (kDebugMode) debugPrint('⏹️ [AudioService] 録音停止要求');
 
-      // JavaScript側の録音停止関数を呼び出し（同期処理なのでそのまま）
-      final result = js.context.callMethod('stopRecording');
-
-      if (result == true) {
-        if (kDebugMode) debugPrint('✅ [AudioService] 録音停止成功');
-        return true;
-      } else {
-        if (kDebugMode) debugPrint('❌ [AudioService] 録音停止失敗');
+      if (js.context['audioRecorder'] == null) {
+        if (kDebugMode)
+          debugPrint('❌ [AudioService] audioRecorderインスタンスがJavaScriptで利用できません');
         return false;
       }
+
+      // JavaScript側の録音停止関数を呼び出し
+      js.context['audioRecorder'].callMethod('stopRecording');
+      return true;
     } catch (e) {
       if (kDebugMode) debugPrint('❌ [AudioService] 録音停止エラー: $e');
       return false;
@@ -208,8 +200,8 @@ class AudioService {
       if (kDebugMode)
         debugPrint('📄 [AudioService] 音声データサイズ: ${audioBytes.length} bytes');
 
-      // バックエンドAPIのエンドポイント（環境変数から取得）
-      final apiUrl = '${AppConfig.apiBaseUrl}/stt/';
+      // バックエンドAPIのエンドポイント（v1プレフィックスを含む正しいURLを使用）
+      final apiUrl = '${AppConfig.apiV1BaseUrl}/stt/';
 
       // マルチパートフォームデータとして送信
       final request = http.MultipartRequest('POST', Uri.parse(apiUrl));

@@ -475,41 +475,24 @@ class AudioRecorder {
     
     // Web Audio API録音停止（AudioWorkletNode & ScriptProcessorNode対応）
     stopWebAudioRecording() {
-        try {
-            // AudioWorkletNode切断
-            if (this.audioWorkletNode) {
-                this.audioWorkletNode.disconnect();
-                this.audioWorkletNode = null;
-                console.log('⏹️ AudioWorkletNode切断完了');
-            }
-            
-            // ScriptProcessor切断（フォールバック）
-            if (this.scriptProcessor) {
-                this.scriptProcessor.disconnect();
-                this.scriptProcessor = null;
-                console.log('⏹️ ScriptProcessorNode切断完了');
-            }
-            
-            // 録音時間計算
-            const recordingDuration = Date.now() - this.recordingStartTime;
-            console.log('⏹️ Web Audio API録音完了 - 時間:', recordingDuration + 'ms');
-            
-            // Float32ArrayからWAVファイル作成
-            if (this.audioChunks.length > 0) {
-                const audioBlob = this.convertFloat32ArrayToWav(this.audioChunks, 48000);
-                this.onRecordingComplete(audioBlob);
-            } else {
-                console.warn('⚠️ 録音データが空です');
-            }
-            
-            // AudioContext切断（リソース解放）
-            if (this.audioContext) {
-                this.audioContext.close();
-                this.audioContext = null;
-            }
-        } catch (error) {
-            console.error('❌ Web Audio API停止エラー:', error);
-        }
+        if (!this.isRecording || !this.isIOS) return;
+
+        console.log('⏹️ Web Audio API 録音停止');
+        this.isRecording = false;
+        this.stopAudioLevelMonitoring();
+
+        const sampleRate = this.audioContext.sampleRate;
+        const audioBlob = this.convertFloat32ArrayToWav(this.audioChunks, sampleRate);
+        
+        this.onRecordingComplete(audioBlob);
+
+        // クリーンアップ
+        this.audioContext.close();
+        this.scriptProcessor.disconnect();
+        this.source.disconnect();
+        this.audioContext = null;
+        this.scriptProcessor = null;
+        this.source = null;
     }
     
     // Float32ArrayをWAVファイルに変換（iOS対応）
@@ -540,7 +523,7 @@ class AudioRecorder {
         view.set(new Uint8Array(int16Array.buffer), wavHeader.length);
         
         console.log('🎵 WAV変換完了:', wavBuffer.byteLength + 'bytes');
-        return new Blob([wavBuffer], { type: 'audio/wav' });
+        return new Blob([view], { type: 'audio/wav' });
     }
     
     // WAVヘッダー作成
@@ -573,34 +556,39 @@ class AudioRecorder {
 
     // 録音完了処理
     onRecordingComplete(audioBlob) {
-        console.log('✅ 録音完了:', audioBlob.size, 'bytes');
-        
-        // Base64変換
-        const reader = new FileReader();
-        reader.onload = () => {
-            const audioBase64 = reader.result.split(',')[1]; // data:audio/wav;base64, を除去
-            
-            // Flutter側に音声データを送信（正しいコールバック関数を使用）
-            if (window.onAudioRecorded) {
-                console.log('🔗 [AudioRecorder] Flutter側に音声データ送信');
-                window.onAudioRecorded({
-                    audioData: audioBase64,
-                    size: audioBlob.size,
-                    duration: this.getRecordingDuration()
-                });
-            } else {
-                console.log('⚠️ [AudioRecorder] onAudioRecorded コールバックが未設定');
-            }
+        console.log('✅ 録音完了 - Blobサイズ:', audioBlob.size, 'タイプ:', audioBlob.type);
 
-            // デバッグ用：音声ファイルダウンロード（無効化）
-            // this.downloadAudio(audioBlob);
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const arrayBuffer = event.target.result;
+            const base64Audio = btoa(
+                new Uint8Array(arrayBuffer)
+                    .reduce((data, byte) => data + String.fromCharCode(byte), '')
+            );
+
+            // Dart側に音声データを送信
+            if (window.onAudioRecorded) {
+                console.log('🔗 [AudioRecorder] Dart側に音声データ(base64)を送信します');
+                try {
+                    window.onAudioRecorded({
+                        audioData: base64Audio,
+                        size: audioBlob.size,
+                        duration: this.getRecordingDuration()
+                    });
+                } catch (e) {
+                    console.error('❌ onAudioRecorded コールバック呼び出しエラー:', e);
+                }
+            } else {
+                console.warn('⚠️ onAudioRecorded コールバックがDart側で設定されていません');
+            }
         };
-        reader.readAsDataURL(audioBlob);
+        reader.readAsArrayBuffer(audioBlob);
     }
 
     // 録音時間取得（概算）
     getRecordingDuration() {
-        return this.audioChunks.length * 100; // ms（概算）
+        if (!this.recordingStartTime) return 0;
+        return Date.now() - this.recordingStartTime;
     }
 
     // デバッグ用：音声ファイルダウンロード

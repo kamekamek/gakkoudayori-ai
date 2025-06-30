@@ -3,9 +3,14 @@ import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
+import '../../config/app_config.dart';
+import '../../models/user_settings.dart';
+import '../../services/google_auth_service.dart';
+import '../../services/user_settings_service.dart';
 
 // FirebaseAuthのインスタンスを提供するプロバイダ
-final firebaseAuthProvider = Provider<FirebaseAuth>((ref) => FirebaseAuth.instance);
+final firebaseAuthProvider =
+    Provider<FirebaseAuth>((ref) => FirebaseAuth.instance);
 
 // 認証状態の変更を監視するStreamProvider
 final authStateChangesProvider = StreamProvider<User?>((ref) {
@@ -15,12 +20,12 @@ final authStateChangesProvider = StreamProvider<User?>((ref) {
 // GoogleSignInのインスタンスを提供するプロバイダ
 final googleSignInProvider = Provider<GoogleSignIn>((ref) {
   return GoogleSignIn(
-    // 必要に応じてスコープを追加
-    // scopes: [
-    //   'email',
-    //   'https://www.googleapis.com/auth/classroom.coursework.students',
-    // ],
-  );
+      // 必要に応じてスコープを追加
+      // scopes: [
+      //   'email',
+      //   'https://www.googleapis.com/auth/classroom.coursework.students',
+      // ],
+      );
 });
 
 // 認証ロジックをカプセル化するStateNotifierProvider
@@ -48,7 +53,8 @@ class AuthService {
       }
 
       // Googleユーザーから認証情報を取得
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
 
       // Firebase用のクレデンシャルを作成
       final OAuthCredential credential = GoogleAuthProvider.credential(
@@ -57,7 +63,8 @@ class AuthService {
       );
 
       // Firebaseにサインイン
-      final userCredential = await _firebaseAuth.signInWithCredential(credential);
+      final userCredential =
+          await _firebaseAuth.signInWithCredential(credential);
 
       // バックエンドにユーザー情報を同期
       if (userCredential.user != null) {
@@ -84,7 +91,7 @@ class AuthService {
     await _googleSignIn.signOut();
   }
 
-  // 現��のユーザーを取得
+  // 現在のユーザーを取得
   User? get currentUser => _firebaseAuth.currentUser;
 
   // IDトークンを取得
@@ -100,8 +107,7 @@ class AuthService {
 
     try {
       final response = await http.get(
-        // TODO: 環境変数からAPIベースURLを取得する
-        Uri.parse('http://localhost:8081/api/v1/users/me'),
+        Uri.parse('${AppConfig.apiV1BaseUrl}/users/me'),
         headers: {
           'Authorization': 'Bearer $token',
         },

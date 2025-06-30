@@ -1,14 +1,14 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
+import '../config/app_config.dart';
 
 /// PDF生成APIクライアント
 ///
 /// バックエンドのPDF生成エンドポイントと通信
 class PdfApiService {
-  static const String _baseUrl = kDebugMode
-      ? 'http://localhost:8081' // 開発環境
-      : 'https://gakkoudayori-backend-944053509139.asia-northeast1.run.app'; // 本番環境
+  static final String _baseUrl = AppConfig.apiBaseUrl;
 
   /// HTMLからPDFを生成
   ///
@@ -206,5 +206,42 @@ class PdfApiService {
       'issues': issues,
       'warnings': warnings,
     };
+  }
+
+  Future<Uint8List> generatePdfFromHtml(String htmlContent) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/v1/pdf/from_html'),
+        headers: {
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode({'html_content': htmlContent}),
+      );
+
+      if (response.statusCode == 200) {
+        return response.bodyBytes;
+      } else {
+        // ... エラーハンドリング ...
+        String errorMessage = 'PDF生成エラー: Status=${response.statusCode}';
+        try {
+          final decoded = utf8.decode(response.bodyBytes);
+          final jsonError = jsonDecode(decoded);
+          errorMessage += ', Detail=${jsonError['detail']}';
+        } catch (_) {
+          // エラー詳細が取得できない場合
+          errorMessage +=
+              ', Body=${utf8.decode(response.bodyBytes, allowMalformed: true)}';
+        }
+        if (kDebugMode) {
+          debugPrint(errorMessage);
+        }
+        throw Exception(errorMessage);
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('PDF API接続エラー: $e');
+      }
+      rethrow;
+    }
   }
 }
