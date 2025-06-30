@@ -1,6 +1,6 @@
 import json
 import logging
-
+import os
 from typing import AsyncGenerator, Optional
 
 from google.adk.agents import LlmAgent
@@ -23,13 +23,22 @@ class LayoutAgent(LlmAgent):
     """
 
     def __init__(self, output_key: str = "html"):
-        # 明示的にgemini-2.5-proを指定してモデル不整合を解決
-        model = Gemini(model_name="gemini-2.5-pro")
-        logger.info("LayoutAgent初期化: モデル=gemini-2.5-pro")
+        # 環境変数からGCPプロジェクト情報を取得
+        project_id = os.environ.get("GCP_PROJECT_ID")
+        location = os.environ.get("GCP_REGION")
 
+        model_config = {"model_name": "gemini-2.5-pro"}
+        # Cloud Run環境など、プロジェクトIDとリージョンが設定されている場合にVertex AIを使用
+        if project_id and location:
+            model_config["project"] = project_id
+            model_config["location"] = location
+            logger.info(f"LayoutAgent: Vertex AIモードでGeminiを初期化: project={project_id}, location={location}")
+        else:
+            logger.warning("LayoutAgent: APIキーモードでGeminiを初期化（ローカル開発用）")
+        
         super().__init__(
             name="layout_agent",
-            model=model,
+            model=Gemini(**model_config),
             instruction=INSTRUCTION,
             description="学級通信の情報が揃い、ユーザーが「作成してください」「お願いします」「完成させて」等の要求をした際に、美しいHTMLレイアウトを生成してフロントエンドに配信する専門エージェントです。",
             tools=[html_delivery_tool.create_adk_function_tool()],

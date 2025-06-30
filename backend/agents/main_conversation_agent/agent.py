@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from datetime import datetime
 from typing import AsyncGenerator, Optional
 
@@ -150,9 +151,23 @@ class MainConversationAgent(LlmAgent):
         from agents.layout_agent.agent import create_layout_agent
         layout_agent = create_layout_agent()
 
+        # 環境変数からGCPプロジェクト情報を取得
+        project_id = os.environ.get("GCP_PROJECT_ID")
+        location = os.environ.get("GCP_REGION")
+
+        model_config = {"model_name": "gemini-2.5-pro"}
+        # Cloud Run環境など、プロジェクトIDとリージョンが設定されている場合にVertex AIを使用
+        if project_id and location:
+            model_config["project"] = project_id
+            model_config["location"] = location
+            logger.info(f"Vertex AIモードでGeminiを初期化: project={project_id}, location={location}")
+        else:
+            logger.warning("APIキーモードでGeminiを初期化（ローカル開発用）")
+
+
         super().__init__(
             name="main_conversation_agent",
-            model=Gemini(model_name="gemini-2.5-pro"),
+            model=Gemini(**model_config),
             instruction=MAIN_CONVERSATION_INSTRUCTION,
             description="先生方との自然な対話を通じて学級通信の基本情報（学校名、クラス、内容等）を収集し、必要に応じて専門エージェントに委譲する対話管理エージェントです。",
             tools=[
