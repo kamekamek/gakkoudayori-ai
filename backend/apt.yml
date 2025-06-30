@@ -1,0 +1,8 @@
+packages:
+  - wkhtmltopdf
+  - xvfb
+  - libfontconfig1
+  - libxrender1
+  - libxtst6
+  - libxi6
+  - chromium-browser
