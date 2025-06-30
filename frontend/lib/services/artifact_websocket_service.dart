@@ -22,11 +22,11 @@ class ArtifactWebSocketService {
 
   // Base URL設定（環境に応じて変更）
   String get _baseUrl {
-    if (kDebugMode) {
-      return AppConfig.wsBaseUrl;
+    if (AppConfig.isDevelopment) {
+      return AppConfig.currentWsBaseUrl;
     } else {
       // 本番環境ではhttp/httpsをws/wssに置換
-      return AppConfig.apiBaseUrl.replaceFirst(RegExp(r'^http'), 'ws');
+      return AppConfig.currentApiBaseUrl.replaceFirst(RegExp(r'^http'), 'ws');
     }
   }
 
