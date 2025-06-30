@@ -54,6 +54,7 @@ class _ClassroomPostDialogState extends State<ClassroomPostDialog> {
 
   /// 認証状態をチェック
   Future<void> _checkAuthenticationStatus() async {
+    print('DEBUG: Checking authentication status');
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -61,16 +62,22 @@ class _ClassroomPostDialogState extends State<ClassroomPostDialog> {
 
     try {
       _isAuthenticated = GoogleAuthService.isSignedIn;
+      print('DEBUG: Authentication status: $_isAuthenticated');
 
       if (_isAuthenticated) {
+        print('DEBUG: User is authenticated, loading courses');
         await _loadCourses();
+      } else {
+        print('DEBUG: User is not authenticated');
       }
     } catch (e) {
+      print('DEBUG: Error checking authentication: $e');
       setState(() {
         _errorMessage = '認証状態の確認に失敗しました: $e';
       });
     }
  finally {
+      print('DEBUG: Setting loading to false');
       setState(() {
         _isLoading = false;
       });
@@ -165,7 +172,13 @@ class _ClassroomPostDialogState extends State<ClassroomPostDialog> {
 
   /// Classroomに投稿
   Future<void> _postToClassroom() async {
+    print('DEBUG: _postToClassroom called');
+    print('DEBUG: _isAuthenticated = $_isAuthenticated');
+    print('DEBUG: _isLoading = $_isLoading');
+    print('DEBUG: _selectedCourseId = $_selectedCourseId');
+    
     if (_selectedCourseId == null) {
+      print('DEBUG: No course selected');
       setState(() {
         _errorMessage = 'コースを選択してください';
       });
@@ -173,12 +186,14 @@ class _ClassroomPostDialogState extends State<ClassroomPostDialog> {
     }
 
     if (_titleController.text.trim().isEmpty) {
+      print('DEBUG: Title is empty');
       setState(() {
         _errorMessage = 'タイトルを入力してください';
       });
       return;
     }
 
+    print('DEBUG: Starting post to classroom');
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -327,25 +342,66 @@ class _ClassroomPostDialogState extends State<ClassroomPostDialog> {
             ),
 
             // ボタン
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('キャンセル'),
-                ),
-                const SizedBox(width: 16),
-                if (_isAuthenticated && !_isLoading)
-                  ElevatedButton.icon(
-                    onPressed: _postToClassroom,
-                    icon: const Icon(Icons.send),
-                    label: Text(_scheduledTime != null ? '予約投稿' : '投稿'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
+            Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: TextButton(
+                      onPressed: () {
+                        print('キャンセルボタンがタップされました');
+                        Navigator.of(context).pop();
+                      },
+                      style: TextButton.styleFrom(
+                        minimumSize: const Size(80, 44),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: const Text('キャンセル'),
                     ),
                   ),
-              ],
+                  const SizedBox(width: 16),
+                  // 投稿ボタンを常に表示し、状態に応じて無効化
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: SizedBox(
+                      height: 44, // ボタンの高さを固定
+                      child: ElevatedButton.icon(
+                        onPressed: (_isAuthenticated && !_isLoading) ? () {
+                          print('DEBUG: Post button tapped');
+                          print('DEBUG: Button state - authenticated: $_isAuthenticated, loading: $_isLoading');
+                          _postToClassroom();
+                        } : null, // nullで無効化する
+                        icon: _isLoading 
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : const Icon(Icons.send),
+                        label: Text(
+                          _isLoading 
+                            ? '投稿中...' 
+                            : (_scheduledTime != null ? '予約投稿' : '投稿')
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: Colors.grey.shade400,
+                          disabledForegroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          minimumSize: const Size(120, 44), // 最小サイズを設定
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

@@ -1,6 +1,7 @@
 import json
 import os
 from contextlib import asynccontextmanager
+from datetime import datetime
 
 import google.genai.types as genai_types
 from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Header
@@ -144,15 +145,35 @@ async def adk_chat_stream(
                     user_id=user_id,
                     session_id=session_id,
                 )
-                # セッション状態にユーザーIDを保存
+                # セッション状態にユーザーIDとメタデータを保存
                 if new_session and hasattr(new_session, 'state'):
                     new_session.state["user_id"] = user_id
-                    print(f"✅ User ID saved to session state: {user_id}")
+                    new_session.state["session_created_at"] = datetime.now().isoformat()
+                    new_session.state["user_isolation_enabled"] = True
+                    print(f"✅ User ID and metadata saved to new session: {user_id}")
+                    
+                    # ユーザー固有のディレクトリ作成を確実に実行
+                    from agents.shared.file_utils import get_user_artifacts_dir
+                    try:
+                        user_dir = get_user_artifacts_dir(user_id)
+                        print(f"✅ User artifacts directory created: {user_dir}")
+                    except Exception as dir_error:
+                        print(f"⚠️ User artifacts directory creation failed: {dir_error}")
             else:
-                # 既存セッションにもユーザーIDを保存
+                # 既存セッションにもユーザーIDとメタデータを更新
                 if hasattr(existing_session, 'state'):
                     existing_session.state["user_id"] = user_id
-                    print(f"✅ User ID updated in existing session: {user_id}")
+                    existing_session.state["session_updated_at"] = datetime.now().isoformat()
+                    existing_session.state["user_isolation_enabled"] = True
+                    print(f"✅ User ID and metadata updated in existing session: {user_id}")
+                    
+                    # ユーザー固有のディレクトリが存在することを確認
+                    from agents.shared.file_utils import get_user_artifacts_dir
+                    try:
+                        user_dir = get_user_artifacts_dir(user_id)
+                        print(f"✅ User artifacts directory verified: {user_dir}")
+                    except Exception as dir_error:
+                        print(f"⚠️ User artifacts directory verification failed: {dir_error}")
 
             # ADKのrun_asyncを呼び出してイベントストリームを取得
             async for event in runner.run_async(
@@ -217,6 +238,25 @@ async def receive_html_artifact(request: HtmlArtifactRequest):
     except Exception as e:
         print(f"❌ HTML Artifact受信エラー: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to store HTML artifact: {str(e)}")
+
+
+@app.websocket("/ws/artifacts/{session_id}")
+async def websocket_artifacts(websocket: WebSocket, session_id: str):
+    """HTML Artifactを配信するWebSocketエンドポイント"""
+    await artifact_manager.websocket_manager.connect(session_id, websocket)
+    try:
+        # WebSocket接続を維持
+        while True:
+            # クライアントからのメッセージを待機（pingなど）
+            data = await websocket.receive_text()
+            if data == "ping":
+                await websocket.send_text("pong")
+    except WebSocketDisconnect:
+        await artifact_manager.websocket_manager.disconnect(session_id)
+        print(f"WebSocket disconnected for session: {session_id}")
+    except Exception as e:
+        print(f"WebSocket error: {e}")
+        await artifact_manager.websocket_manager.disconnect(session_id)
 
 
 @app.get("/api/v1/artifacts/html/{session_id}")

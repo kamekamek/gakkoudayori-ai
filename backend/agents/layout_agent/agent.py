@@ -11,6 +11,12 @@ from google.genai.types import Content, Part
 
 from .deliver_html_tool import html_delivery_tool
 from .prompt import INSTRUCTION
+from agents.shared.file_utils import (
+    load_user_outline,
+    save_user_newsletter,
+    get_user_id_from_session,
+    get_user_images_dir
+)
 
 # ロガーの設定
 logger = logging.getLogger(__name__)
@@ -94,8 +100,12 @@ class LayoutAgent(LlmAgent):
             # 会話履歴から学級通信の内容を抽出
             conversation_content = self._extract_content_from_conversation(ctx)
 
+            # ユーザーの画像情報を取得
+            user_images_info = self._get_user_images_info(ctx)
+
             logger.info(f"基本情報取得成功: {basic_info['school_name']} {basic_info['class_name']} {basic_info['teacher_name']}")
             logger.info(f"会話内容: {conversation_content[:100]}...")
+            logger.info(f"ユーザー画像情報: {len(user_images_info)}件の画像を検出")
 
             # ユーザーフレンドリーな進行中メッセージ
             yield Event(
@@ -104,6 +114,13 @@ class LayoutAgent(LlmAgent):
             )
 
             # 学級通信のHTMLを生成するためのプロンプト作成
+            images_info_text = ""
+            if user_images_info:
+                images_info_text = f"""
+アップロード画像:
+{user_images_info}
+"""
+            
             enhanced_prompt = f"""
 以下の情報から学級通信のHTMLを生成してください。
 
@@ -115,11 +132,12 @@ class LayoutAgent(LlmAgent):
 
 学級通信の内容:
 {conversation_content}
-
+{images_info_text}
 要件:
 - 美しくレスポンシブなデザインにしてください
 - 完全なHTMLドキュメントとして出力してください
 - 日本の学級通信らしい温かみのあるデザインにしてください
+- アップロード画像がある場合は、適切に配置して表示してください
 - HTMLのみを出力してください（説明は不要）
             """
 
@@ -200,9 +218,19 @@ class LayoutAgent(LlmAgent):
             if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
                 ctx.session.state["html"] = html_content
                 logger.info("HTMLをセッション状態に保存しました")
+                
+                # ユーザー固有ファイルにも保存
+                user_id = get_user_id_from_session(ctx.session)
+                if user_id:
+                    success = save_user_newsletter(user_id, html_content)
+                    if success:
+                        logger.info(f"✅ ユーザー固有HTMLファイルにも保存成功: user_id={user_id}")
+                    else:
+                        logger.warning(f"⚠️ ユーザー固有HTMLファイル保存に失敗: user_id={user_id}")
+                else:
+                    logger.warning("⚠️ ユーザーIDが取得できないため、ユーザー固有HTMLファイル保存をスキップ")
 
-            # セッション状態のみでデータ保存
-            logger.info("HTMLをセッション状態に保存")
+            logger.info("HTMLをセッション状態とファイルに保存完了")
 
         except Exception as e:
             logger.error(f"LLMイベントからのHTML保存エラー: {e}")
@@ -496,6 +524,47 @@ class LayoutAgent(LlmAgent):
         except Exception as e:
             logger.error(f"JSON検証エラー: {e}")
             return False
+
+    def _get_user_images_info(self, ctx: InvocationContext) -> str:
+        """セッション状態からユーザーの画像情報を取得してHTML用の文字列を生成"""
+        try:
+            # セッション状態から画像情報を取得
+            if not (hasattr(ctx, "session") and hasattr(ctx.session, "state")):
+                logger.warning("セッション状態にアクセスできません")
+                return ""
+            
+            session_state = ctx.session.state
+            uploaded_images = session_state.get("uploaded_images", [])
+            
+            if not uploaded_images:
+                logger.info("アップロード画像が見つかりません")
+                return ""
+            
+            # 画像情報をHTML生成用のテキストに変換
+            images_text = []
+            for i, image in enumerate(uploaded_images, 1):
+                if isinstance(image, dict):
+                    name = image.get("name", f"image_{i}")
+                    url = image.get("url", "")
+                    description = image.get("description", "")
+                    
+                    if url:
+                        image_text = f"- 画像{i}: {name}"
+                        if description:
+                            image_text += f" ({description})"
+                        image_text += f" - URL: {url}"
+                        images_text.append(image_text)
+            
+            if images_text:
+                logger.info(f"ユーザー画像情報を取得: {len(images_text)}件")
+                return "\n".join(images_text)
+            else:
+                logger.info("有効な画像情報が見つかりません")
+                return ""
+                
+        except Exception as e:
+            logger.error(f"ユーザー画像情報取得エラー: {e}")
+            return ""
 
 
 def create_layout_agent() -> LayoutAgent:

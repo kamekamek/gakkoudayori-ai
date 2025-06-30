@@ -12,25 +12,40 @@ from google.adk.tools import FunctionTool, ToolContext
 from google.genai.types import Content, Part
 
 from services.user_settings_service import UserSettingsService
+from agents.shared.file_utils import (
+    save_user_outline, 
+    get_user_id_from_session,
+    get_user_artifacts_dir
+)
 
 from .prompt import MAIN_CONVERSATION_INSTRUCTION
 
 # ロガーの設定
 logger = logging.getLogger(__name__)
 
-# モジュールレベルのユーザーID管理（ADK FunctionTool制限の回避）
-_current_user_id = None
+# セッション状態からユーザーIDを取得するためのコンテキスト管理
+# グローバル変数は廃止し、ADK ToolContextを活用
+_current_tool_context = None
 
-def set_current_user_id(user_id: str):
-    """現在のユーザーIDを設定（MainConversationAgentが呼び出し）"""
-    global _current_user_id
-    _current_user_id = user_id
-    logger.info(f"現在のユーザーIDを設定: {user_id}")
+def set_current_tool_context(tool_context):
+    """現在のToolContextを設定（MainConversationAgentが呼び出し）"""
+    global _current_tool_context
+    _current_tool_context = tool_context
+    if tool_context and hasattr(tool_context, 'session') and hasattr(tool_context.session, 'state'):
+        user_id = tool_context.session.state.get('user_id')
+        logger.info(f"ToolContextを設定: user_id={user_id}")
 
-def get_current_user_id() -> Optional[str]:
-    """現在のユーザーIDを取得（get_user_settings_context関数が使用）"""
-    global _current_user_id
-    return _current_user_id
+def get_current_user_id_from_context() -> Optional[str]:
+    """ToolContextのセッション状態からユーザーIDを取得"""
+    global _current_tool_context
+    if (_current_tool_context and 
+        hasattr(_current_tool_context, 'session') and 
+        hasattr(_current_tool_context.session, 'state')):
+        user_id = _current_tool_context.session.state.get('user_id')
+        logger.info(f"セッション状態からユーザーID取得: {user_id}")
+        return user_id
+    logger.warning("ToolContextまたはセッション状態にアクセスできません")
+    return None
 
 
 def get_current_date() -> str:
@@ -40,17 +55,25 @@ def get_current_date() -> str:
     return current_date
 
 
-async def get_user_settings_context() -> str:
+async def get_user_settings_context(tool_context: ToolContext = None) -> str:
     """
     ユーザー設定情報を取得します。
     学校名、クラス名、先生名、タイトルテンプレートなどの個人設定を返します。
     
-    注意: この関数はADK FunctionToolとして使用されるため、
-    tool_contextは直接受け取れません。グローバル変数でユーザーIDを管理します。
+    Args:
+        tool_context: ADK ToolContext（セッション状態からユーザーIDを取得）
     """
     try:
-        # グローバル変数から現在のユーザーIDを取得
-        actual_user_id = get_current_user_id()
+        # ToolContextのセッション状態からユーザーIDを取得
+        actual_user_id = None
+        if (tool_context and 
+            hasattr(tool_context, 'session') and 
+            hasattr(tool_context.session, 'state')):
+            actual_user_id = tool_context.session.state.get('user_id')
+            logger.info(f"ToolContextからユーザーID取得: {actual_user_id}")
+        else:
+            # フォールバック: グローバルなToolContextから取得
+            actual_user_id = get_current_user_id_from_context()
         
         if not actual_user_id:
             logger.warning("ユーザーIDが設定されていません。デフォルト設定を使用します。")
@@ -108,7 +131,7 @@ async def get_user_settings_context() -> str:
 
 
 def save_json_to_session(json_data: str, tool_context: ToolContext = None) -> str:
-    """ADK ToolContext を使用してJSONデータをセッション状態に保存します。"""
+    """ADK ToolContext を使用してJSONデータをセッション状態とユーザー固有ファイルに保存します。"""
     try:
         if not json_data or not json_data.strip():
             logger.warning("空のJSONデータは保存できません")
@@ -116,7 +139,7 @@ def save_json_to_session(json_data: str, tool_context: ToolContext = None) -> st
         
         # JSONの有効性を確認
         try:
-            json.loads(json_data)
+            parsed_data = json.loads(json_data)
             logger.info(f"JSON検証成功: {len(json_data)} 文字")
         except json.JSONDecodeError as e:
             logger.error(f"無効なJSONデータ: {e}")
@@ -124,13 +147,24 @@ def save_json_to_session(json_data: str, tool_context: ToolContext = None) -> st
         
         # ADK ToolContext を使用してセッション状態に保存
         if tool_context and hasattr(tool_context, 'session') and hasattr(tool_context.session, 'state'):
-            # ADK標準のoutput_keyを使用
+            # セッション状態への保存
             tool_context.session.state["outline"] = json_data
             tool_context.session.state["json_ready_for_layout"] = True
             tool_context.session.state["json_timestamp"] = datetime.now().isoformat()
             
+            # ユーザー固有ファイルへの保存
+            user_id = get_user_id_from_session(tool_context.session)
+            if user_id:
+                success = save_user_outline(user_id, parsed_data)
+                if success:
+                    logger.info(f"✅ ユーザー固有ファイルにも保存成功: user_id={user_id}")
+                else:
+                    logger.warning(f"⚠️ ユーザー固有ファイル保存に失敗: user_id={user_id}")
+            else:
+                logger.warning("⚠️ ユーザーIDが取得できないため、ユーザー固有ファイル保存をスキップ")
+            
             logger.info(f"JSONデータをセッション状態に保存: outline キー使用")
-            return f"✅ JSON構成案をセッション状態に保存しました: {len(json_data)} 文字"
+            return f"✅ JSON構成案をセッション状態とファイルに保存しました: {len(json_data)} 文字"
         else:
             logger.warning("ToolContextまたはセッション状態にアクセスできません")
             return "⚠️ セッション状態への保存に失敗しました（ToolContextが無効）"
@@ -200,9 +234,10 @@ class MainConversationAgent(LlmAgent):
     ) -> AsyncGenerator[Event, None]:
         """
         シンプルなADK標準実装: 自然な対話でLayoutAgentに自動委譲
+        セッション状態ベースのユーザー管理に対応
         """
         try:
-            logger.info("=== MainConversationAgent実行開始 (シンプル版) ===")
+            logger.info("=== MainConversationAgent実行開始 (セッション状態ベース) ===")
             
             # ユーザー設定の初期取得
             await self._initialize_user_context(ctx)
@@ -245,8 +280,8 @@ class MainConversationAgent(LlmAgent):
 
             logger.info(f"ユーザーID取得: {user_id}")
 
-            # グローバル変数にユーザーIDを設定（get_user_settings_context関数で使用）
-            set_current_user_id(user_id)
+            # セッション状態への保存（get_user_settings_context関数で使用）
+            # グローバル変数は使用しない - セッション状態のみを信頼
 
             # セッション状態にユーザーIDを保存
             if hasattr(ctx, "session") and hasattr(ctx.session, "state"):
@@ -275,14 +310,22 @@ class MainConversationAgent(LlmAgent):
             current_date = get_current_date()
             logger.info(f"📅 現在の日付取得: {current_date}")
             
-            # 2. ユーザー設定を取得
+            # 2. ユーザー設定を取得（セッション状態ベース）
             user_settings = {}
             try:
-                user_settings_json = await get_user_settings_context()
-                if user_settings_json:
-                    import json
-                    user_settings = json.loads(user_settings_json)
-                    logger.info(f"👤 ユーザー設定取得: {user_settings.get('学校名', '未設定')} {user_settings.get('クラス名', '未設定')}")
+                # セッション状態から直接ユーザーIDを取得してToolContextを構築
+                if hasattr(ctx, "session"):
+                    # ダミーのToolContextを作成してセッション情報を渡す
+                    class DummyToolContext:
+                        def __init__(self, session):
+                            self.session = session
+                    
+                    dummy_tool_context = DummyToolContext(ctx.session)
+                    user_settings_json = await get_user_settings_context(dummy_tool_context)
+                    if user_settings_json:
+                        import json
+                        user_settings = json.loads(user_settings_json)
+                        logger.info(f"👤 ユーザー設定取得: {user_settings.get('学校名', '未設定')} {user_settings.get('クラス名', '未設定')}")
             except Exception as e:
                 logger.error(f"ユーザー設定取得エラー: {e}")
             

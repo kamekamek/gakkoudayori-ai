@@ -56,6 +56,93 @@
       touch-action: manipulation;
     }
     
+    /* Fix Flutter modal dialog overlay issue */
+    .flt-glass-pane {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      pointer-events: none !important; /* 背景はクリック無効 */
+    }
+    
+    /* Ensure dialogs are centered and clickable */
+    flt-scene-host {
+      position: relative;
+      z-index: 1;
+      pointer-events: auto !important;
+    }
+    
+    /* Fix overlay positioning - 完全にポインターイベントを無効化 */
+    flt-semantics-placeholder {
+      position: fixed !important;
+      inset: 0 !important;
+      pointer-events: none !important;
+    }
+    
+    /* モーダル背景のポインターイベントを無効化 */
+    flt-glass-pane * {
+      pointer-events: none !important;
+    }
+    
+    /* ダイアログコンテンツのみポインターイベントを有効化 */
+    flt-semantics[role="dialog"] * {
+      pointer-events: auto !important;
+    }
+    
+    /* Ensure dialog backdrop covers entire screen */
+    .cdk-overlay-backdrop,
+    .modal-backdrop {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      z-index: 1040 !important;
+    }
+    
+    /* Fix Flutter dialog button interactions */
+    flt-semantics[role="dialog"] {
+      pointer-events: auto !important;
+      z-index: 1050 !important;
+    }
+    
+    flt-semantics[role="button"],
+    flt-semantics button {
+      pointer-events: auto !important;
+      z-index: 1051 !important;
+      cursor: pointer !important;
+    }
+    
+    /* Ensure all clickable elements are responsive */
+    [role="button"],
+    button,
+    .btn,
+    .button {
+      pointer-events: auto !important;
+      touch-action: manipulation !important;
+      cursor: pointer !important;
+      z-index: 1051 !important;
+    }
+    
+    /* Fix Flutter canvas elements blocking interactions */
+    flt-canvas-container {
+      pointer-events: none !important;
+    }
+    
+    flt-canvas-container canvas {
+      pointer-events: none !important;
+    }
+    
+    /* Allow interactions only on interactive elements */
+    flt-semantics {
+      pointer-events: auto !important;
+    }
+    
     /* Prevent text selection on mobile */
     .mobile-no-select {
       -webkit-user-select: none;
@@ -94,6 +181,157 @@
   <script>
     // Phase R2で音声録音機能を実装予定
     console.log('Phase R1: 基本HTML構成完了');
+    
+    // Flutter Web dialog button fix
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('Setting up Flutter Web button fixes...');
+      
+      // 定期的にボタンの状態をチェックして修正
+      function fixButtonInteractions() {
+        // すべてのボタン要素を対象に（再認証ボタンも含む）
+        const buttons = document.querySelectorAll('flt-semantics[role="button"], button, [role="button"], .btn, [type="button"], flt-semantics');
+        buttons.forEach(button => {
+          // 再認証ボタンの特別処理
+          if (button.textContent && button.textContent.includes('再認証')) {
+            console.log('再認証ボタンを発見:', button);
+            button.style.pointerEvents = 'auto !important';
+            button.style.cursor = 'pointer !important';
+            button.style.zIndex = '9999 !important';
+            button.style.position = 'relative !important';
+          }
+          
+          if (button.style.pointerEvents === 'none') {
+            button.style.pointerEvents = 'auto';
+          }
+          if (!button.style.cursor) {
+            button.style.cursor = 'pointer';
+          }
+          if (!button.style.zIndex || parseInt(button.style.zIndex) < 1050) {
+            button.style.zIndex = '1051';
+          }
+          
+          // 強制的にイベントリスナーを追加（デバッグ用）
+          if (!button.hasAttribute('data-click-fixed')) {
+            button.addEventListener('click', function(e) {
+              console.log('Button clicked:', button, 'Text:', button.textContent);
+              if (button.textContent && button.textContent.includes('再認証')) {
+                console.log('再認証ボタンがクリックされました!');
+              }
+              // e.stopPropagation(); // コメントアウトして伝播を許可
+            }, true);
+            button.setAttribute('data-click-fixed', 'true');
+          }
+        });
+        
+        // Canvas elements should not block interactions
+        const canvases = document.querySelectorAll('flt-canvas-container canvas, canvas');
+        canvases.forEach(canvas => {
+          canvas.style.pointerEvents = 'none';
+        });
+        
+        // Dialog elements - ダイアログとその子要素を強制的に有効化
+        const dialogs = document.querySelectorAll('flt-semantics[role="dialog"]');
+        dialogs.forEach(dialog => {
+          dialog.style.pointerEvents = 'auto !important';
+          dialog.style.zIndex = '1050';
+          
+          // ダイアログ内のすべての要素を有効化
+          const dialogChildren = dialog.querySelectorAll('*');
+          dialogChildren.forEach(child => {
+            child.style.pointerEvents = 'auto !important';
+          });
+        });
+        
+        // Flutter glass pane の無効化
+        const glassPanes = document.querySelectorAll('flt-glass-pane, .flt-glass-pane');
+        glassPanes.forEach(pane => {
+          pane.style.pointerEvents = 'none !important';
+        });
+        
+        // 全てのflt-semantics要素に対してクリック処理を有効化
+        const semantics = document.querySelectorAll('flt-semantics');
+        semantics.forEach(sem => {
+          if (sem.getAttribute('role') || sem.closest('[role="dialog"]')) {
+            sem.style.pointerEvents = 'auto !important';
+          }
+        });
+      }
+      
+      // 初回実行
+      fixButtonInteractions();
+      
+      // 定期的に実行（新しいダイアログが表示された時のため）
+      setInterval(fixButtonInteractions, 1000);
+      
+      // MutationObserver で DOM の変更を監視
+      const observer = new MutationObserver(function(mutations) {
+        let shouldFix = false;
+        mutations.forEach(function(mutation) {
+          if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+            shouldFix = true;
+          }
+        });
+        if (shouldFix) {
+          setTimeout(fixButtonInteractions, 100);
+        }
+      });
+      
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+      
+      // 緊急修正: 全画面クリックイベントのデバッグ + 右半分ブロック対策
+      document.addEventListener('click', function(e) {
+        console.log('Click event:', e.target, e.target.tagName, e.target.getAttribute('role'), 'Text:', e.target.textContent, 'Position:', e.clientX, e.clientY);
+        
+        // 右半分クリック問題のデバッグ
+        if (e.clientX > window.innerWidth / 2) {
+          console.log('🔴 右半分クリック検出:', e.clientX, '>', window.innerWidth / 2);
+          
+          // クリックが無効化されている場合の強制処理
+          const elementBelow = document.elementFromPoint(e.clientX, e.clientY);
+          if (elementBelow && elementBelow !== e.target) {
+            console.log('🔧 実際の要素:', elementBelow);
+            elementBelow.click();
+          }
+        }
+        
+        // 再認証ボタンの特別処理
+        if (e.target.textContent && e.target.textContent.includes('再認証')) {
+          console.log('🔵 再認証ボタンクリック検出!');
+          e.stopImmediatePropagation();
+          // Flutter内部のクリックイベントを強制発火
+          setTimeout(() => {
+            const clickEvent = new MouseEvent('click', {
+              view: window,
+              bubbles: true,
+              cancelable: true,
+              clientX: e.clientX,
+              clientY: e.clientY
+            });
+            e.target.dispatchEvent(clickEvent);
+          }, 10);
+        }
+        
+        // Flutter semantics要素のクリックを強制実行
+        if (e.target.tagName === 'FLT-SEMANTICS' && e.target.getAttribute('role') === 'button') {
+          console.log('Force triggering Flutter button click');
+          // Flutter内部のクリックイベントを発火
+          const event = new Event('click', { bubbles: true, cancelable: true });
+          e.target.dispatchEvent(event);
+        }
+      }, true);
+      
+      // ポインターイベントのデバッグ
+      document.addEventListener('pointerdown', function(e) {
+        console.log('Pointer down:', e.target);
+        if (e.target.style.pointerEvents === 'none') {
+          console.log('Pointer events disabled on:', e.target);
+          e.target.style.pointerEvents = 'auto';
+        }
+      }, true);
+    });
   </script>
 </body>
 </html>

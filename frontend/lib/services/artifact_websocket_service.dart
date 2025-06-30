@@ -95,6 +95,12 @@ class ArtifactWebSocketService {
 
   void _handleWebSocketMessage(dynamic data) {
     try {
+      // ping/pongメッセージをスキップ
+      if (data == 'pong') {
+        debugPrint('[ArtifactWebSocket] Received pong');
+        return;
+      }
+
       final Map<String, dynamic> message = jsonDecode(data);
 
       if (message['type'] == 'html_artifact') {

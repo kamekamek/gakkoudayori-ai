@@ -96,6 +96,48 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
     }
   }
 
+  void _showNewSessionDialog(BuildContext context, AdkChatProvider provider) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => AlertDialog(
+        title: const Text('新しい学級通信を作成'),
+        content: const Text('現在の作業内容をクリアして、新しい学級通信の作成を開始しますか？'),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextButton(
+              onPressed: () {
+                print('キャンセルボタンがタップされました');
+                Navigator.of(context).pop();
+              },
+              style: TextButton.styleFrom(
+                minimumSize: const Size(80, 44),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text('キャンセル'),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: ElevatedButton(
+              onPressed: () {
+                print('新規作成ボタンがタップされました');
+                Navigator.of(context).pop();
+                provider.startNewSession();
+              },
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(80, 44),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text('新規作成'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<AdkChatProvider>(
@@ -146,11 +188,11 @@ class _AdkChatWidgetState extends State<AdkChatWidget> {
                       ),
                     ),
                     const Spacer(),
-                    if (provider.sessionId != null)
+                    if (provider.sessionId != null && provider.messages.isNotEmpty)
                       TextButton.icon(
-                        onPressed: () => provider.clearSession(),
-                        icon: const Icon(Icons.refresh, size: 16),
-                        label: const Text('🔄', style: TextStyle(fontSize: 12)),
+                        onPressed: () => _showNewSessionDialog(context, provider),
+                        icon: const Icon(Icons.add, size: 16),
+                        label: const Text('新規', style: TextStyle(fontSize: 12)),
                         style: TextButton.styleFrom(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 4),

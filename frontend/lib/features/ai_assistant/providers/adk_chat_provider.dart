@@ -402,6 +402,14 @@ class AdkChatProvider extends ChangeNotifier {
         _generatedHtml = htmlContent;
         debugPrint(
             '[AdkChatProvider] HTML generated successfully: ${htmlContent.length} characters');
+        
+        // PreviewProviderにHTMLを反映
+        if (_previewProvider != null) {
+          _previewProvider!.updateHtmlContent(htmlContent);
+          debugPrint('[AdkChatProvider] HTML content sent to PreviewProvider');
+        } else {
+          debugPrint('[AdkChatProvider] Warning: PreviewProvider is not set');
+        }
       }
 
       _safeNotifyListeners();
@@ -412,6 +420,8 @@ class AdkChatProvider extends ChangeNotifier {
 
   /// セッションをクリア
   void clearSession() {
+    debugPrint('[AdkChatProvider] セッションクリア開始');
+    
     _messages.clear();
     _sessionId = null;
     _generatedHtml = null;
@@ -420,6 +430,41 @@ class AdkChatProvider extends ChangeNotifier {
     _audioLevel = 0.0;
     _showGenerateButton = false;
     _readyToGenerate = false;
+    
+    // WebSocket接続を切断
+    _artifactWebSocketService.disconnect();
+    
+    // PreviewProviderもクリア
+    if (_previewProvider != null) {
+      _previewProvider!.clearContent();
+      debugPrint('[AdkChatProvider] PreviewProvider もクリアしました');
+    }
+    
+    debugPrint('[AdkChatProvider] セッションクリア完了');
+    _safeNotifyListeners();
+  }
+
+  /// 新しいセッションを開始
+  void startNewSession() {
+    debugPrint('[AdkChatProvider] 新しいセッション開始');
+    
+    // 既存セッションをクリア
+    clearSession();
+    
+    // 新しいセッションIDを生成
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    _sessionId = '${userId}:session_$timestamp';
+    
+    debugPrint('[AdkChatProvider] 新しいセッションID: $_sessionId');
+    
+    // 挨拶メッセージを追加
+    final welcomeMessage = MutableChatMessage(
+      role: 'assistant',
+      content: '新しい学級通信の作成を開始しましょう！どのような内容にしたいか教えてください。',
+      timestamp: DateTime.now(),
+    );
+    _messages.add(welcomeMessage);
+    
     _safeNotifyListeners();
   }
 

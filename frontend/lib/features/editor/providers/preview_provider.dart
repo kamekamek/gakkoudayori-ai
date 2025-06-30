@@ -85,9 +85,16 @@ class PreviewProvider extends ChangeNotifier {
 
   /// HTMLコンテンツのバリデーション
   void _validateHtmlContent(String html) {
-    // 基本的なHTMLタグの存在確認
+    // 空のコンテンツやプレーンテキストも許可
+    if (html.trim().isEmpty) {
+      debugPrint('[PreviewProvider] Warning: Empty HTML content received');
+      return;
+    }
+
+    // プレーンテキストの場合は警告のみでエラーにしない
     if (!html.contains('<') || !html.contains('>')) {
-      throw Exception('Invalid HTML format: Missing HTML tags');
+      debugPrint('[PreviewProvider] Warning: No HTML tags detected, treating as plain text: ${html.substring(0, html.length > 100 ? 100 : html.length)}...');
+      return;
     }
 
     // 潜在的に危険なタグの検出
@@ -97,6 +104,8 @@ class PreviewProvider extends ChangeNotifier {
         throw Exception('Invalid HTML format: Dangerous tag detected: $tag');
       }
     }
+    
+    debugPrint('[PreviewProvider] HTML validation passed for content with ${html.length} characters');
   }
 
   // テスト用サンプルHTMLの設定
