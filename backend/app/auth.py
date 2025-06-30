@@ -1,4 +1,3 @@
-
 import os
 from functools import lru_cache
 
@@ -27,7 +26,7 @@ def initialize_firebase_app():
     """
     try:
         # 環境変数からGCPプロジェクトIDを取得
-        project_id = os.getenv("GCP_PROJECT")
+        project_id = os.getenv("GCP_PROJECT_ID")
         if not project_id:
             # ローカル開発環境などで環境変数が設定されていない場合
             # ADC (Application Default Credentials) から推測する
@@ -69,7 +68,7 @@ def initialize_firebase_app():
 class OAuth2PasswordBearerWithOptions(OAuth2PasswordBearer):
     """
     OPTIONSリクエストを自動的に無視するOAuth2PasswordBearerのカスタムクラス。
-    CORSのPreflight���クエストが認証エラーで失敗するのを防ぐ。
+    CORSのPreflightリクエストが認証エラーで失敗するのを防ぐ。
     """
     async def __call__(self, request: Request) -> str | None:
         if request.method == "OPTIONS":
