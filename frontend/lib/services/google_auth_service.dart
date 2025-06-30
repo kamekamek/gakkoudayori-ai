@@ -64,7 +64,7 @@ class GoogleAuthService {
   static void _listenToAuthChanges() {
     try {
       _googleSignIn?.onCurrentUserChanged
-          ?.listen((GoogleSignInAccount? account) async {
+          .listen((GoogleSignInAccount? account) async {
         _currentUser = account;
 
         if (account != null) {
@@ -95,7 +95,7 @@ class GoogleAuthService {
             _currentUser = null;
           }
         } else {
-          // Googleアカウントからサイン��ウトした場合の処理
+          // Googleアカウントからサインアウトした場合の処理
           // Firebaseからもサインアウトする
           if (fb_auth.FirebaseAuth.instance.currentUser != null) {
             await fb_auth.FirebaseAuth.instance.signOut();
@@ -115,10 +115,7 @@ class GoogleAuthService {
 
   /// 現在のGoogle Sign-Inクライアントを取得
   static GoogleSignIn get googleSignIn {
-    if (_googleSignIn == null) {
-      // 直接インスタンスを作成（無限ループ回避）
-      _googleSignIn = GoogleSignIn(scopes: _scopes);
-    }
+    _googleSignIn ??= GoogleSignIn(scopes: _scopes);
     return _googleSignIn!;
   }
 
@@ -218,7 +215,7 @@ class GoogleAuthService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('認証済みHTTPクライアン���作成エラー: $e');
+        print('認証済みHTTPクライアント作成エラー: $e');
       }
       _authClient = null;
     }

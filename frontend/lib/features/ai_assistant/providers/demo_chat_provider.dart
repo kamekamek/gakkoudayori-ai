@@ -1,15 +1,15 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../services/demo_data_service.dart';
-
 /// デモモード用のチャットプロバイダー
 class DemoChatProvider extends ChangeNotifier {
-  List<DemoChatMessage> _messages = [];
+  final List<DemoChatMessage> _messages = [];
   bool _isLoading = false;
   bool _isRecording = false;
   String? _generatedHtml;
   Timer? _autoProgressTimer;
   int _currentMessageIndex = 0;
+  final DemoDataService _demoDataService = DemoDataService();
 
   List<DemoChatMessage> get messages => _messages;
   bool get isLoading => _isLoading;
@@ -21,7 +21,7 @@ class DemoChatProvider extends ChangeNotifier {
     _messages.clear();
     _generatedHtml = null;
     _currentMessageIndex = 0;
-    
+
     // 最初のメッセージから開始
     _startAutoProgress();
     notifyListeners();
@@ -30,12 +30,12 @@ class DemoChatProvider extends ChangeNotifier {
   /// 自動進行タイマーを開始（音声入力から開始）
   void _startAutoProgress() async {
     _autoProgressTimer?.cancel();
-    
+
     final demoMessages = DemoDataService.getDemoChatMessages();
-    
+
     // 1秒待機してから音声入力開始
     await Future.delayed(const Duration(seconds: 1));
-    
+
     // 最初のメッセージは音声入力としてシミュレート
     if (demoMessages.isNotEmpty) {
       final firstMessage = demoMessages[0];
@@ -49,11 +49,11 @@ class DemoChatProvider extends ChangeNotifier {
     for (int i = 1; i < demoMessages.length; i++) {
       // 2秒待機
       await Future.delayed(const Duration(seconds: 2));
-      
+
       final message = demoMessages[i];
-      
+
       _messages.add(message);
-      
+
       // HTML生成メッセージの場合はHTMLを設定
       if (message.isSystemGenerated) {
         _generatedHtml = DemoDataService.demoNewsletterHtml;
@@ -69,9 +69,9 @@ class DemoChatProvider extends ChangeNotifier {
 
     // 3秒間録音状態をシミュレート
     await Future.delayed(const Duration(seconds: 3));
-    
+
     _isRecording = false;
-    
+
     // 音声入力メッセージを追加
     _messages.add(DemoChatMessage(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -80,7 +80,7 @@ class DemoChatProvider extends ChangeNotifier {
       timestamp: DateTime.now(),
       isVoiceInput: true,
     ));
-    
+
     notifyListeners();
   }
 
@@ -129,7 +129,7 @@ class DemoChatProvider extends ChangeNotifier {
       // 録音停止
       _isRecording = false;
       notifyListeners();
-      
+
       // 録音停止時にサンプルテキストを音声入力として追加
       final voiceMessage = DemoChatMessage(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -140,7 +140,7 @@ class DemoChatProvider extends ChangeNotifier {
       );
       _messages.add(voiceMessage);
       notifyListeners();
-      
+
       // 自動応答
       _sendAutoResponse(voiceMessage.text);
     } else {

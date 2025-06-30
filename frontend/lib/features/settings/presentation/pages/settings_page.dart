@@ -20,13 +20,13 @@ class _SettingsPageState extends State<SettingsPage> {
   final _teacherNameController = TextEditingController();
   final _primaryTitleController = TextEditingController();
   final _defaultPatternController = TextEditingController();
-  
+
   // タイトルテンプレート管理
   List<String> _seasonalTemplates = [];
   List<TitleTemplate> _customTemplates = [];
   bool _autoNumbering = true;
   int _currentNumber = 1;
-  
+
   // UI状態
   bool _isLoading = false;
   bool _isSettingsComplete = false;
@@ -43,26 +43,32 @@ class _SettingsPageState extends State<SettingsPage> {
     try {
       final provider = context.read<NewsletterProviderV2>();
       final settings = provider.userSettings;
-      
+
       if (settings != null) {
         // 基本情報の設定（nullチェック付き）
         _schoolNameController.text = settings.schoolName.trim();
         _classNameController.text = settings.className.trim();
         _teacherNameController.text = settings.teacherName.trim();
-        
+
         // タイトルテンプレート設定（nullチェック付き）
         final titleTemplates = settings.titleTemplates;
         _primaryTitleController.text = titleTemplates.primary.trim();
         _defaultPatternController.text = titleTemplates.defaultPattern.trim();
-        
+
         // リストのnull安全性を確保
-        _seasonalTemplates = titleTemplates.seasonal.where((item) => item.trim().isNotEmpty).toList();
-        _customTemplates = titleTemplates.custom.where((template) => 
-            template.name.trim().isNotEmpty && template.pattern.trim().isNotEmpty).toList();
-        
+        _seasonalTemplates = titleTemplates.seasonal
+            .where((item) => item.trim().isNotEmpty)
+            .toList();
+        _customTemplates = titleTemplates.custom
+            .where((template) =>
+                template.name.trim().isNotEmpty &&
+                template.pattern.trim().isNotEmpty)
+            .toList();
+
         _autoNumbering = titleTemplates.autoNumbering;
-        _currentNumber = titleTemplates.currentNumber > 0 ? titleTemplates.currentNumber : 1;
-        
+        _currentNumber =
+            titleTemplates.currentNumber > 0 ? titleTemplates.currentNumber : 1;
+
         _isSettingsComplete = settings.isComplete;
       } else {
         // 設定がない場合はデフォルト値を設定
@@ -77,7 +83,7 @@ class _SettingsPageState extends State<SettingsPage> {
         _currentNumber = 1;
         _isSettingsComplete = false;
       }
-      
+
       setState(() {});
     } catch (e) {
       if (kDebugMode) {
@@ -107,180 +113,188 @@ class _SettingsPageState extends State<SettingsPage> {
           onPressed: () => context.pop(),
         ),
       ),
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator())
-        : SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // 設定完了状況の表示
-                if (!_isSettingsComplete) _buildIncompleteSettingsWarning(),
-                
-                // ユーザー辞書セクション
-                _buildSectionCard(
-                  title: 'ユーザー辞書',
-                  icon: Icons.book,
-                  children: [
-                    Text(
-                      'よく使う言葉を登録して音声認識の精度を上げます',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                    ),
-                    const SizedBox(height: 16),
-                    OutlinedButton.icon(
-                      onPressed: _openUserDictionary,
-                      icon: const Icon(Icons.edit),
-                      label: const Text('辞書管理を開く'),
-                    ),
-                  ],
-                ),
-                
-                const SizedBox(height: 24),
-                
-                // 基本設定セクション
-                _buildSectionCard(
-                  title: '基本設定',
-                  icon: Icons.person,
-                  children: [
-                    _buildTextField(
-                      controller: _schoolNameController,
-                      label: '学校名',
-                      hint: '例: 〇〇小学校',
-                      icon: Icons.school,
-                      required: true,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildTextField(
-                      controller: _classNameController,
-                      label: 'クラス名',
-                      hint: '例: 1年1組',
-                      icon: Icons.class_,
-                      required: true,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildTextField(
-                      controller: _teacherNameController,
-                      label: '先生のお名前',
-                      hint: '例: 田中太郎',
-                      icon: Icons.person,
-                      required: true,
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton.icon(
-                      onPressed: _isLoading ? null : _saveSettings,
-                      icon: _isLoading 
-                        ? const SizedBox(
-                            width: 16, 
-                            height: 16, 
-                            child: CircularProgressIndicator(strokeWidth: 2)
-                          )
-                        : const Icon(Icons.save),
-                      label: Text(_isLoading ? '保存中...' : '設定を保存'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.primary,
-                        foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                      ),
-                    ),
-                  ],
-                ),
-                
-                const SizedBox(height: 24),
-                
-                // タイトルテンプレート設定セクション
-                _buildSectionCard(
-                  title: 'タイトルテンプレート管理',
-                  icon: Icons.title,
-                  children: [
-                    Text(
-                      '学級通信のタイトルパターンを設定します',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildTextField(
-                      controller: _primaryTitleController,
-                      label: 'メインタイトルパターン',
-                      hint: '例: 学級だより○号',
-                      icon: Icons.format_quote,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildTextField(
-                      controller: _defaultPatternController,
-                      label: 'デフォルトパターン',
-                      hint: '例: ○年○組 学級通信',
-                      icon: Icons.text_fields,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildAutoNumberingSwitch(),
-                    if (_autoNumbering) ...[
-                      const SizedBox(height: 16),
-                      _buildCurrentNumberField(),
-                    ],
-                    const SizedBox(height: 20),
-                    _buildSeasonalTemplatesSection(),
-                    const SizedBox(height: 20),
-                    _buildCustomTemplatesSection(),
-                  ],
-                ),
-                
-                const SizedBox(height: 24),
-                
-                // UI最適化設定セクション
-                _buildSectionCard(
-                  title: 'UI最適化設定',
-                  icon: Icons.tune,
-                  children: [
-                    Text(
-                      'ユーザー体験を向上させるためのUI設定',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildImageUploadLocationSetting(),
-                    const SizedBox(height: 16),
-                    _buildAutoGenerateTitleSetting(),
-                  ],
-                ),
-                
-                const SizedBox(height: 24),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // 設定完了状況の表示
+                  if (!_isSettingsComplete) _buildIncompleteSettingsWarning(),
 
-                // ヘルプセクション
-            _buildSectionCard(
-              title: 'ヘルプ',
-              icon: Icons.help,
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.help_outline),
-                  title: const Text('使い方ガイド'),
-                  subtitle: const Text('学校だよりAIの使い方を確認'),
-                  trailing: const Icon(Icons.arrow_forward_ios),
-                  onTap: _showUserGuide,
-                ),
-                const Divider(),
-                ListTile(
-                  leading: const Icon(Icons.quiz),
-                  title: const Text('よくある質問'),
-                  subtitle: const Text('FAQ・トラブルシューティング'),
-                  trailing: const Icon(Icons.arrow_forward_ios),
-                  onTap: _showFAQ,
-                ),
-                const Divider(),
-                ListTile(
-                  leading: const Icon(Icons.info),
-                  title: const Text('バージョン情報'),
-                  subtitle: const Text('アプリのバージョンと更新情報'),
-                  trailing: const Icon(Icons.arrow_forward_ios),
-                  onTap: _showVersionInfo,
-                ),
-              ],
+                  // ユーザー辞書セクション
+                  _buildSectionCard(
+                    title: 'ユーザー辞書',
+                    icon: Icons.book,
+                    children: [
+                      Text(
+                        'よく使う言葉を登録して音声認識の精度を上げます',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                      ),
+                      const SizedBox(height: 16),
+                      OutlinedButton.icon(
+                        onPressed: _openUserDictionary,
+                        icon: const Icon(Icons.edit),
+                        label: const Text('辞書管理を開く'),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // 基本設定セクション
+                  _buildSectionCard(
+                    title: '基本設定',
+                    icon: Icons.person,
+                    children: [
+                      _buildTextField(
+                        controller: _schoolNameController,
+                        label: '学校名',
+                        hint: '例: 〇〇小学校',
+                        icon: Icons.school,
+                        required: true,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildTextField(
+                        controller: _classNameController,
+                        label: 'クラス名',
+                        hint: '例: 1年1組',
+                        icon: Icons.class_,
+                        required: true,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildTextField(
+                        controller: _teacherNameController,
+                        label: '先生のお名前',
+                        hint: '例: 田中太郎',
+                        icon: Icons.person,
+                        required: true,
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        onPressed: _isLoading ? null : _saveSettings,
+                        icon: _isLoading
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2))
+                            : const Icon(Icons.save),
+                        label: Text(_isLoading ? '保存中...' : '設定を保存'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              Theme.of(context).colorScheme.primary,
+                          foregroundColor:
+                              Theme.of(context).colorScheme.onPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // タイトルテンプレート設定セクション
+                  _buildSectionCard(
+                    title: 'タイトルテンプレート管理',
+                    icon: Icons.title,
+                    children: [
+                      Text(
+                        '学級通信のタイトルパターンを設定します',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildTextField(
+                        controller: _primaryTitleController,
+                        label: 'メインタイトルパターン',
+                        hint: '例: 学級だより○号',
+                        icon: Icons.format_quote,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildTextField(
+                        controller: _defaultPatternController,
+                        label: 'デフォルトパターン',
+                        hint: '例: ○年○組 学級通信',
+                        icon: Icons.text_fields,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildAutoNumberingSwitch(),
+                      if (_autoNumbering) ...[
+                        const SizedBox(height: 16),
+                        _buildCurrentNumberField(),
+                      ],
+                      const SizedBox(height: 20),
+                      _buildSeasonalTemplatesSection(),
+                      const SizedBox(height: 20),
+                      _buildCustomTemplatesSection(),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // UI最適化設定セクション
+                  _buildSectionCard(
+                    title: 'UI最適化設定',
+                    icon: Icons.tune,
+                    children: [
+                      Text(
+                        'ユーザー体験を向上させるためのUI設定',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildImageUploadLocationSetting(),
+                      const SizedBox(height: 16),
+                      _buildAutoGenerateTitleSetting(),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // ヘルプセクション
+                  _buildSectionCard(
+                    title: 'ヘルプ',
+                    icon: Icons.help,
+                    children: [
+                      ListTile(
+                        leading: const Icon(Icons.help_outline),
+                        title: const Text('使い方ガイド'),
+                        subtitle: const Text('学校だよりAIの使い方を確認'),
+                        trailing: const Icon(Icons.arrow_forward_ios),
+                        onTap: _showUserGuide,
+                      ),
+                      const Divider(),
+                      ListTile(
+                        leading: const Icon(Icons.quiz),
+                        title: const Text('よくある質問'),
+                        subtitle: const Text('FAQ・トラブルシューティング'),
+                        trailing: const Icon(Icons.arrow_forward_ios),
+                        onTap: _showFAQ,
+                      ),
+                      const Divider(),
+                      ListTile(
+                        leading: const Icon(Icons.info),
+                        title: const Text('バージョン情報'),
+                        subtitle: const Text('アプリのバージョンと更新情報'),
+                        trailing: const Icon(Icons.arrow_forward_ios),
+                        onTap: _showVersionInfo,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-              ],
-            ),
-          ),
     );
   }
 
@@ -371,13 +385,12 @@ class _SettingsPageState extends State<SettingsPage> {
         hintText: hint,
         prefixIcon: Icon(icon),
         border: const OutlineInputBorder(),
-        errorText: required && controller.text.trim().isEmpty 
-          ? '$labelは必須です' 
-          : null,
+        errorText:
+            required && controller.text.trim().isEmpty ? '$labelは必須です' : null,
       ),
     );
   }
-  
+
   Widget _buildAutoNumberingSwitch() {
     return Row(
       children: [
@@ -400,7 +413,7 @@ class _SettingsPageState extends State<SettingsPage> {
       ],
     );
   }
-  
+
   Widget _buildCurrentNumberField() {
     return TextField(
       keyboardType: TextInputType.number,
@@ -419,7 +432,7 @@ class _SettingsPageState extends State<SettingsPage> {
       },
     );
   }
-  
+
   Widget _buildSeasonalTemplatesSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -461,7 +474,7 @@ class _SettingsPageState extends State<SettingsPage> {
       ],
     );
   }
-  
+
   Widget _buildCustomTemplatesSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -486,7 +499,7 @@ class _SettingsPageState extends State<SettingsPage> {
           return Card(
             child: ListTile(
               title: Text(template.name),
-              subtitle: Text(template.pattern),
+              subtitle: Text('パターン: ${template.pattern}'),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -509,21 +522,21 @@ class _SettingsPageState extends State<SettingsPage> {
     final schoolName = _schoolNameController.text.trim();
     final className = _classNameController.text.trim();
     final teacherName = _teacherNameController.text.trim();
-    
+
     if (schoolName.isEmpty || className.isEmpty || teacherName.isEmpty) {
       _showErrorSnackBar('学校名、クラス名、先生名は必須項目です');
       return;
     }
-    
+
     // タイトルテンプレートのバリデーション
     final primaryTitle = _primaryTitleController.text.trim();
     final defaultPattern = _defaultPatternController.text.trim();
-    
+
     if (primaryTitle.isEmpty) {
       _showErrorSnackBar('メインタイトルパターンを入力してください');
       return;
     }
-    
+
     if (defaultPattern.isEmpty) {
       _showErrorSnackBar('デフォルトパターンを入力してください');
       return;
@@ -535,13 +548,17 @@ class _SettingsPageState extends State<SettingsPage> {
 
     try {
       final provider = context.read<NewsletterProviderV2>();
-      
+
       // タイトルテンプレート設定を構築（清漄化済みの値を使用）
       final titleTemplates = TitleTemplates(
         primary: primaryTitle,
-        seasonal: _seasonalTemplates.where((item) => item.trim().isNotEmpty).toList(),
-        custom: _customTemplates.where((template) => 
-            template.name.trim().isNotEmpty && template.pattern.trim().isNotEmpty).toList(),
+        seasonal:
+            _seasonalTemplates.where((item) => item.trim().isNotEmpty).toList(),
+        custom: _customTemplates
+            .where((template) =>
+                template.name.trim().isNotEmpty &&
+                template.pattern.trim().isNotEmpty)
+            .toList(),
         defaultPattern: defaultPattern,
         autoNumbering: _autoNumbering,
         currentNumber: _currentNumber > 0 ? _currentNumber : 1,
@@ -565,16 +582,15 @@ class _SettingsPageState extends State<SettingsPage> {
       if (kDebugMode) {
         debugPrint('❌ SettingsPage: 設定保存エラー: $e');
       }
-      _showErrorSnackBar('エラーが発生しました: ${e.toString().length > 50 ? e.toString().substring(0, 50) + "..." : e.toString()}');
+      _showErrorSnackBar(
+          'エラーが発生しました: ${e.toString().length > 50 ? "${e.toString().substring(0, 50)}..." : e.toString()}');
     } finally {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
       }
     }
   }
-  
+
   void _addSeasonalTemplate() {
     showDialog(
       context: context,
@@ -611,13 +627,13 @@ class _SettingsPageState extends State<SettingsPage> {
       },
     );
   }
-  
+
   void _removeSeasonalTemplate(int index) {
     setState(() {
       _seasonalTemplates.removeAt(index);
     });
   }
-  
+
   void _addCustomTemplate() {
     showDialog(
       context: context,
@@ -677,7 +693,7 @@ class _SettingsPageState extends State<SettingsPage> {
       },
     );
   }
-  
+
   void _removeCustomTemplate(String templateId) {
     setState(() {
       _customTemplates.removeWhere((template) => template.id == templateId);
@@ -830,7 +846,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget _buildImageUploadLocationSetting() {
     final provider = context.read<NewsletterProviderV2>();
     final currentLocation = provider.uiPreferences.imageUploadLocation;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -899,7 +915,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget _buildAutoGenerateTitleSetting() {
     final provider = context.read<NewsletterProviderV2>();
     final autoGenerate = provider.uiPreferences.autoGenerateTitle;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -937,7 +953,10 @@ class _SettingsPageState extends State<SettingsPage> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+              color: Theme.of(context)
+                  .colorScheme
+                  .primaryContainer
+                  .withOpacity(0.3),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(

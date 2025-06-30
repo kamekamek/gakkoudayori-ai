@@ -6,13 +6,10 @@ import 'package:html_editor_enhanced/html_editor.dart';
 import 'package:uuid/uuid.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/status.dart' as status;
-
-// WebSocketサーバーのURL
-// TODO: 設定ファイルから読み込むようにする
-const String wsBaseUrl = "ws://localhost:8081/api/v1";
+import '../../../../config/app_config.dart';
 
 class NewsletterPage extends ConsumerStatefulWidget {
-  const NewsletterPage({Key? key}) : super(key: key);
+  const NewsletterPage({super.key});
 
   @override
   ConsumerState<NewsletterPage> createState() => _NewsletterPageState();
@@ -28,6 +25,9 @@ class _NewsletterPageState extends ConsumerState<NewsletterPage> {
   WebSocketChannel? _channel;
 
   final List<String> _chatHistory = [];
+
+  String get wsBaseUrl =>
+      '${AppConfig.apiBaseUrl.replaceFirst(RegExp(r'^http'), 'ws')}/api/v1';
 
   @override
   void initState() {

@@ -1,16 +1,14 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import '../../config/app_config.dart';
-import '../../models/user_settings.dart';
-import '../../services/google_auth_service.dart';
-import '../../services/user_settings_service.dart';
 
 // FirebaseAuthのインスタンスを提供するプロバイダ
-final firebaseAuthProvider =
-    Provider<FirebaseAuth>((ref) => FirebaseAuth.instance);
+final firebaseAuthProvider = Provider<FirebaseAuth>((ref) {
+  return FirebaseAuth.instance;
+});
 
 // 認証状態の変更を監視するStreamProvider
 final authStateChangesProvider = StreamProvider<User?>((ref) {
