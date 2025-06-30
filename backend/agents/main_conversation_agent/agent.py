@@ -152,25 +152,34 @@ class MainConversationAgent(LlmAgent):
         layout_agent = create_layout_agent()
 
         # 環境変数からGCPプロジェクト情報を取得
-        project_id = os.environ.get("GCP_PROJECT_ID", "gakkoudayori-ai")  # デフォルト値設定
-        location = os.environ.get("GCP_REGION", "asia-northeast1")  # デフォルト値設定
-        api_key = os.environ.get("GOOGLE_API_KEY")
+        project_id = os.environ.get("GCP_PROJECT_ID")
+        location = os.environ.get("GCP_REGION")
 
-        model_config = {"model_name": "gemini-2.5-pro"}
-        
-        # Cloud Run環境（デフォルト認証）またはローカル環境での分岐
-        if api_key:
-            # APIキーが設定されている場合（ローカル開発）
-            model_config["api_key"] = api_key
-            logger.info("<<<<< API KEY CONFIG v4 APPLIED IN MAIN_CONVERSATION_AGENT >>>>>")
-            logger.info("APIキーモードでGeminiを初期化（ローカル開発用）")
-        else:
-            # Cloud Run環境でのVertex AI使用（デフォルト認証）
+        model_config = {
+            "model_name": "gemini-2.5-pro",
+        }
+
+        # google-genaiがVertex AIを使うための設定
+        # GOOGLE_GENAI_USE_VERTEXAI=true が設定されている場合、
+        # ADKが自動的に project, location を利用する
+        if os.environ.get("GOOGLE_GENAI_USE_VERTEXAI") == "true":
+            if not project_id or not location:
+                raise ValueError("Vertex AIを使用するにはGCP_PROJECT_IDとGCP_REGION環境変数が必要です。")
+            # ADKはmodel_configに'vertexai': Trueがあると、
+            # projectとlocationも渡されることを期待する
             model_config["vertexai"] = True
             model_config["project"] = project_id
             model_config["location"] = location
-            logger.info("<<<<< VERTEX AI CONFIG v4 APPLIED IN MAIN_CONVERSATION_AGENT >>>>>")
-            logger.info(f"Vertex AIモードでGeminiを初期化: project={project_id}, location={location}")
+            logger.info(f"Vertex AIモードでGeminiを構成: project={project_id}, location={location}")
+        else:
+            # APIキー（ローカル用）
+            api_key = os.environ.get("GOOGLE_API_KEY")
+            if not api_key:
+                # ローカル開発環境などでキーがない場合に警告を出す
+                logger.warning("GOOGLE_API_KEY環境変数が見つかりません。ローカルでの実行に失敗する可能性があります。")
+            else:
+                model_config["api_key"] = api_key
+                logger.info("APIキーモードでGeminiを構成（ローカル開発用）")
 
 
         super().__init__(

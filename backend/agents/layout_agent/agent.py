@@ -24,25 +24,29 @@ class LayoutAgent(LlmAgent):
 
     def __init__(self, output_key: str = "html"):
         # 環境変数からGCPプロジェクト情報を取得
-        project_id = os.environ.get("GCP_PROJECT_ID", "gakkoudayori-ai")  # デフォルト値設定
-        location = os.environ.get("GCP_REGION", "asia-northeast1")  # デフォルト値設定
-        api_key = os.environ.get("GOOGLE_API_KEY")
+        project_id = os.environ.get("GCP_PROJECT_ID")
+        location = os.environ.get("GCP_REGION")
 
-        model_config = {"model_name": "gemini-2.5-pro"}
-        
-        # Cloud Run環境（デフォルト認証）またはローカル環境での分岐
-        if api_key:
-            # APIキーが設定されている場合（ローカル開発）
-            model_config["api_key"] = api_key
-            logger.info("<<<<< API KEY CONFIG v4 APPLIED IN LAYOUT_AGENT >>>>>")
-            logger.info("LayoutAgent: APIキーモードでGeminiを初期化（ローカル開発用）")
-        else:
-            # Cloud Run環境でのVertex AI使用（デフォルト認証）
+        model_config = {
+            "model_name": "gemini-2.5-pro",
+        }
+
+        # google-genaiがVertex AIを使うための設定
+        if os.environ.get("GOOGLE_GENAI_USE_VERTEXAI") == "true":
+            if not project_id or not location:
+                raise ValueError("LayoutAgent: Vertex AIを使用するにはGCP_PROJECT_IDとGCP_REGION環境変数が必要です。")
             model_config["vertexai"] = True
             model_config["project"] = project_id
             model_config["location"] = location
-            logger.info("<<<<< VERTEX AI CONFIG v4 APPLIED IN LAYOUT_AGENT >>>>>")
-            logger.info(f"LayoutAgent: Vertex AIモードでGeminiを初期化: project={project_id}, location={location}")
+            logger.info(f"LayoutAgent: Vertex AIモードでGeminiを構成: project={project_id}, location={location}")
+        else:
+            # APIキー（ローカル用）
+            api_key = os.environ.get("GOOGLE_API_KEY")
+            if not api_key:
+                logger.warning("LayoutAgent: GOOGLE_API_KEY環境変数が見つかりません。ローカル実行に失敗する可能性があります。")
+            else:
+                model_config["api_key"] = api_key
+                logger.info("LayoutAgent: APIキーモードでGeminiを構成（ローカル開発用）")
         
         super().__init__(
             name="layout_agent",

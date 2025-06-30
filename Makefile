@@ -137,7 +137,7 @@ deploy-backend:
 		--max-instances=10 \
 		--cpu=2 \
 		--concurrency=100 \
-		--set-env-vars="ENVIRONMENT=production,GCS_BUCKET_NAME=gakkoudayori-ai.appspot.com,GCP_PROJECT_ID=gakkoudayori-ai,GCP_REGION=asia-northeast1,GOOGLE_GENAI_USE_VERTEXAI=true" \
+		--set-env-vars="ENVIRONMENT=production,GCS_BUCKET_NAME=gakkoudayori-ai.appspot.com,GCP_PROJECT_ID=gakkoudayori-ai,GCP_REGION=asia-northeast1,GOOGLE_CLOUD_PROJECT=gakkoudayori-ai,GOOGLE_CLOUD_LOCATION=asia-northeast1,GOOGLE_GENAI_USE_VERTEXAI=true" \
 		--platform=managed
 
 # ステージングバックエンドデプロイ
