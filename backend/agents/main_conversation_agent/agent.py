@@ -152,20 +152,25 @@ class MainConversationAgent(LlmAgent):
         layout_agent = create_layout_agent()
 
         # 環境変数からGCPプロジェクト情報を取得
-        project_id = os.environ.get("GCP_PROJECT_ID")
-        location = os.environ.get("GCP_REGION")
+        project_id = os.environ.get("GCP_PROJECT_ID", "gakkoudayori-ai")  # デフォルト値設定
+        location = os.environ.get("GCP_REGION", "asia-northeast1")  # デフォルト値設定
+        api_key = os.environ.get("GOOGLE_API_KEY")
 
         model_config = {"model_name": "gemini-2.5-pro"}
-        # Cloud Run環境など、プロジェクトIDとリージョンが設定されている場合にVertex AIを使用
-        if project_id and location:
+        
+        # Cloud Run環境（デフォルト認証）またはローカル環境での分岐
+        if api_key:
+            # APIキーが設定されている場合（ローカル開発）
+            model_config["api_key"] = api_key
+            logger.info("<<<<< API KEY CONFIG v4 APPLIED IN MAIN_CONVERSATION_AGENT >>>>>")
+            logger.info("APIキーモードでGeminiを初期化（ローカル開発用）")
+        else:
+            # Cloud Run環境でのVertex AI使用（デフォルト認証）
             model_config["vertexai"] = True
             model_config["project"] = project_id
             model_config["location"] = location
-            logger.info("<<<<< VERTEX AI CONFIG v3 APPLIED IN MAIN_CONVERSATION_AGENT >>>>>")
+            logger.info("<<<<< VERTEX AI CONFIG v4 APPLIED IN MAIN_CONVERSATION_AGENT >>>>>")
             logger.info(f"Vertex AIモードでGeminiを初期化: project={project_id}, location={location}")
-        else:
-            logger.warning("<<<<< LOCAL API KEY CONFIG v3 APPLIED IN MAIN_CONVERSATION_AGENT >>>>>")
-            logger.warning("APIキーモードでGeminiを初期化（ローカル開発用）")
 
 
         super().__init__(
