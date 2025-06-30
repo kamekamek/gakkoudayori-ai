@@ -25,8 +25,9 @@ except ImportError:
 try:
     import weasyprint
     WEASYPRINT_AVAILABLE = True
-except ImportError:
+except (ImportError, OSError) as e:
     WEASYPRINT_AVAILABLE = False
+    print(f"WeasyPrint利用不可: {e}")
 
 # APIRouterインスタンスを作成
 router = APIRouter(
@@ -288,42 +289,198 @@ async def convert_html_to_pdf_simple(
     custom_css: str = "",
 ) -> Optional[bytes]:
     """
-    シンプルなダミーPDFを生成します（開発用）。
+    ReportLabを使用してHTMLから基本的なPDFを生成します。
+    CSSは制限されますが、HTMLの構造を読み取って美しいPDFを作成します。
     """
     try:
         from io import BytesIO
+        import re
+        from html import unescape
 
         from reportlab.lib.pagesizes import A4
         from reportlab.pdfgen import canvas
+        from reportlab.lib.colors import Color
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
 
         buffer = BytesIO()
         p = canvas.Canvas(buffer, pagesize=A4)
+        
+        # 日本語フォント対応の試行
+        try:
+            # Hiragino Sans があれば使用
+            p.setFont("HeiseiKakuGo-W5", 16)
+        except:
+            try:
+                p.setFont("HeiseiMin-W3", 16)
+            except:
+                p.setFont("Helvetica", 16)
 
-        # タイトルを追加
-        p.setFont("Helvetica", 16)
-        p.drawString(100, 750, title)
+        # HTMLから構造化されたコンテンツを抽出
+        content = _extract_structured_content(html_content)
+        
+        # A4サイズでの描画開始
+        y_position = 750
+        margin_left = 50
+        page_width = A4[0] - 100  # 左右マージンを考慮
 
-        # HTMLコンテンツの一部を追加（簡素化）
-        p.setFont("Helvetica", 12)
-        y_position = 700
-        lines = html_content.replace("<", "").replace(">", "").split("\n")[:20]
-        for line in lines:
-            if line.strip():
-                p.drawString(100, y_position, line.strip()[:80])
+        # タイトル描画
+        try:
+            p.setFont("HeiseiKakuGo-W5", 20)
+        except:
+            p.setFont("Helvetica-Bold", 20)
+        
+        # タイトルの中央寄せ
+        title_width = p.stringWidth(title, "Helvetica-Bold", 20)
+        title_x = (A4[0] - title_width) / 2
+        p.drawString(title_x, y_position, title)
+        y_position -= 40
+
+        # 区切り線
+        p.setStrokeColor(Color(0.8, 0.8, 0.8))
+        p.line(margin_left, y_position, A4[0] - margin_left, y_position)
+        y_position -= 30
+
+        # メイン通常フォント
+        try:
+            p.setFont("HeiseiKakuGo-W5", 12)
+        except:
+            p.setFont("Helvetica", 12)
+
+        # 構造化されたコンテンツを描画
+        for item in content['items']:
+            if y_position < 100:  # 新しいページが必要
+                p.showPage()
+                y_position = 750
+                try:
+                    p.setFont("HeiseiKakuGo-W5", 12)
+                except:
+                    p.setFont("Helvetica", 12)
+
+            if item['type'] == 'header':
+                # ヘッダー
+                p.setFillColor(Color(0.2, 0.4, 0.8))
+                try:
+                    p.setFont("HeiseiKakuGo-W5", 16)
+                except:
+                    p.setFont("Helvetica-Bold", 16)
+                p.drawString(margin_left, y_position, item['text'])
+                y_position -= 25
+                p.setFillColor(Color(0, 0, 0))  # 通常の黒色に戻す
+                
+            elif item['type'] == 'subheader':
+                # サブヘッダー
+                p.setFillColor(Color(0.4, 0.4, 0.4))
+                try:
+                    p.setFont("HeiseiKakuGo-W5", 14)
+                except:
+                    p.setFont("Helvetica-Bold", 14)
+                p.drawString(margin_left, y_position, item['text'])
                 y_position -= 20
-                if y_position < 100:
-                    break
+                p.setFillColor(Color(0, 0, 0))
+                
+            elif item['type'] == 'paragraph':
+                # 段落
+                try:
+                    p.setFont("HeiseiKakuGo-W5", 12)
+                except:
+                    p.setFont("Helvetica", 12)
+                    
+                # 長いテキストの折り返し処理
+                words = item['text'].split()
+                lines = []
+                current_line = ""
+                for word in words:
+                    test_line = current_line + (" " if current_line else "") + word
+                    if p.stringWidth(test_line, "Helvetica", 12) < page_width - 100:
+                        current_line = test_line
+                    else:
+                        if current_line:
+                            lines.append(current_line)
+                        current_line = word
+                if current_line:
+                    lines.append(current_line)
+                
+                for line in lines:
+                    if y_position < 100:
+                        p.showPage()
+                        y_position = 750
+                    p.drawString(margin_left, y_position, line)
+                    y_position -= 15
+                y_position -= 5  # 段落間のスペース
 
-        p.showPage()
+        # フッター
+        try:
+            p.setFont("HeiseiKakuGo-W5", 10)
+        except:
+            p.setFont("Helvetica", 10)
+        p.setFillColor(Color(0.5, 0.5, 0.5))
+        footer_text = f"{title} - {content.get('school_name', '')} {content.get('class_name', '')}"
+        p.drawString(margin_left, 30, footer_text)
+
         p.save()
-
         buffer.seek(0)
         return buffer.getvalue()
+        
     except ImportError:
         return None
     except Exception as e:
-        print(f"Simple PDF変換中にエラーが発生しました: {e}")
+        print(f"Enhanced PDF変換中にエラーが発生しました: {e}")
         return None
+
+
+def _extract_structured_content(html_content: str) -> dict:
+    """HTMLから構造化されたコンテンツを抽出"""
+    import re
+    from html import unescape
+    
+    content = {
+        'items': [],
+        'school_name': '',
+        'class_name': ''
+    }
+    
+    # HTMLタグを除去して構造を解析
+    # h1タグを抽出
+    h1_matches = re.findall(r'<h1[^>]*>(.*?)</h1>', html_content, re.DOTALL | re.IGNORECASE)
+    for h1 in h1_matches:
+        clean_text = re.sub(r'<[^>]+>', '', h1).strip()
+        clean_text = unescape(clean_text)
+        if clean_text:
+            content['items'].append({'type': 'header', 'text': clean_text})
+            # 学校名・クラス名を抽出
+            if '小学校' in clean_text or '中学校' in clean_text:
+                content['school_name'] = clean_text.split()[0] if ' ' in clean_text else clean_text
+            if '年' in clean_text and '組' in clean_text:
+                content['class_name'] = clean_text.split()[-1] if ' ' in clean_text else clean_text
+
+    # h2タグを抽出
+    h2_matches = re.findall(r'<h2[^>]*>(.*?)</h2>', html_content, re.DOTALL | re.IGNORECASE)
+    for h2 in h2_matches:
+        clean_text = re.sub(r'<[^>]+>', '', h2).strip()
+        clean_text = unescape(clean_text)
+        if clean_text:
+            content['items'].append({'type': 'subheader', 'text': clean_text})
+
+    # pタグを抽出
+    p_matches = re.findall(r'<p[^>]*>(.*?)</p>', html_content, re.DOTALL | re.IGNORECASE)
+    for p in p_matches:
+        clean_text = re.sub(r'<[^>]+>', '', p).strip()
+        clean_text = unescape(clean_text)
+        if clean_text:
+            content['items'].append({'type': 'paragraph', 'text': clean_text})
+    
+    # タグなしのテキストも抽出（フォールバック）
+    if not content['items']:
+        clean_html = re.sub(r'<[^>]+>', ' ', html_content)
+        clean_html = unescape(clean_html).strip()
+        if clean_html:
+            # 改行で分割して段落として追加
+            paragraphs = [p.strip() for p in clean_html.split('\n') if p.strip()]
+            for para in paragraphs:
+                content['items'].append({'type': 'paragraph', 'text': para})
+    
+    return content
 
 
 async def convert_html_to_pdf(
