@@ -7,7 +7,7 @@ import '../config/app_config.dart';
 ///
 /// バックエンドのPDF生成エンドポイントと通信
 class PdfApiService {
-  static final String _baseUrl = AppConfig.apiBaseUrl;
+  static final String _baseUrl = AppConfig.currentApiBaseUrl;
 
   /// HTMLからPDFを生成
   ///

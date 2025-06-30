@@ -230,8 +230,7 @@ class _UserDictionaryWidgetState extends State<UserDictionaryWidget> {
   /// 手動修正を記録
   Future<void> _recordCorrection(String original, String corrected) async {
     try {
-      final apiUrl =
-          '${AppConfig.apiBaseUrl.replaceAll('/api/v1/ai', '')}/api/v1/dictionary/${widget.userId}/correct';
+      final apiUrl = '${AppConfig.currentApiBaseUrl}/api/v1/dictionary/${widget.userId}/correct';
 
       final response = await http.post(
         Uri.parse(apiUrl),

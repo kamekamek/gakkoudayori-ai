@@ -5,7 +5,7 @@ import '../config/app_config.dart';
 /// グラフィックレコーディング（グラレコ）生成サービス
 /// 新フロー: 音声→JSON→HTMLグラレコ
 class GraphicalRecordService {
-  static String get _baseUrl => AppConfig.apiBaseUrl;
+  static String get _baseUrl => AppConfig.currentApiBaseUrl;
 
   /// 音声認識結果をJSON構造化データに変換
   Future<SpeechToJsonResult> convertSpeechToJson({

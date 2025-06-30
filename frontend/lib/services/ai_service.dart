@@ -5,7 +5,7 @@ import '../config/app_config.dart';
 
 /// Gemini Pro AI文章生成サービス
 class AIService {
-  static String get _baseUrl => AppConfig.apiBaseUrl;
+  static String get _baseUrl => AppConfig.currentApiBaseUrl;
 
   /// 学級通信HTML生成
   Future<AIGenerationResult> generateNewsletter({
