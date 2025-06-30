@@ -17,7 +17,9 @@ class DeliverHtmlTool:
 
     def __init__(self):
         # FastAPIサーバーのベースURL設定
-        self.base_url = os.getenv("FASTAPI_BASE_URL", "http://localhost:8081")
+        # デプロイ環境ではPORT環境変数を、ローカルでは8081をデフォルトにする
+        port = os.getenv("PORT", "8081")
+        self.base_url = os.getenv("FASTAPI_BASE_URL", f"http://localhost:{port}")
         self.artifact_endpoint = f"{self.base_url}/api/v1/artifacts/html"
 
         # 現在のセッションIDを保存するための変数
