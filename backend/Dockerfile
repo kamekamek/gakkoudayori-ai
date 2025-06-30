@@ -20,12 +20,12 @@ RUN apt-get update && apt-get install -y curl && \
 COPY pyproject.toml uv.lock ./
 
 # Create virtual environment and install dependencies using uv sync
-RUN uv venv /opt/venv && \
+RUN uv venv .venv && \
     uv sync --extra dev
 
 # Set environment to use the virtual environment  
-ENV PATH="/opt/venv/bin:$PATH"
-ENV VIRTUAL_ENV="/opt/venv"
+ENV PATH="/app/.venv/bin:$PATH"
+ENV VIRTUAL_ENV="/app/.venv"
 
 # Copy the rest of the application code
 COPY . .
@@ -33,5 +33,5 @@ COPY . .
 # Expose the port the app runs on
 EXPOSE ${PORT}
 
-# Run the application using uv run to ensure proper dependency resolution
-CMD ["sh", "-c", "cd /app && uv run gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:${PORT:-8080}"]
+# Run the application using the virtual environment directly
+CMD ["sh", "-c", "/app/.venv/bin/gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:${PORT:-8080}"]
