@@ -5,7 +5,7 @@ FROM python:3.11-slim
 ENV PYTHONUNBUFFERED 1
 ENV APP_HOME /app
 # Set the default port. Cloud Run will override this with its own $PORT.
-ENV PORT 8081
+ENV PORT 8080
 WORKDIR $APP_HOME
 
 # Install system dependencies and uv in one step
@@ -33,5 +33,5 @@ COPY . .
 # Expose the port the app runs on
 EXPOSE ${PORT}
 
-# Run the application using gunicorn from virtual environment
-CMD ["/opt/venv/bin/gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "app.main:app", "--bind", "0.0.0.0:8081"]
+# Run the application using uv run to ensure proper dependency resolution
+CMD ["sh", "-c", "cd /app && uv run gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:${PORT:-8080}"]
