@@ -22,6 +22,12 @@ try:
 except ImportError:
     PLAYWRIGHT_AVAILABLE = False
 
+try:
+    import weasyprint
+    WEASYPRINT_AVAILABLE = True
+except ImportError:
+    WEASYPRINT_AVAILABLE = False
+
 # APIRouterインスタンスを作成
 router = APIRouter(
     prefix="/pdf",
@@ -208,6 +214,70 @@ async def convert_html_to_pdf_playwright(
         return None
 
 
+async def convert_html_to_pdf_weasyprint(
+    html_content: str,
+    title: str = "学級通信",
+    page_size: str = "A4",
+    margin: str = "15mm",
+    include_header: bool = False,
+    include_footer: bool = False,
+    custom_css: str = "",
+) -> Optional[bytes]:
+    """
+    WeasyPrintを使用してHTML文字列をPDFに変換します（CSS完全対応）。
+    """
+    if not WEASYPRINT_AVAILABLE:
+        return None
+
+    try:
+        # 完全なHTMLドキュメントを作成
+        full_html = f"""
+        <!DOCTYPE html>
+        <html lang="ja">
+        <head>
+            <meta charset="UTF-8">
+            <title>{title}</title>
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+                
+                @page {{
+                    size: {page_size};
+                    margin: {margin};
+                }}
+                
+                body {{
+                    font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
+                    line-height: 1.6;
+                    margin: 0;
+                    padding: 0;
+                    color: #333;
+                }}
+                
+                h1, h2, h3, h4, h5, h6 {{
+                    font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
+                    font-weight: 500;
+                }}
+                
+                {custom_css}
+            </style>
+        </head>
+        <body>
+            {html_content}
+        </body>
+        </html>
+        """
+
+        # WeasyPrintでPDF生成
+        html_doc = weasyprint.HTML(string=full_html)
+        pdf_bytes = html_doc.write_pdf()
+        
+        return pdf_bytes
+        
+    except Exception as e:
+        print(f"WeasyPrint PDF変換中にエラーが発生しました: {e}")
+        return None
+
+
 async def convert_html_to_pdf_simple(
     html_content: str,
     title: str = "学級通信",
@@ -268,7 +338,22 @@ async def convert_html_to_pdf(
     """
     HTML文字列をPDFに変換します。利用可能なライブラリを順次試行します。
     """
-    # Playwrightを最初に試行
+    # WeasyPrintを最初に試行（CSS完全対応）
+    if WEASYPRINT_AVAILABLE:
+        print("WeasyPrintを使用してPDF変換を試行します...")
+        result = await convert_html_to_pdf_weasyprint(
+            html_content,
+            title,
+            page_size,
+            margin,
+            include_header,
+            include_footer,
+            custom_css,
+        )
+        if result:
+            return result
+
+    # Playwrightを次に試行
     if PLAYWRIGHT_AVAILABLE:
         print("Playwrightを使用してPDF変換を試行します...")
         result = await convert_html_to_pdf_playwright(
@@ -313,8 +398,9 @@ async def convert_html_to_pdf(
         return result
 
     print("PDF変換ライブラリが利用できません。")
-    print("推奨: uv add playwright && playwright install chromium")
-    print("または: uv add reportlab")
+    print("推奨: uv add weasyprint (CSS完全対応)")
+    print("または: uv add playwright && playwright install chromium")
+    print("または: uv add reportlab (基本的なPDF生成のみ)")
     return None
 
 

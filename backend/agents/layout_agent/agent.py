@@ -241,13 +241,17 @@ class LayoutAgent(LlmAgent):
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{school_name} {grade} {json_obj.get('issue', '学級通信')}</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+    
     body {{
-      font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif;
+      font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
       margin: 0;
       padding: 20px;
       background-color: #ffffff;
       color: #333333;
       line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }}
     .container {{
       max-width: 800px;
@@ -267,6 +271,8 @@ class LayoutAgent(LlmAgent):
       margin: 0;
       color: #333333;
       font-size: 24px;
+      font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
+      font-weight: 500;
     }}
     .header p {{
       margin: 10px 0 0 0;
@@ -280,6 +286,8 @@ class LayoutAgent(LlmAgent):
       border-left: 4px solid {secondary_color};
       padding-left: 15px;
       margin-bottom: 20px;
+      font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
+      font-weight: 500;
     }}
     .footer {{
       background-color: {secondary_color};
