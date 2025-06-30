@@ -10,6 +10,8 @@ from google.adk.models.google_llm import Gemini
 from google.adk.tools import FunctionTool, ToolContext
 from google.genai.types import Content, Part
 
+from services.user_settings_service import UserSettingsService
+
 from .prompt import MAIN_CONVERSATION_INSTRUCTION
 
 # ロガーの設定
@@ -63,10 +65,6 @@ async def get_user_settings_context() -> str:
         logger.info(f"ユーザー設定を取得中: user_id={actual_user_id}")
 
         # UserSettingsServiceを使用してユーザー設定を取得
-        import os
-        import sys
-        sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
-        from services.user_settings_service import UserSettingsService
         service = UserSettingsService()
         settings = await service.get_user_settings(actual_user_id)
 
