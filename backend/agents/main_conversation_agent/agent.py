@@ -158,10 +158,13 @@ class MainConversationAgent(LlmAgent):
         model_config = {"model_name": "gemini-2.5-pro"}
         # Cloud Run環境など、プロジェクトIDとリージョンが設定されている場合にVertex AIを使用
         if project_id and location:
+            model_config["vertexai"] = True
             model_config["project"] = project_id
             model_config["location"] = location
+            logger.info("<<<<< VERTEX AI CONFIG v3 APPLIED IN MAIN_CONVERSATION_AGENT >>>>>")
             logger.info(f"Vertex AIモードでGeminiを初期化: project={project_id}, location={location}")
         else:
+            logger.warning("<<<<< LOCAL API KEY CONFIG v3 APPLIED IN MAIN_CONVERSATION_AGENT >>>>>")
             logger.warning("APIキーモードでGeminiを初期化（ローカル開発用）")
 
 

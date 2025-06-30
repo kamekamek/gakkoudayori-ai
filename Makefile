@@ -1,6 +1,6 @@
 # 学校だよりAI - 環境管理Makefile
 
-.PHONY: help dev prod staging build-dev build-prod deploy deploy-frontend deploy-backend deploy-backend-staging deploy-all deploy-staging deploy-preview ci-setup test lint format reset-dev backend-dev backend-test backend-setup check-backend test-adk warmup
+.PHONY: help dev prod staging build-dev build-prod deploy deploy-frontend deploy-backend deploy-backend-staging deploy-all deploy-staging deploy-preview ci-setup test lint format reset-dev backend-dev backend-test backend-setup check-backend test-adk warmup test-local-cloud-run
 
 # デフォルトターゲット
 help:
@@ -201,8 +201,6 @@ backend-dev:
 	GCS_BUCKET_NAME="gakkoudayori-ai.appspot.com" \
 	uv run uvicorn app.main:app --host 0.0.0.0 --port 8081 --reload
 
-
-
 # Python環境セットアップ
 backend-setup:
 	@echo "ð Python環境セットアップ中..."
@@ -217,7 +215,29 @@ backend-test:
 # ADK v1.0.0互換性テスト
 test-adk:
 	@echo "🤖 ADK v1.0.0 互換性テスト実行中..."
-	cd backend && uv run python test_uv_migration.py 
+	cd backend && uv run python test_uv_migration.py
+
+# ローカルでCloud Run環境をシミュレート (デプロイ前の動作確認用)
+test-local-cloud-run:
+	@if ! [ -f backend/Dockerfile ]; then \
+		echo "❌ backend/Dockerfile が見つかりません。"; \
+		exit 1; \
+	fi
+	@echo "🔑 gcloud ADC（Application Default Credentials）を設定します..."
+	@echo "ブラウザが開き、認証を求められますので、許可してください。"
+	@gcloud auth application-default login
+	@echo "🐳 Dockerイメージをビルド中 (gakkoudayori-backend-local)..."
+	@docker build -t gakkoudayori-backend-local -f backend/Dockerfile backend
+	@echo "🏃‍♀️ Dockerコンテナを実行中（Cloud Run環境をシミュレーション）..."
+	@echo "ポート8081で待機中... 別のターミナルで 'make dev' を実行してフロントエンドを接続してください。"
+	@echo "コンテナを停止するには Ctrl+C を押してください。"
+	@docker run --rm -it -p 8081:8081 \
+		-v ~/.config/gcloud:/root/.config/gcloud:ro \
+		-e GCP_PROJECT_ID="gakkoudayori-ai" \
+		-e GCP_REGION="asia-northeast1" \
+		-e GCS_BUCKET_NAME="gakkoudayori-ai.appspot.com" \
+		-e ENVIRONMENT="production" \
+		gakkoudayori-backend-local
 
 # バックエンドWarm-up
 warmup:
